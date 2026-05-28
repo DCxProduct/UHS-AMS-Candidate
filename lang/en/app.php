@@ -10,4 +10,48 @@ return [
     'sign_up' => 'Sign up',
     'sign_up_new_account' => 'Sign up for a new account',
     'already_have_account' => 'Already have an account?',
+
+    'username_email_phone' => 'Username, Email, or Phone number',
+    'enter_username_email_phone' => 'Enter username, email, or phone number',
+
+    'username' => 'Username',
+    'enter_username' => 'Enter username',
+    'username_required' => 'Username is required.',
+    'username_unique' => 'This username is already taken.',
+
+    'email_address' => 'Email address',
+    'enter_email_address' => 'Enter email address',
+    'email_invalid' => 'Please enter a valid email address.',
+    'email_unique' => 'This email address is already taken.',
+
+    'phone_number' => 'Phone number',
+    'enter_phone_number' => 'Enter phone number',
+    'phone_required' => 'Phone number is required.',
+    'phone_regex' => 'Phone number must contain only numbers and be between 9 to 10 digits.',
+    'phone_min' => 'Phone number must be at least 9 digits.',
+    'phone_max' => 'Phone number must not be more than 10 digits.',
+    'phone_unique' => 'This phone number is already taken.',
+
+    'date_of_birth' => 'Date of birth',
+    'select_date_of_birth' => 'Select date of birth',
+    'date_of_birth_required' => 'Date of birth is required.',
+
+    'password' => 'Password',
+    'enter_password' => 'Enter password',
+    'password_required' => 'Password is required.',
+    'password_min' => 'Password must be at least 8 characters.',
+    'password_confirmed' => 'Password confirmation does not match.',
+
+    'confirm_password' => 'Confirm password',
+    'enter_confirm_password' => 'Confirm password',
+    'confirm_password_required' => 'Confirm password is required.',
+    'confirm_password_same' => 'Confirm password does not match.',
+
+    'remember_me' => 'Remember me',
+
+    'login_required' => 'Username, email, or phone number is required.',
+    'invalid_credentials' => 'These credentials do not match our records.',
+    'account_inactive' => 'Your account is inactive. Please contact administrator.',
+    'no_panel_permission' => 'You do not have permission to access this panel.',
+    'too_many_login_attempts' => 'Too many login attempts. Please try again in :seconds seconds.',
 ];
