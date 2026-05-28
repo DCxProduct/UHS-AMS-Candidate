@@ -10,10 +10,13 @@ use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\View\PanelsRenderHook;
 use Filament\Widgets\AccountWidget;
 use Filament\Widgets\FilamentInfoWidget;
+use Illuminate\Contracts\View\View;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
@@ -23,10 +26,26 @@ class AdminPanelProvider extends PanelProvider
     public function panel(Panel $panel): Panel
     {
         return $panel
+            ->sidebarCollapsibleOnDesktop()
             ->default()
             ->id('admin')
             ->path('admin')
             ->login()
+
+            ->registration()
+            ->brandName('UHS-AMS')
+            ->brandLogo(asset('images/UHS_logo.png'))
+            ->brandLogoHeight('6rem')
+
+            ->renderHook(
+                PanelsRenderHook::AUTH_LOGIN_FORM_AFTER,
+                fn (): View => view('auth.login-signup-link'),
+            )
+
+            ->renderHook(
+                PanelsRenderHook::AUTH_REGISTER_FORM_AFTER,
+                fn (): View => view('auth.register-signin-link'),
+            )
 
             ->colors([
                 'primary' => Color::Amber,
@@ -62,6 +81,7 @@ class AdminPanelProvider extends PanelProvider
                 StartSession::class,
                 AuthenticateSession::class,
                 ShareErrorsFromSession::class,
+                PreventRequestForgery::class,
                 SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
