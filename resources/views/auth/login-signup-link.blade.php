@@ -17,13 +17,13 @@
 
 @if ($registerUrl)
     <div style="margin-top: 1.25rem; text-align: center; font-size: 1rem;">
-        <span style="color: #9ca3af;">or</span>
+        <span style="color: #9ca3af;">{{ __('app.or') }}</span>
 
         <a
             href="{{ $registerUrl }}"
             style="color: #f59e0b; font-weight: 600; text-decoration: none;"
         >
-            Sign up for a new account
+            {{ __('app.sign_up_new_account') }}
         </a>
     </div>
 @endif
