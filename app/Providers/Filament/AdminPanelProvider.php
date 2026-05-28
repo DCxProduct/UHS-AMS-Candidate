@@ -34,6 +34,7 @@ class AdminPanelProvider extends PanelProvider
             ->path('admin')
             ->login(Login::class)
             ->registration(Register::class)
+            ->viteTheme('resources/css/filament/admin/theme.css')
             ->brandName('UHS-AMS')
             ->brandLogo(asset('images/UHS_logo.png'))
             ->brandLogoHeight('6rem')
