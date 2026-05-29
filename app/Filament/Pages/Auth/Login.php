@@ -38,14 +38,14 @@ class Login extends BaseLogin
         return $schema
             ->components([
                 TextInput::make('login')
-                    ->label(__('app.login_identity'))
-                    ->placeholder(__('app.enter_login_identity'))
+                    ->label(__('app.username_email_phone'))
+                    ->placeholder(__('app.username_email_phone'))
                     ->required()
                     ->autofocus()
                     ->autocomplete('username')
                     ->prefixIcon('heroicon-o-user-circle')
                     ->validationMessages([
-                        'required' => __('app.login_required'),
+                        'required' => __('app.username_email_phone'),
                     ]),
 
                 TextInput::make('password')
