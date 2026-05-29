@@ -14,11 +14,15 @@ class User extends Authenticatable implements FilamentUser
     use SoftDeletes;
 
     protected $fillable = [
+        'registration_type',
+        'academic_year',
         'name',
+        'name_latin',
         'username',
         'email',
         'phone',
         'date_of_birth',
+        'seat_number',
         'avatar',
         'is_active',
         'password',

@@ -11,6 +11,27 @@ return [
     'sign_up_new_account' => 'ចុះឈ្មោះគណនីថ្មី',
     'already_have_account' => 'មានគណនីរួចហើយ?',
 
+    'register_as' => 'ចុះឈ្មោះជា',
+    'enrollment' => 'ចុះឈ្មោះចូលរៀន',
+    'national_examination' => 'ប្រឡងថ្នាក់ជាតិ',
+
+    'name' => 'ឈ្មោះខ្មែរ',
+    'enter_name' => 'បញ្ចូលឈ្មោះខ្មែរ',
+    'name_required' => 'សូមបញ្ចូលឈ្មោះខ្មែរ។',
+
+    'name_latin' => 'ឈ្មោះឡាតាំង',
+    'enter_name_latin' => 'បញ្ចូលឈ្មោះឡាតាំង',
+    'name_latin_required' => 'សូមបញ្ចូលឈ្មោះឡាតាំង។',
+
+    'academic_year' => 'ឆ្នាំសិក្សា',
+    'select_academic_year' => 'ជ្រើសរើសឆ្នាំសិក្សា',
+    'academic_year_required' => 'សូមជ្រើសរើសឆ្នាំសិក្សា។',
+
+    'seat_number' => 'លេខតុ',
+    'enter_seat_number' => 'បញ្ចូលលេខតុ',
+    'seat_number_required' => 'សូមបញ្ចូលលេខតុ។',
+    'seat_number_unique' => 'លេខតុនេះត្រូវបានចុះឈ្មោះរួចហើយ។',
+
     'username_email_phone' => 'ឈ្មោះអ្នកប្រើ អ៊ីមែល ឬលេខទូរស័ព្ទ',
     'enter_username_email_phone' => 'បញ្ចូលឈ្មោះអ្នកប្រើ អ៊ីមែល ឬលេខទូរស័ព្ទ',
 
