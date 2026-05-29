@@ -13,6 +13,7 @@ return new class extends Migration
             $table->string('registration_type')->default('enrollment')->index();
             $table->string('academic_year')->nullable()->index();
             $table->string('name');
+            $table->string('name_latin')->nullable();
             $table->string('username')->unique();
             $table->string('email')->nullable()->unique();
             $table->timestamp('email_verified_at')->nullable();

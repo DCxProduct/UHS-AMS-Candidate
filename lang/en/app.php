@@ -23,6 +23,10 @@ return [
     'enter_name' => 'Enter name',
     'name_required' => 'Name is required.',
 
+    'name_latin' => 'Name Latin',
+    'enter_name_latin' => 'Enter name in Latin',
+    'name_latin_required' => 'Name Latin is required.',
+
     'seat_number' => 'Seat number',
     'enter_seat_number' => 'Enter seat number',
     'seat_number_required' => 'Seat number is required.',

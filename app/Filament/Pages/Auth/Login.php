@@ -38,8 +38,8 @@ class Login extends BaseLogin
         return $schema
             ->components([
                 TextInput::make('login')
-                    ->label(__('app.username_email_phone'))
-                    ->placeholder(__('app.enter_username_email_phone'))
+                    ->label(__('app.login_identity'))
+                    ->placeholder(__('app.enter_login_identity'))
                     ->required()
                     ->autofocus()
                     ->autocomplete('username')
@@ -90,14 +90,29 @@ class Login extends BaseLogin
         $user = User::query()
             ->where(function ($query) use ($normalizedLogin, $normalizedPhone) {
                 $query
-                    ->whereRaw('LOWER(name) = ?', [$normalizedLogin])
-                    ->orWhereRaw('LOWER(username) = ?', [$normalizedLogin])
-                    ->orWhereRaw('LOWER(email) = ?', [$normalizedLogin])
-                    ->orWhereRaw('LOWER(seat_number) = ?', [$normalizedLogin]);
+                    ->whereRaw('LOWER(username) = ?', [$normalizedLogin])
+                    ->orWhereRaw('LOWER(email) = ?', [$normalizedLogin]);
 
                 if (! blank($normalizedPhone)) {
                     $query->orWhere('phone', $normalizedPhone);
                 }
+
+                $query
+                    ->orWhere(function ($nationalExamQuery) use ($normalizedLogin) {
+                        $nationalExamQuery
+                            ->where('registration_type', 'national_exam')
+                            ->whereRaw('LOWER(name) = ?', [$normalizedLogin]);
+                    })
+                    ->orWhere(function ($nationalExamQuery) use ($normalizedLogin) {
+                        $nationalExamQuery
+                            ->where('registration_type', 'national_exam')
+                            ->whereRaw('LOWER(name_latin) = ?', [$normalizedLogin]);
+                    })
+                    ->orWhere(function ($nationalExamQuery) use ($normalizedLogin) {
+                        $nationalExamQuery
+                            ->where('registration_type', 'national_exam')
+                            ->whereRaw('LOWER(seat_number) = ?', [$normalizedLogin]);
+                    });
             })
             ->first();
 

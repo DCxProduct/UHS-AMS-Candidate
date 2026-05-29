@@ -15,9 +15,13 @@ return [
     'enrollment' => 'ចុះឈ្មោះចូលរៀន',
     'national_examination' => 'ប្រឡងថ្នាក់ជាតិ',
 
-    'name' => 'ឈ្មោះ',
-    'enter_name' => 'បញ្ចូលឈ្មោះ',
-    'name_required' => 'សូមបញ្ចូលឈ្មោះ។',
+    'name' => 'ឈ្មោះខ្មែរ',
+    'enter_name' => 'បញ្ចូលឈ្មោះខ្មែរ',
+    'name_required' => 'សូមបញ្ចូលឈ្មោះខ្មែរ។',
+
+    'name_latin' => 'ឈ្មោះឡាតាំង',
+    'enter_name_latin' => 'បញ្ចូលឈ្មោះឡាតាំង',
+    'name_latin_required' => 'សូមបញ្ចូលឈ្មោះឡាតាំង។',
 
     'academic_year' => 'ឆ្នាំសិក្សា',
     'select_academic_year' => 'ជ្រើសរើសឆ្នាំសិក្សា',

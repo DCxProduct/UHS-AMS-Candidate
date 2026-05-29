@@ -133,6 +133,16 @@ class Register extends BaseRegister
                         'required' => __('app.name_required'),
                     ]),
 
+                TextInput::make('name_latin')
+                    ->label(__('app.name_latin'))
+                    ->placeholder(__('app.enter_name_latin'))
+                    ->hidden(fn ($get): bool => $get('registration_type') !== 'national_exam')
+                    ->maxLength(255)
+                    ->prefixIcon('heroicon-o-language')
+                    ->dehydrateStateUsing(fn ($state) => blank($state) ? null : Str::upper(trim((string) $state)))
+                    ->validationMessages([
+                    ]),
+
                 TextInput::make('seat_number')
                     ->label(__('app.seat_number'))
                     ->placeholder(__('app.enter_seat_number'))
@@ -212,16 +222,15 @@ class Register extends BaseRegister
 
         if ($registrationType === 'national_exam') {
             $name = trim((string) $data['national_exam_name']);
+            $nameLatin = Str::upper(trim((string) $data['name_latin']));
             $seatNumber = trim((string) $data['seat_number']);
 
             return User::create([
                 'registration_type' => 'national_exam',
                 'academic_year' => $data['academic_year'] ?? null,
                 'name' => $name,
-
-                // User can login with this seat number because we save it as username too.
+                'name_latin' => $nameLatin,
                 'username' => $seatNumber,
-
                 'email' => null,
                 'phone' => null,
                 'date_of_birth' => $data['date_of_birth'],
@@ -238,6 +247,7 @@ class Register extends BaseRegister
             'registration_type' => 'enrollment',
             'academic_year' => null,
             'name' => $username,
+            'name_latin' => null,
             'username' => $username,
             'email' => filled($data['email'] ?? null) ? Str::lower(trim($data['email'])) : null,
             'phone' => $phone,
