@@ -58,7 +58,7 @@ body,
 
 .fi-sidebar-item-label {
     font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif !important;
-    font-size: px !important;
+    font-size: 14px !important;
     line-height: 1.7 !important;
     font-weight: 600 !important;
 }
@@ -146,7 +146,6 @@ body,
 .fi-topbar {
     overflow: visible !important;
 }
-
 
 .fi-topbar nav,
 .fi-topbar .fi-actions {
@@ -275,7 +274,6 @@ body,
     object-fit: contain !important;
 }
 
-
 .uhs-register-type-wrapper {
     width: 100% !important;
 }
@@ -312,20 +310,44 @@ body,
     width: 100% !important;
 }
 
-.uhs-register-type-wrapper button,
-.uhs-register-type-wrapper label {
-    min-width: 260px !important;
-    justify-content: center !important;
-}
-
 .uhs-register-type-box-center div[class*="flex"] {
     justify-content: center !important;
 }
 
 .uhs-register-type-box-center .fi-fo-toggle-buttons-inline {
-    justify-content: center;
+    justify-content: center !important;
 }
 
+.uhs-register-type-wrapper .fi-fo-toggle-buttons-inline {
+    display: flex !important;
+    width: 100% !important;
+    gap: 16px !important;
+}
 
+.uhs-register-type-wrapper .fi-fo-toggle-buttons-inline > * {
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+}
 
+.uhs-register-type-wrapper .fi-fo-toggle-buttons-inline label,
+.uhs-register-type-wrapper .fi-fo-toggle-buttons-inline button {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 4px !important;
+}
+
+form button[type="submit"].fi-btn,
+.fi-page .fi-btn.fi-color-primary,
+.fi-main button[type="submit"] {
+    background-color: #1e40af !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    transition: background-color 0.2s ease-in-out !important;
+}
+
+form button[type="submit"].fi-btn:hover,
+.fi-page .fi-btn.fi-color-primary:hover,
+.fi-main button[type="submit"]:hover {
+    background-color: #1e3a8a !important;
+}
 
