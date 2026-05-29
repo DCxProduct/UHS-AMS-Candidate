@@ -1,16 +1,21 @@
-@source '../../../../vendor/bezhansalleh/filament-language-switch/**';
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Kantumruy+Pro:wght@400;500;600;700;800&display=swap');
 
-@import '/vendor/filament/filament/resources/css/theme.css';
+@import '../../../../vendor/filament/filament/resources/css/theme.css';
 
 @source '../../../../app/Filament/**/*';
-@source '../../../../resources/views/filament/**/*';
+@source '../../../../resources/views/**/*.blade.php';
 @source '../../../../resources/views/components/**/*';
 @source '../../../../resources/views/livewire/**/*';
 @source '../../../../app/Livewire/**/*';
+@source '../../../../vendor/bezhansalleh/filament-language-switch/**';
 
 :root {
     --font-sans: 'Kantumruy Pro', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
+
+/* =====================================================
+   GLOBAL FONT
+===================================================== */
 
 html,
 body,
@@ -18,11 +23,14 @@ body,
 .fi-layout,
 .fi-main,
 .fi-page,
+.fi-simple-layout,
+.fi-simple-main,
 .fi-sidebar,
 .fi-topbar,
 .fi-section,
 .fi-modal,
 .fi-dropdown,
+.fi-dropdown-panel,
 .fi-ta,
 .fi-fo,
 .fi-btn,
@@ -33,14 +41,32 @@ body,
     letter-spacing: 0 !important;
 }
 
-/* Logo / topbar */
+/* =====================================================
+   LOGO / TOPBAR FONT
+===================================================== */
+
 .fi-logo,
 .fi-topbar,
 .fi-topbar * {
     font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif !important;
 }
 
-/* Page title */
+/* =====================================================
+   LOGIN / REGISTER TITLE
+===================================================== */
+
+.fi-simple-header-heading {
+    font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif !important;
+    font-size: 34px !important;
+    line-height: 1.6 !important;
+    font-weight: 700 !important;
+    letter-spacing: 0 !important;
+}
+
+/* =====================================================
+   PAGE TITLE
+===================================================== */
+
 .fi-header-heading {
     font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif !important;
     font-size: 25px !important;
@@ -49,7 +75,10 @@ body,
     letter-spacing: 0 !important;
 }
 
-/* Breadcrumb */
+/* =====================================================
+   BREADCRUMB
+===================================================== */
+
 .fi-breadcrumbs,
 .fi-breadcrumbs * {
     font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif !important;
@@ -57,10 +86,13 @@ body,
     line-height: 1.7 !important;
 }
 
-/* Sidebar */
+/* =====================================================
+   SIDEBAR
+===================================================== */
+
 .fi-sidebar-item-label {
     font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif !important;
-    font-size: px !important;
+    font-size: 14px !important;
     line-height: 1.7 !important;
     font-weight: 600 !important;
 }
@@ -72,7 +104,10 @@ body,
     font-weight: 600 !important;
 }
 
-/* Form labels */
+/* =====================================================
+   FORM LABELS
+===================================================== */
+
 .fi-fo-field-wrp-label,
 .fi-fo-field-wrp-label span {
     font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif !important;
@@ -81,7 +116,10 @@ body,
     font-weight: 600 !important;
 }
 
-/* Form input/select/textarea */
+/* =====================================================
+   FORM INPUT / SELECT / TEXTAREA
+===================================================== */
+
 .fi-input,
 .fi-select-input,
 .fi-textarea,
@@ -94,7 +132,15 @@ body,
     font-weight: 400 !important;
 }
 
-/* Buttons */
+.fi-input::placeholder,
+.fi-textarea::placeholder {
+    font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif !important;
+}
+
+/* =====================================================
+   BUTTONS
+===================================================== */
+
 .fi-btn,
 .fi-btn-label {
     font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif !important;
@@ -103,7 +149,10 @@ body,
     font-weight: 600 !important;
 }
 
-/* Table */
+/* =====================================================
+   TABLE
+===================================================== */
+
 .fi-ta table,
 .fi-ta-header-cell,
 .fi-ta-cell,
@@ -113,7 +162,10 @@ body,
     line-height: 1.8 !important;
 }
 
-/* Tabs / wizard */
+/* =====================================================
+   TABS / WIZARD
+===================================================== */
+
 .fi-tabs,
 .fi-tabs *,
 .fi-fo-wizard,
@@ -127,34 +179,132 @@ body,
     font-weight: 600 !important;
 }
 
-/* Khmer text */
+/* =====================================================
+   KHMER TEXT
+===================================================== */
+
+html[lang='km'],
+html[lang='km'] body,
 [lang='km'],
 :lang(km) {
     font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif !important;
     letter-spacing: 0 !important;
 }
 
-/* Topbar profile avatar clean */
+/* =====================================================
+   VALIDATION MESSAGE
+===================================================== */
+
+.fi-fo-field-wrp-error-message {
+    font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif !important;
+    line-height: 1.7 !important;
+}
+
+/* =====================================================
+   TOPBAR AVATAR
+   Only profile avatar should be circle
+===================================================== */
+
 .fi-topbar .fi-avatar,
 .fi-topbar img.fi-avatar,
-.fi-topbar img {
-    width: 36px !important;
-    height: 36px !important;
-    min-width: 36px !important;
-    min-height: 36px !important;
+.fi-user-avatar img,
+.fi-avatar img:not([src*='flagcdn.com']):not([src*='/images/languages/']) {
+    width: 48px !important;
+    height: 48px !important;
+    min-width: 48px !important;
+    min-height: 48px !important;
     border-radius: 9999px !important;
     object-fit: cover !important;
     object-position: center !important;
 }
 
-/* Add space between language switch, notification, and profile */
+/* =====================================================
+   LANGUAGE SWITCH FLAG
+   Flag must be rectangle, not circle
+===================================================== */
+
+.fi-topbar img[src*='flagcdn.com'],
+.fi-dropdown-panel img[src*='flagcdn.com'],
+.fi-topbar img[src*='/images/languages/'],
+.fi-dropdown-panel img[src*='/images/languages/'] {
+    width: 48px !important;
+    height: 32px !important;
+    min-width: 48px !important;
+    min-height: 32px !important;
+    max-width: 48px !important;
+    max-height: 32px !important;
+    border-radius: 2px !important;
+    object-fit: cover !important;
+    object-position: center !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+/* =====================================================
+   REMOVE GREY CIRCLE BEHIND LANGUAGE FLAG
+===================================================== */
+
+.fi-topbar button:has(img[src*='flagcdn.com']),
+.fi-topbar .fi-dropdown-trigger:has(img[src*='flagcdn.com']),
+.fi-topbar [x-data]:has(img[src*='flagcdn.com']) button,
+.fi-topbar div:has(> button img[src*='flagcdn.com']) button,
+.fi-topbar button:has(img[src*='/images/languages/']),
+.fi-topbar .fi-dropdown-trigger:has(img[src*='/images/languages/']),
+.fi-topbar [x-data]:has(img[src*='/images/languages/']) button,
+.fi-topbar div:has(> button img[src*='/images/languages/']) button {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    outline: none !important;
+
+    width: auto !important;
+    height: auto !important;
+    min-width: auto !important;
+    min-height: auto !important;
+
+    padding: 0 !important;
+    border-radius: 0 !important;
+}
+
+/* Remove grey circle wrapper inside button */
+.fi-topbar button:has(img[src*='flagcdn.com']) span,
+.fi-topbar button:has(img[src*='flagcdn.com']) div,
+.fi-topbar .fi-dropdown-trigger:has(img[src*='flagcdn.com']) span,
+.fi-topbar .fi-dropdown-trigger:has(img[src*='flagcdn.com']) div,
+.fi-topbar button:has(img[src*='/images/languages/']) span,
+.fi-topbar button:has(img[src*='/images/languages/']) div,
+.fi-topbar .fi-dropdown-trigger:has(img[src*='/images/languages/']) span,
+.fi-topbar .fi-dropdown-trigger:has(img[src*='/images/languages/']) div {
+    background: transparent !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+}
+
+/* =====================================================
+   LANGUAGE DROPDOWN
+===================================================== */
+
+.fi-dropdown-panel:has(img[src*='flagcdn.com']),
+.fi-dropdown-panel:has(img[src*='/images/languages/']) {
+    border-radius: 14px !important;
+    overflow: hidden !important;
+}
+
+.fi-dropdown-panel:has(img[src*='flagcdn.com']) *,
+.fi-dropdown-panel:has(img[src*='/images/languages/']) * {
+    font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif !important;
+}
+
+/* =====================================================
+   TOPBAR SPACING
+===================================================== */
+
 .fi-topbar .fi-dropdown-trigger,
 .fi-topbar .fi-icon-btn {
     margin-left: 6px !important;
     margin-right: 6px !important;
 }
 
-/* Prevent topbar profile image/text from being cut */
 .fi-topbar {
     overflow: visible !important;
 }
@@ -165,7 +315,10 @@ body,
     align-items: center !important;
 }
 
-/* Profile dropdown avatar row */
+/* =====================================================
+   GENERAL DROPDOWN
+===================================================== */
+
 .fi-dropdown-panel {
     overflow: hidden !important;
     border-radius: 14px !important;
