@@ -15,7 +15,7 @@
             class="uhs-brand-logo-image"
         >
 
-        <div class="uhs-brand-logo-text">
+        <div class="uhs-brand-logo-text" title="{{ $brandName }}">
             {{ $brandName }}
         </div>
     </div>
