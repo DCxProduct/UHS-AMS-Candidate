@@ -37,6 +37,7 @@ class AdminPanelProvider extends PanelProvider
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->brandName('UHS-AMS')
             ->brandLogo(asset('images/UHS_logo.png'))
+            ->brandLogo(fn () => view('filament.components.logo'))
             ->brandLogoHeight('6rem')
 
             ->renderHook(

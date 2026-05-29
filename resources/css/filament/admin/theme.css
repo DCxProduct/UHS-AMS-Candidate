@@ -1,21 +1,18 @@
+@source '../../../../vendor/bezhansalleh/filament-language-switch/';
+
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Kantumruy+Pro:wght@400;500;600;700;800&display=swap');
 
-@import '../../../../vendor/filament/filament/resources/css/theme.css';
+@import '/vendor/filament/filament/resources/css/theme.css';
 
-@source '../../../../app/Filament/**/*';
-@source '../../../../resources/views/**/*.blade.php';
-@source '../../../../resources/views/components/**/*';
-@source '../../../../resources/views/livewire/**/*';
-@source '../../../../app/Livewire/**/*';
-@source '../../../../vendor/bezhansalleh/filament-language-switch/**';
+@source '../../../../app/Filament//*';
+@source '../../../../resources/views/filament//*';
+@source '../../../../resources/views/components//*';
+@source '../../../../resources/views/livewire//*';
+@source '../../../../app/Livewire//*';
 
 :root {
     --font-sans: 'Kantumruy Pro', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
-
-/* =====================================================
-   GLOBAL FONT ONLY
-===================================================== */
 
 html,
 body,
@@ -23,185 +20,223 @@ body,
 .fi-layout,
 .fi-main,
 .fi-page,
-.fi-simple-layout,
-.fi-simple-main,
 .fi-sidebar,
 .fi-topbar,
 .fi-section,
 .fi-modal,
 .fi-dropdown,
-.fi-dropdown-panel,
 .fi-ta,
 .fi-fo,
 .fi-btn,
 .fi-input,
 .fi-select-input,
-.fi-textarea,
-.fi-label,
-.fi-link,
-.fi-tabs,
-.fi-breadcrumbs,
-.fi-header-heading,
-.fi-simple-header-heading {
+.fi-textarea {
     font-family: 'Kantumruy Pro', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
     letter-spacing: 0 !important;
 }
 
-/* Apply font to Filament children */
-.fi-body *,
-.fi-layout *,
-.fi-main *,
-.fi-page *,
-.fi-simple-layout *,
-.fi-sidebar *,
-.fi-topbar *,
-.fi-section *,
-.fi-modal *,
-.fi-dropdown-panel *,
-.fi-ta *,
-.fi-fo * {
-    font-family: 'Kantumruy Pro', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+/* Logo / topbar */
+.fi-logo,
+.fi-topbar,
+.fi-topbar * {
+    font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif !important;
+}
+
+/* Page title */
+.fi-header-heading {
+    font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif !important;
+    font-size: 25px !important;
+    line-height: 1.6 !important;
+    font-weight: 700 !important;
+    letter-spacing: 0 !important;
+}
+
+/* Breadcrumb */
+.fi-breadcrumbs,
+.fi-breadcrumbs * {
+    font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif !important;
+    font-size: 13px !important;
+    line-height: 1.7 !important;
+}
+
+/* Sidebar */
+.fi-sidebar-item-label {
+    font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif !important;
+    font-size: px !important;
+    line-height: 1.7 !important;
+    font-weight: 600 !important;
+}
+
+.fi-sidebar-group-label {
+    font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif !important;
+    font-size: 13px !important;
+    line-height: 1.7 !important;
+    font-weight: 600 !important;
+}
+
+/* Form labels */
+.fi-fo-field-wrp-label,
+.fi-fo-field-wrp-label span {
+    font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif !important;
+    font-size: 14px !important;
+    line-height: 1.8 !important;
+    font-weight: 600 !important;
+}
+
+/* Form input/select/textarea */
+.fi-input,
+.fi-select-input,
+.fi-textarea,
+.fi-input-wrp input,
+.fi-input-wrp select,
+.fi-input-wrp textarea {
+    font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif !important;
+    font-size: 14px !important;
+    line-height: 1.8 !important;
+    font-weight: 400 !important;
+}
+
+/* Buttons */
+.fi-btn,
+.fi-btn-label {
+    font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif !important;
+    font-size: 14px !important;
+    line-height: 1.6 !important;
+    font-weight: 600 !important;
+}
+
+/* Table */
+.fi-ta table,
+.fi-ta-header-cell,
+.fi-ta-cell,
+.fi-ta-text {
+    font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif !important;
+    font-size: 14px !important;
+    line-height: 1.8 !important;
+}
+
+/* Tabs / wizard */
+.fi-tabs,
+.fi-tabs *,
+.fi-fo-wizard,
+.fi-fo-wizard * {
+    font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif !important;
+}
+
+.fi-fo-wizard-header-step-label {
+    font-size: 14px !important;
+    line-height: 1.7 !important;
+    font-weight: 600 !important;
 }
 
 /* Khmer text */
-html[lang='km'],
-html[lang='km'] body,
 [lang='km'],
 :lang(km) {
     font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif !important;
     letter-spacing: 0 !important;
 }
 
-/* =====================================================
-   PROFILE AVATAR ONLY
-===================================================== */
-
+/* Topbar profile avatar clean */
 .fi-topbar .fi-avatar,
-.fi-topbar img.fi-avatar,
-.fi-user-avatar img,
-.fi-avatar img:not([src*='flagcdn.com']):not([src*='/images/languages/']) {
-    width: 56px !important;
-    height: 56px !important;
-    min-width: 56px !important;
-    min-height: 56px !important;
+.fi-topbar img.fi-avatar {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
     border-radius: 9999px !important;
     object-fit: cover !important;
     object-position: center !important;
 }
 
-/* Profile avatar button */
-.fi-topbar button:has(.fi-avatar),
-.fi-topbar .fi-dropdown-trigger:has(.fi-avatar) {
-    width: 56px !important;
-    height: 56px !important;
-    min-width: 56px !important;
-    min-height: 56px !important;
-    padding: 0 !important;
-    border-radius: 9999px !important;
-
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-}
-
-/* =====================================================
-   LANGUAGE SWITCH ONLY
-   Clear flag, same visual size as profile area
-===================================================== */
-
-/* Language switch button wrapper */
-.fi-topbar button:has(img[src*='flagcdn.com']),
-.fi-topbar .fi-dropdown-trigger:has(img[src*='flagcdn.com']),
-.fi-topbar button:has(img[src*='/images/languages/']),
-.fi-topbar .fi-dropdown-trigger:has(img[src*='/images/languages/']) {
-    width: 56px !important;
-    height: 56px !important;
-    min-width: 56px !important;
-    min-height: 56px !important;
-    padding: 0 !important;
-
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-}
-
-/* Inner wrapper from language switch package */
-.fi-topbar button:has(img[src*='flagcdn.com']) span,
-.fi-topbar button:has(img[src*='flagcdn.com']) div,
-.fi-topbar .fi-dropdown-trigger:has(img[src*='flagcdn.com']) span,
-.fi-topbar .fi-dropdown-trigger:has(img[src*='flagcdn.com']) div,
-.fi-topbar button:has(img[src*='/images/languages/']) span,
-.fi-topbar button:has(img[src*='/images/languages/']) div,
-.fi-topbar .fi-dropdown-trigger:has(img[src*='/images/languages/']) span,
-.fi-topbar .fi-dropdown-trigger:has(img[src*='/images/languages/']) div {
-    width: 56px !important;
-    height: 56px !important;
-    min-width: 56px !important;
-    min-height: 56px !important;
-
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-
-    background: transparent !important;
-    box-shadow: none !important;
-}
-
-/* Language flag image - clearer rectangle */
-.fi-topbar img[src*='flagcdn.com'],
-.fi-topbar img[src*='/images/languages/'] {
-    width: 54px !important;
-    height: 36px !important;
-    min-width: 54px !important;
-    min-height: 36px !important;
-    max-width: 54px !important;
-    max-height: 36px !important;
-
-    border-radius: 4px !important;
-    object-fit: cover !important;
-    object-position: center !important;
-    image-rendering: auto !important;
-}
-
-/* Dropdown flag image */
-.fi-dropdown-panel img[src*='flagcdn.com'],
-.fi-dropdown-panel img[src*='/images/languages/'] {
-    width: 54px !important;
-    height: 36px !important;
-    min-width: 54px !important;
-    min-height: 36px !important;
-    max-width: 54px !important;
-    max-height: 36px !important;
-
-    border-radius: 4px !important;
-    object-fit: cover !important;
-    object-position: center !important;
-}
-
-/* Language dropdown */
-.fi-dropdown-panel:has(img[src*='flagcdn.com']),
-.fi-dropdown-panel:has(img[src*='/images/languages/']) {
-    border-radius: 14px !important;
-    overflow: hidden !important;
-}
-
-/* Topbar spacing */
+/* Add space between language switch, notification, and profile */
 .fi-topbar .fi-dropdown-trigger,
 .fi-topbar .fi-icon-btn {
-    margin-left: 8px !important;
-    margin-right: 8px !important;
+    margin-left: 6px !important;
+    margin-right: 6px !important;
 }
 
+/* Prevent topbar profile image/text from being cut */
 .fi-topbar {
     overflow: visible !important;
 }
 
+
 .fi-topbar nav,
 .fi-topbar .fi-actions {
-    gap: 14px !important;
+    gap: 12px !important;
     align-items: center !important;
+}
+
+/* Profile dropdown avatar row */
+.fi-dropdown-panel {
+    overflow: hidden !important;
+    border-radius: 14px !important;
+}
+
+/* ================================
+   UHS Logo with title
+================================ */
+
+.fi-logo {
+    width: auto !important;
+    max-width: none !important;
+}
+
+.fi-logo a,
+.fi-logo div {
+    width: auto !important;
+    max-width: none !important;
+}
+
+.uhs-brand-logo {
+    display: flex !important;
+    align-items: center !important;
+    gap: 14px !important;
+    width: auto !important;
+    min-width: 420px !important;
+    max-width: none !important;
+}
+
+.uhs-brand-logo-image {
+    width: 72px !important;
+    height: 72px !important;
+    min-width: 72px !important;
+    min-height: 72px !important;
+    object-fit: contain !important;
+}
+
+.uhs-brand-logo-text {
+    display: flex !important;
+    flex-direction: column !important;
+    min-width: 0 !important;
+    line-height: 1.2 !important;
+}
+
+.uhs-brand-logo-kh {
+    font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif !important;
+    font-size: 14px !important;
+    font-weight: 800 !important;
+    color: #ffffff !important;
+    white-space: nowrap !important;
+}
+
+.uhs-brand-logo-en {
+    margin-top: 4px !important;
+    font-family: 'Inter', 'Times New Roman', serif !important;
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    color: #ffffff !important;
+    white-space: nowrap !important;
+}
+
+.uhs-auth-logo {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.uhs-auth-logo-image {
+    width: 90px !important;
+    height: 90px !important;
+    object-fit: contain !important;
 }
