@@ -1,0 +1,69 @@
+name: Deploy
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy using ssh
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          port: ${{ secrets.PORT }}
+          command_timeout: 15m
+          script: |
+            set -e
+            APP_DIR="/var/www/html/UHS-AMS-Student"
+            
+            # ─────────────────────────────────────────────
+            # 🔧 Load Node.js (FIX for npm not found)
+            # ─────────────────────────────────────────────
+            export NVM_DIR="$HOME/.nvm"
+            if [ -s "$NVM_DIR/nvm.sh" ]; then
+              . "$NVM_DIR/nvm.sh"
+            fi
+
+            echo "🧪 Checking Node environment..."
+            node -v || echo "❌ node not found"
+            npm -v || echo "❌ npm not found"
+            
+            # ── Pull latest code ──────────────────────────────────────────
+            if [ -d "$APP_DIR" ] && [ ! -d "$APP_DIR/.git" ]; then
+              rm -rf $APP_DIR
+            fi
+
+            if [ -d "$APP_DIR/.git" ]; then
+              cd $APP_DIR
+              echo "📦 Cleaning working directory..."
+              git reset --hard
+              git clean -fd
+
+              echo "⬇️ Pulling latest code..."
+              git pull https://oauth2:${{ secrets.TOKEN }}@github.com/DCxProduct/UHS-AMS-Student.git
+            else
+              git clone https://oauth2:${{ secrets.TOKEN }}@github.com/DCxProduct/UHS-AMS-Student.git $APP_DIR
+              cd $APP_DIR
+            fi
+            
+            # ── Install Dependencies ───────────────────────────── 
+            echo "📦 Installing PHP dependencies..." 
+            composer install --ignore-platform-reqs
+            npm install
+            npm run build
+            # ── Laravel Setup ──────────────────────────────────── 
+            echo "🔧 1 Running migrations..." 
+            php artisan migrate:fresh --force
+
+            # ── Optimize ──────────────────────────────────────── 
+            php artisan optimize:clear
+
+            # ── Permissions ────────────────────────────────────── 
+            echo "🔐 Fixing permissions..." 
+            chown -R www-data:www-data $APP_DIR 
+            chmod -R 775 $APP_DIR/storage $APP_DIR/bootstrap/cache
