@@ -28,6 +28,11 @@ class Login extends BaseLogin
         return __('app.sign_in');
     }
 
+    public function getSubheading(): string | Htmlable | null
+    {
+        return null;
+    }
+
     public function form(Schema $schema): Schema
     {
         return $schema
@@ -85,9 +90,14 @@ class Login extends BaseLogin
         $user = User::query()
             ->where(function ($query) use ($normalizedLogin, $normalizedPhone) {
                 $query
-                    ->whereRaw('LOWER(username) = ?', [$normalizedLogin])
+                    ->whereRaw('LOWER(name) = ?', [$normalizedLogin])
+                    ->orWhereRaw('LOWER(username) = ?', [$normalizedLogin])
                     ->orWhereRaw('LOWER(email) = ?', [$normalizedLogin])
-                    ->orWhere('phone', $normalizedPhone);
+                    ->orWhereRaw('LOWER(seat_number) = ?', [$normalizedLogin]);
+
+                if (! blank($normalizedPhone)) {
+                    $query->orWhere('phone', $normalizedPhone);
+                }
             })
             ->first();
 

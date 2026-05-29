@@ -10,15 +10,17 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
+            $table->string('registration_type')->default('enrollment')->index();
+            $table->string('academic_year')->nullable()->index();
             $table->string('name');
             $table->string('username')->unique();
             $table->string('email')->nullable()->unique();
             $table->timestamp('email_verified_at')->nullable();
-            $table->string('phone', 10)->unique();
+            $table->string('phone', 10)->nullable()->unique();
             $table->date('date_of_birth');
+            $table->string('seat_number')->nullable()->unique();
             $table->string('avatar')->nullable();
             $table->boolean('is_active')->default(true);
-
             $table->string('password');
             $table->rememberToken();
             $table->timestamps();

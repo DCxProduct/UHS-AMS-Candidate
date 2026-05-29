@@ -35,14 +35,12 @@ body,
     letter-spacing: 0 !important;
 }
 
-/* Logo / topbar */
 .fi-logo,
 .fi-topbar,
 .fi-topbar * {
     font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif !important;
 }
 
-/* Page title */
 .fi-header-heading {
     font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif !important;
     font-size: 25px !important;
@@ -51,7 +49,6 @@ body,
     letter-spacing: 0 !important;
 }
 
-/* Breadcrumb */
 .fi-breadcrumbs,
 .fi-breadcrumbs * {
     font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif !important;
@@ -59,7 +56,6 @@ body,
     line-height: 1.7 !important;
 }
 
-/* Sidebar */
 .fi-sidebar-item-label {
     font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif !important;
     font-size: px !important;
@@ -74,7 +70,6 @@ body,
     font-weight: 600 !important;
 }
 
-/* Form labels */
 .fi-fo-field-wrp-label,
 .fi-fo-field-wrp-label span {
     font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif !important;
@@ -83,7 +78,6 @@ body,
     font-weight: 600 !important;
 }
 
-/* Form input/select/textarea */
 .fi-input,
 .fi-select-input,
 .fi-textarea,
@@ -96,7 +90,6 @@ body,
     font-weight: 400 !important;
 }
 
-/* Buttons */
 .fi-btn,
 .fi-btn-label {
     font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif !important;
@@ -105,7 +98,6 @@ body,
     font-weight: 600 !important;
 }
 
-/* Table */
 .fi-ta table,
 .fi-ta-header-cell,
 .fi-ta-cell,
@@ -115,7 +107,6 @@ body,
     line-height: 1.8 !important;
 }
 
-/* Tabs / wizard */
 .fi-tabs,
 .fi-tabs *,
 .fi-fo-wizard,
@@ -129,14 +120,12 @@ body,
     font-weight: 600 !important;
 }
 
-/* Khmer text */
 [lang='km'],
 :lang(km) {
     font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif !important;
     letter-spacing: 0 !important;
 }
 
-/* Topbar profile avatar clean */
 .fi-topbar .fi-avatar,
 .fi-topbar img.fi-avatar {
     width: 36px !important;
@@ -148,14 +137,12 @@ body,
     object-position: center !important;
 }
 
-/* Add space between language switch, notification, and profile */
 .fi-topbar .fi-dropdown-trigger,
 .fi-topbar .fi-icon-btn {
     margin-left: 6px !important;
     margin-right: 6px !important;
 }
 
-/* Prevent topbar profile image/text from being cut */
 .fi-topbar {
     overflow: visible !important;
 }
@@ -167,15 +154,10 @@ body,
     align-items: center !important;
 }
 
-/* Profile dropdown avatar row */
 .fi-dropdown-panel {
     overflow: hidden !important;
     border-radius: 14px !important;
 }
-
-/* ================================
-   UHS Logo with title
-================================ */
 
 .fi-logo {
     width: auto !important;
@@ -241,11 +223,6 @@ body,
     object-fit: contain !important;
 }
 
-/* ================================
-   UHS sidebar logo fixed
-   One line, no overflow
-================================ */
-
 .fi-sidebar-header,
 .fi-sidebar-header .fi-logo,
 .fi-sidebar-header .fi-logo a,
@@ -286,7 +263,6 @@ body,
     color: #ffffff !important;
 }
 
-/* Auth login/register logo */
 .uhs-auth-logo {
     display: flex !important;
     align-items: center !important;
@@ -298,3 +274,58 @@ body,
     height: 90px !important;
     object-fit: contain !important;
 }
+
+
+.uhs-register-type-wrapper {
+    width: 100% !important;
+}
+
+.uhs-register-type-wrapper .fi-fo-field-wrp-label {
+    display: flex !important;
+    justify-content: center !important;
+    text-align: center !important;
+    width: 100% !important;
+}
+
+.uhs-register-type-wrapper .fi-fo-field-wrp-label span {
+    text-align: center !important;
+}
+
+.uhs-register-type-wrapper .fi-fo-field-wrp-label sup,
+.uhs-register-type-wrapper .fi-fo-field-wrp-label .fi-required-marker {
+    display: none !important;
+}
+
+.uhs-register-type-wrapper .fi-fo-field-wrp-control,
+.uhs-register-type-wrapper .fi-fo-toggle-buttons,
+.uhs-register-type-wrapper .fi-toggle-buttons {
+    display: flex !important;
+    justify-content: center !important;
+    width: 100% !important;
+}
+
+.uhs-register-type-wrapper .fi-fo-toggle-buttons > div,
+.uhs-register-type-wrapper .fi-toggle-buttons > div {
+    display: flex !important;
+    justify-content: center !important;
+    gap: 16px !important;
+    width: 100% !important;
+}
+
+.uhs-register-type-wrapper button,
+.uhs-register-type-wrapper label {
+    min-width: 260px !important;
+    justify-content: center !important;
+}
+
+.uhs-register-type-box-center div[class*="flex"] {
+    justify-content: center !important;
+}
+
+.uhs-register-type-box-center .fi-fo-toggle-buttons-inline {
+    justify-content: center;
+}
+
+
+
+

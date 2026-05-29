@@ -11,6 +11,23 @@ return [
     'sign_up_new_account' => 'Sign up for a new account',
     'already_have_account' => 'Already have an account?',
 
+    'register_as' => 'Register as',
+    'enrollment' => 'Enrollment',
+    'national_examination' => 'National Examination',
+
+    'academic_year' => 'Academic Year',
+    'select_academic_year' => 'Select academic year',
+    'academic_year_required' => 'Academic year is required.',
+
+    'name' => 'Name',
+    'enter_name' => 'Enter name',
+    'name_required' => 'Name is required.',
+
+    'seat_number' => 'Seat number',
+    'enter_seat_number' => 'Enter seat number',
+    'seat_number_required' => 'Seat number is required.',
+    'seat_number_unique' => 'This seat number is already registered.',
+
     'username_email_phone' => 'Username, Email, or Phone number',
     'enter_username_email_phone' => 'Enter username, email, or phone number',
 
