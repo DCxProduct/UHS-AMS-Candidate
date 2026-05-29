@@ -31,7 +31,7 @@ class AppServiceProvider extends ServiceProvider
                 ->circular()
                 ->visible(
                     insidePanels: true,
-                    outsidePanels: false,
+                    outsidePanels: true,
                 );
         });
     }
