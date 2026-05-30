@@ -3,7 +3,8 @@
 @endphp
 
 @if ($isLoggedIn)
-    <div class="uhs-brand-logo">
+    {{-- wire:ignore added here to lock the header and prevent Livewire flashes --}}
+    <div class="uhs-brand-logo" wire:ignore>
         <img
             src="{{ asset('images/UHS_logo.png') }}"
             alt="UHS Logo"
@@ -12,7 +13,7 @@
 
         <div class="uhs-brand-logo-text">
             <div class="uhs-brand-logo-kh">
-                សាកលវិទ្យាល័យវិទ្យាសាស្រ្តសុខាភិបាល
+                សាកលវិទ្យាល័យវិទ្យាសាស្ត្រសុខាភិបាល
             </div>
 
             <div class="uhs-brand-logo-en">

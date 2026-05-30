@@ -158,34 +158,19 @@ body,
     border-radius: 14px !important;
 }
 
-/* ================================
-   FIX UHS LOGO SIDE + KH/EN FONT
-================================ */
-
 .fi-logo {
     width: auto !important;
     max-width: none !important;
     overflow: visible !important;
 }
 
-.fi-logo a,
-.fi-logo div {
-    width: auto !important;
-    max-width: none !important;
-    overflow: visible !important;
-}
-
 /* =====================================================
-   FINAL FIX ONLY LOGO SIDE + KH/EN FONT
-   Do not touch register buttons
+   UHS LOGO FIXED TITLE - DO NOT SWITCH LANGUAGE
 ===================================================== */
 
-.fi-sidebar-header {
-    min-height: 128px !important;
-    height: auto !important;
-    overflow: visible !important;
-}
-
+.fi-logo,
+.fi-logo a,
+.fi-logo div,
 .fi-sidebar-header .fi-logo,
 .fi-sidebar-header .fi-logo a,
 .fi-sidebar-header .fi-logo div,
@@ -197,9 +182,9 @@ body,
     overflow: visible !important;
 }
 
-.fi-sidebar-header .uhs-brand-logo,
-.fi-topbar .uhs-brand-logo,
-.uhs-brand-logo {
+.uhs-brand-logo,
+html[lang='en'] .uhs-brand-logo,
+html[lang='km'] .uhs-brand-logo {
     display: flex !important;
     align-items: center !important;
     gap: 16px !important;
@@ -213,7 +198,9 @@ body,
 
 .fi-sidebar-header .uhs-brand-logo-image,
 .fi-topbar .uhs-brand-logo-image,
-.uhs-brand-logo-image {
+.uhs-brand-logo-image,
+html[lang='en'] .uhs-brand-logo-image,
+html[lang='km'] .uhs-brand-logo-image {
     width: 86px !important;
     height: 86px !important;
     min-width: 86px !important;
@@ -223,7 +210,9 @@ body,
 
 .fi-sidebar-header .uhs-brand-logo-text,
 .fi-topbar .uhs-brand-logo-text,
-.uhs-brand-logo-text {
+.uhs-brand-logo-text,
+html[lang='en'] .uhs-brand-logo-text,
+html[lang='km'] .uhs-brand-logo-text {
     display: flex !important;
     flex-direction: column !important;
     justify-content: center !important;
@@ -238,26 +227,39 @@ body,
     line-height: 1.15 !important;
 }
 
+/* Khmer logo title always Khmer font */
 .fi-sidebar-header .uhs-brand-logo-kh,
 .fi-topbar .uhs-brand-logo-kh,
+    /* Ensure the font applies no matter what language the page is in */
 .uhs-brand-logo-kh {
-    /* Uses the Moul font for that official university look */
-    font-family: 'Moul', 'Kantumruy Pro', system-ui, sans-serif !important;
-    font-size: 16px !important;
-    font-weight: normal !important;
+    font-family: 'Kh Muol', 'Moul', sans-serif !important;
+    font-size: 14px !important;
+    font-weight: 700 !important;
     line-height: 1.35 !important;
-    color: #ffffff !important;
     white-space: nowrap !important;
 }
 
 .uhs-brand-logo-en {
     font-family: 'Times New Roman', Times, serif !important;
-    font-size: 19px !important;
+    font-size: 16px !important;
     font-weight: 700 !important;
     line-height: 1.2 !important;
-    color: #ffffff !important;
-    margin-top: 2px !important;
+    margin-top: 5px !important;
     white-space: nowrap !important;
+}
+
+/* Light mode */
+html:not(.dark) .uhs-brand-logo-kh,
+html:not(.dark) .uhs-brand-logo-en {
+    color: #111827 !important;
+}
+
+/* Dark mode */
+html.dark .uhs-brand-logo-kh,
+html.dark .uhs-brand-logo-en,
+.dark .uhs-brand-logo-kh,
+.dark .uhs-brand-logo-en {
+    color: #ffffff !important;
 }
 /* Auth page logo */
 .uhs-auth-logo {
@@ -401,26 +403,24 @@ form button[type="submit"].fi-btn:hover,
     background-color: #1e3a8a !important;
 }
 
-/* ================================
-   One-click language switch
-   Same size as profile avatar
-================================ */
-
+/* Language switch button size */
 .uhs-one-click-language {
     width: 44px !important;
     height: 44px !important;
     min-width: 44px !important;
     min-height: 44px !important;
+
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
+
     border-radius: 9999px !important;
     overflow: hidden !important;
-    text-decoration: none !important;
     padding: 0 !important;
 }
 
-.uhs-one-click-language-flag {
+.uhs-one-click-language-flag,
+.uhs-one-click-language img {
     width: 36px !important;
     height: 36px !important;
     min-width: 36px !important;
@@ -431,12 +431,77 @@ form button[type="submit"].fi-btn:hover,
     object-position: center !important;
 }
 
+/* Profile wrapper/button */
+.fi-topbar button:has(.fi-avatar),
+.fi-topbar .fi-dropdown-trigger:has(.fi-avatar),
+.fi-topbar .fi-user-menu button,
+.fi-topbar .fi-user-menu-trigger,
+.fi-topbar [data-dropdown-trigger]:has(.fi-avatar) {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+
+    padding: 0 !important;
+    margin-left: 6px !important;
+    margin-right: 6px !important;
+
+    border-radius: 9999px !important;
+    overflow: hidden !important;
+}
+
+/* Profile avatar image or letter avatar */
 .fi-topbar .fi-avatar,
 .fi-topbar img.fi-avatar,
+.fi-topbar .fi-avatar img,
+.fi-user-avatar,
 .fi-user-avatar img {
     width: 44px !important;
     height: 44px !important;
     min-width: 44px !important;
     min-height: 44px !important;
+
     border-radius: 9999px !important;
+    object-fit: cover !important;
+    object-position: center !important;
+}
+
+/* Letter avatar like R */
+.fi-topbar .fi-avatar {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+
+    background: #050506 !important;
+    color: #ffffff !important;
+
+    font-size: 20px !important;
+    font-weight: 700 !important;
+    line-height: 1 !important;
+}
+
+/* Align language, notification, profile */
+.fi-topbar nav,
+.fi-topbar .fi-actions {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+}
+
+/* Light mode title color */
+html:not(.dark) .uhs-brand-logo-kh,
+html:not(.dark) .uhs-brand-logo-en {
+    color: #111827 !important;
+}
+
+/* Dark mode title color */
+html.dark .uhs-brand-logo-kh,
+html.dark .uhs-brand-logo-en,
+.dark .uhs-brand-logo-kh,
+.dark .uhs-brand-logo-en {
+    color: #ffffff !important;
 }
