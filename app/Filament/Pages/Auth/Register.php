@@ -36,49 +36,70 @@ class Register extends BaseRegister
         return $schema
             ->components([
                 ToggleButtons::make('registration_type')
-                    ->label(__('app.register_as'))
                     ->hiddenLabel()
                     ->options([
-                        'enrollment' => __('app.enrollment'),
                         'national_exam' => __('app.national_examination'),
+                        'enrollment' => __('app.enrollment'),
                     ])
                     ->icons([
-                        'enrollment' => 'heroicon-o-academic-cap',
                         'national_exam' => 'heroicon-o-clipboard-document-check',
+                        'enrollment' => 'heroicon-o-academic-cap',
                     ])
                     ->colors([
-                        'enrollment' => 'warning',
                         'national_exam' => 'warning',
+                        'enrollment' => 'warning',
                     ])
-                    ->default('enrollment')
+                    ->default('national_exam')
                     ->inline()
                     ->live()
                     ->markAsRequired(false)
                     ->columnSpanFull()
                     ->extraAttributes([
-                        'class' => 'uhs-register-type-wrapper lex flex-col items-center justify-center w-full',
+                        'class' => 'uhs-register-type-wrapper flex flex-col items-center justify-center w-full',
                     ]),
 
                 TextInput::make('username')
                     ->label(__('app.username'))
                     ->placeholder(__('app.enter_username'))
-                    ->required(fn ($get): bool => $get('registration_type') === 'enrollment')
-                    ->hidden(fn ($get): bool => $get('registration_type') !== 'enrollment')
-                    ->maxLength(255)
+                    ->required()
+                    ->minLength(9)
+                    ->maxLength(15)
                     ->unique(User::class, 'username')
                     ->prefixIcon('heroicon-o-identification')
-                    ->dehydrateStateUsing(fn ($state) => blank($state) ? null : trim((string) $state))
+                    ->rules([
+                        'required',
+                        'string',
+                        'min:9',
+                        'max:15',
+                        'regex:/[a-z]/',
+                        'regex:/[0-9]/',
+                        'regex:/^[a-z0-9_]+$/',
+                        'not_regex:/(.)\1{4,}/',
+                    ])
+                    ->extraInputAttributes([
+                        'oninput' => "this.value = this.value.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 15)",
+                        'pattern' => '[a-z0-9_]+',
+                        'maxlength' => 15,
+                        'minlength' => 9,
+                    ])
+                    ->dehydrateStateUsing(fn ($state) => blank($state)
+                        ? null
+                        : Str::lower(trim((string) $state))
+                    )
                     ->validationMessages([
                         'required' => __('app.username_required'),
                         'unique' => __('app.username_unique'),
+                        'min' => __('app.username_min'),
+                        'max' => __('app.username_max'),
+                        'regex' => __('app.username_rule'),
+                        'not_regex' => __('app.username_repeating'),
                     ])
                     ->autofocus(),
 
                 TextInput::make('phone')
                     ->label(__('app.phone_number'))
                     ->placeholder(__('app.enter_phone_number'))
-                    ->hidden(fn ($get): bool => $get('registration_type') !== 'enrollment')
-                    ->required(fn ($get): bool => $get('registration_type') === 'enrollment')
+                    ->required(fn ($get): bool => $get('registration_type') === 'national_exam')
                     ->tel()
                     ->inputMode('numeric')
                     ->minLength(9)
@@ -108,7 +129,6 @@ class Register extends BaseRegister
                 TextInput::make('email')
                     ->label(__('app.email_address'))
                     ->placeholder(__('app.enter_email_address'))
-                    ->hidden(fn ($get): bool => $get('registration_type') !== 'enrollment')
                     ->prefixIcon('heroicon-o-envelope')
                     ->email()
                     ->nullable()
@@ -122,33 +142,22 @@ class Register extends BaseRegister
                         'unique' => __('app.email_unique'),
                     ]),
 
-                TextInput::make('national_exam_name')
-                    ->label(__('app.name'))
-                    ->placeholder(__('app.enter_name'))
-                    ->required(fn ($get): bool => $get('registration_type') === 'national_exam')
-                    ->hidden(fn ($get): bool => $get('registration_type') !== 'national_exam')
-                    ->maxLength(255)
-                    ->prefixIcon('heroicon-o-user')
-                    ->dehydrateStateUsing(fn ($state) => blank($state) ? null : trim((string) $state))
+                Select::make('academic_year')
+                    ->label(__('app.academic_year'))
+                    ->placeholder(__('app.select_academic_year'))
+                    ->options(self::getAcademicYearOptions())
+                    ->required()
+                    ->native(false)
+                    ->searchable()
+                    ->prefixIcon('heroicon-o-calendar')
                     ->validationMessages([
-                        'required' => __('app.name_required'),
-                    ]),
-
-                TextInput::make('name_latin')
-                    ->label(__('app.name_latin'))
-                    ->placeholder(__('app.enter_name_latin'))
-                    ->hidden(fn ($get): bool => $get('registration_type') !== 'national_exam')
-                    ->maxLength(255)
-                    ->prefixIcon('heroicon-o-language')
-                    ->dehydrateStateUsing(fn ($state) => blank($state) ? null : Str::upper(trim((string) $state)))
-                    ->validationMessages([
+                        'required' => __('app.academic_year_required'),
                     ]),
 
                 TextInput::make('seat_number')
                     ->label(__('app.seat_number'))
                     ->placeholder(__('app.enter_seat_number'))
-                    ->required(fn ($get): bool => $get('registration_type') === 'national_exam')
-                    ->hidden(fn ($get): bool => $get('registration_type') !== 'national_exam')
+                    ->required()
                     ->maxLength(50)
                     ->unique(User::class, 'seat_number')
                     ->prefixIcon('heroicon-o-hashtag')
@@ -156,20 +165,6 @@ class Register extends BaseRegister
                     ->validationMessages([
                         'required' => __('app.seat_number_required'),
                         'unique' => __('app.seat_number_unique'),
-                    ]),
-
-                Select::make('academic_year')
-                    ->label(__('app.academic_year'))
-                    ->placeholder(__('app.select_academic_year'))
-                    ->options(self::getAcademicYearOptions())
-                    ->hidden(fn ($get): bool => $get('registration_type') !== 'national_exam')
-                    ->required(fn ($get): bool => $get('registration_type') === 'national_exam')
-                    ->dehydrated(fn ($get): bool => $get('registration_type') === 'national_exam')
-                    ->native(false)
-                    ->searchable()
-                    ->prefixIcon('heroicon-o-calendar')
-                    ->validationMessages([
-                        'required' => __('app.academic_year_required'),
                     ]),
 
                 DatePicker::make('date_of_birth')
@@ -194,10 +189,20 @@ class Register extends BaseRegister
                     ->minLength(8)
                     ->confirmed()
                     ->autocomplete('new-password')
+                    ->rules([
+                        'required',
+                        'string',
+                        'min:8',
+                        'regex:/^[!-~]+$/',
+                    ])
+                    ->extraInputAttributes([
+                        'oninput' => 'this.value = this.value.replace(/[^\x21-\x7E]/g, "")',
+                    ])
                     ->validationMessages([
                         'required' => __('app.password_required'),
                         'min' => __('app.password_min'),
                         'confirmed' => __('app.password_confirmed'),
+                        'regex' => __('app.password_english_only'),
                     ]),
 
                 TextInput::make('password_confirmation')
@@ -209,9 +214,18 @@ class Register extends BaseRegister
                     ->required()
                     ->same('password')
                     ->autocomplete('new-password')
+                    ->rules([
+                        'required',
+                        'string',
+                        'regex:/^[!-~]+$/',
+                    ])
+                    ->extraInputAttributes([
+                        'oninput' => 'this.value = this.value.replace(/[^\x21-\x7E]/g, "")',
+                    ])
                     ->validationMessages([
                         'required' => __('app.confirm_password_required'),
                         'same' => __('app.confirm_password_same'),
+                        'regex' => __('app.password_english_only'),
                     ]),
             ])
             ->statePath('data');
@@ -219,41 +233,29 @@ class Register extends BaseRegister
 
     protected function handleRegistration(array $data): Model
     {
-        $registrationType = $data['registration_type'] ?? 'enrollment';
+        $registrationType = $data['registration_type'] ?? 'national_exam';
 
-        if ($registrationType === 'national_exam') {
-            $name = trim((string) $data['national_exam_name']);
-            $nameLatin = Str::upper(trim((string) $data['name_latin']));
-            $seatNumber = trim((string) $data['seat_number']);
+        $username = trim((string) ($data['username'] ?? ''));
+        $phone = blank($data['phone'] ?? null)
+            ? null
+            : preg_replace('/[^0-9]/', '', (string) $data['phone']);
 
-            return User::create([
-                'registration_type' => 'national_exam',
-                'academic_year' => $data['academic_year'] ?? null,
-                'name' => $name,
-                'name_latin' => $nameLatin,
-                'username' => $seatNumber,
-                'email' => null,
-                'phone' => null,
-                'date_of_birth' => $data['date_of_birth'],
-                'seat_number' => $seatNumber,
-                'password' => Hash::make($data['password']),
-                'is_active' => true,
-            ]);
-        }
-
-        $username = trim((string) $data['username']);
-        $phone = preg_replace('/[^0-9]/', '', (string) $data['phone']);
+        $seatNumber = trim((string) ($data['seat_number'] ?? ''));
 
         return User::create([
-            'registration_type' => 'enrollment',
-            'academic_year' => null,
+            'registration_type' => $registrationType,
+            'academic_year' => $data['academic_year'] ?? null,
+
             'name' => $username,
             'name_latin' => null,
+
             'username' => $username,
-            'email' => filled($data['email'] ?? null) ? Str::lower(trim($data['email'])) : null,
+            'email' => filled($data['email'] ?? null)
+                ? Str::lower(trim((string) $data['email']))
+                : null,
             'phone' => $phone,
             'date_of_birth' => $data['date_of_birth'],
-            'seat_number' => null,
+            'seat_number' => $seatNumber,
             'password' => Hash::make($data['password']),
             'is_active' => true,
         ]);
