@@ -33,8 +33,6 @@ return [
     'username_unique' => 'This username is already taken.',
     'username_min' => 'Username must be at least 6 characters long.',
     'username_max' => 'Username must not be more than 15 characters long.',
-    'username_rule' => 'Username must contain lowercase English letters, at least one number, and underscore (_) only.',
-    'username_repeating' => 'Username must not contain 5 or more repeating characters.',
     'password_english_only' => 'Password can contain only English keyboard characters, numbers, and symbols. Khmer characters and spaces are not allowed.',
 
     'email_address' => 'Email address',
