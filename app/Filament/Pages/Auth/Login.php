@@ -4,6 +4,7 @@ namespace App\Filament\Pages\Auth;
 
 use App\Models\User;
 use DanHarrin\LivewireRateLimiting\Exceptions\TooManyRequestsException;
+use Filament\Actions\Action;
 use Filament\Auth\Http\Responses\Contracts\LoginResponse;
 use Filament\Auth\Pages\Login as BaseLogin;
 use Filament\Facades\Filament;
@@ -31,6 +32,13 @@ class Login extends BaseLogin
     public function getSubheading(): string | Htmlable | null
     {
         return null;
+    }
+
+    protected function getAuthenticateFormAction(): Action
+    {
+        return Action::make('authenticate')
+            ->label(__('app.sign_in'))
+            ->submit('authenticate');
     }
 
     public function form(Schema $schema): Schema

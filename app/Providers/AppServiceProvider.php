@@ -2,8 +2,10 @@
 
 namespace App\Providers;
 
+use App\Models\User;
 use BezhanSalleh\LanguageSwitch\LanguageSwitch;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Auth\Notifications\ResetPassword;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -13,6 +15,13 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        ResetPassword::createUrlUsing(function (User $user, string $token): string {
+            return route('admin.password.reset', [
+                'token' => $token,
+                'email' => $user->getEmailForPasswordReset(),
+            ]);
+        });
+
         LanguageSwitch::configureUsing(function (LanguageSwitch $switch) {
             $switch
                 ->locales([

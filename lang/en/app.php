@@ -75,4 +75,18 @@ return [
     'account_inactive' => 'Your account is inactive. Please contact administrator.',
     'no_panel_permission' => 'You do not have permission to access this panel.',
     'too_many_login_attempts' => 'Too many login attempts. Please try again in :seconds seconds.',
+
+    'forgot_password' => 'Forgot password',
+    'forgot_password_description' => 'Enter your email address. We will send a password reset link to your email.',
+    'send_reset_link' => 'Send reset link',
+    'password_reset_link_sent' => 'Password reset link has been sent to your email.',
+    'password_reset_failed' => 'Unable to send password reset link. Please try again.',
+    'account_not_found' => 'Account not found. Please check your email address again.',
+    'email_required' => 'Email address is required.',
+    'remember_password' => 'Remember your password?',
+    'reset_password' => 'Reset password',
+    'new_password' => 'New password',
+    'enter_new_password' => 'Enter new password',
+    'password_reset_success' => 'Your password has been reset successfully. Please sign in.',
+    'password_reset_token_invalid' => 'This password reset link is invalid or expired.',
 ];

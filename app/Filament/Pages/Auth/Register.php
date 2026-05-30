@@ -37,6 +37,7 @@ class Register extends BaseRegister
             ->components([
                 ToggleButtons::make('registration_type')
                     ->label(__('app.register_as'))
+                    ->hiddenLabel()
                     ->options([
                         'enrollment' => __('app.enrollment'),
                         'national_exam' => __('app.national_examination'),
@@ -55,7 +56,7 @@ class Register extends BaseRegister
                     ->markAsRequired(false)
                     ->columnSpanFull()
                     ->extraAttributes([
-                        'class' => 'uhs-register-type-box-center',
+                        'class' => 'uhs-register-type-wrapper lex flex-col items-center justify-center w-full',
                     ]),
 
                 TextInput::make('username')
@@ -72,23 +73,6 @@ class Register extends BaseRegister
                         'unique' => __('app.username_unique'),
                     ])
                     ->autofocus(),
-
-                TextInput::make('email')
-                    ->label(__('app.email_address'))
-                    ->placeholder(__('app.enter_email_address'))
-                    ->hidden(fn ($get): bool => $get('registration_type') !== 'enrollment')
-                    ->prefixIcon('heroicon-o-envelope')
-                    ->email()
-                    ->nullable()
-                    ->maxLength(255)
-                    ->unique(User::class, 'email')
-                    ->dehydrateStateUsing(fn (?string $state): ?string => filled($state)
-                        ? Str::lower(trim($state))
-                        : null)
-                    ->validationMessages([
-                        'email' => __('app.email_invalid'),
-                        'unique' => __('app.email_unique'),
-                    ]),
 
                 TextInput::make('phone')
                     ->label(__('app.phone_number'))
@@ -120,6 +104,23 @@ class Register extends BaseRegister
                         ? null
                         : preg_replace('/[^0-9]/', '', (string) $state)
                     ),
+
+                TextInput::make('email')
+                    ->label(__('app.email_address'))
+                    ->placeholder(__('app.enter_email_address'))
+                    ->hidden(fn ($get): bool => $get('registration_type') !== 'enrollment')
+                    ->prefixIcon('heroicon-o-envelope')
+                    ->email()
+                    ->nullable()
+                    ->maxLength(255)
+                    ->unique(User::class, 'email')
+                    ->dehydrateStateUsing(fn (?string $state): ?string => filled($state)
+                        ? Str::lower(trim($state))
+                        : null)
+                    ->validationMessages([
+                        'email' => __('app.email_invalid'),
+                        'unique' => __('app.email_unique'),
+                    ]),
 
                 TextInput::make('national_exam_name')
                     ->label(__('app.name'))
