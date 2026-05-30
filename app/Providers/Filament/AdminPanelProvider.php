@@ -39,7 +39,7 @@ class AdminPanelProvider extends PanelProvider
             ->brandName('UHS-AMS')
             ->brandLogo(asset('images/UHS_logo.png'))
             ->brandLogo(fn () => view('filament.components.logo'))
-            ->brandLogoHeight('4rem')
+            ->brandLogoHeight('6rem')
 
             ->renderHook(
                 PanelsRenderHook::AUTH_LOGIN_FORM_AFTER,

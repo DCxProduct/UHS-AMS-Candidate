@@ -31,7 +31,7 @@ return [
     'enter_username' => 'Enter username',
     'username_required' => 'Username is required.',
     'username_unique' => 'This username is already taken.',
-    'username_min' => 'Username must be at least 9 characters long.',
+    'username_min' => 'Username must be at least 6 characters long.',
     'username_max' => 'Username must not be more than 15 characters long.',
     'username_rule' => 'Username must contain lowercase English letters, at least one number, and underscore (_) only.',
     'username_repeating' => 'Username must not contain 5 or more repeating characters.',
