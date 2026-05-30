@@ -1,10 +1,5 @@
 @php
     $isLoggedIn = \Filament\Facades\Filament::auth()->check();
-    $locale = app()->getLocale();
-
-    $brandName = $locale === 'km'
-        ? 'សាកលវិទ្យាល័យវិទ្យាសាស្រ្តសុខាភិបាល'
-        : 'University of Health Sciences';
 @endphp
 
 @if ($isLoggedIn)
@@ -15,8 +10,14 @@
             class="uhs-brand-logo-image"
         >
 
-        <div class="uhs-brand-logo-text" title="{{ $brandName }}">
-            {{ $brandName }}
+        <div class="uhs-brand-logo-text">
+            <div class="uhs-brand-logo-kh">
+                សាកលវិទ្យាល័យវិទ្យាសាស្រ្តសុខាភិបាល
+            </div>
+
+            <div class="uhs-brand-logo-en">
+                University of Health Sciences
+            </div>
         </div>
     </div>
 @else

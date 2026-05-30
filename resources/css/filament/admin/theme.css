@@ -1,6 +1,6 @@
 @source '../../../../vendor/bezhansalleh/filament-language-switch/';
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Kantumruy+Pro:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Battambang:wght@400;700;900&family=Inter:wght@400;500;600;700;800&family=Kantumruy+Pro:wght@400;500;600;700;800&display=swap');
 
 @import '/vendor/filament/filament/resources/css/theme.css';
 
@@ -158,58 +158,108 @@ body,
     border-radius: 14px !important;
 }
 
+/* ================================
+   FIX UHS LOGO SIDE + KH/EN FONT
+================================ */
+
 .fi-logo {
     width: auto !important;
     max-width: none !important;
+    overflow: visible !important;
 }
 
 .fi-logo a,
 .fi-logo div {
     width: auto !important;
     max-width: none !important;
+    overflow: visible !important;
 }
 
+/* =====================================================
+   FINAL FIX ONLY LOGO SIDE + KH/EN FONT
+   Do not touch register buttons
+===================================================== */
+
+.fi-sidebar-header {
+    min-height: 128px !important;
+    height: auto !important;
+    overflow: visible !important;
+}
+
+.fi-sidebar-header .fi-logo,
+.fi-sidebar-header .fi-logo a,
+.fi-sidebar-header .fi-logo div,
+.fi-topbar .fi-logo,
+.fi-topbar .fi-logo a,
+.fi-topbar .fi-logo div {
+    width: auto !important;
+    max-width: none !important;
+    overflow: visible !important;
+}
+
+.fi-sidebar-header .uhs-brand-logo,
+.fi-topbar .uhs-brand-logo,
 .uhs-brand-logo {
     display: flex !important;
     align-items: center !important;
-    gap: 14px !important;
+    gap: 16px !important;
+
     width: auto !important;
-    min-width: 420px !important;
     max-width: none !important;
+    min-width: max-content !important;
+
+    overflow: visible !important;
 }
 
+.fi-sidebar-header .uhs-brand-logo-image,
+.fi-topbar .uhs-brand-logo-image,
 .uhs-brand-logo-image {
-    width: 72px !important;
-    height: 72px !important;
-    min-width: 72px !important;
-    min-height: 72px !important;
+    width: 86px !important;
+    height: 86px !important;
+    min-width: 86px !important;
+    min-height: 86px !important;
     object-fit: contain !important;
 }
 
+.fi-sidebar-header .uhs-brand-logo-text,
+.fi-topbar .uhs-brand-logo-text,
 .uhs-brand-logo-text {
     display: flex !important;
     flex-direction: column !important;
-    min-width: 0 !important;
-    line-height: 1.2 !important;
+    justify-content: center !important;
+
+    width: auto !important;
+    max-width: none !important;
+    min-width: max-content !important;
+
+    overflow: visible !important;
+    white-space: nowrap !important;
+    text-overflow: unset !important;
+    line-height: 1.15 !important;
 }
 
+.fi-sidebar-header .uhs-brand-logo-kh,
+.fi-topbar .uhs-brand-logo-kh,
 .uhs-brand-logo-kh {
-    font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif !important;
-    font-size: 14px !important;
-    font-weight: 800 !important;
+    /* Uses the Moul font for that official university look */
+    font-family: 'Moul', 'Kantumruy Pro', system-ui, sans-serif !important;
+    font-size: 16px !important;
+    font-weight: normal !important;
+    line-height: 1.35 !important;
     color: #ffffff !important;
     white-space: nowrap !important;
 }
 
 .uhs-brand-logo-en {
-    margin-top: 4px !important;
-    font-family: 'Inter', 'Times New Roman', serif !important;
-    font-size: 15px !important;
+    font-family: 'Times New Roman', Times, serif !important;
+    font-size: 19px !important;
     font-weight: 700 !important;
+    line-height: 1.2 !important;
     color: #ffffff !important;
+    margin-top: 2px !important;
     white-space: nowrap !important;
 }
-
+/* Auth page logo */
 .uhs-auth-logo {
     display: flex !important;
     align-items: center !important;
@@ -361,22 +411,13 @@ form button[type="submit"].fi-btn:hover,
     height: 44px !important;
     min-width: 44px !important;
     min-height: 44px !important;
-
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-
     border-radius: 9999px !important;
-    border: 2px solid rgba(255, 255, 255, 0.35) !important;
-    background: rgba(255, 255, 255, 0.06) !important;
-
     overflow: hidden !important;
     text-decoration: none !important;
     padding: 0 !important;
-}
-
-.uhs-one-click-language:hover {
-    border-color: #f59e0b !important;
 }
 
 .uhs-one-click-language-flag {

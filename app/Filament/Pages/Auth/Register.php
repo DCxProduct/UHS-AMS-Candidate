@@ -62,14 +62,14 @@ class Register extends BaseRegister
                     ->label(__('app.username'))
                     ->placeholder(__('app.enter_username'))
                     ->required()
-                    ->minLength(9)
+                    ->minLength(6)
                     ->maxLength(15)
                     ->unique(User::class, 'username')
                     ->prefixIcon('heroicon-o-identification')
                     ->rules([
                         'required',
                         'string',
-                        'min:9',
+                        'min:6',
                         'max:15',
                         'regex:/[a-z]/',
                         'regex:/[0-9]/',
@@ -80,7 +80,7 @@ class Register extends BaseRegister
                         'oninput' => "this.value = this.value.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 15)",
                         'pattern' => '[a-z0-9_]+',
                         'maxlength' => 15,
-                        'minlength' => 9,
+                        'minlength' => 6,
                     ])
                     ->dehydrateStateUsing(fn ($state) => blank($state)
                         ? null
@@ -136,17 +136,21 @@ class Register extends BaseRegister
                     ->unique(User::class, 'email')
                     ->dehydrateStateUsing(fn (?string $state): ?string => filled($state)
                         ? Str::lower(trim($state))
-                        : null)
+                        : null
+                    )
                     ->validationMessages([
                         'email' => __('app.email_invalid'),
                         'unique' => __('app.email_unique'),
                     ]),
 
+
                 Select::make('academic_year')
                     ->label(__('app.academic_year'))
                     ->placeholder(__('app.select_academic_year'))
                     ->options(self::getAcademicYearOptions())
-                    ->required()
+                    ->required(fn ($get): bool => $get('registration_type') === 'enrollment')
+                    ->hidden(fn ($get): bool => $get('registration_type') !== 'enrollment')
+                    ->dehydrated(fn ($get): bool => $get('registration_type') === 'enrollment')
                     ->native(false)
                     ->searchable()
                     ->prefixIcon('heroicon-o-calendar')
@@ -157,7 +161,9 @@ class Register extends BaseRegister
                 TextInput::make('seat_number')
                     ->label(__('app.seat_number'))
                     ->placeholder(__('app.enter_seat_number'))
-                    ->required()
+                    ->required(fn ($get): bool => $get('registration_type') === 'enrollment')
+                    ->hidden(fn ($get): bool => $get('registration_type') !== 'enrollment')
+                    ->dehydrated(fn ($get): bool => $get('registration_type') === 'enrollment')
                     ->maxLength(50)
                     ->unique(User::class, 'seat_number')
                     ->prefixIcon('heroicon-o-hashtag')
@@ -196,7 +202,14 @@ class Register extends BaseRegister
                         'regex:/^[!-~]+$/',
                     ])
                     ->extraInputAttributes([
-                        'oninput' => 'this.value = this.value.replace(/[^\x21-\x7E]/g, "")',
+                        'inputmode' => 'latin',
+                        'autocomplete' => 'new-password',
+                        'onkeydown' => 'if (event.key === " ") event.preventDefault();',
+                        'onbeforeinput' => 'if (event.data && /[^\x21-\x7E]/.test(event.data)) event.preventDefault();',
+                        'oninput' => 'this.value = this.value.replace(/[^\x21-\x7E]/g, "");',
+                        'oncompositionend' => 'this.value = this.value.replace(/[^\x21-\x7E]/g, "");',
+                        'onpaste' => 'setTimeout(() => { this.value = this.value.replace(/[^\x21-\x7E]/g, ""); }, 0);',
+                        'onblur' => 'this.value = this.value.replace(/[^\x21-\x7E]/g, "");',
                     ])
                     ->validationMessages([
                         'required' => __('app.password_required'),
@@ -220,7 +233,14 @@ class Register extends BaseRegister
                         'regex:/^[!-~]+$/',
                     ])
                     ->extraInputAttributes([
-                        'oninput' => 'this.value = this.value.replace(/[^\x21-\x7E]/g, "")',
+                        'inputmode' => 'latin',
+                        'autocomplete' => 'new-password',
+                        'onkeydown' => 'if (event.key === " ") event.preventDefault();',
+                        'onbeforeinput' => 'if (event.data && /[^\x21-\x7E]/.test(event.data)) event.preventDefault();',
+                        'oninput' => 'this.value = this.value.replace(/[^\x21-\x7E]/g, "");',
+                        'oncompositionend' => 'this.value = this.value.replace(/[^\x21-\x7E]/g, "");',
+                        'onpaste' => 'setTimeout(() => { this.value = this.value.replace(/[^\x21-\x7E]/g, ""); }, 0);',
+                        'onblur' => 'this.value = this.value.replace(/[^\x21-\x7E]/g, "");',
                     ])
                     ->validationMessages([
                         'required' => __('app.confirm_password_required'),
@@ -236,26 +256,27 @@ class Register extends BaseRegister
         $registrationType = $data['registration_type'] ?? 'national_exam';
 
         $username = trim((string) ($data['username'] ?? ''));
+
         $phone = blank($data['phone'] ?? null)
             ? null
             : preg_replace('/[^0-9]/', '', (string) $data['phone']);
-
-        $seatNumber = trim((string) ($data['seat_number'] ?? ''));
-
         return User::create([
             'registration_type' => $registrationType,
-            'academic_year' => $data['academic_year'] ?? null,
-
+            'academic_year' => $registrationType === 'enrollment'
+                ? ($data['academic_year'] ?? null)
+                : null,
             'name' => $username,
             'name_latin' => null,
-
             'username' => $username,
             'email' => filled($data['email'] ?? null)
                 ? Str::lower(trim((string) $data['email']))
                 : null,
             'phone' => $phone,
             'date_of_birth' => $data['date_of_birth'],
-            'seat_number' => $seatNumber,
+            'seat_number' => $registrationType === 'enrollment'
+                ? trim((string) ($data['seat_number'] ?? ''))
+                : null,
+
             'password' => Hash::make($data['password']),
             'is_active' => true,
         ]);
