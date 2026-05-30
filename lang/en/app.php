@@ -19,14 +19,6 @@ return [
     'select_academic_year' => 'Select academic year',
     'academic_year_required' => 'Academic year is required.',
 
-    'name' => 'Name',
-    'enter_name' => 'Enter name',
-    'name_required' => 'Name is required.',
-
-    'name_latin' => 'Name Latin',
-    'enter_name_latin' => 'Enter name in Latin',
-    'name_latin_required' => 'Name Latin is required.',
-
     'seat_number' => 'Seat number',
     'enter_seat_number' => 'Enter seat number',
     'seat_number_required' => 'Seat number is required.',
@@ -39,6 +31,11 @@ return [
     'enter_username' => 'Enter username',
     'username_required' => 'Username is required.',
     'username_unique' => 'This username is already taken.',
+    'username_min' => 'Username must be at least 9 characters long.',
+    'username_max' => 'Username must not be more than 15 characters long.',
+    'username_rule' => 'Username must contain lowercase English letters, at least one number, and underscore (_) only.',
+    'username_repeating' => 'Username must not contain 5 or more repeating characters.',
+    'password_english_only' => 'Password can contain only English keyboard characters, numbers, and symbols. Khmer characters and spaces are not allowed.',
 
     'email_address' => 'Email address',
     'enter_email_address' => 'Enter email address',
