@@ -22,7 +22,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 32px 16px;
+            padding: 24px 16px;
         }
 
         .language {
@@ -32,12 +32,15 @@
             z-index: 50;
         }
 
+        /* 1. Scaled down the main card container */
         .card {
             width: 100%;
-            max-width: 760px;
+            max-width: 440px; /* Reduced from 760px */
             background: #18181b;
             border: 1px solid #2f2f33;
-            padding: 56px;
+            padding: 40px 32px; /* Reduced padding */
+            border-radius: 16px; /* Added nice rounded corners to the card */
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5); /* Subtle depth */
         }
 
         .logo {
@@ -47,102 +50,116 @@
         }
 
         .logo img {
-            width: 96px;
-            height: 96px;
+            width: 72px; /* Reduced from 96px */
+            height: 72px;
             object-fit: contain;
         }
 
         h1 {
-            margin: 0 0 12px;
-            font-size: 38px;
-            line-height: 1.25;
+            margin: 0 0 10px;
+            font-size: 26px; /* Reduced from 38px */
+            line-height: 1.3;
             font-weight: 800;
             text-align: center;
         }
 
         .description {
-            margin: 0 auto 32px;
-            max-width: 580px;
+            margin: 0 auto 28px;
             color: #a1a1aa;
             text-align: center;
-            font-size: 16px;
-            line-height: 1.7;
+            font-size: 14px; /* Reduced from 16px */
+            line-height: 1.6;
         }
 
         label {
             display: block;
             margin-bottom: 8px;
-            font-size: 18px;
-            font-weight: 700;
+            font-size: 14px; /* Reduced from 18px */
+            font-weight: 600;
         }
 
+        /* 2. Scaled down the input field */
         input {
             width: 100%;
-            height: 58px;
-            border-radius: 14px;
+            height: 48px; /* Reduced from 58px */
+            border-radius: 10px;
             border: 1px solid #52525b;
             background: #27272a;
             color: #ffffff;
-            padding: 0 18px;
-            font-size: 18px;
+            padding: 0 16px;
+            font-size: 15px; /* Reduced from 18px */
             font-family: inherit;
             outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
         }
 
         input:focus {
             border-color: #f59e0b;
-            box-shadow: 0 0 0 2px #f59e0b;
+            box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2); /* Softer focus ring */
         }
 
         .error {
-            margin-top: 8px;
+            margin-top: 6px;
             color: #f87171;
-            font-size: 14px;
-            line-height: 1.6;
+            font-size: 13px;
+            line-height: 1.5;
         }
 
         .status {
             margin-bottom: 20px;
-            border-radius: 12px;
+            border-radius: 10px;
             background: rgba(34, 197, 94, 0.12);
             border: 1px solid rgba(34, 197, 94, 0.35);
             color: #86efac;
-            padding: 14px 16px;
-            font-size: 15px;
-            line-height: 1.6;
+            padding: 12px 16px;
+            font-size: 14px;
+            line-height: 1.5;
         }
 
+        /* 3. Scaled down the button */
         button {
             width: 100%;
-            height: 58px;
-            margin-top: 28px;
+            height: 48px; /* Reduced from 58px */
+            margin-top: 24px;
             border: 0;
-            border-radius: 14px;
+            border-radius: 10px;
             background: #1e40af;
             color: #ffffff;
-            font-size: 18px;
-            font-weight: 800;
+            font-size: 15px; /* Reduced from 18px */
+            font-weight: 700;
             font-family: inherit;
             cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
         }
 
         button:hover {
             background: #1e3a8a;
         }
 
+        button:active {
+            transform: scale(0.98); /* Nice click effect */
+        }
+
         .back {
-            margin-top: 34px;
+            margin-top: 28px;
             text-align: center;
-            font-size: 18px;
+            font-size: 14px; /* Reduced from 18px */
             color: #a1a1aa;
         }
 
         .back a {
             color: #f59e0b;
             text-decoration: none;
-            font-weight: 800;
+            font-weight: 700;
+            transition: opacity 0.2s;
         }
 
+        .back a:hover {
+            opacity: 0.8;
+            text-decoration: underline;
+        }
+
+        /* Language Switcher Overrides */
         .fls-display-on {
             position: fixed !important;
             top: 18px !important;
@@ -169,8 +186,6 @@
             justify-content: center !important;
 
             border-radius: 9999px !important;
-            border: 2px solid rgba(255, 255, 255, 0.35) !important;
-            background: rgba(255, 255, 255, 0.08) !important;
 
             overflow: hidden !important;
             text-decoration: none !important;
@@ -195,13 +210,14 @@
             object-position: center !important;
         }
 
+        /* Mobile adjustments */
         @media (max-width: 640px) {
             .card {
-                padding: 36px 22px;
+                padding: 32px 24px;
             }
 
             h1 {
-                font-size: 30px;
+                font-size: 22px;
             }
         }
     </style>
@@ -232,7 +248,7 @@
         @csrf
 
         <label for="email">
-            {{ __('app.email_address') }}<span style="color:#f87171">*</span>
+            {{ __('app.email_address') }}<span style="color:#f87171; margin-left: 4px;">*</span>
         </label>
 
         <input

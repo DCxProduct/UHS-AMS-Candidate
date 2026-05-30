@@ -71,10 +71,7 @@ class Register extends BaseRegister
                         'string',
                         'min:6',
                         'max:15',
-                        'regex:/[a-z]/',
-                        'regex:/[0-9]/',
                         'regex:/^[a-z0-9_]+$/',
-                        'not_regex:/(.)\1{4,}/',
                     ])
                     ->extraInputAttributes([
                         'oninput' => "this.value = this.value.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 15)",
@@ -91,8 +88,7 @@ class Register extends BaseRegister
                         'unique' => __('app.username_unique'),
                         'min' => __('app.username_min'),
                         'max' => __('app.username_max'),
-                        'regex' => __('app.username_rule'),
-                        'not_regex' => __('app.username_repeating'),
+                        'regex' => __('app.username_english_only'),
                     ])
                     ->autofocus(),
 

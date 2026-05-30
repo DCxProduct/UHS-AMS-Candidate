@@ -19,16 +19,19 @@ Route::get('/language/toggle', function () {
     return back();
 })->name('language.toggle');
 
-Route::middleware('guest')->group(function () {
-    Route::get('/admin/forgot-password', [PasswordResetController::class, 'showForgotPasswordForm'])
-        ->name('admin.password.request');
+Route::middleware('guest')
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function () {
+        Route::get('/forgot-password', [PasswordResetController::class, 'showForgotPasswordForm'])
+            ->name('password.request');
 
-    Route::post('/admin/forgot-password', [PasswordResetController::class, 'sendResetLink'])
-        ->name('admin.password.email');
+        Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLink'])
+            ->name('password.email');
 
-    Route::get('/admin/reset-password/{token}', [PasswordResetController::class, 'showResetPasswordForm'])
-        ->name('admin.password.reset');
+        Route::get('/reset-password/{token}', [PasswordResetController::class, 'showResetPasswordForm'])
+            ->name('password.reset');
 
-    Route::post('/admin/reset-password', [PasswordResetController::class, 'resetPassword'])
-        ->name('admin.password.update');
-});
+        Route::post('/reset-password', [PasswordResetController::class, 'resetPassword'])
+            ->name('password.update');
+    });
