@@ -84,4 +84,199 @@ return [
     'enter_new_password' => 'Enter new password',
     'password_reset_success' => 'Your password has been reset successfully. Please sign in.',
     'password_reset_token_invalid' => 'This password reset link is invalid or expired.',
+
+    /*
+    |--------------------------------------------------------------------------
+    | Dashboard
+    |--------------------------------------------------------------------------
+    */
+
+    'dashboard' => 'Dashboard',
+    'student' => 'Student',
+    'welcome_back' => 'Welcome back',
+
+    'dashboard_description' => 'Track your enrollment for the current academic year. One student can submit enrollment only one time per academic year.',
+    'track_enrollment_description' => 'Track your enrollment for the current academic year. One student can submit enrollment only one time per academic year.',
+    'dynamic_dashboard_description' => 'Track and manage all your applications and documents here.',
+    'student_dashboard_description' => 'This dashboard shows only your submitted forms, review status, and progress for the current academic year.',
+
+    'current_academic_year' => 'Current Academic Year',
+    'submit_limit' => 'Submit Limit',
+    'one_submission_per_academic_year' => 'One submission per academic year',
+    'per_year' => '/ year',
+
+    'total_forms' => 'Total Forms',
+    'submitted_forms' => 'Submitted',
+    'available_forms' => 'Available',
+    'my_applications' => 'My Applications',
+    'my_submissions' => 'My Submissions',
+    'overall_progress' => 'Overall Progress',
+    'forms_submitted' => 'Forms Submitted',
+
+    'enrollment_form_status' => 'Enrollment Form Status',
+    'your_enrollment_status' => 'Your Enrollment Status',
+
+    'enrollment_by_year' => 'Enrollment by Year',
+    'enrollment_status' => 'Enrollment Status',
+    'enrollment_progress' => 'Enrollment Progress',
+    'progress' => 'Progress',
+    'start_enrollment' => 'Start enrollment',
+    'submitted_once' => 'Submitted once',
+    'registrar_review' => 'Registrar review',
+    'final_result' => 'Final result',
+    'submission_by_month' => 'Submission by Month',
+
+    'enrollment_data' => 'Enrollment Data',
+    'enrollment_data_description' => 'Showing only your enrollment record for the current academic year.',
+    'showing_only_your_enrollment_record' => 'Showing only your enrollment record for the current academic year.',
+    'application_data' => 'Application Data',
+    'my_submission_data' => 'My Submission Data',
+
+    'application' => 'Application',
+    'period' => 'Period',
+    'form_status' => 'Form Status',
+    'your_status' => 'Your Status',
+    'submitted_date' => 'Submitted Date',
+
+    'no_forms_available' => 'No application forms available.',
+    'no_student_submissions' => 'You have not submitted any forms yet.',
+    'no_email' => 'No email',
+    'no_phone_number' => 'No phone number',
+    'no_next_step' => 'No next step',
+    'no_information_available' => 'No information available.',
+
+    /*
+    |--------------------------------------------------------------------------
+    | Status
+    |--------------------------------------------------------------------------
+    */
+
+    'open' => 'Open',
+    'closed' => 'Closed',
+    'not_open_yet' => 'Not Open Yet',
+    'not_available' => 'Not Available',
+
+    'waiting_review' => 'Waiting Review',
+    'approved' => 'Approved',
+    'rejected' => 'Rejected',
+    'need_correction' => 'Need Correction',
+    'not_submitted' => 'Not Submitted',
+
+    'already_submitted' => 'Already Submitted',
+    'can_submit' => 'Can Submit',
+    'cannot_submit' => 'Cannot Submit',
+
+    'no_closing_date' => 'No closing date',
+    'from_date' => 'From :date',
+    'until_date' => 'Until :date',
+    'untitled_form' => 'Untitled Form',
+
+    /*
+    |--------------------------------------------------------------------------
+    | Dynamic Form Status Messages
+    |--------------------------------------------------------------------------
+    */
+
+    'form_not_open_yet_title' => ':name is not open yet',
+    'form_not_open_yet_message' => 'Please wait until the scheduled date begins.',
+
+    'form_closed_title' => ':name is closed',
+    'form_closed_message' => 'The submission period for this form has ended.',
+
+    'form_not_submitted_title' => ':name not submitted',
+    'form_not_submitted_message' => 'Please complete and submit this application.',
+
+    'form_approved_title' => ':name approved',
+    'form_approved_message' => 'Your application has been successfully approved.',
+
+    'form_rejected_title' => ':name rejected',
+    'form_rejected_message' => 'Your application has been rejected.',
+
+    'form_correction_title' => ':name needs correction',
+    'form_correction_message' => 'Please update your information and submit again.',
+
+    'form_waiting_review_title' => ':name waiting review',
+    'form_waiting_review_message' => 'Your application is currently under review.',
+
+    /*
+    |--------------------------------------------------------------------------
+    | Enrollment Workflow Messages
+    |--------------------------------------------------------------------------
+    */
+
+    'enrollment_form_not_available_title' => 'Enrollment form is not available',
+    'enrollment_form_not_available_message' => 'There is no enrollment form available for the current academic year.',
+
+    'enrollment_not_open_yet_title' => 'Enrollment is not open yet',
+    'enrollment_not_open_yet_message' => 'Please wait until the enrollment period starts.',
+
+    'enrollment_period_closed_title' => 'Enrollment period closed',
+    'enrollment_period_closed_message' => 'The enrollment period has ended. Please contact the admissions office for more information.',
+
+    'enrollment_not_submitted_title' => 'Enrollment not submitted',
+    'enrollment_not_submitted_message' => 'Please submit your enrollment for this academic year. You can submit only one time per year.',
+
+    'enrollment_approved_title' => 'Enrollment approved',
+    'enrollment_approved_message' => 'Your enrollment has been approved for this academic year.',
+
+    'enrollment_rejected_title' => 'Enrollment rejected',
+    'enrollment_rejected_message' => 'Your enrollment was rejected. Please contact the registrar office for more information.',
+
+    'correction_required_title' => 'Correction required',
+    'correction_required_message' => 'Please update your enrollment information and wait for review again.',
+
+    'waiting_review_title' => 'Waiting review',
+    'waiting_review_message' => 'Your enrollment was submitted. You cannot submit again this academic year.',
+
+    'enrollment_is_open_message' => 'Enrollment is open.',
+
+    /*
+    |--------------------------------------------------------------------------
+    | Navigation
+    |--------------------------------------------------------------------------
+    */
+
+    'student_application' => 'Student Application',
+
+    'forms_nav' => [
+        'profile' => 'Profile',
+        'print-application' => 'Print Application',
+        'national-exam' => 'National Examination',
+        'enrollment' => 'Enrollment',
+        'request-document' => 'Request Document',
+        'testing' => 'Testing',
+        'test' => 'Test',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Form Sections
+    |--------------------------------------------------------------------------
+    */
+
+    'form_sections' => [
+        'personal_information' => 'Personal Information',
+        'family_information' => 'Family Information',
+        'educational_information' => 'Educational Information',
+        'curriculum_vitae' => 'Work History',
+        'work_history' => 'Work History',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Common Actions
+    |--------------------------------------------------------------------------
+    */
+
+    'edit' => 'Edit',
+    'edit_form' => 'Edit :name',
+    'add' => 'Add',
+    'print' => 'Print',
+    'save' => 'Save',
+    'save_changes' => 'Save Changes',
+    'cancel' => 'Cancel',
+    'next' => 'Next',
+    'previous' => 'Previous',
+    'saved_successfully' => 'Saved successfully.',
+    'section' => 'Section',
 ];

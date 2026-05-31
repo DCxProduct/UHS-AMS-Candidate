@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "036fa8013bc795b0d144821e67072410",
+    "content-hash": "457079556558e60ca185483f0aba6c00",
     "packages": [
         {
             "name": "bezhansalleh/filament-language-switch",
@@ -371,6 +371,66 @@
                 }
             ],
             "time": "2024-02-09T16:56:22+00:00"
+        },
+        {
+            "name": "chanthoeun/filament-custom-forms",
+            "version": "v1.0.8",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/Chanthoeun/filament-custom-forms.git",
+                "reference": "ff36342087a2791a56c6fa9bb13d382c3c009c2f"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/Chanthoeun/filament-custom-forms/zipball/ff36342087a2791a56c6fa9bb13d382c3c009c2f",
+                "reference": "ff36342087a2791a56c6fa9bb13d382c3c009c2f",
+                "shasum": ""
+            },
+            "require": {
+                "filament/filament": "^4.0|^5.0",
+                "filament/schemas": "^4.0|^5.0",
+                "php": "^8.2"
+            },
+            "require-dev": {
+                "orchestra/testbench": "^9.0|^10.0",
+                "phpunit/phpunit": "^11.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Chanthoeun\\FilamentCustomForms\\CustomFormServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Chanthoeun\\FilamentCustomForms\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Chanthoeun",
+                    "email": "info@chanthoeun.com"
+                }
+            ],
+            "description": "A FilamentPHP plugin to manage and submit custom forms.",
+            "homepage": "https://github.com/chanthoeun/filament-custom-forms",
+            "keywords": [
+                "custom-forms",
+                "filament",
+                "laravel",
+                "plugin"
+            ],
+            "support": {
+                "issues": "https://github.com/Chanthoeun/filament-custom-forms/issues",
+                "source": "https://github.com/Chanthoeun/filament-custom-forms/tree/v1.0.8"
+            },
+            "time": "2026-03-04T16:22:42+00:00"
         },
         {
             "name": "chillerlan/php-qrcode",
