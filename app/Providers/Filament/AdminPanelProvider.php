@@ -68,6 +68,11 @@ class AdminPanelProvider extends PanelProvider
                 for: 'App\\Filament\\Admin\\Resources',
             )
 
+            ->discoverResources(
+                in: app_path('Filament/Student/Resources'),
+                for: 'App\\Filament\\Student\\Resources',
+            )
+
             ->discoverPages(
                 in: app_path('Filament/Admin/Pages'),
                 for: 'App\\Filament\\Admin\\Pages',

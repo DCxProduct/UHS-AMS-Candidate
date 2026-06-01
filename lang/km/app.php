@@ -279,4 +279,52 @@ return [
     'previous' => 'ថយក្រោយ',
     'saved_successfully' => 'បានរក្សាទុកដោយជោគជ័យ។',
     'section' => 'ផ្នែក',
+
+    /*
+    |--------------------------------------------------------------------------
+    | Request Document
+    |--------------------------------------------------------------------------
+    */
+
+    'request_documents' => 'សំណើឯកសារ',
+    'create' => 'បង្កើត',
+    'create_request_document' => 'បង្កើតសំណើឯកសារ',
+    'edit_request_document' => 'កែប្រែសំណើឯកសារ',
+    'document_request_created' => 'បានបង្កើតសំណើឯកសារដោយជោគជ័យ។',
+    'document_request_updated' => 'បានកែប្រែសំណើឯកសារដោយជោគជ័យ។',
+    'delete' => 'លុប',
+    'delete_request_document' => 'លុបសំណើឯកសារ',
+    'delete_request_document_confirmation' => 'តើអ្នកពិតជាចង់លុបសំណើឯកសារនេះមែនទេ?',
+
+    'requested_document_type' => 'ប្រភេទឯកសារដែលស្នើសុំ',
+    'request_form' => 'ទម្រង់ស្នើសុំ',
+    'faculty' => 'មហាវិទ្យាល័យ',
+    'student_id' => 'លេខសម្គាល់និស្សិត',
+    'student_name' => 'ឈ្មោះនិស្សិត',
+    'request_type' => 'ប្រភេទសំណើ',
+    'status' => 'ស្ថានភាព',
+    'pending' => 'កំពុងរង់ចាំ',
+    'pdf' => 'PDF',
+    'view_pdf' => 'មើល PDF',
+    'requested_at' => 'បានស្នើនៅ',
+    'pdf_generate_failed' => 'សំណើឯកសារត្រូវបានរក្សាទុក ប៉ុន្តែការបង្កើត PDF មិនបានជោគជ័យ។',
+
+    'document_types' => [
+        'academic_confirmation' => 'លិខិតបញ្ជាក់ការសិក្សា',
+        'academic_transcript' => 'ប្រតិចារិកពិន្ទុ',
+        'certificate_of_completion' => 'វិញ្ញាបនបត្របញ្ចប់ការសិក្សា',
+        'diploma' => 'សញ្ញាបត្រ',
+        'bachelor_certificate' => 'វិញ្ញាបនបត្របរិញ្ញាបត្រ',
+        'master_certificate' => 'វិញ្ញាបនបត្រអនុបណ្ឌិត',
+        'other' => 'ផ្សេងៗ',
+    ],
+
+    'faculties' => [
+        'medicine' => 'វេជ្ជសាស្ត្រ',
+        'pharmacy' => 'ឱសថសាស្ត្រ',
+        'dentistry' => 'ទន្តសាស្ត្រ',
+        'public_health' => 'សុខភាពសាធារណៈ',
+        'tsmc' => 'TSMC',
+        'foundation_year' => 'ឆ្នាំសិក្សាមូលដ្ឋាន',
+    ],
 ];

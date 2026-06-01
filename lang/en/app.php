@@ -279,4 +279,52 @@ return [
     'previous' => 'Previous',
     'saved_successfully' => 'Saved successfully.',
     'section' => 'Section',
+
+    /*
+    |--------------------------------------------------------------------------
+    | Request Document
+    |--------------------------------------------------------------------------
+    */
+
+    'request_documents' => 'Request Documents',
+    'create' => 'Create',
+    'create_request_document' => 'Create Request Document',
+    'edit_request_document' => 'Edit Request Document',
+    'document_request_created' => 'Document request created successfully.',
+    'document_request_updated' => 'Document request updated successfully.',
+    'delete' => 'Delete',
+    'delete_request_document' => 'Delete Request Document',
+    'delete_request_document_confirmation' => 'Are you sure you want to delete this document request?',
+
+    'requested_document_type' => 'Requested Document Type',
+    'request_form' => 'Request Form',
+    'faculty' => 'Faculty',
+    'student_id' => 'Student ID',
+    'student_name' => 'Student Name',
+    'request_type' => 'Request Type',
+    'status' => 'Status',
+    'pending' => 'Pending',
+    'pdf' => 'PDF',
+    'view_pdf' => 'View PDF',
+    'requested_at' => 'Requested At',
+    'pdf_generate_failed' => 'Document request was saved, but PDF generation failed.',
+
+    'document_types' => [
+        'academic_confirmation' => 'Academic Confirmation',
+        'academic_transcript' => 'Academic Transcript',
+        'certificate_of_completion' => 'Certificate of Completion',
+        'diploma' => 'Diploma',
+        'bachelor_certificate' => 'Bachelor Certificate',
+        'master_certificate' => 'Master Certificate',
+        'other' => 'Other',
+    ],
+
+    'faculties' => [
+        'medicine' => 'Medicine',
+        'pharmacy' => 'Pharmacy',
+        'dentistry' => 'Dentistry',
+        'public_health' => 'Public Health',
+        'tsmc' => 'TSMC',
+        'foundation_year' => 'Foundation Year',
+    ],
 ];
