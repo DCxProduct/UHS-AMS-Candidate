@@ -27,6 +27,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Throwable;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -63,11 +64,24 @@ class AdminPanelProvider extends PanelProvider
                 'primary' => Color::Amber,
             ])
 
+            /*
+            |--------------------------------------------------------------------------
+            | Admin resources
+            |--------------------------------------------------------------------------
+            */
             ->discoverResources(
                 in: app_path('Filament/Admin/Resources'),
                 for: 'App\\Filament\\Admin\\Resources',
             )
 
+            /*
+            |--------------------------------------------------------------------------
+            | Student resources
+            |--------------------------------------------------------------------------
+            | Example:
+            | app/Filament/Student/Resources/CustomFormEntries
+            | app/Filament/Student/Resources/DocumentRequests
+            */
             ->discoverResources(
                 in: app_path('Filament/Student/Resources'),
                 for: 'App\\Filament\\Student\\Resources',
@@ -78,6 +92,11 @@ class AdminPanelProvider extends PanelProvider
                 for: 'App\\Filament\\Admin\\Pages',
             )
 
+            /*
+            |--------------------------------------------------------------------------
+            | Student pages used inside this panel
+            |--------------------------------------------------------------------------
+            */
             ->pages([
                 StudentDashboard::class,
                 StudentDynamicFormPage::class,
@@ -94,14 +113,13 @@ class AdminPanelProvider extends PanelProvider
                     ->collapsible(),
             ])
 
-
             ->navigationItems($this->getDynamicStudentFormNavigationItems())
 
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
                 StartSession::class,
-                SwitchLanguageLocale::class, // Triggers the language switch
+                SwitchLanguageLocale::class,
                 AuthenticateSession::class,
                 ShareErrorsFromSession::class,
                 PreventRequestForgery::class,
@@ -117,61 +135,109 @@ class AdminPanelProvider extends PanelProvider
 
     protected function getDynamicStudentFormNavigationItems(): array
     {
-        if (! Schema::hasTable('custom_forms')) {
+        try {
+            if (! Schema::hasTable('custom_forms')) {
+                return [];
+            }
+
+            $columns = Schema::getColumnListing('custom_forms');
+
+            $activeColumn = $this->firstExistingColumn($columns, [
+                'is_active',
+                'active',
+            ]);
+
+            $sortColumn = $this->firstExistingColumn($columns, [
+                'display_order',
+                'sort',
+                'sort_order',
+                'order_column',
+                'ordering',
+                'position',
+            ]);
+
+            $query = DB::table('custom_forms');
+
+            if ($activeColumn) {
+                $query->where($activeColumn, true);
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | Optional allowed_roles filter
+            |--------------------------------------------------------------------------
+            | This is safe for PostgreSQL JSON columns.
+            | If you do not use allowed_roles, it will not affect anything.
+            */
+            if (in_array('allowed_roles', $columns, true)) {
+                $driver = DB::connection()->getDriverName();
+
+                $query->where(function ($query) use ($driver): void {
+                    $query->whereNull('allowed_roles');
+
+                    if ($driver === 'pgsql') {
+                        $query
+                            ->orWhereRaw("allowed_roles::text = '[]'")
+                            ->orWhereRaw("allowed_roles::text = 'null'")
+                            ->orWhereRaw("allowed_roles::text ILIKE ?", ['%student%']);
+                    } else {
+                        $query
+                            ->orWhereRaw("CAST(allowed_roles AS CHAR) = ''")
+                            ->orWhereRaw("CAST(allowed_roles AS CHAR) = '[]'")
+                            ->orWhereRaw("CAST(allowed_roles AS CHAR) LIKE ?", ['%student%']);
+                    }
+                });
+            }
+
+            if ($sortColumn) {
+                $query->orderBy($sortColumn);
+            } else {
+                $query->orderBy('id');
+            }
+
+            return $query
+                ->get()
+                ->map(function ($form): NavigationItem {
+                    $name = (string) (
+                        $form->name
+                        ?? $form->form_name
+                        ?? $form->title
+                        ?? 'Untitled Form'
+                    );
+
+                    $slug = (string) (
+                        $form->slug
+                        ?? Str::slug($name)
+                    );
+
+                    $formId = (int) ($form->id ?? 0);
+
+                    return NavigationItem::make('student-form-' . $formId)
+                        ->label(fn (): string => $this->getDynamicFormNavigationLabel($slug, $name))
+                        ->group(fn (): string => __('app.student_application'))
+                        ->icon($this->getDynamicFormIcon($slug))
+                        ->sort($this->getFormSortNumber($form))
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | Important fix
+                        |--------------------------------------------------------------------------
+                        | Do not use CustomFormEntryResource::getUrl() here.
+                        | Resource::getUrl() can fail during composer dump-autoload because
+                        | the Filament default panel is not fully booted yet.
+                        */
+                        ->url(url('/admin/student-form-entries?custom_form_id=' . $formId))
+
+                        ->isActiveWhen(
+                            fn (): bool => request()->is('admin/student-form-entries*')
+                                && (int) request()->query('custom_form_id') === $formId
+                        );
+                })
+                ->values()
+                ->all();
+        } catch (Throwable $e) {
             return [];
         }
-
-        $columns = Schema::getColumnListing('custom_forms');
-
-        $activeColumn = $this->firstExistingColumn($columns, [
-            'is_active',
-            'active',
-        ]);
-
-        $sortColumn = $this->firstExistingColumn($columns, [
-            'sort',
-            'sort_order',
-            'order_column',
-        ]);
-
-        $query = DB::table('custom_forms');
-
-        if ($activeColumn) {
-            $query->where($activeColumn, true);
-        }
-
-        if ($sortColumn) {
-            $query->orderBy($sortColumn);
-        } else {
-            $query->orderBy('id');
-        }
-
-        return $query
-            ->get()
-            ->map(function ($form): NavigationItem {
-                $name = $form->name
-                    ?? $form->form_name
-                    ?? $form->title
-                    ?? 'Untitled Form';
-
-                $slug = $form->slug
-                    ?? Str::slug((string) $name);
-
-                $slug = (string) $slug;
-                $name = (string) $name;
-
-                return NavigationItem::make($slug) // Use slug as the unique ID
-                ->label(fn (): string => $this->getDynamicFormNavigationLabel($slug, $name)) // Dynamically translate the label
-                ->group(fn (): string => __('app.student_application')) // Dynamically link to the translated group
-                ->icon($this->getDynamicFormIcon($slug))
-                    ->sort($this->getFormSortNumber($form))
-                    ->url(url('/admin/student-form/' . $slug))
-                    ->isActiveWhen(
-                        fn (): bool => request()->is('admin/student-form/' . $slug)
-                    );
-            })
-            ->values()
-            ->all();
     }
 
     protected function getDynamicFormNavigationLabel(string $slug, string $fallbackName): string
@@ -189,21 +255,30 @@ class AdminPanelProvider extends PanelProvider
 
     protected function getDynamicFormIcon(string $slug): string
     {
-        return 'heroicon-o-document-text';
+        return match ($slug) {
+            'profile' => 'heroicon-o-user',
+            'enrollment' => 'heroicon-o-academic-cap',
+            'request-document',
+            'request-documents' => 'heroicon-o-document-text',
+            'national-exam',
+            'national-examination' => 'heroicon-o-clipboard-document-list',
+            default => 'heroicon-o-document-text',
+        };
     }
 
     protected function getFormSortNumber(object $form): int
     {
-        if (isset($form->sort) && is_numeric($form->sort)) {
-            return (int) $form->sort;
-        }
-
-        if (isset($form->sort_order) && is_numeric($form->sort_order)) {
-            return (int) $form->sort_order;
-        }
-
-        if (isset($form->order_column) && is_numeric($form->order_column)) {
-            return (int) $form->order_column;
+        foreach ([
+                     'display_order',
+                     'sort',
+                     'sort_order',
+                     'order_column',
+                     'ordering',
+                     'position',
+                 ] as $column) {
+            if (isset($form->{$column}) && is_numeric($form->{$column})) {
+                return (int) $form->{$column};
+            }
         }
 
         return (int) ($form->id ?? 100);

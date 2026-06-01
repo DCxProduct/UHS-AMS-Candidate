@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Student\Resources\CustomFormEntries\CustomFormEntryResource;
 use App\Support\StudentDynamicFormSchema;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -132,6 +133,7 @@ class StudentDynamicFormPage extends Page implements HasForms
             'custom_form_id' => $this->customForm->id,
             'created_by' => Auth::id(),
             'updated_by' => Auth::id(),
+            'user_id' => Auth::id(),
             'data' => json_encode($state, JSON_UNESCAPED_UNICODE),
             'created_at' => now(),
             'updated_at' => now(),
@@ -151,6 +153,15 @@ class StudentDynamicFormPage extends Page implements HasForms
             ->title(__('app.saved_successfully'))
             ->success()
             ->send();
+
+        $this->redirect($this->listUrl(), navigate: true);
+    }
+
+    public function listUrl(): string
+    {
+        return CustomFormEntryResource::getUrl('index', [
+            'custom_form_id' => $this->customForm->id,
+        ]);
     }
 
     public function getActiveSectionId(): ?int
@@ -165,16 +176,12 @@ class StudentDynamicFormPage extends Page implements HasForms
 
     public function getTitle(): string
     {
-        return __('app.edit_form', [
-            'name' => $this->getTranslatedFormName(),
-        ]);
+        return __('app.create') . ' ' . $this->getTranslatedFormName();
     }
 
     public function getHeading(): string
     {
-        return __('app.edit_form', [
-            'name' => $this->getTranslatedFormName(),
-        ]);
+        return __('app.create') . ' ' . $this->getTranslatedFormName();
     }
 
     public function getMaxContentWidth(): Width|string|null
@@ -270,9 +277,12 @@ class StudentDynamicFormPage extends Page implements HasForms
         ]);
 
         $sortColumn = $this->firstExistingColumn($columns, [
+            'display_order',
             'sort',
             'sort_order',
             'order_column',
+            'ordering',
+            'position',
         ]);
 
         $query = DB::table('custom_form_fields')
@@ -302,6 +312,9 @@ class StudentDynamicFormPage extends Page implements HasForms
                     'fieldset',
                     'container',
                     'group',
+                    'heading',
+                    'step',
+                    'wizard_step',
                 ], true);
             })
             ->values()

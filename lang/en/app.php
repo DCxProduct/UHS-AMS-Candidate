@@ -327,4 +327,20 @@ return [
         'tsmc' => 'TSMC',
         'foundation_year' => 'Foundation Year',
     ],
+
+    'custom_form_entry' => 'Custom Form Entry',
+    'custom_form_entries' => 'Custom Form Entries',
+    'form_entries' => 'Form Entries',
+    'list' => 'List',
+    'name' => 'Name',
+    'created_at' => 'Created At',
+    'updated_at' => 'Updated At',
+    'data' => 'Data',
+    'export_data' => 'Export Data',
+    'create_form_entry' => 'Create :name',
+    'no_entries' => 'No :name Entries',
+    'yes' => 'Yes',
+    'no' => 'No',
+
+
 ];
