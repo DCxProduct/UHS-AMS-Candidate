@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Filament\Student\Resources\NationalExitExamApplications;
+namespace App\Filament\Student\Resources\NationalEntranceExamApplications;
 
-use App\Filament\Student\Resources\NationalExitExamApplications\Pages\CreateNationalExitExamApplication;
-use App\Filament\Student\Resources\NationalExitExamApplications\Pages\EditNationalExitExamApplication;
-use App\Filament\Student\Resources\NationalExitExamApplications\Pages\ListNationalExitExamApplications;
-use App\Models\NationalExitExamApplication;
+use App\Filament\Student\Resources\NationalEntranceExamApplications\Pages\CreateNationalEntranceExamApplication;
+use App\Filament\Student\Resources\NationalEntranceExamApplications\Pages\EditNationalEntranceExamApplication;
+use App\Filament\Student\Resources\NationalEntranceExamApplications\Pages\ListNationalEntranceExamApplications;
+use App\Models\NationalEntranceExamApplication;
 use BackedEnum;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
@@ -25,15 +25,15 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema as DatabaseSchema;
 
-class NationalExitExamApplicationResource extends Resource
+class NationalEntranceExamApplicationResource extends Resource
 {
-    protected static ?string $model = NationalExitExamApplication::class;
+    protected static ?string $model = NationalEntranceExamApplication::class;
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-academic-cap';
 
     protected static ?int $navigationSort = 51;
 
-    protected static ?string $slug = 'national-exit-exam-applications';
+    protected static ?string $slug = 'national-entrance-exam-applications';
 
     protected static bool $shouldRegisterNavigation = true;
 
@@ -41,7 +41,7 @@ class NationalExitExamApplicationResource extends Resource
 
     public static function getNavigationLabel(): string
     {
-        return 'ពាក្យប្រឡងចេញថ្នាក់ជាតិ';
+        return 'ពាក្យប្រឡងថ្នាក់ជាតិ';
     }
 
     public static function getNavigationGroup(): ?string
@@ -51,12 +51,12 @@ class NationalExitExamApplicationResource extends Resource
 
     public static function getModelLabel(): string
     {
-        return 'ពាក្យប្រឡងចេញថ្នាក់ជាតិ';
+        return 'ពាក្យប្រឡងថ្នាក់ជាតិ';
     }
 
     public static function getPluralModelLabel(): string
     {
-        return 'ពាក្យប្រឡងចេញថ្នាក់ជាតិ';
+        return 'ពាក្យប្រឡងថ្នាក់ជាតិ';
     }
 
     public static function canViewAny(): bool
@@ -84,15 +84,15 @@ class NationalExitExamApplicationResource extends Resource
             return $query->whereRaw('1 = 0');
         }
 
-        if (! DatabaseSchema::hasTable('national_exit_exam_applications')) {
+        if (! DatabaseSchema::hasTable('national_entrance_exam_applications')) {
             return $query->whereRaw('1 = 0');
         }
 
-        if (DatabaseSchema::hasColumn('national_exit_exam_applications', 'created_by')) {
+        if (DatabaseSchema::hasColumn('national_entrance_exam_applications', 'created_by')) {
             return $query->where('created_by', $userId);
         }
 
-        if (DatabaseSchema::hasColumn('national_exit_exam_applications', 'user_id')) {
+        if (DatabaseSchema::hasColumn('national_entrance_exam_applications', 'user_id')) {
             return $query->where('user_id', $userId);
         }
 
@@ -104,8 +104,13 @@ class NationalExitExamApplicationResource extends Resource
         return $schema
             ->columns(1)
             ->components([
-                Section::make('ទម្រង់ពាក្យប្រឡងចេញថ្នាក់ជាតិ')
+                Section::make('ទម្រង់ពាក្យប្រឡងថ្នាក់ជាតិ')
                     ->schema([
+                        /*
+                        |--------------------------------------------------------------------------
+                        | Main hidden fields used by the PDF Blade form
+                        |--------------------------------------------------------------------------
+                        */
                         HiddenField::make('photo_path'),
 
                         HiddenField::make('application_no'),
@@ -165,6 +170,11 @@ class NationalExitExamApplicationResource extends Resource
                         HiddenField::make('faculty_applied'),
                         HiddenField::make('major_applied'),
 
+                        /*
+                        |--------------------------------------------------------------------------
+                        | Spouse / marital fields
+                        |--------------------------------------------------------------------------
+                        */
                         HiddenField::make('marital_status'),
                         HiddenField::make('spouse_name'),
                         HiddenField::make('spouse_date_of_birth'),
@@ -173,6 +183,11 @@ class NationalExitExamApplicationResource extends Resource
                         HiddenField::make('spouse_phone'),
                         HiddenField::make('spouse_address'),
 
+                        /*
+                        |--------------------------------------------------------------------------
+                        | Father fields
+                        |--------------------------------------------------------------------------
+                        */
                         HiddenField::make('father_name'),
                         HiddenField::make('father_date_of_birth'),
                         HiddenField::make('father_age'),
@@ -182,6 +197,11 @@ class NationalExitExamApplicationResource extends Resource
                         HiddenField::make('father_status'),
                         HiddenField::make('father_address'),
 
+                        /*
+                        |--------------------------------------------------------------------------
+                        | Mother fields
+                        |--------------------------------------------------------------------------
+                        */
                         HiddenField::make('mother_name'),
                         HiddenField::make('mother_date_of_birth'),
                         HiddenField::make('mother_age'),
@@ -191,12 +211,22 @@ class NationalExitExamApplicationResource extends Resource
                         HiddenField::make('mother_status'),
                         HiddenField::make('mother_address'),
 
+                        /*
+                        |--------------------------------------------------------------------------
+                        | Guardian fields
+                        |--------------------------------------------------------------------------
+                        */
                         HiddenField::make('guardian_name'),
                         HiddenField::make('guardian_relationship'),
                         HiddenField::make('guardian_phone'),
                         HiddenField::make('guardian_occupation'),
                         HiddenField::make('guardian_address'),
 
+                        /*
+                        |--------------------------------------------------------------------------
+                        | Extra data used in pdf-form.blade.php
+                        |--------------------------------------------------------------------------
+                        */
                         HiddenField::make('extra_data.birth_month'),
                         HiddenField::make('extra_data.birth_year'),
                         HiddenField::make('extra_data.workplace'),
@@ -221,7 +251,7 @@ class NationalExitExamApplicationResource extends Resource
                         HiddenField::make('created_by')
                             ->default(fn (): ?int => auth()->id()),
 
-                        SchemaView::make('filament.student.national-exit-exam-applications.pdf-form')
+                        SchemaView::make('filament.student.national-entrance-exam-applications.pdf-form')
                             ->columnSpanFull(),
                     ])
                     ->columnSpanFull(),
@@ -335,27 +365,21 @@ class NationalExitExamApplicationResource extends Resource
                     ->label('លុប')
                     ->icon('heroicon-o-trash')
                     ->color('danger')
-                    ->modalHeading('លុបពាក្យប្រឡងចេញថ្នាក់ជាតិ')
+                    ->modalHeading('លុបពាក្យប្រឡងថ្នាក់ជាតិ')
                     ->modalDescription('តើអ្នកពិតជាចង់លុបទិន្នន័យនេះមែនទេ?')
                     ->modalSubmitActionLabel('លុប'),
             ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make()
-                        ->label('លុបដែលបានជ្រើស'),
-                ]),
-            ])
             ->defaultSort('created_at', 'desc')
-            ->emptyStateHeading('មិនទាន់មានពាក្យប្រឡងចេញថ្នាក់ជាតិ')
+            ->emptyStateHeading('មិនទាន់មានពាក្យប្រឡងថ្នាក់ជាតិ')
             ->emptyStateDescription('សូមចុចប៊ូតុងបង្កើត ដើម្បីបញ្ចូលពាក្យថ្មី។');
     }
 
     public static function getPages(): array
     {
         return [
-            'index' => ListNationalExitExamApplications::route('/'),
-            'create' => CreateNationalExitExamApplication::route('/create'),
-            'edit' => EditNationalExitExamApplication::route('/{record}/edit'),
+            'index' => ListNationalEntranceExamApplications::route('/'),
+            'create' => CreateNationalEntranceExamApplication::route('/create'),
+            'edit' => EditNationalEntranceExamApplication::route('/{record}/edit'),
         ];
     }
 }
