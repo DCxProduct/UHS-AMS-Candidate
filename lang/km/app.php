@@ -311,7 +311,7 @@ return [
 
     'document_types' => [
         'academic_confirmation' => 'លិខិតបញ្ជាក់ការសិក្សា',
-        'academic_transcript' => 'ប្រតិចារិកពិន្ទុ',
+        'academic_transcript' => 'ប្រតិបត្តិពិន្ទុ',
         'certificate_of_completion' => 'វិញ្ញាបនបត្របញ្ចប់ការសិក្សា',
         'diploma' => 'សញ្ញាបត្រ',
         'bachelor_certificate' => 'វិញ្ញាបនបត្របរិញ្ញាបត្រ',
