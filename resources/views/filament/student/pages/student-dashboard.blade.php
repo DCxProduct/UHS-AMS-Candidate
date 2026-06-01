@@ -78,6 +78,23 @@
     @endphp
 
     <style>
+        h1.fi-header-heading {
+            font-size: 32px !important;
+            font-weight: 900 !important;
+            line-height: 1.2 !important;
+            letter-spacing: -0.02em;
+        }
+
+        /* 2. Update your Hero Card title ("Welcome back...") to exactly 32px */
+        .hero-title {
+            font-size: 32px !important;
+            font-weight: 900;
+            color: var(--text-main);
+            line-height: 1.2;
+            margin: 0;
+            letter-spacing: -0.02em;
+        }
+
         .student-dashboard-wrapper {
             --bg-card: #ffffff;
             --bg-soft: #f8fafc;
