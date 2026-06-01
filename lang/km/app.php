@@ -327,4 +327,18 @@ return [
         'tsmc' => 'TSMC',
         'foundation_year' => 'ឆ្នាំសិក្សាមូលដ្ឋាន',
     ],
+
+    'custom_form_entry' => 'ទិន្នន័យទម្រង់',
+    'custom_form_entries' => 'ទិន្នន័យទម្រង់',
+    'form_entries' => 'ទិន្នន័យទម្រង់',
+    'list' => 'បញ្ជី',
+    'name' => 'ឈ្មោះ',
+    'created_at' => 'បានបង្កើតនៅ',
+    'updated_at' => 'បានធ្វើបច្ចុប្បន្នភាពនៅ',
+    'data' => 'ទិន្នន័យ',
+    'export_data' => 'នាំចេញទិន្នន័យ',
+    'create_form_entry' => 'បង្កើត :name',
+    'no_entries' => 'មិនមានទិន្នន័យ :name',
+    'yes' => 'បាទ/ចាស',
+    'no' => 'ទេ',
 ];
