@@ -1,6 +1,6 @@
 @source '../../../../vendor/bezhansalleh/filament-language-switch/';
 
-@import url('https://fonts.googleapis.com/css2?family=Battambang:wght@400;700;900&family=Inter:wght@400;500;600;700;800&family=Kantumruy+Pro:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Battambang:wght@100;300;400;700;900&display=swap');
 
 @import '/vendor/filament/filament/resources/css/theme.css';
 
@@ -11,7 +11,7 @@
 @source '../../../../app/Livewire//*';
 
 :root {
-    --font-sans: 'Kantumruy Pro', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-sans: 'Battambang', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 html,
@@ -31,18 +31,18 @@ body,
 .fi-input,
 .fi-select-input,
 .fi-textarea {
-    font-family: 'Kantumruy Pro', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+    font-family: 'Battambang', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
     letter-spacing: 0 !important;
 }
 
 .fi-logo,
 .fi-topbar,
 .fi-topbar * {
-    font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif !important;
+    font-family: 'Battambang', 'Inter', system-ui, sans-serif !important;
 }
 
 .fi-header-heading {
-    font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif !important;
+    font-family: 'Battambang', 'Inter', system-ui, sans-serif !important;
     font-size: 25px !important;
     line-height: 1.6 !important;
     font-weight: 700 !important;
@@ -51,20 +51,20 @@ body,
 
 .fi-breadcrumbs,
 .fi-breadcrumbs * {
-    font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif !important;
+    font-family: 'Battambang', 'Inter', system-ui, sans-serif !important;
     font-size: 13px !important;
     line-height: 1.7 !important;
 }
 
 .fi-sidebar-item-label {
-    font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif !important;
+    font-family: 'Battambang', 'Inter', system-ui, sans-serif !important;
     font-size: 14px !important;
     line-height: 1.7 !important;
     font-weight: 600 !important;
 }
 
 .fi-sidebar-group-label {
-    font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif !important;
+    font-family: 'Battambang', 'Inter', system-ui, sans-serif !important;
     font-size: 13px !important;
     line-height: 1.7 !important;
     font-weight: 600 !important;
@@ -72,7 +72,7 @@ body,
 
 .fi-fo-field-wrp-label,
 .fi-fo-field-wrp-label span {
-    font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif !important;
+    font-family: 'Battambang', 'Inter', system-ui, sans-serif !important;
     font-size: 14px !important;
     line-height: 1.8 !important;
     font-weight: 600 !important;
@@ -84,7 +84,7 @@ body,
 .fi-input-wrp input,
 .fi-input-wrp select,
 .fi-input-wrp textarea {
-    font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif !important;
+    font-family: 'Battambang', 'Inter', system-ui, sans-serif !important;
     font-size: 14px !important;
     line-height: 1.8 !important;
     font-weight: 400 !important;
@@ -92,7 +92,7 @@ body,
 
 .fi-btn,
 .fi-btn-label {
-    font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif !important;
+    font-family: 'Battambang', 'Inter', system-ui, sans-serif !important;
     font-size: 14px !important;
     line-height: 1.6 !important;
     font-weight: 600 !important;
@@ -102,7 +102,7 @@ body,
 .fi-ta-header-cell,
 .fi-ta-cell,
 .fi-ta-text {
-    font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif !important;
+    font-family: 'Battambang', 'Inter', system-ui, sans-serif !important;
     font-size: 14px !important;
     line-height: 1.8 !important;
 }
@@ -111,7 +111,7 @@ body,
 .fi-tabs *,
 .fi-fo-wizard,
 .fi-fo-wizard * {
-    font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif !important;
+    font-family: 'Battambang', 'Inter', system-ui, sans-serif !important;
 }
 
 .fi-fo-wizard-header-step-label {
@@ -122,7 +122,7 @@ body,
 
 [lang='km'],
 :lang(km) {
-    font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif !important;
+    font-family: 'Battambang', 'Inter', system-ui, sans-serif !important;
     letter-spacing: 0 !important;
 }
 
