@@ -118,31 +118,46 @@ class CustomFormEntriesTable
 
         if (is_string($data)) {
             $decoded = json_decode($data, true);
-
             $data = is_array($decoded) ? $decoded : [];
         }
 
-        $value = data_get($data, $fieldName);
-
-        if (blank($value)) {
+        if (! is_array($data)) {
             return '-';
         }
 
-        if (is_bool($value)) {
-            return $value ? __('app.yes') : __('app.no');
+        $possibleKeys = [
+            $fieldName,
+            str($fieldName)->snake()->toString(),
+            str($fieldName)->camel()->toString(),
+            str($fieldName)->title()->replace(' ', '_')->toString(),
+            str($fieldName)->title()->replace('_', ' ')->toString(),
+            ucfirst($fieldName),
+            strtoupper($fieldName),
+        ];
+
+        foreach ($possibleKeys as $key) {
+            $value = data_get($data, $key);
+
+            if (filled($value)) {
+                if (is_bool($value)) {
+                    return $value ? __('app.yes') : __('app.no');
+                }
+
+                if (is_array($value)) {
+                    return collect($value)
+                        ->filter(fn ($item): bool => filled($item))
+                        ->map(fn ($item): string => is_scalar($item)
+                            ? (string) $item
+                            : json_encode($item, JSON_UNESCAPED_UNICODE)
+                        )
+                        ->implode(', ');
+                }
+
+                return (string) $value;
+            }
         }
 
-        if (is_array($value)) {
-            return collect($value)
-                ->filter(fn ($item): bool => filled($item))
-                ->map(fn ($item): string => is_scalar($item)
-                    ? (string) $item
-                    : json_encode($item, JSON_UNESCAPED_UNICODE)
-                )
-                ->implode(', ');
-        }
-
-        return (string) $value;
+        return '-';
     }
 
     protected static function fieldName(object $field): string

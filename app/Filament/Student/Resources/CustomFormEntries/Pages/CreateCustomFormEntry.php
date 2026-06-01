@@ -21,6 +21,7 @@ class CreateCustomFormEntry extends CreateRecord
 
         return parent::getHeading();
     }
+
     public function getBreadcrumbs(): array
     {
         $breadcrumbs = [];
