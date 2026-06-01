@@ -85,7 +85,6 @@
             letter-spacing: -0.02em;
         }
 
-        /* 2. Update your Hero Card title ("Welcome back...") to exactly 32px */
         .hero-title {
             font-size: 32px !important;
             font-weight: 900;
