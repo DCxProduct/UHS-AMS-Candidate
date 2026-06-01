@@ -299,6 +299,9 @@ html.dark .uhs-brand-logo-en,
 }
 
 /* Form Buttons */
+.fi-main {
+    max-width: 100% !important;
+}
 form button[type="submit"].fi-btn,
 .fi-page .fi-btn.fi-color-primary,
 .fi-main button[type="submit"] {
