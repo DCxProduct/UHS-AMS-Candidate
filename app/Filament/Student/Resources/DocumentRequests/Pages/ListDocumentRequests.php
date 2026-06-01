@@ -26,7 +26,7 @@ class ListDocumentRequests extends ListRecords
             Action::make('requestDocument')
                 ->label(__('app.forms_nav.request-document'))
                 ->icon('heroicon-o-plus')
-                ->color('primary')
+                ->color('info')
                 ->url(DocumentRequestResource::getUrl('create')),
         ];
     }

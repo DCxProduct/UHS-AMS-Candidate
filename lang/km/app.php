@@ -341,4 +341,5 @@ return [
     'no_entries' => 'មិនមានទិន្នន័យ :name',
     'yes' => 'បាទ/ចាស',
     'no' => 'ទេ',
+    'please_input_data_before_save' => 'សូមបញ្ចូលទិន្នន័យមុនពេលរក្សាទុក។',
 ];

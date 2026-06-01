@@ -61,7 +61,7 @@ class CustomFormEntryForm
 
                         // Fetch only root fields, subsequent recursion will lazy load children or we can eager load if needed.
                         // Ideally we should eager load 'children' recursively but simplified for now:
-            
+
                         $rootFields = $customForm->fields()->roots()->get();
 
                         return self::getFields($rootFields);
@@ -100,12 +100,12 @@ class CustomFormEntryForm
                 // If children are sections, each section becomes a step
                 // If children are fields, group them all into a single step
                 $steps = [];
-                
+
                 // Check if children are sections/containers or actual fields
                 $hasContainers = $fieldModel->children->contains(function ($child) {
                     return in_array($child->type, ['section', 'fieldset', 'grid']);
                 });
-                
+
                 if ($hasContainers) {
                     // Children are sections/containers - each becomes a step
                     foreach ($fieldModel->children as $child) {
@@ -118,16 +118,16 @@ class CustomFormEntryForm
                     $stepFields = self::getFields($fieldModel->children);
                     $step = WizardStep::make($fieldModel->label)
                         ->schema($stepFields);
-                    
+
                     // Apply columns from wizard options
                     $wizardOpts = $fieldModel->options ?? [];
                     if (!empty($wizardOpts['columns'])) {
                         $step->columns($wizardOpts['columns']);
                     }
-                    
+
                     $steps[] = $step;
                 }
-                
+
                 $component = Wizard::make()
                     ->schema($steps);
             } elseif ($type === 'repeater') {

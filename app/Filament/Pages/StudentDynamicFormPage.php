@@ -113,18 +113,75 @@ class StudentDynamicFormPage extends Page implements HasForms
 
     public function save(): void
     {
+        $state = $this->getCleanState();
+
+        if (! $this->hasFormData($state)) {
+            Notification::make()
+                ->title(__('app.please_input_data_before_save'))
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        if (! $this->storeEntry($state)) {
+            return;
+        }
+
+        $this->resetFormState();
+
+        Notification::make()
+            ->title(__('app.saved_successfully'))
+            ->success()
+            ->send();
+
+        $this->redirect($this->listUrl(), navigate: true);
+    }
+
+    public function saveAndCreateAnother(): void
+    {
+        $state = $this->getCleanState();
+
+        if (! $this->hasFormData($state)) {
+            Notification::make()
+                ->title(__('app.please_input_data_before_save'))
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        if (! $this->storeEntry($state)) {
+            return;
+        }
+
+        $this->resetFormState();
+
+        Notification::make()
+            ->title(__('app.saved_successfully'))
+            ->success()
+            ->send();
+    }
+
+    protected function getCleanState(): array
+    {
         $state = array_merge(
             $this->data ?? [],
             $this->form->getState()
         );
 
+        return $this->cleanFormState($state);
+    }
+
+    protected function storeEntry(array $state): bool
+    {
         if (! DatabaseSchema::hasTable('custom_form_entries')) {
             Notification::make()
                 ->title('Table custom_form_entries not found.')
                 ->danger()
                 ->send();
 
-            return;
+            return false;
         }
 
         $columns = DatabaseSchema::getColumnListing('custom_form_entries');
@@ -145,16 +202,51 @@ class StudentDynamicFormPage extends Page implements HasForms
 
         DB::table('custom_form_entries')->insert($payload);
 
+        return true;
+    }
+
+    protected function resetFormState(): void
+    {
+        $this->activeSectionIndex = 0;
         $this->data = [];
-
         $this->form->fill([]);
+    }
 
-        Notification::make()
-            ->title(__('app.saved_successfully'))
-            ->success()
-            ->send();
+    protected function cleanFormState(array $state): array
+    {
+        return collect($state)
+            ->map(function ($value) {
+                if (is_string($value)) {
+                    return trim($value);
+                }
 
-        $this->redirect($this->listUrl(), navigate: true);
+                if (is_array($value)) {
+                    return $this->cleanFormState($value);
+                }
+
+                return $value;
+            })
+            ->filter(fn ($value): bool => filled($value))
+            ->all();
+    }
+
+    protected function hasFormData(array $state): bool
+    {
+        foreach ($state as $value) {
+            if (is_array($value)) {
+                if ($this->hasFormData($value)) {
+                    return true;
+                }
+
+                continue;
+            }
+
+            if (filled($value)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function listUrl(): string

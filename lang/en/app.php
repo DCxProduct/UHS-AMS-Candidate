@@ -341,6 +341,7 @@ return [
     'no_entries' => 'No :name Entries',
     'yes' => 'Yes',
     'no' => 'No',
+    'please_input_data_before_save' => 'Please input data before saving.',
 
 
 ];
