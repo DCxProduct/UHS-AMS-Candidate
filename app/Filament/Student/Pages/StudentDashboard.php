@@ -5,6 +5,7 @@ namespace App\Filament\Student\Pages;
 use BackedEnum;
 use Carbon\Carbon;
 use Filament\Pages\Dashboard as BaseDashboard;
+use Filament\Support\Enums\Width;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -709,5 +710,10 @@ class StudentDashboard extends BaseDashboard
         }
 
         return null;
+    }
+
+    public function getMaxContentWidth(): Width|string|null
+    {
+        return Width::Full;
     }
 }
