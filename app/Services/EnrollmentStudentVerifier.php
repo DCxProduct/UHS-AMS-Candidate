@@ -2,22 +2,20 @@
 
 namespace App\Services;
 
-use App\Models\UploadExcelStudent;
-use Carbon\Carbon;
+use App\Models\UploadExcelCandidate;
+use Illuminate\Support\Carbon;
 
 class EnrollmentStudentVerifier
 {
-    public function verify(string $academicYear, string $seatNumber, string $dateOfBirth): ?UploadExcelStudent
+    public function verify(string $academicYear, string $seatNumber, string $dateOfBirth): ?UploadExcelCandidate
     {
-        try {
-            $dateOfBirth = Carbon::parse($dateOfBirth)->format('Y-m-d');
-        } catch (\Throwable $e) {
-            return null;
-        }
+        $academicYear = trim($academicYear);
+        $seatNumber = trim($seatNumber);
+        $dateOfBirth = Carbon::parse($dateOfBirth)->format('Y-m-d');
 
-        return UploadExcelStudent::query()
-            ->where('academic_year', trim($academicYear))
-            ->where('seat_number', trim($seatNumber))
+        return UploadExcelCandidate::query()
+            ->where('academic_year', $academicYear)
+            ->where('seat_number', $seatNumber)
             ->whereDate('date_of_birth', $dateOfBirth)
             ->first();
     }
