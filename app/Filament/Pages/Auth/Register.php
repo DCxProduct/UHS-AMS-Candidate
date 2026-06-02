@@ -14,6 +14,7 @@ use Filament\Schemas\Schema;
 use Illuminate\Contracts\Support\Htmlable;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -318,39 +319,56 @@ class Register extends BaseRegister
             }
         }
 
-        $user = User::create([
-            'registration_type' => $registrationType,
+        return DB::transaction(function () use (
+            $registrationType,
+            $username,
+            $phone,
+            $email,
+            $dateOfBirth,
+            $academicYear,
+            $seatNumber,
+            $matchedStudent,
+            $data,
+        ): Model {
+            $user = User::query()->create([
+                'registration_type' => $registrationType,
 
-            'academic_year' => $registrationType === 'enrollment'
-                ? $academicYear
-                : null,
+                'academic_year' => $registrationType === 'enrollment'
+                    ? $academicYear
+                    : null,
 
-            'name' => $registrationType === 'enrollment'
-                ? $matchedStudent?->name
-                : $username,
+                'name' => $registrationType === 'enrollment'
+                    ? $matchedStudent?->name
+                    : $username,
 
-            'name_latin' => $registrationType === 'enrollment'
-                ? $matchedStudent?->name_latin
-                : null,
+                'name_latin' => $registrationType === 'enrollment'
+                    ? $matchedStudent?->name_latin
+                    : null,
 
-            'username' => $username,
-            'email' => $email,
-            'phone' => $phone,
-            'date_of_birth' => $dateOfBirth,
+                'username' => $username,
+                'email' => $email,
+                'phone' => $phone,
+                'date_of_birth' => $dateOfBirth,
 
-            'seat_number' => $registrationType === 'enrollment'
-                ? $seatNumber
-                : null,
+                'seat_number' => $registrationType === 'enrollment'
+                    ? $seatNumber
+                    : null,
 
-            'password' => Hash::make($data['password']),
-            'is_active' => true,
-        ]);
+                'password' => Hash::make($data['password']),
+                'email_verified_at' => now(),
+                'is_active' => true,
+            ]);
 
-        if (method_exists($user, 'assignRole')) {
-            $user->assignRole('Student');
-        }
+            if (method_exists($user, 'assignRole')) {
+                $user->assignRole('Student');
+            }
 
-        return $user;
+            if ($registrationType === 'enrollment' && $matchedStudent) {
+                $matchedStudent->delete();
+            }
+
+            return $user;
+        });
     }
 
     protected static function getAcademicYearOptions(): array
