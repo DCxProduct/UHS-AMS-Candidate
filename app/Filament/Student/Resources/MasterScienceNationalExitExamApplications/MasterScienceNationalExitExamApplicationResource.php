@@ -34,7 +34,7 @@ class MasterScienceNationalExitExamApplicationResource extends Resource
 
     protected static ?string $slug = 'master-science-national-exit-exam-applications';
 
-    protected static bool $shouldRegisterNavigation = true;
+    protected static bool $shouldRegisterNavigation = false;
 
     protected static ?string $recordTitleAttribute = 'name';
 

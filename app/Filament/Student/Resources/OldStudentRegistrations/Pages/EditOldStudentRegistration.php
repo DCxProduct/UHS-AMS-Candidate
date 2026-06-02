@@ -33,7 +33,21 @@ class EditOldStudentRegistration extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        $data['updated_by'] = auth()->id();
+        $userId = filament()->auth()->id() ?? auth()->id();
+
+        $data['updated_by'] = $userId;
+
+        if (blank($data['user_id'] ?? null)) {
+            $data['user_id'] = $this->record->user_id ?? $userId;
+        }
+
+        if (blank($data['created_by'] ?? null)) {
+            $data['created_by'] = $this->record->created_by ?? $userId;
+        }
+
+        if (! isset($data['extra_data']) || ! is_array($data['extra_data'])) {
+            $data['extra_data'] = [];
+        }
 
         return $data;
     }

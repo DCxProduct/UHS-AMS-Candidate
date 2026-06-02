@@ -34,7 +34,7 @@ class BachelorTransferApplicationResource extends Resource
 
     protected static ?string $slug = 'bachelor-transfer-applications';
 
-    protected static bool $shouldRegisterNavigation = true;
+    protected static bool $shouldRegisterNavigation = false;
 
     protected static ?string $recordTitleAttribute = 'full_name_kh';
 
