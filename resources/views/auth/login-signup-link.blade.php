@@ -1,9 +1,9 @@
 @php
-    $registerRoute = 'filament.admin.auth.register';
+    $registerRoute = 'filament.student.auth.register';
 
     $registerUrl = \Illuminate\Support\Facades\Route::has($registerRoute)
         ? route($registerRoute)
-        : url('/admin/register');
+        : url('/student/register');
 @endphp
 
 <style>
@@ -17,7 +17,7 @@
 
 <div style="margin-top: 1.25rem; text-align: center; font-size: 1rem;">
     <a
-        href="{{ route('admin.password.request') }}"
+        href="{{ route('student.password.request') }}"
         style="color: #f59e0b; font-weight: 800; text-decoration: none;"
     >
         {{ __('app.forgot_password') }}

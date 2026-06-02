@@ -79,8 +79,6 @@ class PasswordResetController extends Controller
                 'string',
                 'min:8',
                 'confirmed',
-
-                // English keyboard only, no Khmer, no space.
                 'regex:/^[!-~]+$/',
             ],
         ], [
