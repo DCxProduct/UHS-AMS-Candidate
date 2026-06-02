@@ -21,15 +21,13 @@ class CreateOldStudentRegistration extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        $userId = auth()->id();
+        $userId = filament()->auth()->id() ?? auth()->id();
 
         $data['user_id'] = $data['user_id'] ?? $userId;
         $data['created_by'] = $userId;
         $data['updated_by'] = $userId;
 
-        if (blank($data['status'] ?? null)) {
-            $data['status'] = 'draft';
-        }
+        $data['status'] = $data['status'] ?? 'draft';
 
         if (blank($data['registration_no'] ?? null)) {
             $data['registration_no'] = 'OSR-' . now()->format('YmdHis');

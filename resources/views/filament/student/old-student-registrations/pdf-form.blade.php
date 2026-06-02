@@ -45,6 +45,7 @@
     };
 
     $logoPath = public_path('images/UHS_logo.png');
+
     $logoUrl = $isPdfExport
         ? (file_exists($logoPath) ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath)) : '')
         : asset('images/UHS_logo.png');
@@ -83,7 +84,6 @@
     $isRegular = in_array($studentType, ['regular', 'បង់ថ្លៃ', 'fee'], true);
     $isScholarship = in_array($studentType, ['scholarship', 'អាហារូបករណ៍'], true);
 
-
     $t = function (string $key, ?string $default = null): string {
         $translationKey = 'old_student_registrations.pdf.' . $key;
         $translated = __($translationKey);
@@ -115,7 +115,7 @@
 
     .osr-wrap {
         width: 100%;
-        background: #f8fafc;
+        background: #f1f5f9;
         border: 1px solid #e5e7eb;
         padding: 18px;
         border-radius: 18px;
@@ -133,8 +133,8 @@
         padding: 24px 28px;
         position: relative;
         font-family: "KhmerOSBattambang", "Noto Sans Khmer", Arial, sans-serif !important;
-        font-size: 10.2px;
-        line-height: 1.18;
+        font-size: 10px;
+        line-height: 1.16;
     }
 
     .osr-page *,
@@ -144,7 +144,6 @@
         font-family: "KhmerOSBattambang", "Noto Sans Khmer", Arial, sans-serif !important;
     }
 
-    .osr-muol,
     .osr-title-kh {
         font-family: "KhmerOSMuolLight", "KhmerOSBattambang", serif !important;
         font-weight: 400 !important;
@@ -166,30 +165,66 @@
         margin-bottom: 10px;
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Header: Logo + UHS Text
+    |--------------------------------------------------------------------------
+    */
+
     .osr-header {
         display: grid;
-        grid-template-columns: 230px 1fr 116px;
+        grid-template-columns: 250px 1fr 116px;
         align-items: start;
         gap: 12px;
         min-height: 158px;
     }
 
+    .osr-brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 34px;
+    }
+
     .osr-logo {
-        width: 220px;
-        height: auto;
+        width: 78px;
+        height: 78px;
         object-fit: contain;
         display: block;
-        margin-top: 10px;
+        flex-shrink: 0;
+    }
+
+    .osr-brand-text {
+        line-height: 1.05;
+    }
+
+    .osr-brand-name {
+        font-family: Arial, Helvetica, sans-serif !important;
+        font-size: 54px;
+        font-weight: 800;
+        letter-spacing: -1px;
+        color: #2b83c6 !important;
+        line-height: .9;
+    }
+
+    .osr-brand-sub {
+        font-family: Arial, Helvetica, sans-serif !important;
+        font-size: 11.5px;
+        font-weight: 600;
+        color: #2b83c6 !important;
+        margin-top: 3px;
+        white-space: nowrap;
     }
 
     .osr-title-box {
         text-align: center;
-        padding-top: 58px;
+        padding-top: 72px;
     }
 
     .osr-title-kh {
-        font-size: 21px;
-        line-height: 1.35;
+        font-size: 22px;
+        line-height: 1.3;
+        color: #111 !important;
     }
 
     .osr-title-en {
@@ -197,18 +232,20 @@
         font-size: 15px;
         font-weight: 700;
         margin-top: 3px;
+        color: #111 !important;
     }
 
     .osr-divider {
         font-size: 8px;
         margin-top: 5px;
         letter-spacing: 1px;
+        color: #111 !important;
     }
 
     .osr-photo {
         width: 106px;
         height: 145px;
-        border: 1px solid #9aa2a6;
+        border: 1px solid #888;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -232,6 +269,7 @@
         border-collapse: collapse;
         table-layout: fixed;
         border: 1.15px solid #111;
+        background: #fff;
     }
 
     .osr-table td,
@@ -240,8 +278,9 @@
         padding: 2px 4px;
         height: 30px;
         vertical-align: middle;
-        font-size: 9.6px;
-        line-height: 1.1;
+        font-size: 9.5px;
+        line-height: 1.08;
+        color: #111 !important;
     }
 
     .osr-main-table {
@@ -252,16 +291,12 @@
         text-align: center;
     }
 
-    .osr-bold {
-        font-weight: 700;
-    }
-
     .osr-en {
         display: block;
         font-family: Arial, sans-serif !important;
-        font-size: 7px;
+        font-size: 6.8px;
         line-height: 1.05;
-        color: #111;
+        color: #111 !important;
     }
 
     .osr-input {
@@ -296,12 +331,14 @@
         outline: none;
         background-image: linear-gradient(to right, transparent 0, transparent 27px, #111 28px);
         background-size: 28px 100%;
-        background-color: transparent;
+        background-color: transparent !important;
         letter-spacing: 11px;
         padding-left: 8px;
         font-family: "Courier New", monospace !important;
         font-size: 14px;
         text-transform: uppercase;
+        color: #111 !important;
+        -webkit-text-fill-color: #111 !important;
     }
 
     .osr-date-input {
@@ -311,11 +348,13 @@
         outline: none;
         background-image: linear-gradient(to right, transparent 0, transparent 26px, #111 27px);
         background-size: 27px 100%;
-        background-color: transparent;
+        background-color: transparent !important;
         letter-spacing: 10px;
         padding-left: 8px;
         font-family: "Courier New", monospace !important;
         font-size: 13px;
+        color: #111 !important;
+        -webkit-text-fill-color: #111 !important;
     }
 
     .osr-check {
@@ -324,7 +363,7 @@
         width: 12px;
         height: 12px;
         border: 1px solid #111;
-        background: #fff;
+        background: #fff !important;
         display: inline-block;
         vertical-align: middle;
         position: relative;
@@ -338,10 +377,11 @@
         top: -8px;
         font-size: 16px;
         font-weight: 900;
+        color: #111;
     }
 
     .osr-blue-row td {
-        background: #def4f4;
+        background: #def4f4 !important;
     }
 
     .osr-note {
@@ -350,13 +390,13 @@
         min-height: 52px;
         padding: 8px 10px;
         text-align: justify;
-        font-size: 10.6px;
-        line-height: 1.55;
+        font-size: 10.4px;
+        line-height: 1.5;
     }
 
     .osr-note-small {
         margin-top: 3px;
-        font-size: 8.6px;
+        font-size: 8.5px;
         line-height: 1.45;
         text-align: justify;
         font-style: italic;
@@ -369,7 +409,7 @@
         margin-top: 25px;
         text-align: center;
         line-height: 1.7;
-        font-size: 10.8px;
+        font-size: 10.6px;
     }
 
     .osr-line-fixed {
@@ -387,23 +427,15 @@
         bottom: 28px;
         border-top: 1px solid #111;
         padding-top: 4px;
-        color: #1683c7;
+        color: #1683c7 !important;
         font-size: 8px;
         line-height: 1.3;
     }
 
-
-
     /*
     |--------------------------------------------------------------------------
-    | Dark Mode / Light Mode Preview - Same Style as document-requests
+    | Dark Mode Fix
     |--------------------------------------------------------------------------
-    | Light mode  = wrapper ពណ៌ប្រផេះស្រាល
-    | Dark mode   = wrapper ខ្មៅ
-    | Paper form  = នៅតែស
-    | Text/line   = នៅតែខ្មៅ
-    | Input       = មិនប្តូរទៅពណ៌ dark
-    | Checkbox    = នៅស្អាតក្នុង dark mode
     */
 
     html.dark .osr-wrap,
@@ -429,31 +461,23 @@
         border-color: #111111 !important;
     }
 
+    html.dark .osr-page .osr-brand-name,
+    body.dark .osr-page .osr-brand-name,
+    .dark .osr-page .osr-brand-name,
+    html.dark .osr-page .osr-brand-sub,
+    body.dark .osr-page .osr-brand-sub,
+    .dark .osr-page .osr-brand-sub {
+        color: #2b83c6 !important;
+    }
+
     html.dark .osr-page input,
-    html.dark .osr-page textarea,
-    html.dark .osr-page select,
     body.dark .osr-page input,
-    body.dark .osr-page textarea,
-    body.dark .osr-page select,
-    .dark .osr-page input,
-    .dark .osr-page textarea,
-    .dark .osr-page select {
+    .dark .osr-page input {
         background-color: transparent !important;
         color: #111111 !important;
         -webkit-text-fill-color: #111111 !important;
         border-color: #111111 !important;
         box-shadow: none !important;
-    }
-
-    html.dark .osr-page .osr-box-input,
-    html.dark .osr-page .osr-date-input,
-    body.dark .osr-page .osr-box-input,
-    body.dark .osr-page .osr-date-input,
-    .dark .osr-page .osr-box-input,
-    .dark .osr-page .osr-date-input {
-        background-color: transparent !important;
-        color: #111111 !important;
-        -webkit-text-fill-color: #111111 !important;
     }
 
     html.dark .osr-page input[type="checkbox"],
@@ -468,16 +492,6 @@
         -webkit-text-fill-color: initial !important;
     }
 
-    html.dark .osr-page input[type="checkbox"]:checked::after,
-    html.dark .osr-page input[type="radio"]:checked::after,
-    body.dark .osr-page input[type="checkbox"]:checked::after,
-    body.dark .osr-page input[type="radio"]:checked::after,
-    .dark .osr-page input[type="checkbox"]:checked::after,
-    .dark .osr-page input[type="radio"]:checked::after {
-        color: #111111 !important;
-        -webkit-text-fill-color: #111111 !important;
-    }
-
     html.dark .osr-page .osr-blue-row td,
     body.dark .osr-page .osr-blue-row td,
     .dark .osr-page .osr-blue-row td {
@@ -485,19 +499,12 @@
         color: #111111 !important;
     }
 
-    html.dark .osr-page .osr-photo,
-    body.dark .osr-page .osr-photo,
-    .dark .osr-page .osr-photo {
-        background: #ffffff !important;
-        color: #111111 !important;
-        border-color: #111111 !important;
-    }
-
     @media print {
         .osr-wrap {
             padding: 0;
             background: #fff;
             border-radius: 0;
+            border: 0;
         }
 
         .osr-page {
@@ -525,6 +532,7 @@
             width: 210mm !important;
             padding: 0 !important;
             background: #fff !important;
+            border: 0 !important;
             border-radius: 0 !important;
             overflow: visible !important;
         }
@@ -551,9 +559,16 @@
 
         <div class="osr-header">
             <div>
-                @if ($logoUrl)
-                    <img src="{{ $logoUrl }}" class="osr-logo" alt="UHS Logo">
-                @endif
+                <div class="osr-brand">
+                    @if ($logoUrl)
+                        <img src="{{ $logoUrl }}" class="osr-logo" alt="UHS Logo">
+                    @endif
+
+                    <div class="osr-brand-text">
+                        <div class="osr-brand-name">UHS</div>
+                        <div class="osr-brand-sub">University of Health Sciences</div>
+                    </div>
+                </div>
             </div>
 
             <div class="osr-title-box">
@@ -593,7 +608,7 @@
                     <span class="osr-en">{{ $t('student_id_en') }}</span>
                 </td>
                 <td colspan="8">
-                    <input class="osr-box-input" type="text" maxlength="10" wire:model.blur="data.student_id">
+                    <input class="osr-box-input" type="text" maxlength="10" value="{{ $v('student_id') }}" wire:model.blur="data.student_id">
                 </td>
                 <td colspan="3">
                     {{ $t('sex') }}៖
@@ -606,15 +621,15 @@
             <tr>
                 <td colspan="5">
                     {{ $t('khmer_name') }} {{ $t('family_name_kh') }}
-                    <input class="osr-input" type="text" wire:model.blur="data.khmer_name">
+                    <input class="osr-input" type="text" value="{{ $v('khmer_name') }}" wire:model.blur="data.khmer_name">
                 </td>
                 <td colspan="4">
                     {{ $t('first_name_kh') }}
-                    <input class="osr-input" type="text" wire:model.blur="data.first_name">
+                    <input class="osr-input" type="text" value="{{ $v('first_name') }}" wire:model.blur="data.first_name">
                 </td>
                 <td colspan="3">
                     {{ $t('full_name_kh') }}
-                    <input class="osr-input" type="text" wire:model.blur="data.khmer_name">
+                    <input class="osr-input" type="text" value="{{ $v('khmer_name') }}" wire:model.blur="data.khmer_name">
                 </td>
             </tr>
 
@@ -622,11 +637,11 @@
                 <td colspan="5">
                     {{ $t('english_name') }}
                     <span class="osr-en">({{ $t('block_letter') }})</span>
-                    <input class="osr-input" type="text" wire:model.blur="data.family_name">
+                    <input class="osr-input" type="text" value="{{ $v('family_name') }}" wire:model.blur="data.family_name">
                     <span class="osr-en">{{ $t('family_name_en') }}</span>
                 </td>
                 <td colspan="7">
-                    <input class="osr-input" type="text" wire:model.blur="data.first_name">
+                    <input class="osr-input" type="text" value="{{ $v('first_name') }}" wire:model.blur="data.first_name">
                     <span class="osr-en">{{ $t('first_name_en') }}</span>
                 </td>
             </tr>
@@ -641,12 +656,12 @@
                 </td>
                 <td colspan="3">
                     {{ $t('nationality') }}៖
-                    <input class="osr-input" type="text" wire:model.blur="data.nationality">
+                    <input class="osr-input" type="text" value="{{ $v('nationality') }}" wire:model.blur="data.nationality">
                     <span class="osr-en">{{ $t('nationality_en') }}</span>
                 </td>
                 <td colspan="3">
                     {{ $t('religion') }}៖
-                    <input class="osr-input" type="text" wire:model.blur="data.religion">
+                    <input class="osr-input" type="text" value="{{ $v('religion') }}" wire:model.blur="data.religion">
                     <span class="osr-en">{{ $t('religion_en') }}</span>
                 </td>
             </tr>
@@ -657,7 +672,7 @@
                     <span class="osr-en">{{ $t('place_of_birth_en') }}</span>
                 </td>
                 <td colspan="6">
-                    <input class="osr-input-no-line" type="text" wire:model.blur="data.place_of_birth">
+                    <input class="osr-input-no-line" type="text" value="{{ $v('place_of_birth') }}" wire:model.blur="data.place_of_birth">
                 </td>
                 <td colspan="5">
                     {{ $t('marital_status') }}៖
@@ -673,11 +688,11 @@
                     <span class="osr-en">{{ $t('current_job_en') }}</span>
                 </td>
                 <td colspan="5">
-                    <input class="osr-input-no-line" type="text" wire:model.blur="data.current_job">
+                    <input class="osr-input-no-line" type="text" value="{{ $v('current_job') }}" wire:model.blur="data.current_job">
                 </td>
                 <td colspan="6">
                     {{ $t('institution') }}
-                    <input class="osr-input" type="text" wire:model.blur="data.institution">
+                    <input class="osr-input" type="text" value="{{ $v('institution') }}" wire:model.blur="data.institution">
                     <span class="osr-en">{{ $t('institution_en') }}</span>
                 </td>
             </tr>
@@ -686,7 +701,7 @@
                 <td colspan="7">
                     {{ $t('register_for_course') }}
                     <span class="osr-en">{{ $t('register_for_course_en') }}</span>
-                    <input class="osr-input-no-line" type="text" wire:model.blur="data.workshop_course">
+                    <input class="osr-input-no-line" type="text" value="{{ $v('workshop_course') }}" wire:model.blur="data.workshop_course">
                 </td>
                 <td colspan="2" class="osr-center">
                     {{ $t('student_type') }}៖
@@ -715,47 +730,55 @@
 
             <tr>
                 <td>{{ $t('permanent_address') }}<span class="osr-en">{{ $t('permanent_address_en') }}</span></td>
-                <td>{{ $t('house_no') }}<input class="osr-input" type="text" wire:model.blur="data.permanent_no"><span class="osr-en">{{ $t('house_no_en') }}</span></td>
-                <td>{{ $t('street') }}<input class="osr-input" type="text" wire:model.blur="data.permanent_street"><span class="osr-en">{{ $t('street_en') }}</span></td>
-                <td>{{ $t('sangkat') }}<input class="osr-input" type="text" wire:model.blur="data.permanent_sangkat"><span class="osr-en">{{ $t('sangkat_en') }}</span></td>
-                <td>{{ $t('khan_district') }}<input class="osr-input" type="text" wire:model.blur="data.permanent_khan_district"><span class="osr-en">{{ $t('khan_district_en') }}</span></td>
-                <td>{{ $t('city_state_country') }}<input class="osr-input" type="text" wire:model.blur="data.permanent_city_state_country"><span class="osr-en">{{ $t('city_state_country_en') }}</span></td>
+                <td>{{ $t('house_no') }}<input class="osr-input" type="text" value="{{ $v('permanent_no') }}" wire:model.blur="data.permanent_no"><span class="osr-en">{{ $t('house_no_en') }}</span></td>
+                <td>{{ $t('street') }}<input class="osr-input" type="text" value="{{ $v('permanent_street') }}" wire:model.blur="data.permanent_street"><span class="osr-en">{{ $t('street_en') }}</span></td>
+                <td>{{ $t('sangkat') }}<input class="osr-input" type="text" value="{{ $v('permanent_sangkat') }}" wire:model.blur="data.permanent_sangkat"><span class="osr-en">{{ $t('sangkat_en') }}</span></td>
+                <td>{{ $t('khan_district') }}<input class="osr-input" type="text" value="{{ $v('permanent_khan_district') }}" wire:model.blur="data.permanent_khan_district"><span class="osr-en">{{ $t('khan_district_en') }}</span></td>
+                <td>{{ $t('city_state_country') }}<input class="osr-input" type="text" value="{{ $v('permanent_city_state_country') }}" wire:model.blur="data.permanent_city_state_country"><span class="osr-en">{{ $t('city_state_country_en') }}</span></td>
             </tr>
 
             <tr>
                 <td>{{ $t('current_address') }}<span class="osr-en">{{ $t('current_address_en') }}</span></td>
-                <td>{{ $t('house_no') }}<input class="osr-input" type="text" wire:model.blur="data.current_no"><span class="osr-en">{{ $t('house_no_en') }}</span></td>
-                <td>{{ $t('street') }}<input class="osr-input" type="text" wire:model.blur="data.current_street"><span class="osr-en">{{ $t('street_en') }}</span></td>
-                <td>{{ $t('sangkat') }}<input class="osr-input" type="text" wire:model.blur="data.current_sangkat"><span class="osr-en">{{ $t('sangkat_en') }}</span></td>
-                <td>{{ $t('khan_district') }}<input class="osr-input" type="text" wire:model.blur="data.current_khan_district"><span class="osr-en">{{ $t('khan_district_en') }}</span></td>
-                <td>{{ $t('city_country') }}<input class="osr-input" type="text" wire:model.blur="data.current_city_country"><span class="osr-en">{{ $t('city_country_en') }}</span></td>
+                <td>{{ $t('house_no') }}<input class="osr-input" type="text" value="{{ $v('current_no') }}" wire:model.blur="data.current_no"><span class="osr-en">{{ $t('house_no_en') }}</span></td>
+                <td>{{ $t('street') }}<input class="osr-input" type="text" value="{{ $v('current_street') }}" wire:model.blur="data.current_street"><span class="osr-en">{{ $t('street_en') }}</span></td>
+                <td>{{ $t('sangkat') }}<input class="osr-input" type="text" value="{{ $v('current_sangkat') }}" wire:model.blur="data.current_sangkat"><span class="osr-en">{{ $t('sangkat_en') }}</span></td>
+                <td>{{ $t('khan_district') }}<input class="osr-input" type="text" value="{{ $v('current_khan_district') }}" wire:model.blur="data.current_khan_district"><span class="osr-en">{{ $t('khan_district_en') }}</span></td>
+                <td>{{ $t('city_country') }}<input class="osr-input" type="text" value="{{ $v('current_city_country') }}" wire:model.blur="data.current_city_country"><span class="osr-en">{{ $t('city_country_en') }}</span></td>
             </tr>
 
             <tr>
-                <td colspan="3">{{ $t('phone_no') }}<input class="osr-input" type="text" wire:model.blur="data.phone_no"><span class="osr-en">{{ $t('phone_no_en') }}</span></td>
-                <td colspan="3">{{ $t('email') }}<input class="osr-input" type="email" wire:model.blur="data.email"><span class="osr-en">{{ $t('email_en') }}</span></td>
+                <td colspan="3">
+                    {{ $t('phone_no') }}
+                    <input class="osr-input" type="text" value="{{ $v('phone_no') }}" wire:model.blur="data.phone_no">
+                    <span class="osr-en">{{ $t('phone_no_en') }}</span>
+                </td>
+                <td colspan="3">
+                    {{ $t('email') }}
+                    <input class="osr-input" type="email" value="{{ $v('email') }}" wire:model.blur="data.email">
+                    <span class="osr-en">{{ $t('email_en') }}</span>
+                </td>
             </tr>
 
             <tr>
-                <td colspan="2">{{ $t('father_name') }}៖<input class="osr-input" type="text" wire:model.blur="data.father_name"><span class="osr-en">{{ $t('father_name_en') }}</span></td>
-                <td>{{ $t('year_of_birth') }}៖<input class="osr-input" type="text" wire:model.blur="data.father_year_of_birth"><span class="osr-en">{{ $t('year_of_birth_en') }}</span></td>
-                <td>{{ $t('alive_dead') }}៖<input class="osr-input" type="text" wire:model.blur="data.extra_data.father_status"><span class="osr-en">{{ $t('alive_dead_en') }}</span></td>
-                <td colspan="2">{{ $t('occupation') }}៖<input class="osr-input" type="text" wire:model.blur="data.father_occupation"><span class="osr-en">{{ $t('occupation_en') }}</span></td>
+                <td colspan="2">{{ $t('father_name') }}៖<input class="osr-input" type="text" value="{{ $v('father_name') }}" wire:model.blur="data.father_name"><span class="osr-en">{{ $t('father_name_en') }}</span></td>
+                <td>{{ $t('year_of_birth') }}៖<input class="osr-input" type="text" value="{{ $v('father_year_of_birth') }}" wire:model.blur="data.father_year_of_birth"><span class="osr-en">{{ $t('year_of_birth_en') }}</span></td>
+                <td>{{ $t('alive_dead') }}៖<input class="osr-input" type="text" value="{{ $v('extra_data.father_status') }}" wire:model.blur="data.extra_data.father_status"><span class="osr-en">{{ $t('alive_dead_en') }}</span></td>
+                <td colspan="2">{{ $t('occupation') }}៖<input class="osr-input" type="text" value="{{ $v('father_occupation') }}" wire:model.blur="data.father_occupation"><span class="osr-en">{{ $t('occupation_en') }}</span></td>
             </tr>
 
             <tr>
-                <td colspan="2">{{ $t('mother_name') }}៖<input class="osr-input" type="text" wire:model.blur="data.mother_name"><span class="osr-en">{{ $t('mother_name_en') }}</span></td>
-                <td>{{ $t('year_of_birth') }}៖<input class="osr-input" type="text" wire:model.blur="data.mother_year_of_birth"><span class="osr-en">{{ $t('year_of_birth_en') }}</span></td>
-                <td>{{ $t('alive_dead') }}៖<input class="osr-input" type="text" wire:model.blur="data.extra_data.mother_status"><span class="osr-en">{{ $t('alive_dead_en') }}</span></td>
-                <td colspan="2">{{ $t('occupation') }}៖<input class="osr-input" type="text" wire:model.blur="data.mother_occupation"><span class="osr-en">{{ $t('occupation_en') }}</span></td>
+                <td colspan="2">{{ $t('mother_name') }}៖<input class="osr-input" type="text" value="{{ $v('mother_name') }}" wire:model.blur="data.mother_name"><span class="osr-en">{{ $t('mother_name_en') }}</span></td>
+                <td>{{ $t('year_of_birth') }}៖<input class="osr-input" type="text" value="{{ $v('mother_year_of_birth') }}" wire:model.blur="data.mother_year_of_birth"><span class="osr-en">{{ $t('year_of_birth_en') }}</span></td>
+                <td>{{ $t('alive_dead') }}៖<input class="osr-input" type="text" value="{{ $v('extra_data.mother_status') }}" wire:model.blur="data.extra_data.mother_status"><span class="osr-en">{{ $t('alive_dead_en') }}</span></td>
+                <td colspan="2">{{ $t('occupation') }}៖<input class="osr-input" type="text" value="{{ $v('mother_occupation') }}" wire:model.blur="data.mother_occupation"><span class="osr-en">{{ $t('occupation_en') }}</span></td>
             </tr>
 
             <tr>
                 <td colspan="6" style="height: 48px;">
                     {{ $t('contact_person_contact_no') }}
-                    <input class="osr-input" type="text" wire:model.blur="data.contact_person">
+                    <input class="osr-input" type="text" value="{{ $v('contact_person') }}" wire:model.blur="data.contact_person">
                     <span class="osr-en">{{ $t('contact_person_contact_no_en') }}</span>
-                    <input class="osr-input" type="text" wire:model.blur="data.contact_no">
+                    <input class="osr-input" type="text" value="{{ $v('contact_no') }}" wire:model.blur="data.contact_no">
                 </td>
             </tr>
         </table>

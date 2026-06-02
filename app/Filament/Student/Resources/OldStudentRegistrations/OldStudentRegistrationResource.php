@@ -34,7 +34,7 @@ class OldStudentRegistrationResource extends Resource
 
     protected static ?string $slug = 'old-student-registrations';
 
-    protected static bool $shouldRegisterNavigation = true;
+    protected static bool $shouldRegisterNavigation = false;
 
     protected static ?string $recordTitleAttribute = 'khmer_name';
 
