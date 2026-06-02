@@ -219,20 +219,10 @@ class AdminPanelProvider extends PanelProvider
                         ->group(fn (): string => __('app.student_application'))
                         ->icon($this->getDynamicFormIcon($slug))
                         ->sort($this->getFormSortNumber($form))
-
-                        /*
-                        |--------------------------------------------------------------------------
-                        | Important fix
-                        |--------------------------------------------------------------------------
-                        | Do not use CustomFormEntryResource::getUrl() here.
-                        | Resource::getUrl() can fail during composer dump-autoload because
-                        | the Filament default panel is not fully booted yet.
-                        */
-                        ->url(url('/admin/student-form-entries?custom_form_id=' . $formId))
-
+                        ->url(url('/student/custom-form-entries?tableFilters[custom_form_id][value]=' . $formId))
                         ->isActiveWhen(
-                            fn (): bool => request()->is('admin/student-form-entries*')
-                                && (int) request()->query('custom_form_id') === $formId
+                            fn (): bool => request()->is('student/custom-form-entries*')
+                                && (int) data_get(request()->query('tableFilters'), 'custom_form_id.value') === $formId
                         );
                 })
                 ->values()
