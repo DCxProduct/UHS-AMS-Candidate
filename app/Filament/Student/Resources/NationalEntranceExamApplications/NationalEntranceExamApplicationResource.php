@@ -5,12 +5,14 @@ namespace App\Filament\Student\Resources\NationalEntranceExamApplications;
 use App\Filament\Student\Resources\NationalEntranceExamApplications\Pages\CreateNationalEntranceExamApplication;
 use App\Filament\Student\Resources\NationalEntranceExamApplications\Pages\EditNationalEntranceExamApplication;
 use App\Filament\Student\Resources\NationalEntranceExamApplications\Pages\ListNationalEntranceExamApplications;
+use App\Filament\Student\Resources\NationalEntranceExamApplications\Pages\ViewNationalEntranceExamApplication;
 use App\Models\NationalEntranceExamApplication;
 use BackedEnum;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Filament\Forms\Components\Hidden as HiddenField;
 use Filament\Forms\Components\Select;
 use Filament\Resources\Resource;
@@ -29,7 +31,7 @@ class NationalEntranceExamApplicationResource extends Resource
 {
     protected static ?string $model = NationalEntranceExamApplication::class;
 
-    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-academic-cap';
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-document-text';
 
     protected static ?int $navigationSort = 51;
 
@@ -41,22 +43,22 @@ class NationalEntranceExamApplicationResource extends Resource
 
     public static function getNavigationLabel(): string
     {
-        return 'ពាក្យប្រឡងថ្នាក់ជាតិ';
+        return __('national_entrance_exam_applications.navigation_label');
     }
 
     public static function getNavigationGroup(): ?string
     {
-        return __('app.student_application');
+        return __('national_entrance_exam_applications.navigation_group');
     }
 
     public static function getModelLabel(): string
     {
-        return 'ពាក្យប្រឡងថ្នាក់ជាតិ';
+        return __('national_entrance_exam_applications.model_label');
     }
 
     public static function getPluralModelLabel(): string
     {
-        return 'ពាក្យប្រឡងថ្នាក់ជាតិ';
+        return __('national_entrance_exam_applications.plural_model_label');
     }
 
     public static function canViewAny(): bool
@@ -104,7 +106,7 @@ class NationalEntranceExamApplicationResource extends Resource
         return $schema
             ->columns(1)
             ->components([
-                Section::make('ទម្រង់ពាក្យប្រឡងថ្នាក់ជាតិ')
+                Section::make(__('national_entrance_exam_applications.form.section_title'))
                     ->schema([
                         /*
                         |--------------------------------------------------------------------------
@@ -126,8 +128,8 @@ class NationalEntranceExamApplicationResource extends Resource
                         HiddenField::make('gender'),
                         HiddenField::make('date_of_birth'),
                         HiddenField::make('age'),
-                        HiddenField::make('nationality')->default('ខ្មែរ'),
-                        HiddenField::make('citizenship')->default('ខ្មែរ'),
+                        HiddenField::make('nationality')->default(__('national_entrance_exam_applications.defaults.khmer')),
+                        HiddenField::make('citizenship')->default(__('national_entrance_exam_applications.defaults.khmer')),
 
                         HiddenField::make('birth_village'),
                         HiddenField::make('birth_commune'),
@@ -263,29 +265,29 @@ class NationalEntranceExamApplicationResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('row_number')
-                    ->label('No')
+                    ->label(__('national_entrance_exam_applications.columns.no'))
                     ->rowIndex()
                     ->alignCenter()
                     ->width('60px'),
 
                 TextColumn::make('name')
-                    ->label('ឈ្មោះខ្មែរ')
+                    ->label(__('national_entrance_exam_applications.columns.name'))
                     ->placeholder('-')
                     ->searchable()
                     ->sortable(),
 
                 TextColumn::make('latin_name')
-                    ->label('ឈ្មោះឡាតាំង')
+                    ->label(__('national_entrance_exam_applications.columns.latin_name'))
                     ->placeholder('-')
                     ->searchable()
                     ->toggleable(),
 
                 TextColumn::make('gender')
-                    ->label('ភេទ')
+                    ->label(__('national_entrance_exam_applications.columns.gender'))
                     ->badge()
                     ->formatStateUsing(fn (?string $state): string => match ($state) {
-                        'male', 'ប្រុស' => 'ប្រុស',
-                        'female', 'ស្រី' => 'ស្រី',
+                        'male', 'ប្រុស' => __('national_entrance_exam_applications.options.gender.male'),
+                        'female', 'ស្រី' => __('national_entrance_exam_applications.options.gender.female'),
                         default => '-',
                     })
                     ->color(fn (?string $state): string => match ($state) {
@@ -295,33 +297,33 @@ class NationalEntranceExamApplicationResource extends Resource
                     }),
 
                 TextColumn::make('phone')
-                    ->label('លេខទូរស័ព្ទ')
+                    ->label(__('national_entrance_exam_applications.columns.phone'))
                     ->placeholder('-')
                     ->searchable()
                     ->toggleable(),
 
                 TextColumn::make('academic_year')
-                    ->label('ឆ្នាំសិក្សា')
+                    ->label(__('national_entrance_exam_applications.columns.academic_year'))
                     ->placeholder('-')
                     ->searchable()
                     ->sortable(),
 
                 TextColumn::make('exam_year')
-                    ->label('ឆ្នាំប្រឡង')
+                    ->label(__('national_entrance_exam_applications.columns.exam_year'))
                     ->placeholder('-')
                     ->searchable()
                     ->sortable()
                     ->toggleable(),
 
                 TextColumn::make('status')
-                    ->label('ស្ថានភាព')
+                    ->label(__('national_entrance_exam_applications.columns.status'))
                     ->badge()
                     ->formatStateUsing(fn (?string $state): string => match ($state) {
-                        'pending' => 'រង់ចាំ',
-                        'submitted' => 'បានដាក់ពាក្យ',
-                        'reviewing' => 'កំពុងពិនិត្យ',
-                        'approved' => 'អនុម័ត',
-                        'rejected' => 'បដិសេធ',
+                        'pending' => __('national_entrance_exam_applications.options.status.pending'),
+                        'submitted' => __('national_entrance_exam_applications.options.status.submitted'),
+                        'reviewing' => __('national_entrance_exam_applications.options.status.reviewing'),
+                        'approved' => __('national_entrance_exam_applications.options.status.approved'),
+                        'rejected' => __('national_entrance_exam_applications.options.status.rejected'),
                         default => '-',
                     })
                     ->color(fn (?string $state): string => match ($state) {
@@ -335,43 +337,41 @@ class NationalEntranceExamApplicationResource extends Resource
                     ->sortable(),
 
                 TextColumn::make('created_at')
-                    ->label('ថ្ងៃបង្កើត')
+                    ->label(__('national_entrance_exam_applications.columns.created_at'))
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
 
                 TextColumn::make('updated_at')
-                    ->label('ថ្ងៃកែប្រែ')
+                    ->label(__('national_entrance_exam_applications.columns.updated_at'))
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 SelectFilter::make('status')
-                    ->label('ស្ថានភាព')
-                    ->options([
-                        'pending' => 'រង់ចាំ',
-                        'submitted' => 'បានដាក់ពាក្យ',
-                        'reviewing' => 'កំពុងពិនិត្យ',
-                        'approved' => 'អនុម័ត',
-                        'rejected' => 'បដិសេធ',
-                    ]),
+                    ->label(__('national_entrance_exam_applications.filters.status'))
+                    ->options(__('national_entrance_exam_applications.options.status')),
             ])
             ->recordActions([
+                ViewAction::make()
+                    ->label(__('national_entrance_exam_applications.actions.view'))
+                    ->icon('heroicon-o-eye'),
+
                 EditAction::make()
-                    ->label('កែប្រែ')
+                    ->label(__('national_entrance_exam_applications.actions.edit'))
                     ->icon('heroicon-o-pencil-square'),
 
                 DeleteAction::make()
-                    ->label('លុប')
+                    ->label(__('national_entrance_exam_applications.actions.delete'))
                     ->icon('heroicon-o-trash')
                     ->color('danger')
-                    ->modalHeading('លុបពាក្យប្រឡងថ្នាក់ជាតិ')
-                    ->modalDescription('តើអ្នកពិតជាចង់លុបទិន្នន័យនេះមែនទេ?')
-                    ->modalSubmitActionLabel('លុប'),
+                    ->modalHeading(__('national_entrance_exam_applications.modal.delete_heading'))
+                    ->modalDescription(__('national_entrance_exam_applications.modal.delete_description'))
+                    ->modalSubmitActionLabel(__('national_entrance_exam_applications.modal.delete_submit')),
             ])
             ->defaultSort('created_at', 'desc')
-            ->emptyStateHeading('មិនទាន់មានពាក្យប្រឡងថ្នាក់ជាតិ')
-            ->emptyStateDescription('សូមចុចប៊ូតុងបង្កើត ដើម្បីបញ្ចូលពាក្យថ្មី។');
+            ->emptyStateHeading(__('national_entrance_exam_applications.empty.heading'))
+            ->emptyStateDescription(__('national_entrance_exam_applications.empty.description'));
     }
 
     public static function getPages(): array
@@ -379,6 +379,7 @@ class NationalEntranceExamApplicationResource extends Resource
         return [
             'index' => ListNationalEntranceExamApplications::route('/'),
             'create' => CreateNationalEntranceExamApplication::route('/create'),
+            'view' => ViewNationalEntranceExamApplication::route('/{record}'),
             'edit' => EditNationalEntranceExamApplication::route('/{record}/edit'),
         ];
     }

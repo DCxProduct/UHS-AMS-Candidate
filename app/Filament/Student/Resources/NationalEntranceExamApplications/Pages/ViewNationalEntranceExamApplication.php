@@ -10,10 +10,26 @@ class ViewNationalEntranceExamApplication extends ViewRecord
 {
     protected static string $resource = NationalEntranceExamApplicationResource::class;
 
+    public function getTitle(): string
+    {
+        return __('national_entrance_exam_applications.pages.view_title');
+    }
+
+    public function getHeading(): string
+    {
+        return __('national_entrance_exam_applications.pages.view_heading');
+    }
+
+    public function getBreadcrumb(): string
+    {
+        return __('national_entrance_exam_applications.actions.view');
+    }
+
     protected function getHeaderActions(): array
     {
         return [
-            EditAction::make(),
+            EditAction::make()
+                ->label(__('national_entrance_exam_applications.actions.edit')),
         ];
     }
 }

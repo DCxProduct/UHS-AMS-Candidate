@@ -46,10 +46,10 @@
 
     $academicYear = $v('academic_year', '២០១៩ - ២០២០');
 
-    $t = fn (string $key): string => __('national_exit_exam_applications.pdf.' . $key);
+    $t = fn (string $key): string => __('master_science_national_exit_exam_applications.pdf.' . $key);
     $genderText = $male
-        ? __('national_exit_exam_applications.options.gender.male')
-        : ($female ? __('national_exit_exam_applications.options.gender.female') : '');
+        ? __('master_science_national_exit_exam_applications.options.gender.male')
+        : ($female ? __('master_science_national_exit_exam_applications.options.gender.female') : '');
 @endphp
 
 <style>
@@ -706,7 +706,7 @@
 
                         <span>{{ $t('nationality') }}</span>
                         <span class="nee-line" style="max-width: 115px;">
-                            {{ $v('nationality', __('national_exit_exam_applications.defaults.khmer')) }}
+                            {{ $v('nationality', __('master_science_national_exit_exam_applications.defaults.khmer')) }}
                         </span>
 
                         <span>{{ $t('dob_plain') }}</span>
@@ -808,7 +808,7 @@
 
                 <span>{{ $t('nationality') }}</span>
                 <span class="nee-line" style="max-width: 105px;">
-                    {{ $v('nationality', __('national_exit_exam_applications.defaults.khmer')) }}
+                    {{ $v('nationality', __('master_science_national_exit_exam_applications.defaults.khmer')) }}
                 </span>
 
                 <span>{{ $t('dob_plain') }}</span>
@@ -855,7 +855,7 @@
         </div>
 
         <div class="nee-note">
-            {{ __('national_exit_exam_applications.pdf.request_paragraph', ['year' => $academicYear]) }}
+            {{ __('master_science_national_exit_exam_applications.pdf.request_paragraph', ['year' => $academicYear]) }}
         </div>
 
         <div class="nee-note">
@@ -993,11 +993,11 @@
         <div class="nee-row">
             <div class="nee-fieldline">
                 <span>- {{ $t('gender') }}</span>
-                <label><input class="nee-check" type="checkbox" @checked($male)> {{ __('national_exit_exam_applications.options.gender.male') }}</label>
-                <label><input class="nee-check" type="checkbox" @checked($female)> {{ __('national_exit_exam_applications.options.gender.female') }}</label>
+                <label><input class="nee-check" type="checkbox" @checked($male)> {{ __('master_science_national_exit_exam_applications.options.gender.male') }}</label>
+                <label><input class="nee-check" type="checkbox" @checked($female)> {{ __('master_science_national_exit_exam_applications.options.gender.female') }}</label>
 
                 <span>{{ $t('nationality') }}</span>
-                <span class="nee-line" style="max-width: 100px;">{{ $v('nationality', __('national_exit_exam_applications.defaults.khmer')) }}</span>
+                <span class="nee-line" style="max-width: 100px;">{{ $v('nationality', __('master_science_national_exit_exam_applications.defaults.khmer')) }}</span>
 
                 <span>{{ $t('religion') }}</span>
                 <span class="nee-line" style="max-width: 95px;">{{ $v('religion') }}</span>

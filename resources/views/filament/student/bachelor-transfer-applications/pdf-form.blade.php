@@ -1,7 +1,7 @@
 @php
     /*
     |--------------------------------------------------------------------------
-    | Master Science National Exit Exam Application - PDF/Form Preview
+    | Bachelor Transfer Application - PDF/Form Preview
     |--------------------------------------------------------------------------
     */
 
@@ -23,7 +23,7 @@
         return filled($value) ? (string) $value : $default;
     };
 
-    $photoPathValue = $v('photo_path');
+    $photoPathValue = $v('photo_path') ?: $v('photo');
     $photoUrl = null;
 
     if ($photoPathValue) {
@@ -44,12 +44,13 @@
     $single = in_array($v('marital_status'), ['single', 'នៅលីវ'], true);
     $married = in_array($v('marital_status'), ['married', 'រៀបការ'], true);
 
-    $academicYear = $v('academic_year', '២០១៩ - ២០២០');
+    $academicYear = $v('academic_year', __('bachelor_transfer_applications.defaults.academic_year'));
 
-    $t = fn (string $key): string => __('national_exit_exam_applications.pdf.' . $key);
+    $bt = fn (string $key, array $replace = []): string => __('bachelor_transfer_applications.pdf.' . $key, $replace);
+
     $genderText = $male
-        ? __('national_exit_exam_applications.options.gender.male')
-        : ($female ? __('national_exit_exam_applications.options.gender.female') : '');
+        ? __('bachelor_transfer_applications.options.gender.male')
+        : ($female ? __('bachelor_transfer_applications.options.gender.female') : '');
 @endphp
 
 <style>
@@ -86,20 +87,17 @@
         width: 100%;
         background: var(--nee-bg);
         padding: 18px;
-        border-radius: 16px;
-        border: 1px solid #d8dee8;
+        border-radius: 14px;
         overflow-x: auto;
-        transition: background-color .2s ease, border-color .2s ease;
     }
 
     .nee-page {
         width: 794px;
         min-height: 1123px;
         margin: 0 auto 24px;
-        background: var(--nee-paper) !important;
-        color: var(--nee-text) !important;
+        background: var(--nee-paper);
+        color: var(--nee-text);
         box-shadow: var(--nee-shadow);
-        color-scheme: light;
         position: relative;
         padding: 22px 28px;
         font-family: "KhmerOSBattambang", "Noto Sans Khmer", Arial, sans-serif !important;
@@ -360,128 +358,295 @@
         margin-top: 2px;
     }
 
+
     /*
     |--------------------------------------------------------------------------
-    | Dark Mode / Light Mode Preview
+    | Light mode / Dark mode preview - like document-requests
     |--------------------------------------------------------------------------
-    | Filament dark mode changes the surrounding UI. The document paper must
-    | stay white with black text, like the document-requests preview.
+    | Light mode  = wrapper ពណ៌ប្រផេះស្រាល
+    | Dark mode   = wrapper ខ្មៅ
+    | Paper form  = នៅតែស
+    | Text/line   = នៅតែខ្មៅ
+    | Input       = មិនប្តូរទៅពណ៌ dark
+    | Checkbox    = នៅស្អាតក្នុង dark mode
     */
+    @media screen {
+        .nee-wrapper {
+            width: 100% !important;
+            background: #f8fafc !important;
+            border: 1px solid #e5e7eb !important;
+            border-radius: 18px !important;
+            padding: 24px !important;
+            overflow-x: auto !important;
+        }
 
-    html.dark .nee-wrapper,
-    body.dark .nee-wrapper,
-    .dark .nee-wrapper,
-    [data-theme="dark"] .nee-wrapper {
-        background: #05070d !important;
-        border-color: #27272a !important;
+        .nee-page {
+            background: #ffffff !important;
+            color: #111111 !important;
+            color-scheme: light !important;
+            box-shadow: 0 12px 30px rgba(15, 23, 42, .18) !important;
+        }
+
+        .nee-page,
+        .nee-page *,
+        .nee-page *::before,
+        .nee-page *::after {
+            color: #111111 !important;
+            border-color: #111111;
+        }
+
+        .nee-page input,
+        .nee-page textarea,
+        .nee-page select {
+            background: transparent !important;
+            background-color: transparent !important;
+            color: #111111 !important;
+            -webkit-text-fill-color: #111111 !important;
+            border-color: #111111 !important;
+            box-shadow: none !important;
+            color-scheme: light !important;
+        }
+
+        .nee-page input::placeholder,
+        .nee-page textarea::placeholder {
+            color: #6b7280 !important;
+            -webkit-text-fill-color: #6b7280 !important;
+            opacity: 1 !important;
+        }
+
+        .nee-page input[type="checkbox"],
+        .nee-page input[type="radio"] {
+            appearance: none !important;
+            -webkit-appearance: none !important;
+            background: #ffffff !important;
+            background-color: #ffffff !important;
+            border: 1.2px solid #111111 !important;
+            accent-color: #111111 !important;
+            -webkit-text-fill-color: initial !important;
+            color: #111111 !important;
+        }
+
+        .nee-page input[type="checkbox"]:checked::after,
+        .nee-page input[type="radio"]:checked::after,
+        .nee-check:checked::after,
+        .bio-check input:checked::after,
+        .app-check:checked::after {
+            color: #111111 !important;
+            -webkit-text-fill-color: #111111 !important;
+        }
+
+        html.dark .nee-wrapper,
+        body.dark .nee-wrapper,
+        .dark .nee-wrapper {
+            background: #05070d !important;
+            border-color: #27272a !important;
+        }
+
+        html.dark .nee-page,
+        body.dark .nee-page,
+        .dark .nee-page {
+            background: #ffffff !important;
+            color: #111111 !important;
+            color-scheme: light !important;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, .65) !important;
+        }
+
+        html.dark .nee-page,
+        html.dark .nee-page *,
+        html.dark .nee-page *::before,
+        html.dark .nee-page *::after,
+        body.dark .nee-page,
+        body.dark .nee-page *,
+        body.dark .nee-page *::before,
+        body.dark .nee-page *::after,
+        .dark .nee-page,
+        .dark .nee-page *,
+        .dark .nee-page *::before,
+        .dark .nee-page *::after {
+            color: #111111 !important;
+            border-color: #111111 !important;
+        }
+
+        html.dark .nee-page input,
+        html.dark .nee-page textarea,
+        html.dark .nee-page select,
+        body.dark .nee-page input,
+        body.dark .nee-page textarea,
+        body.dark .nee-page select,
+        .dark .nee-page input,
+        .dark .nee-page textarea,
+        .dark .nee-page select {
+            background: transparent !important;
+            background-color: transparent !important;
+            color: #111111 !important;
+            -webkit-text-fill-color: #111111 !important;
+            border-color: #111111 !important;
+            box-shadow: none !important;
+            color-scheme: light !important;
+        }
+
+        html.dark .nee-page input[type="checkbox"],
+        html.dark .nee-page input[type="radio"],
+        body.dark .nee-page input[type="checkbox"],
+        body.dark .nee-page input[type="radio"],
+        .dark .nee-page input[type="checkbox"],
+        .dark .nee-page input[type="radio"] {
+            background: #ffffff !important;
+            background-color: #ffffff !important;
+            border: 1.2px solid #111111 !important;
+            accent-color: #111111 !important;
+            -webkit-text-fill-color: initial !important;
+        }
     }
 
-    html.dark .nee-page,
-    body.dark .nee-page,
-    .dark .nee-page,
-    [data-theme="dark"] .nee-page {
-        background: #ffffff !important;
-        color: #111111 !important;
-        color-scheme: light !important;
-        box-shadow: 0 12px 30px rgba(0, 0, 0, .68) !important;
-    }
 
-    html.dark .nee-page *,
-    html.dark .nee-page *::before,
-    html.dark .nee-page *::after,
-    body.dark .nee-page *,
-    body.dark .nee-page *::before,
-    body.dark .nee-page *::after,
-    .dark .nee-page *,
-    .dark .nee-page *::before,
-    .dark .nee-page *::after,
-    [data-theme="dark"] .nee-page *,
-    [data-theme="dark"] .nee-page *::before,
-    [data-theme="dark"] .nee-page *::after {
-        color: #111111 !important;
-    }
+    /*
+    |--------------------------------------------------------------------------
+    | FINAL FIX: Dark / Light mode using actual classes in this Blade
+    | Actual wrapper = .nee-wrapper
+    | Actual paper   = .nee-page
+    |--------------------------------------------------------------------------
+    */
+    @media screen {
+        .nee-wrapper {
+            width: 100% !important;
+            background: #f8fafc !important;
+            border: 1px solid #e5e7eb !important;
+            border-radius: 18px !important;
+            padding: 24px !important;
+            overflow-x: auto !important;
+        }
 
-    html.dark .nee-line,
-    html.dark .nee-line-fixed,
-    html.dark .nee-input,
-    body.dark .nee-line,
-    body.dark .nee-line-fixed,
-    body.dark .nee-input,
-    .dark .nee-line,
-    .dark .nee-line-fixed,
-    .dark .nee-input,
-    [data-theme="dark"] .nee-line,
-    [data-theme="dark"] .nee-line-fixed,
-    [data-theme="dark"] .nee-input {
-        border-bottom-color: #111111 !important;
-    }
+        .nee-page {
+            background: #ffffff !important;
+            color: #111111 !important;
+            color-scheme: light !important;
+            box-shadow: 0 12px 30px rgba(15, 23, 42, .18) !important;
+        }
 
-    html.dark .nee-cover-border,
-    html.dark .nee-photo-box,
-    html.dark .nee-check,
-    html.dark .nee-table th,
-    html.dark .nee-table td,
-    body.dark .nee-cover-border,
-    body.dark .nee-photo-box,
-    body.dark .nee-check,
-    body.dark .nee-table th,
-    body.dark .nee-table td,
-    .dark .nee-cover-border,
-    .dark .nee-photo-box,
-    .dark .nee-check,
-    .dark .nee-table th,
-    .dark .nee-table td,
-    [data-theme="dark"] .nee-cover-border,
-    [data-theme="dark"] .nee-photo-box,
-    [data-theme="dark"] .nee-check,
-    [data-theme="dark"] .nee-table th,
-    [data-theme="dark"] .nee-table td {
-        border-color: #111111 !important;
-    }
+        .nee-page,
+        .nee-page *,
+        .nee-page *::before,
+        .nee-page *::after {
+            color: #111111 !important;
+            border-color: #111111 !important;
+        }
 
-    html.dark .nee-input,
-    html.dark .nee-page input,
-    html.dark .nee-page textarea,
-    html.dark .nee-page select,
-    body.dark .nee-input,
-    body.dark .nee-page input,
-    body.dark .nee-page textarea,
-    body.dark .nee-page select,
-    .dark .nee-input,
-    .dark .nee-page input,
-    .dark .nee-page textarea,
-    .dark .nee-page select,
-    [data-theme="dark"] .nee-input,
-    [data-theme="dark"] .nee-page input,
-    [data-theme="dark"] .nee-page textarea,
-    [data-theme="dark"] .nee-page select {
-        background: transparent !important;
-        color: #111111 !important;
-        -webkit-text-fill-color: #111111 !important;
-        border-color: #111111 !important;
-        box-shadow: none !important;
-        color-scheme: light !important;
-    }
+        .nee-page input,
+        .nee-page textarea,
+        .nee-page select {
+            background: transparent !important;
+            background-color: transparent !important;
+            color: #111111 !important;
+            -webkit-text-fill-color: #111111 !important;
+            border-color: #111111 !important;
+            box-shadow: none !important;
+            color-scheme: light !important;
+        }
 
-    html.dark .nee-check,
-    body.dark .nee-check,
-    .dark .nee-check,
-    [data-theme="dark"] .nee-check {
-        background-color: #ffffff !important;
-        accent-color: #111111 !important;
-        -webkit-text-fill-color: initial !important;
-    }
+        .nee-page input::placeholder,
+        .nee-page textarea::placeholder {
+            color: #6b7280 !important;
+            -webkit-text-fill-color: #6b7280 !important;
+            opacity: 1 !important;
+        }
 
-    html.dark .nee-input::placeholder,
-    html.dark .nee-page input::placeholder,
-    body.dark .nee-input::placeholder,
-    body.dark .nee-page input::placeholder,
-    .dark .nee-input::placeholder,
-    .dark .nee-page input::placeholder,
-    [data-theme="dark"] .nee-input::placeholder,
-    [data-theme="dark"] .nee-page input::placeholder {
-        color: #6b7280 !important;
-        -webkit-text-fill-color: #6b7280 !important;
+        .nee-page input[type="checkbox"],
+        .nee-page input[type="radio"],
+        .nee-page .nee-check {
+            appearance: none !important;
+            -webkit-appearance: none !important;
+            width: 12px !important;
+            height: 12px !important;
+            background: #ffffff !important;
+            background-color: #ffffff !important;
+            border: 1px solid #111111 !important;
+            accent-color: #111111 !important;
+            -webkit-text-fill-color: initial !important;
+            color: #111111 !important;
+            position: relative !important;
+            display: inline-block !important;
+            vertical-align: middle !important;
+        }
+
+        .nee-page input[type="checkbox"]:checked::after,
+        .nee-page input[type="radio"]:checked::after,
+        .nee-page .nee-check:checked::after {
+            content: "✓" !important;
+            position: absolute !important;
+            left: 1px !important;
+            top: -8px !important;
+            font-size: 17px !important;
+            font-weight: 900 !important;
+            color: #111111 !important;
+            -webkit-text-fill-color: #111111 !important;
+        }
+
+        html.dark .nee-wrapper,
+        body.dark .nee-wrapper,
+        .dark .nee-wrapper {
+            background: #05070d !important;
+            border-color: #27272a !important;
+        }
+
+        html.dark .nee-page,
+        body.dark .nee-page,
+        .dark .nee-page {
+            background: #ffffff !important;
+            color: #111111 !important;
+            color-scheme: light !important;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, .65) !important;
+        }
+
+        html.dark .nee-page,
+        html.dark .nee-page *,
+        html.dark .nee-page *::before,
+        html.dark .nee-page *::after,
+        body.dark .nee-page,
+        body.dark .nee-page *,
+        body.dark .nee-page *::before,
+        body.dark .nee-page *::after,
+        .dark .nee-page,
+        .dark .nee-page *,
+        .dark .nee-page *::before,
+        .dark .nee-page *::after {
+            color: #111111 !important;
+            border-color: #111111 !important;
+        }
+
+        html.dark .nee-page input,
+        html.dark .nee-page textarea,
+        html.dark .nee-page select,
+        body.dark .nee-page input,
+        body.dark .nee-page textarea,
+        body.dark .nee-page select,
+        .dark .nee-page input,
+        .dark .nee-page textarea,
+        .dark .nee-page select {
+            background: transparent !important;
+            background-color: transparent !important;
+            color: #111111 !important;
+            -webkit-text-fill-color: #111111 !important;
+            border-color: #111111 !important;
+            box-shadow: none !important;
+            color-scheme: light !important;
+        }
+
+        html.dark .nee-page input[type="checkbox"],
+        html.dark .nee-page input[type="radio"],
+        html.dark .nee-page .nee-check,
+        body.dark .nee-page input[type="checkbox"],
+        body.dark .nee-page input[type="radio"],
+        body.dark .nee-page .nee-check,
+        .dark .nee-page input[type="checkbox"],
+        .dark .nee-page input[type="radio"],
+        .dark .nee-page .nee-check {
+            background: #ffffff !important;
+            background-color: #ffffff !important;
+            border: 1px solid #111111 !important;
+            accent-color: #111111 !important;
+            -webkit-text-fill-color: initial !important;
+        }
     }
 
     @media print {
@@ -554,7 +719,7 @@
         <div class="nee-cover-border">
             <div class="nee-flex" style="justify-content: flex-end;">
                 <div style="padding-top: 10px; width: 210px;">
-                    {{ $t('serial_no') }}
+                    {{ $bt('serial_no') }}
                     <span class="nee-line-fixed" style="width: 125px;">
                         {{ $v('application_no') }}
                     </span>
@@ -564,15 +729,15 @@
             <div style="height: 150px;"></div>
 
             <div class="nee-title-main">
-                {{ $t('application_title') }}<br>
-                {{ $t('degree_title') }}
+                {{ $bt('application_title_line_1') }}<br>
+                {{ $bt('application_title_line_2') }}
             </div>
 
             <div style="height: 28px;"></div>
 
             <div class="nee-title-mid">
-                {{ $t('test_title') }}<br>
-                {{ $t('exam_session_year') }} {{ $academicYear }}
+                {{ $bt('competency_test') }}<br>
+                {{ $bt('request_note_3', ['year' => $academicYear]) }}
             </div>
 
             <div class="nee-divider">────────────</div>
@@ -580,28 +745,28 @@
             <div style="width: 610px; margin: 50px auto 0;">
                 <div class="nee-row">
                     <div class="nee-fieldline">
-                        <span>{{ $t('full_name') }}</span>
+                        <span>{{ $bt('full_name') }}</span>
                         <input class="nee-input" type="text" wire:model.blur="data.name">
                     </div>
                 </div>
 
                 <div class="nee-grid-2 nee-row">
                     <div class="nee-fieldline">
-                        <span class="nee-bold">Family Name:</span>
+                        <span class="nee-bold">{{ $bt('family_name') }}</span>
                         <input class="nee-input" type="text" wire:model.blur="data.last_name">
                     </div>
 
                     <div class="nee-fieldline">
-                        <span class="nee-bold">Given Names:</span>
+                        <span class="nee-bold">{{ $bt('given_names') }}</span>
                         <input class="nee-input" type="text" wire:model.blur="data.first_name">
                     </div>
                 </div>
 
                 <div class="nee-row">
                     <div class="nee-fieldline">
-                        <span>{{ $t('dob') }}</span>
+                        <span>{{ $bt('date_of_birth') }}</span>
                         <span class="nee-line">{{ $v('date_of_birth') }}</span>
-                        <span>{{ $t('gender') }}</span>
+                        <span>{{ $bt('gender') }}</span>
                         <span class="nee-line" style="max-width: 120px;">
                             {{ $genderText }}
                         </span>
@@ -610,45 +775,45 @@
 
                 <div class="nee-row">
                     <div class="nee-fieldline">
-                        <span>{{ $t('birth_place_full') }}</span>
+                        <span>{{ $bt('birth_place_village') }}</span>
                         <input class="nee-input" type="text" wire:model.blur="data.birth_place">
                     </div>
                 </div>
 
                 <div class="nee-row">
                     <div class="nee-fieldline">
-                        <span>{{ $t('current_address') }}</span>
+                        <span>{{ $bt('current_address') }}</span>
                         <input class="nee-input" type="text" wire:model.blur="data.current_address">
                     </div>
                 </div>
 
                 <div class="nee-row">
                     <div class="nee-fieldline">
-                        <span>{{ $t('exam_subject') }}</span>
+                        <span>{{ $bt('exam_subject') }}</span>
                         <input class="nee-input" type="text" wire:model.blur="data.major_applied">
                     </div>
                 </div>
 
                 <div class="nee-grid-2 nee-row">
                     <div class="nee-fieldline">
-                        <span>{{ $t('current_job') }}</span>
+                        <span>{{ $bt('current_job') }}</span>
                         <input class="nee-input" type="text" wire:model.blur="data.current_job">
                     </div>
 
                     <div class="nee-fieldline">
-                        <span>{{ $t('workplace') }}</span>
+                        <span>{{ $bt('organization') }}</span>
                         <input class="nee-input" type="text" wire:model.blur="data.workplace">
                     </div>
                 </div>
 
                 <div class="nee-grid-2 nee-row">
                     <div class="nee-fieldline">
-                        <span>{{ $t('phone') }}</span>
+                        <span>{{ $bt('phone') }}</span>
                         <input class="nee-input" type="text" wire:model.blur="data.phone">
                     </div>
 
                     <div class="nee-fieldline">
-                        <span>{{ $t('email') }}</span>
+                        <span>{{ $bt('email') }}</span>
                         <input class="nee-input" type="text" wire:model.blur="data.email">
                     </div>
                 </div>
@@ -664,7 +829,7 @@
                     <div class="nee-empty-left"></div>
 
                     <div class="nee-receipt-number">
-                        {{ $t('receipt_no') }}
+                        {{ $bt('receipt_no') }} :
                         <span class="nee-line-fixed" style="width: 145px;">
                             {{ $v('receipt_no') }}
                         </span>
@@ -674,42 +839,42 @@
                         @if ($photoUrl)
                             <img src="{{ $photoUrl }}" alt="Photo">
                         @else
-                            {!! $t('photo_placeholder') !!}
+                            {{ $bt('photo_placeholder') }}<br>{{ $bt('photo_size') }}
                         @endif
                     </div>
                 </div>
 
                 <div class="nee-title-mid" style="margin-top: 8px;">
-                    {{ $t('receipt_title') }}
+                    {{ $bt('receipt_title') }}
                 </div>
 
                 <div class="nee-row">
                     <div class="nee-fieldline">
-                        <span>{{ $t('full_name_kh') }}</span>
+                        <span>- {{ $bt('khmer_name_label') }}</span>
                         <input class="nee-input" type="text" wire:model.blur="data.name">
                     </div>
                 </div>
 
                 <div class="nee-row">
                     <div class="nee-fieldline">
-                        <span>{{ $t('latin_name_en') }}</span>
+                        <span>- {{ $bt('latin_name_label') }}</span>
                         <input class="nee-input" type="text" wire:model.blur="data.latin_name">
                     </div>
                 </div>
 
                 <div class="nee-row">
                     <div class="nee-fieldline">
-                        <span>- {{ $t('gender') }}</span>
+                        <span>- {{ $bt('gender') }}</span>
                         <span class="nee-line" style="max-width: 80px;">
                             {{ $genderText }}
                         </span>
 
-                        <span>{{ $t('nationality') }}</span>
+                        <span>{{ $bt('nationality') }}</span>
                         <span class="nee-line" style="max-width: 115px;">
-                            {{ $v('nationality', __('national_exit_exam_applications.defaults.khmer')) }}
+                            {{ $v('nationality', __('bachelor_transfer_applications.defaults.nationality')) }}
                         </span>
 
-                        <span>{{ $t('dob_plain') }}</span>
+                        <span>{{ $bt('date_of_birth') }}</span>
                         <span class="nee-line" style="max-width: 150px;">
                             {{ $v('date_of_birth') }}
                         </span>
@@ -718,44 +883,44 @@
 
                 <div class="nee-row">
                     <div class="nee-fieldline">
-                        <span>- {{ $t('birth_place') }}</span>
+                        <span>- {{ $bt('birth_place') }}</span>
                         <input class="nee-input" type="text" wire:model.blur="data.birth_place">
                     </div>
                 </div>
 
                 <div class="nee-row">
                     <div class="nee-fieldline">
-                        <span>{{ $t('current_workplace') }}</span>
+                        <span>- {{ $bt('organization') }}</span>
                         <input class="nee-input" type="text" wire:model.blur="data.workplace">
                     </div>
                 </div>
 
                 <div class="nee-row">
                     <div class="nee-fieldline">
-                        <span>{{ $t('contact_phone') }}</span>
+                        <span>- {{ $bt('contact_phone') }}</span>
                         <input class="nee-input" type="text" wire:model.blur="data.phone">
                     </div>
                 </div>
 
                 <div class="nee-note">
-                    {{ $t('receipt_note') }}
-                    {{ $t('degree_title') }} {{ $t('exam_session_year') }} {{ $academicYear }}។
+                    {{ $bt('receipt_note_1') }}
+                    {{ $bt('request_note_2') }} {{ $bt('request_note_3', ['year' => $academicYear]) }}។
                 </div>
 
                 <div class="nee-signature-grid">
                     <div>
-                        {{ $t('date_day') }}<span class="nee-line-fixed" style="width: 35px;"></span>
-                        {{ $t('date_month') }}<span class="nee-line-fixed" style="width: 45px;"></span>
-                        {{ $t('date_year') }}<span class="nee-line-fixed" style="width: 55px;"></span><br>
-                        {{ $t('signature') }}<br>
-                        {{ $t('receiver') }}
+                        {{ $bt('day') }}<span class="nee-line-fixed" style="width: 35px;"></span>
+                        {{ $bt('month') }}<span class="nee-line-fixed" style="width: 45px;"></span>
+                        {{ $bt('year') }}<span class="nee-line-fixed" style="width: 55px;"></span><br>
+                        {{ $bt('signature') }}<br>
+                        {{ $bt('receiver') }}
                     </div>
 
                     <div>
-                        {{ $t('date_day') }}<span class="nee-line-fixed" style="width: 35px;"></span>
-                        {{ $t('date_month') }}<span class="nee-line-fixed" style="width: 45px;"></span>
-                        {{ $t('date_year') }}<span class="nee-line-fixed" style="width: 55px;"></span><br>
-                        {{ $t('candidate_signature') }}
+                        {{ $bt('day') }}<span class="nee-line-fixed" style="width: 35px;"></span>
+                        {{ $bt('month') }}<span class="nee-line-fixed" style="width: 45px;"></span>
+                        {{ $bt('year') }}<span class="nee-line-fixed" style="width: 55px;"></span><br>
+                        {{ $bt('student_signature_name') }}
                     </div>
                 </div>
             </div>
@@ -768,8 +933,8 @@
             <div class="nee-empty-left"></div>
 
             <div class="nee-kingdom">
-                <div class="nee-kingdom-title">{{ $t('kingdom') }}</div>
-                <div class="nee-kingdom-title">{{ $t('nation_religion_king') }}</div>
+                <div class="nee-kingdom-title">{{ $bt('kingdom') }}</div>
+                <div class="nee-kingdom-title">{{ $bt('nation_religion_king') }}</div>
                 <div class="nee-divider">────────</div>
             </div>
 
@@ -777,41 +942,41 @@
                 @if ($photoUrl)
                     <img src="{{ $photoUrl }}" alt="Photo">
                 @else
-                    {!! $t('photo_placeholder') !!}
+                    {{ $bt('photo_placeholder') }}<br>{{ $bt('photo_size') }}
                 @endif
             </div>
         </div>
 
         <div class="nee-title-small" style="margin-top: 8px;">
-            {{ $t('application_title') }}<br>
-            {{ $t('degree_title') }}<br>
-            {{ $t('exam_session_year') }} {{ $academicYear }}
+            {{ $bt('application_title_line_1') }}<br>
+            {{ $bt('application_title_line_2') }}<br>
+            {{ $bt('request_note_3', ['year' => $academicYear]) }}
         </div>
 
         <div class="nee-divider">────────────</div>
 
         <div class="nee-row">
             <div class="nee-fieldline">
-                <span>{{ $t('applicant_name_kh') }}</span>
+                <span>- {{ $bt('khmer_name_label') }} :</span>
                 <span class="nee-line">{{ $v('name') }}</span>
-                <span>{{ $t('english_language') }}</span>
+                <span>{{ $bt('english_language') }}</span>
                 <span class="nee-line">{{ $v('latin_name') }}</span>
             </div>
         </div>
 
         <div class="nee-row">
             <div class="nee-fieldline">
-                <span>- {{ $t('gender') }}</span>
+                <span>- {{ $bt('gender') }}</span>
                 <span class="nee-line" style="max-width: 70px;">
                     {{ $genderText }}
                 </span>
 
-                <span>{{ $t('nationality') }}</span>
+                <span>{{ $bt('nationality') }}</span>
                 <span class="nee-line" style="max-width: 105px;">
-                    {{ $v('nationality', __('national_exit_exam_applications.defaults.khmer')) }}
+                    {{ $v('nationality', __('bachelor_transfer_applications.defaults.nationality')) }}
                 </span>
 
-                <span>{{ $t('dob_plain') }}</span>
+                <span>{{ $bt('date_of_birth') }}</span>
                 <span class="nee-line" style="max-width: 145px;">
                     {{ $v('date_of_birth') }}
                 </span>
@@ -820,133 +985,139 @@
 
         <div class="nee-row">
             <div class="nee-fieldline">
-                <span>- {{ $t('birth_place') }}</span>
+                <span>- {{ $bt('birth_place') }}</span>
                 <span class="nee-line">{{ $v('birth_place') }}</span>
             </div>
         </div>
 
         <div class="nee-row">
             <div class="nee-fieldline">
-                <span>{{ $t('current_address_house') }}</span>
+                <span>- {{ $bt('current_address_house') }}</span>
                 <span class="nee-line">{{ $v('current_address') }}</span>
             </div>
         </div>
 
         <div class="nee-row">
             <div class="nee-fieldline">
-                <span>{{ $t('current_workplace') }}</span>
+                <span>- {{ $bt('organization') }}</span>
                 <span class="nee-line">{{ $v('workplace') }}</span>
-                <span>{{ $t('position') }}</span>
+                <span>{{ $bt('position') }}</span>
                 <span class="nee-line" style="max-width: 150px;">{{ $v('position') }}</span>
             </div>
         </div>
 
         <div class="nee-row">
             <div class="nee-fieldline">
-                <span>{{ $t('respect_to') }}</span>
+                <span>- {{ $bt('dear_to') }}</span>
                 <span class="nee-line">
-                    {{ $t('rector') }}
+                    {{ $bt('rector') }}
                 </span>
             </div>
         </div>
 
         <div class="nee-center nee-muol" style="margin-top: 8px;">
-            {{ $t('respect_title') }}
+            {{ $bt('respect_title') }}
         </div>
 
         <div class="nee-note">
-            {{ __('national_exit_exam_applications.pdf.request_paragraph', ['year' => $academicYear]) }}
+            {{ $bt('request_note_1') }}
+            {{ $bt('request_note_2') }}
+            {{ $bt('request_note_3', ['year' => $academicYear]) }}
+            {{ $bt('request_note_4') }}
         </div>
 
         <div class="nee-note">
-            {{ $t('truth_paragraph') }}
+            {{ $bt('declare_note_1') }}
+            {{ $bt('declare_note_2') }}
+            {{ $bt('declare_note_3') }}
         </div>
 
-        <div class="nee-section-title">{{ $t('documents_title') }}</div>
+        <div class="nee-section-title">{{ $bt('attached_documents') }}</div>
 
         <div class="nee-doc-list">
             <div class="nee-doc-row">
                 <div>១.</div>
-                <div>{{ $t('doc_application_form') }}</div>
+                <div>{{ $bt('doc_application_form') }}</div>
                 <div>
                     <input class="nee-check" type="checkbox" wire:model.live="data.has_application_form" @checked(data_get($data, 'has_application_form'))>
-                    {{ $t('one_copy') }}
+                    {{ $bt('copy_01') }}
                 </div>
             </div>
 
             <div class="nee-doc-row">
                 <div>២.</div>
-                <div>{{ $t('doc_biography') }}</div>
+                <div>{{ $bt('biography_title') }}</div>
                 <div>
                     <input class="nee-check" type="checkbox" wire:model.live="data.has_biography" @checked(data_get($data, 'has_biography'))>
-                    {{ $t('one_copy') }}
+                    {{ $bt('copy_01') }}
                 </div>
             </div>
 
             <div class="nee-doc-row">
                 <div>៣.</div>
-                <div>{{ $t('doc_certificate') }}</div>
+                <div>{{ $bt('doc_certificate') }}</div>
                 <div>
                     <input class="nee-check" type="checkbox" wire:model.live="data.has_certificate" @checked(data_get($data, 'has_certificate'))>
-                    {{ $t('one_copy') }}
+                    {{ $bt('copy_01') }}
                 </div>
             </div>
 
             <div class="nee-doc-row">
                 <div>៤.</div>
-                <div>{{ $t('doc_transcript') }}</div>
+                <div>{{ $bt('doc_transcript') }}</div>
                 <div>
                     <input class="nee-check" type="checkbox" wire:model.live="data.has_transcript" @checked(data_get($data, 'has_transcript'))>
-                    {{ $t('one_copy') }}
+                    {{ $bt('copy_01') }}
                 </div>
             </div>
 
             <div class="nee-doc-row">
                 <div>៥.</div>
-                <div>{{ $t('doc_permission_letter') }}</div>
+                <div>{{ $bt('doc_permission_letter') }}</div>
                 <div>
                     <input class="nee-check" type="checkbox" wire:model.live="data.has_permission_letter" @checked(data_get($data, 'has_permission_letter'))>
-                    {{ $t('one_copy') }}
+                    {{ $bt('copy_01') }}
                 </div>
             </div>
 
             <div class="nee-doc-row">
                 <div>៦.</div>
-                <div>{{ $t('doc_osce_result') }}</div>
+                <div>{{ $bt('doc_osce_result') }}</div>
                 <div>
                     <input class="nee-check" type="checkbox" wire:model.live="data.has_osce_result" @checked(data_get($data, 'has_osce_result'))>
-                    {{ $t('one_copy') }}
+                    {{ $bt('copy_01') }}
                 </div>
             </div>
 
             <div class="nee-doc-row">
                 <div>៧.</div>
-                <div>{{ $t('doc_photo_4x6') }}</div>
+                <div>{{ $bt('doc_photo_4x6') }}</div>
                 <div>
                     <input class="nee-check" type="checkbox" wire:model.live="data.has_photo_4x6" @checked(data_get($data, 'has_photo_4x6'))>
-                    {{ $t('six_photos') }}
+                    {{ $bt('photos_06') }}
                 </div>
             </div>
         </div>
 
         <div class="nee-note">
-            {{ $t('document_note') }}
+            {{ $bt('document_note_1') }}
+            {{ $bt('document_note_2') }}
         </div>
 
         <div style="display: flex; justify-content: flex-end; margin-top: 14px;">
-            {{ $t('date_day') }}<span class="nee-line-fixed" style="width: 38px;"></span>
-            {{ $t('date_month') }}<span class="nee-line-fixed" style="width: 50px;"></span>
-            {{ $t('date_year') }}<span class="nee-line-fixed" style="width: 55px;"></span>
+            {{ $bt('day') }}<span class="nee-line-fixed" style="width: 38px;"></span>
+            {{ $bt('month') }}<span class="nee-line-fixed" style="width: 50px;"></span>
+            {{ $bt('year') }}<span class="nee-line-fixed" style="width: 55px;"></span>
         </div>
 
         <div class="nee-signature-grid">
             <div>
-                {{ $t('approved_by') }}<br>
-                {{ $t('guardian') }}
+                {{ $bt('guardian_approval') }}<br>
+                {{ $bt('guardian') }}
             </div>
 
             <div>
-                {{ $t('candidate_signature') }}
+                {{ $bt('student_signature_name') }}
             </div>
         </div>
     </div>
@@ -957,8 +1128,8 @@
             <div class="nee-empty-left"></div>
 
             <div class="nee-kingdom">
-                <div class="nee-kingdom-title">{{ $t('kingdom') }}</div>
-                <div class="nee-kingdom-title">{{ $t('nation_religion_king') }}</div>
+                <div class="nee-kingdom-title">{{ $bt('kingdom') }}</div>
+                <div class="nee-kingdom-title">{{ $bt('nation_religion_king') }}</div>
                 <div class="nee-divider">────────</div>
             </div>
 
@@ -966,136 +1137,136 @@
                 @if ($photoUrl)
                     <img src="{{ $photoUrl }}" alt="Photo">
                 @else
-                    {!! $t('photo_placeholder') !!}
+                    {{ $bt('photo_placeholder') }}<br>{{ $bt('photo_size') }}
                 @endif
             </div>
         </div>
 
         <div class="nee-title-mid" style="margin-top: 4px;">
-            {{ $t('biography_title') }}
+            {{ $bt('biography_title') }}
         </div>
 
         <div class="nee-subtitle">
-            {{ $t('bio_subtitle') }}
+            {{ $bt('biography_subtitle') }}
         </div>
 
-        <div class="nee-section-title">{{ $t('personal_info') }}</div>
+        <div class="nee-section-title">{{ $bt('personal_info') }}</div>
 
         <div class="nee-row">
             <div class="nee-fieldline">
-                <span>{{ $t('full_name_bio') }}</span>
+                <span>- {{ $bt('name_kh_latin') }}</span>
                 <span class="nee-line">{{ $v('name') }}</span>
-                <span>{{ $t('latin_alphabet') }}</span>
+                <span>{{ $bt('latin_letters') }}</span>
                 <span class="nee-line">{{ $v('latin_name') }}</span>
             </div>
         </div>
 
         <div class="nee-row">
             <div class="nee-fieldline">
-                <span>- {{ $t('gender') }}</span>
-                <label><input class="nee-check" type="checkbox" @checked($male)> {{ __('national_exit_exam_applications.options.gender.male') }}</label>
-                <label><input class="nee-check" type="checkbox" @checked($female)> {{ __('national_exit_exam_applications.options.gender.female') }}</label>
+                <span>- {{ $bt('gender') }}</span>
+                <label><input class="nee-check" type="checkbox" @checked($male)> {{ __('bachelor_transfer_applications.options.gender.male') }}</label>
+                <label><input class="nee-check" type="checkbox" @checked($female)> {{ __('bachelor_transfer_applications.options.gender.female') }}</label>
 
-                <span>{{ $t('nationality') }}</span>
-                <span class="nee-line" style="max-width: 100px;">{{ $v('nationality', __('national_exit_exam_applications.defaults.khmer')) }}</span>
+                <span>{{ $bt('nationality') }}</span>
+                <span class="nee-line" style="max-width: 100px;">{{ $v('nationality', __('bachelor_transfer_applications.defaults.nationality')) }}</span>
 
-                <span>{{ $t('religion') }}</span>
+                <span>{{ $bt('religion') }}</span>
                 <span class="nee-line" style="max-width: 95px;">{{ $v('religion') }}</span>
 
-                <span>{{ $t('status') }}</span>
-                <label><input class="nee-check" type="checkbox" @checked($single)> {{ $t('single') }}</label>
-                <label><input class="nee-check" type="checkbox" @checked($married)> {{ $t('married') }}</label>
+                <span>{{ $bt('marital_status') }}</span>
+                <label><input class="nee-check" type="checkbox" @checked($single)> {{ __('bachelor_transfer_applications.options.marital_status.single') }}</label>
+                <label><input class="nee-check" type="checkbox" @checked($married)> {{ __('bachelor_transfer_applications.options.marital_status.married') }}</label>
             </div>
         </div>
 
         <div class="nee-row">
             <div class="nee-fieldline">
-                <span>- {{ $t('dob') }}</span>
+                <span>- ថ្ងៃ-ខែ-ឆ្នាំកំណើត</span>
                 <span class="nee-line" style="max-width: 135px;">{{ $v('date_of_birth') }}</span>
-                <span>{{ $t('birth_place') }}</span>
+                <span>ទីកន្លែងកំណើត</span>
                 <span class="nee-line">{{ $v('birth_place') }}</span>
             </div>
         </div>
 
         <div class="nee-row">
             <div class="nee-fieldline">
-                <span>- {{ $t('current_address') }}</span>
+                <span>- {{ $bt('current_address') }}</span>
                 <span class="nee-line">{{ $v('current_address') }}</span>
             </div>
         </div>
 
         <div class="nee-row">
             <div class="nee-fieldline">
-                <span>{{ $t('permanent_address') }}</span>
+                <span>- {{ $bt('permanent_address') }}</span>
                 <span class="nee-line">{{ $v('permanent_address') }}</span>
             </div>
         </div>
 
         <div class="nee-row">
             <div class="nee-fieldline">
-                <span>- {{ $t('phone') }}</span>
+                <span>- {{ $bt('phone') }}</span>
                 <span class="nee-line" style="max-width: 165px;">{{ $v('phone') }}</span>
-                <span>{{ $t('email') }}</span>
+                <span>{{ $bt('email') }}</span>
                 <span class="nee-line" style="max-width: 225px;">{{ $v('email') }}</span>
             </div>
         </div>
 
-        <div class="nee-section-title">{{ $t('family_info') }}</div>
+        <div class="nee-section-title">{{ $bt('family_info') }}</div>
 
         <div class="nee-row">
             <div class="nee-fieldline">
-                <span>{{ $t('father_name') }}</span>
+                <span>- {{ $bt('father_name') }}</span>
                 <span class="nee-line">{{ $v('father_name') }}</span>
-                <span>{{ $t('birth_date') }}</span>
+                <span>{{ $bt('birth_date') }}</span>
                 <span class="nee-line" style="max-width: 105px;">{{ $v('father_date_of_birth') }}</span>
-                <span>{{ $t('occupation') }}</span>
+                <span>{{ $bt('occupation') }}</span>
                 <span class="nee-line" style="max-width: 135px;">{{ $v('father_occupation') }}</span>
             </div>
         </div>
 
         <div class="nee-row">
             <div class="nee-fieldline">
-                <span>{{ $t('mother_name') }}</span>
+                <span>- {{ $bt('mother_name') }}</span>
                 <span class="nee-line">{{ $v('mother_name') }}</span>
-                <span>{{ $t('birth_date') }}</span>
+                <span>{{ $bt('birth_date') }}</span>
                 <span class="nee-line" style="max-width: 105px;">{{ $v('mother_date_of_birth') }}</span>
-                <span>{{ $t('occupation') }}</span>
+                <span>{{ $bt('occupation') }}</span>
                 <span class="nee-line" style="max-width: 135px;">{{ $v('mother_occupation') }}</span>
             </div>
         </div>
 
         <div class="nee-row">
             <div class="nee-fieldline">
-                <span>{{ $t('spouse_name') }}</span>
+                <span>- {{ $bt('spouse_name') }}</span>
                 <span class="nee-line">{{ $v('spouse_name') }}</span>
-                <span>{{ $t('occupation') }}</span>
+                <span>{{ $bt('occupation') }}</span>
                 <span class="nee-line" style="max-width: 145px;">{{ $v('spouse_occupation') }}</span>
-                <span>{{ $t('phone') }}</span>
+                <span>{{ $bt('phone') }}</span>
                 <span class="nee-line" style="max-width: 120px;">{{ $v('spouse_phone') }}</span>
             </div>
         </div>
 
         <div class="nee-row">
             <div class="nee-fieldline">
-                <span>{{ $t('guardian_contact') }}</span>
+                <span>- {{ $bt('guardian_contact') }}</span>
                 <span class="nee-line">{{ $v('guardian_name') }}</span>
-                <span>{{ $t('relationship') }}</span>
+                <span>{{ $bt('relationship') }}</span>
                 <span class="nee-line" style="max-width: 105px;">{{ $v('guardian_relationship') }}</span>
-                <span>{{ $t('phone') }}</span>
+                <span>{{ $bt('phone') }}</span>
                 <span class="nee-line" style="max-width: 115px;">{{ $v('guardian_phone') }}</span>
             </div>
         </div>
 
-        <div class="nee-section-title">{{ $t('education_history') }}</div>
+        <div class="nee-section-title">{{ $bt('education_history') }}</div>
 
         <table class="nee-table">
             <thead>
                 <tr>
-                    <th style="width: 26%;">{{ $t('school') }}</th>
-                    <th style="width: 22%;">{{ $t('degree_major') }}</th>
-                    <th style="width: 18%;">{{ $t('study_place') }}</th>
-                    <th style="width: 14%;">{{ $t('duration') }}</th>
-                    <th style="width: 20%;">{{ $t('certificate') }}</th>
+                    <th style="width: 26%;">{{ $bt('school') }}</th>
+                    <th style="width: 22%;">{{ $bt('degree_major') }}</th>
+                    <th style="width: 18%;">{{ $bt('study_location') }}</th>
+                    <th style="width: 14%;">{{ $bt('duration') }}</th>
+                    <th style="width: 20%;">{{ $bt('certificate') }}</th>
                 </tr>
             </thead>
 
@@ -1118,16 +1289,16 @@
             </tbody>
         </table>
 
-        <div class="nee-section-title">{{ $t('work_history') }}</div>
+        <div class="nee-section-title">{{ $bt('work_history') }}</div>
 
         <table class="nee-table">
             <thead>
                 <tr>
-                    <th style="width: 26%;">{{ $t('institution') }}</th>
-                    <th style="width: 18%;">{{ $t('job_position') }}</th>
-                    <th style="width: 18%;">{{ $t('department') }}</th>
-                    <th style="width: 18%;">{{ $t('duration') }}</th>
-                    <th style="width: 20%;">{{ $t('other') }}</th>
+                    <th style="width: 26%;">{{ $bt('institution') }}</th>
+                    <th style="width: 18%;">{{ $bt('position') }}</th>
+                    <th style="width: 18%;">{{ $bt('department') }}</th>
+                    <th style="width: 18%;">{{ $bt('duration') }}</th>
+                    <th style="width: 20%;">{{ $bt('other') }}</th>
                 </tr>
             </thead>
 
@@ -1148,20 +1319,21 @@
         </table>
 
         <div class="nee-note">
-            {{ $t('bio_truth_paragraph') }}
+            {{ $bt('biography_declare_1') }}
+            {{ $bt('biography_declare_2') }}
         </div>
 
         <div style="display: flex; justify-content: flex-end; margin-top: 14px;">
-            {{ $t('date_day') }}<span class="nee-line-fixed" style="width: 38px;"></span>
-            {{ $t('date_month') }}<span class="nee-line-fixed" style="width: 50px;"></span>
-            {{ $t('date_year') }}<span class="nee-line-fixed" style="width: 55px;"></span>
+            {{ $bt('day') }}<span class="nee-line-fixed" style="width: 38px;"></span>
+            {{ $bt('month') }}<span class="nee-line-fixed" style="width: 50px;"></span>
+            {{ $bt('year') }}<span class="nee-line-fixed" style="width: 55px;"></span>
         </div>
 
         <div class="nee-signature-grid">
             <div></div>
 
             <div>
-                {{ $t('candidate_signature') }}
+                {{ $bt('student_signature_name') }}
             </div>
         </div>
     </div>

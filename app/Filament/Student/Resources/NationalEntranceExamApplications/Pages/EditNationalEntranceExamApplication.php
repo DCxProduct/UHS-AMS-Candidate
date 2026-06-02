@@ -13,24 +13,27 @@ class EditNationalEntranceExamApplication extends EditRecord
 
     public function getTitle(): string
     {
-        return 'កែប្រែពាក្យប្រឡងថ្នាក់ជាតិ';
+        return __('national_entrance_exam_applications.pages.edit_title');
     }
 
     public function getHeading(): string
     {
-        return 'កែប្រែពាក្យប្រឡងថ្នាក់ជាតិ';
+        return __('national_entrance_exam_applications.pages.edit_heading');
     }
 
     public function getBreadcrumb(): string
     {
-        return __('app.edit');
+        return __('national_entrance_exam_applications.actions.edit');
     }
 
     protected function getHeaderActions(): array
     {
         return [
             DeleteAction::make()
-                ->label(__('app.delete')),
+                ->label(__('national_entrance_exam_applications.actions.delete'))
+                ->modalHeading(__('national_entrance_exam_applications.modal.delete_heading'))
+                ->modalDescription(__('national_entrance_exam_applications.modal.delete_description'))
+                ->modalSubmitActionLabel(__('national_entrance_exam_applications.modal.delete_submit')),
         ];
     }
 
@@ -45,7 +48,7 @@ class EditNationalEntranceExamApplication extends EditRecord
 
     protected function getSavedNotificationTitle(): ?string
     {
-        return 'បានកែប្រែពាក្យប្រឡងថ្នាក់ជាតិដោយជោគជ័យ';
+        return __('national_entrance_exam_applications.notifications.updated');
     }
 
     protected function getRedirectUrl(): string

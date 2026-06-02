@@ -17,6 +17,8 @@
         return $value ?? $default;
     };
 
+    $t = fn (string $key): string => __('national_entrance_exam_applications.pdf.' . $key);
+
     /*
     |--------------------------------------------------------------------------
     | Gender Fixed
@@ -38,15 +40,15 @@
     $genderKey = strtolower(trim((string) $genderValue));
 
     $genderText = [
-        'male' => 'ប្រុស',
-        'm' => 'ប្រុស',
-        'boy' => 'ប្រុស',
-        'ប្រុស' => 'ប្រុស',
+        'male' => __('national_entrance_exam_applications.options.gender.male'),
+        'm' => __('national_entrance_exam_applications.options.gender.male'),
+        'boy' => __('national_entrance_exam_applications.options.gender.male'),
+        'ប្រុស' => __('national_entrance_exam_applications.options.gender.male'),
 
-        'female' => 'ស្រី',
-        'f' => 'ស្រី',
-        'girl' => 'ស្រី',
-        'ស្រី' => 'ស្រី',
+        'female' => __('national_entrance_exam_applications.options.gender.female'),
+        'f' => __('national_entrance_exam_applications.options.gender.female'),
+        'girl' => __('national_entrance_exam_applications.options.gender.female'),
+        'ស្រី' => __('national_entrance_exam_applications.options.gender.female'),
     ][$genderKey] ?? trim((string) $genderValue);
 
     /*
@@ -102,8 +104,18 @@
         --uhs-title-font: 'UHS-Muol', 'Khmer OS Muol Light', 'Noto Serif Khmer', serif;
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Light / Dark Preview Wrapper
+    |--------------------------------------------------------------------------
+    | Light mode  = gray wrapper
+    | Dark mode   = black wrapper like document-requests
+    | Paper form  = always white
+    */
     .nee-shell {
-        background: #050505;
+        width: 100%;
+        background: #f8fafc;
+        border: 1px solid #e5e7eb;
         border-radius: 18px;
         padding: 24px;
         overflow-x: auto;
@@ -113,10 +125,11 @@
         width: 794px;
         min-height: 1120px;
         margin: 0 auto 28px;
-        background: #ffffff;
-        color: #111111;
+        background: #ffffff !important;
+        color: #111111 !important;
+        color-scheme: light !important;
         padding: 18px 72px 36px;
-        box-shadow: 0 18px 55px rgba(0, 0, 0, .55);
+        box-shadow: 0 12px 30px rgba(15, 23, 42, .18);
         font-family: var(--uhs-body-font) !important;
         font-size: 11.2px;
         line-height: 1.55;
@@ -534,11 +547,86 @@
         font-size: 11px;
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Dark Mode - keep the paper like a real printed document
+    |--------------------------------------------------------------------------
+    */
+    html.dark .nee-shell,
+    body.dark .nee-shell,
+    .dark .nee-shell {
+        background: #05070d !important;
+        border-color: #27272a !important;
+    }
+
+    html.dark .nee-paper,
+    body.dark .nee-paper,
+    .dark .nee-paper {
+        background: #ffffff !important;
+        color: #111111 !important;
+        color-scheme: light !important;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, .65) !important;
+    }
+
+    html.dark .nee-paper *,
+    body.dark .nee-paper *,
+    .dark .nee-paper * {
+        color: #111111 !important;
+        border-color: #111111 !important;
+    }
+
+    html.dark .nee-paper input,
+    html.dark .nee-paper textarea,
+    html.dark .nee-paper select,
+    body.dark .nee-paper input,
+    body.dark .nee-paper textarea,
+    body.dark .nee-paper select,
+    .dark .nee-paper input,
+    .dark .nee-paper textarea,
+    .dark .nee-paper select {
+        background: transparent !important;
+        background-color: transparent !important;
+        color: #111111 !important;
+        -webkit-text-fill-color: #111111 !important;
+        border-color: #111111 !important;
+        box-shadow: none !important;
+    }
+
+    html.dark .nee-paper input::placeholder,
+    html.dark .nee-paper textarea::placeholder,
+    body.dark .nee-paper input::placeholder,
+    body.dark .nee-paper textarea::placeholder,
+    .dark .nee-paper input::placeholder,
+    .dark .nee-paper textarea::placeholder {
+        color: #6b7280 !important;
+        -webkit-text-fill-color: #6b7280 !important;
+    }
+
+    html.dark .nee-paper input[type="checkbox"],
+    html.dark .nee-paper input[type="radio"],
+    body.dark .nee-paper input[type="checkbox"],
+    body.dark .nee-paper input[type="radio"],
+    .dark .nee-paper input[type="checkbox"],
+    .dark .nee-paper input[type="radio"] {
+        background: #ffffff !important;
+        background-color: #ffffff !important;
+        border: 1.2px solid #111111 !important;
+        accent-color: #111111 !important;
+        -webkit-text-fill-color: initial !important;
+    }
+
+    html.dark .nee-bio-page .bio-check input:checked::after,
+    body.dark .nee-bio-page .bio-check input:checked::after,
+    .dark .nee-bio-page .bio-check input:checked::after {
+        color: #111111 !important;
+    }
+
     @media print {
         .nee-shell {
-            background: #ffffff;
-            padding: 0;
-            border-radius: 0;
+            background: #ffffff !important;
+            border: none !important;
+            padding: 0 !important;
+            border-radius: 0 !important;
         }
 
         .nee-paper {
@@ -591,162 +679,151 @@
     {{-- PAGE 1 --}}
     <div class="nee-paper nee-application-page">
         <div class="app-kingdom">
-            ព្រះរាជាណាចក្រកម្ពុជា<br>
-            ជាតិ សាសនា ព្រះមហាក្សត្រ
+            {!! $t('kingdom') !!}
         </div>
 
-        <div class="app-year-small">២០២៥</div>
+        <div class="app-year-small">{{ $t('year_2025') }}</div>
 
         <div class="app-ministry">
-            ក្រសួងសុខាភិបាល<br>
-            សាកលវិទ្យាល័យវិទ្យាសាស្ត្រសុខាភិបាល
+            {!! $t('ministry') !!}
         </div>
 
         <div class="app-title">
-            ពាក្យសុំចុះឈ្មោះប្រឡង
+            {{ $t('application_title') }}
         </div>
 
         <div class="app-row two">
-            <span class="app-label">ខ្ញុំបាទ-នាងខ្ញុំឈ្មោះ :</span>
+            <span class="app-label">{{ $t('applicant_name') }}</span>
             <input class="app-line" type="text" wire:model.blur="data.name" value="{{ $v('name') }}">
 
-            <span class="app-label">អក្សរឡាតាំង :</span>
+            <span class="app-label">{{ $t('latin_name') }}</span>
             <input class="app-line" type="text" wire:model.blur="data.latin_name" value="{{ $v('latin_name') }}">
         </div>
 
         <div class="app-row identity">
-            <span class="app-label">ភេទ :</span>
+            <span class="app-label">{{ $t('gender') }}</span>
             <input class="app-line" type="text" value="{{ $genderText }}" readonly>
 
-            <span class="app-label">សញ្ជាតិ :</span>
+            <span class="app-label">{{ $t('nationality') }}</span>
             <input class="app-line" type="text" wire:model.blur="data.nationality" value="{{ $v('nationality') }}">
 
-            <span class="app-label">កើតនៅថ្ងៃទី</span>
+            <span class="app-label">{{ $t('born_day') }}</span>
             <input class="app-line" type="text" wire:model.blur="data.date_of_birth" value="{{ $v('date_of_birth') }}">
 
-            <span class="app-label">ខែ</span>
+            <span class="app-label">{{ $t('month') }}</span>
             <input class="app-line" type="text" wire:model.blur="data.extra_data.birth_month" value="{{ $v('extra_data.birth_month') }}">
 
-            <span class="app-label">ឆ្នាំ</span>
+            <span class="app-label">{{ $t('year') }}</span>
             <input class="app-line" type="text" wire:model.blur="data.extra_data.birth_year" value="{{ $v('extra_data.birth_year') }}">
         </div>
 
         <div class="app-row address">
-            <span class="app-label">ទីកន្លែងកំណើត: ភូមិ/ក្រុម</span>
+            <span class="app-label">{{ $t('birth_place_village_group') }}</span>
             <input class="app-line" type="text" wire:model.blur="data.birth_village" value="{{ $v('birth_village') }}">
 
-            <span class="app-label">ឃុំ/សង្កាត់</span>
+            <span class="app-label">{{ $t('commune') }}</span>
             <input class="app-line" type="text" wire:model.blur="data.birth_commune" value="{{ $v('birth_commune') }}">
 
-            <span class="app-label">ស្រុក/ខណ្ឌ</span>
+            <span class="app-label">{{ $t('district') }}</span>
             <input class="app-line" type="text" wire:model.blur="data.birth_district" value="{{ $v('birth_district') }}">
         </div>
 
         <div class="app-row two">
-            <span class="app-label">ខេត្ត/រាជធានី :</span>
+            <span class="app-label">{{ $t('province') }}</span>
             <input class="app-line" type="text" wire:model.blur="data.birth_province" value="{{ $v('birth_province') }}">
 
-            <span class="app-label">បច្ចុប្បន្ននៅ :</span>
+            <span class="app-label">{{ $t('current_place') }}</span>
             <input class="app-line" type="text" wire:model.blur="data.current_address" value="{{ $v('current_address') }}">
         </div>
 
         <div class="app-row work">
-            <span class="app-label">បម្រើការងារនៅអង្គភាព/ស្ថាប័ន :</span>
+            <span class="app-label">{{ $t('workplace') }}</span>
             <input class="app-line" type="text" wire:model.blur="data.extra_data.workplace" value="{{ $v('extra_data.workplace') }}">
 
-            <span class="app-label">ទូរស័ព្ទ :</span>
+            <span class="app-label">{{ $t('phone') }}</span>
             <input class="app-line" type="text" wire:model.blur="data.phone" value="{{ $v('phone') }}">
         </div>
 
         <div class="app-subtitle">
-            សូមគោរពជូន<br>
-            ឯកឧត្តមសាកលវិទ្យាធិការ សាកលវិទ្យាល័យវិទ្យាសាស្ត្រសុខាភិបាល<br>
-            សូមមេត្តាជ្រាបជាទីគោរពដ៏ខ្ពង់ខ្ពស់
+            {!! $t('respect_to') !!}
         </div>
 
         <div class="app-paragraph">
-            ខ្ញុំបាទ-នាងខ្ញុំ សូមគោរពជម្រាបជូន ឯកឧត្តមសាកលវិទ្យាធិការ មេត្តាជ្រាបថា
-            ខ្ញុំបាទ-នាងខ្ញុំ មានបំណងសុំចុះឈ្មោះជាបេក្ខជនប្រឡងចូលថ្នាក់ជាតិ
-            នៃសាកលវិទ្យាល័យវិទ្យាសាស្ត្រសុខាភិបាល។
+            {{ $t('purpose_paragraph') }}
         </div>
 
         <div class="app-row two">
-            <span class="app-label">សិក្សានៅមហាវិទ្យាល័យ/ជំនាញ :</span>
+            <span class="app-label">{{ $t('faculty_major') }}</span>
             <input class="app-line" type="text" wire:model.blur="data.faculty_applied" value="{{ $v('faculty_applied') }}">
 
-            <span class="app-label">ជំនាញ :</span>
+            <span class="app-label">{{ $t('major') }}</span>
             <input class="app-line" type="text" wire:model.blur="data.major_applied" value="{{ $v('major_applied') }}">
         </div>
 
         <div class="app-row two">
-            <span class="app-label">ឆ្នាំសិក្សា :</span>
+            <span class="app-label">{{ $t('academic_year') }}</span>
             <input class="app-line" type="text" wire:model.blur="data.academic_year" value="{{ $v('academic_year') }}">
 
-            <span class="app-label">សម្រាប់ឆ្នាំប្រឡង :</span>
+            <span class="app-label">{{ $t('exam_year') }}</span>
             <input class="app-line" type="text" wire:model.blur="data.exam_year" value="{{ $v('exam_year') }}">
         </div>
 
         <div class="app-paragraph">
-            ការសិក្សាផ្នែកវិទ្យាសាស្ត្រសុខាភិបាល គឺជាការសិក្សាដែលតម្រូវឱ្យមានការខិតខំប្រឹងប្រែង
-            គោរពវិន័យ និងអនុវត្តតាមបទប្បញ្ញត្តិរបស់សាកលវិទ្យាល័យ។
+            {{ $t('study_condition_paragraph') }}
         </div>
 
         <div class="app-paragraph">
-            ខ្ញុំបាទ-នាងខ្ញុំ បានទទួលស្គាល់ និងយល់ព្រមគោរពតាមលក្ខខណ្ឌនៃការប្រឡង
-            ព្រមទាំងបញ្ញត្តិផ្សេងៗរបស់សាកលវិទ្យាល័យវិទ្យាសាស្ត្រសុខាភិបាល។
+            {{ $t('agreement_paragraph') }}
         </div>
 
         <div class="app-doc-title">
-            ឯកសារភ្ជាប់មកជាមួយ
+            {{ $t('documents_title') }}
         </div>
 
         <div class="app-doc-row">
-            <span>- បណ្ណសម្គាល់ខ្លួន/អត្តសញ្ញាណបណ្ណ</span>
+            <span>{{ $t('doc_identity') }}</span>
             <input class="app-line" type="text" wire:model.blur="data.national_id" value="{{ $v('national_id') }}">
-            <span>១ ច្បាប់</span>
+            <span>{{ $t('one_copy') }}</span>
         </div>
 
         <div class="app-doc-row">
-            <span>- ការបញ្ជាក់/ព្រឹត្តិបត្រពិន្ទុ</span>
+            <span>{{ $t('doc_transcript') }}</span>
             <input class="app-line" type="text" wire:model.blur="data.bac_certificate_no" value="{{ $v('bac_certificate_no') }}">
-            <span>២ ច្បាប់</span>
+            <span>{{ $t('two_copies') }}</span>
         </div>
 
         <div class="app-doc-row">
-            <span>- រូបថតសម័យថ្មីមិនលើសពី៦ខែ (៤ x ៦)</span>
-            <input class="app-line" type="text" value="២ សន្លឹក" readonly>
+            <span>{{ $t('doc_photo') }}</span>
+            <input class="app-line" type="text" value="{{ $t('two_photos') }}" readonly>
             <span></span>
         </div>
 
         <div class="app-doc-row">
-            <span>- លិខិតបញ្ជាក់ផ្សេងៗ</span>
+            <span>{{ $t('doc_other') }}</span>
             <input class="app-line" type="text" wire:model.blur="data.note" value="{{ $v('note') }}">
-            <span>១ ច្បាប់</span>
+            <span>{{ $t('one_copy') }}</span>
         </div>
 
         <div class="app-paragraph">
-            ខ្ញុំបាទ-នាងខ្ញុំ សូមធានាថាព័ត៌មាន និងឯកសារដែលបានផ្តល់ជូនខាងលើគឺពិតប្រាកដ
-            និងត្រឹមត្រូវ។ ប្រសិនបើមានការក្លែងបន្លំ ខ្ញុំបាទ-នាងខ្ញុំសូមទទួលខុសត្រូវចំពោះមុខច្បាប់។
+            {{ $t('truth_paragraph') }}
         </div>
 
         <div class="app-signature">
             <div class="app-sign-box">
-                បានពិនិត្យ និងបញ្ជាក់ថា<br>
-                ឯកសារគ្រប់គ្រាន់<br><br><br>
-                ហត្ថលេខាអ្នកទទួលពាក្យ
+                {!! $t('checked_complete') !!}
             </div>
 
             <div class="app-sign-box">
                 <div class="app-date">
-                    <span>ថ្ងៃទី</span>
+                    <span>{{ $t('day') }}</span>
                     <input type="text" wire:model.blur="data.extra_data.application_day" value="{{ $v('extra_data.application_day') }}">
-                    <span>ខែ</span>
+                    <span>{{ $t('month') }}</span>
                     <input type="text" wire:model.blur="data.extra_data.application_month" value="{{ $v('extra_data.application_month') }}">
-                    <span>ឆ្នាំ</span>
+                    <span>{{ $t('year') }}</span>
                     <input type="text" wire:model.blur="data.extra_data.application_year" value="{{ $v('extra_data.application_year') }}">
                 </div>
 
-                ហត្ថលេខា និងឈ្មោះបេក្ខជន<br><br><br>
+                {{ $t('candidate_signature_name') }}<br><br><br>
                 <input class="app-line" style="width: 170px; text-align:center;" type="text" wire:model.blur="data.name" value="{{ $v('name') }}">
             </div>
         </div>
@@ -758,13 +835,12 @@
     <div class="nee-paper nee-bio-page">
         <div class="bio-header">
             <div class="bio-kingdom">
-                ព្រះរាជាណាចក្រកម្ពុជា<br>
-                ជាតិ សាសនា ព្រះមហាក្សត្រ
+                {!! $t('kingdom') !!}
             </div>
-            <div class="bio-year">២០២៥</div>
+            <div class="bio-year">{{ $t('year_2025') }}</div>
 
-            <div class="bio-title">ជីវប្រវត្តិសង្ខេប</div>
-            <div class="bio-code">១៤៥៦៧៩០</div>
+            <div class="bio-title">{{ $t('bio_title') }}</div>
+            <div class="bio-code">{{ $t('bio_code') }}</div>
         </div>
 
         <div class="bio-photo-box">
@@ -774,8 +850,7 @@
                     <img src="{{ $photoUrl }}" alt="Candidate Photo">
                 @else
                     <div>
-                        បិទរូបថតថ្មី<br>
-                        ៤ x ៦
+                        {!! $t('photo_placeholder') !!}
                     </div>
                 @endif
             </label>
@@ -783,77 +858,77 @@
 
         <div class="bio-form">
             <div class="bio-row two">
-                <span class="bio-no">១-</span>
-                <span class="bio-label">នាមត្រកូលនិងនាមខ្លួន</span>
+                <span class="bio-no">{{ $t('no_1') }}</span>
+                <span class="bio-label">{{ $t('bio_full_name') }}</span>
                 <input class="bio-line" type="text" wire:model.blur="data.name" value="{{ $v('name') }}">
-                <span class="bio-label">ឈ្មអក្សរឡាតាំង      </span>
+                <span class="bio-label">{{ $t('bio_latin_name') }}</span>
                 <input class="bio-line" type="text" wire:model.blur="data.extra_data.nickname" value="{{ $v('extra_data.nickname') }}">
             </div>
 
             <div class="bio-row three">
                 <span class="bio-no"></span>
-                <span class="bio-label">ភេទ</span>
+                <span class="bio-label">{{ $t('bio_gender') }}</span>
                 <input class="bio-line" type="text" value="{{ $genderText }}" readonly>
-                <span class="bio-label">សញ្ជាតិ</span>
+                <span class="bio-label">{{ $t('bio_nationality') }}</span>
                 <input class="bio-line" type="text" wire:model.blur="data.nationality" value="{{ $v('nationality') }}">
-                <span class="bio-label">អាយុ</span>
+                <span class="bio-label">{{ $t('bio_age') }}</span>
                 <input class="bio-line" type="text" wire:model.blur="data.age" value="{{ $v('age') }}">
             </div>
 
             <div class="bio-row">
-                <span class="bio-no">២-</span>
-                <span class="bio-label">ថ្ងៃខែឆ្នាំកំណើត</span>
+                <span class="bio-no">{{ $t('no_2') }}</span>
+                <span class="bio-label">{{ $t('bio_dob') }}</span>
                 <input class="bio-line" type="text" wire:model.blur="data.date_of_birth" value="{{ $v('date_of_birth') }}">
             </div>
 
             <div class="bio-row">
-                <span class="bio-no">៣-</span>
-                <span class="bio-label">ទីកន្លែងកំណើត</span>
+                <span class="bio-no">{{ $t('no_3') }}</span>
+                <span class="bio-label">{{ $t('bio_birth_place') }}</span>
                 <input class="bio-line" type="text" wire:model.blur="data.birth_place" value="{{ $v('birth_place') }}">
             </div>
 
             <div class="bio-row two">
-                <span class="bio-no">៤-</span>
-                <span class="bio-label">កម្រិតបញ្ចប់ថ្នាក់</span>
+                <span class="bio-no">{{ $t('no_4') }}</span>
+                <span class="bio-label">{{ $t('bio_education_level') }}</span>
                 <input class="bio-line" type="text" wire:model.blur="data.education_level" value="{{ $v('education_level') }}">
-                <span class="bio-label">ឆ្នាំសិក្សា</span>
+                <span class="bio-label">{{ $t('bio_academic_year') }}</span>
                 <input class="bio-line" type="text" wire:model.blur="data.academic_year" value="{{ $v('academic_year') }}">
             </div>
 
             <div class="bio-row two">
-                <span class="bio-no">៥-</span>
-                <span class="bio-label">បច្ចុប្បន្នរស់នៅផ្ទះលេខ</span>
+                <span class="bio-no">{{ $t('no_5') }}</span>
+                <span class="bio-label">{{ $t('bio_current_house_no') }}</span>
                 <input class="bio-line" type="text" wire:model.blur="data.current_house_no" value="{{ $v('current_house_no') }}">
-                <span class="bio-label">ក្រុមទី</span>
+                <span class="bio-label">{{ $t('bio_group_no') }}</span>
                 <input class="bio-line" type="text" wire:model.blur="data.current_group" value="{{ $v('current_group') }}">
             </div>
 
             <div class="bio-row no-number">
                 <span></span>
-                <span class="bio-label">មុខរបរឬការសិក្សាបច្ចុប្បន្ននៅមូលដ្ឋាន</span>
+                <span class="bio-label">{{ $t('bio_current_study_work') }}</span>
                 <input class="bio-line" type="text" wire:model.blur="data.current_address" value="{{ $v('current_address') }}">
-                <span class="bio-label">ក្រុមទី</span>
+                <span class="bio-label">{{ $t('bio_group_no') }}</span>
                 <input class="bio-line" type="text" wire:model.blur="data.current_group" value="{{ $v('current_group') }}">
             </div>
 
             <div class="bio-row">
-                <span class="bio-no">៦-</span>
-                <span class="bio-label">ចំណេះដឹងភាសាបរទេស</span>
+                <span class="bio-no">{{ $t('no_6') }}</span>
+                <span class="bio-label">{{ $t('bio_foreign_language') }}</span>
                 <input class="bio-line" type="text" wire:model.blur="data.extra_data.foreign_language" value="{{ $v('extra_data.foreign_language') }}">
             </div>
 
             <div class="bio-row">
-                <span class="bio-no">៧-</span>
-                <span class="bio-label">អាស័យដ្ឋានបច្ចុប្បន្ន</span>
+                <span class="bio-no">{{ $t('no_7') }}</span>
+                <span class="bio-label">{{ $t('bio_current_address') }}</span>
                 <input class="bio-line" type="text" wire:model.blur="data.current_address" value="{{ $v('current_address') }}">
             </div>
 
             <div class="bio-check-row">
-                <span class="bio-no">៨-</span>
-                <span>ស្ថានភាពគ្រួសារ:</span>
+                <span class="bio-no">{{ $t('no_8') }}</span>
+                <span>{{ $t('bio_family_status') }}</span>
 
                 <label class="bio-check">
-                    <span>នៅលីវ</span>
+                    <span>{{ $t('bio_single') }}</span>
                     <input
                         type="radio"
                         value="single"
@@ -863,7 +938,7 @@
                 </label>
 
                 <label class="bio-check">
-                    <span>មានគ្រួសារ</span>
+                    <span>{{ $t('bio_married') }}</span>
                     <input
                         type="radio"
                         value="married"
@@ -875,17 +950,17 @@
 
             <div class="bio-row family">
                 <span></span>
-                <span class="bio-label">- ប្តី/ប្រពន្ធឈ្មោះ</span>
+                <span class="bio-label">{{ $t('bio_spouse_name') }}</span>
                 <input class="bio-line" type="text" wire:model.blur="data.spouse_name" value="{{ $v('spouse_name') }}">
-                <span class="bio-label">ថ្ងៃខែឆ្នាំកំណើត</span>
+                <span class="bio-label">{{ $t('bio_dob') }}</span>
                 <input class="bio-line" type="text" wire:model.blur="data.spouse_date_of_birth" value="{{ $v('spouse_date_of_birth') }}">
-                <span class="bio-label">សញ្ជាតិ</span>
+                <span class="bio-label">{{ $t('bio_nationality') }}</span>
                 <input class="bio-line" type="text" wire:model.blur="data.spouse_nationality" value="{{ $v('spouse_nationality') }}">
             </div>
 
             <div class="bio-row family-small">
                 <span></span>
-                <span class="bio-label">- មុខរបរ</span>
+                <span class="bio-label">{{ $t('bio_occupation') }}</span>
                 <input class="bio-line" type="text" wire:model.blur="data.spouse_occupation" value="{{ $v('spouse_occupation') }}">
                 <span class="bio-label"></span>
                 <input class="bio-line" type="text">
@@ -893,76 +968,76 @@
 
             <div class="bio-row family">
                 <span></span>
-                <span class="bio-label">- ឪពុកឈ្មោះ</span>
+                <span class="bio-label">{{ $t('bio_father_name') }}</span>
                 <input class="bio-line" type="text" wire:model.blur="data.father_name" value="{{ $v('father_name') }}">
-                <span class="bio-label">ស្លាប់ / រស់ អាយុ</span>
+                <span class="bio-label">{{ $t('bio_alive_dead_age') }}</span>
                 <input class="bio-line" type="text" wire:model.blur="data.father_age" value="{{ $v('father_age') }}">
-                <span class="bio-label">ទីកន្លែងកំណើត</span>
+                <span class="bio-label">{{ $t('bio_birth_place') }}</span>
                 <input class="bio-line" type="text" wire:model.blur="data.father_address" value="{{ $v('father_address') }}">
             </div>
 
             <div class="bio-row family-small">
                 <span></span>
-                <span class="bio-label">សញ្ជាតិ</span>
+                <span class="bio-label">{{ $t('bio_nationality') }}</span>
                 <input class="bio-line" type="text" wire:model.blur="data.father_nationality" value="{{ $v('father_nationality') }}">
-                <span class="bio-label">មុខរបរ</span>
+                <span class="bio-label">{{ $t('bio_occupation_plain') }}</span>
                 <input class="bio-line" type="text" wire:model.blur="data.father_occupation" value="{{ $v('father_occupation') }}">
             </div>
 
             <div class="bio-row family">
                 <span></span>
-                <span class="bio-label">- ម្តាយឈ្មោះ</span>
+                <span class="bio-label">{{ $t('bio_mother_name') }}</span>
                 <input class="bio-line" type="text" wire:model.blur="data.mother_name" value="{{ $v('mother_name') }}">
-                <span class="bio-label">ស្លាប់ / រស់ អាយុ</span>
+                <span class="bio-label">{{ $t('bio_alive_dead_age') }}</span>
                 <input class="bio-line" type="text" wire:model.blur="data.mother_age" value="{{ $v('mother_age') }}">
-                <span class="bio-label">ទីកន្លែងកំណើត</span>
+                <span class="bio-label">{{ $t('bio_birth_place') }}</span>
                 <input class="bio-line" type="text" wire:model.blur="data.mother_address" value="{{ $v('mother_address') }}">
             </div>
 
             <div class="bio-row family-small">
                 <span></span>
-                <span class="bio-label">សញ្ជាតិ</span>
+                <span class="bio-label">{{ $t('bio_nationality') }}</span>
                 <input class="bio-line" type="text" wire:model.blur="data.mother_nationality" value="{{ $v('mother_nationality') }}">
-                <span class="bio-label">មុខរបរ</span>
+                <span class="bio-label">{{ $t('bio_occupation_plain') }}</span>
                 <input class="bio-line" type="text" wire:model.blur="data.mother_occupation" value="{{ $v('mother_occupation') }}">
             </div>
 
             <div class="bio-row">
-                <span class="bio-no">៩-</span>
-                <span class="bio-label">អាស័យដ្ឋានទំនាក់ទំនងសាមីខ្លួន</span>
+                <span class="bio-no">{{ $t('no_9') }}</span>
+                <span class="bio-label">{{ $t('bio_contact_address') }}</span>
                 <input class="bio-line" type="text" wire:model.blur="data.guardian_address" value="{{ $v('guardian_address') }}">
             </div>
 
             <div class="bio-row">
                 <span></span>
-                <span class="bio-label">លេខទូរស័ព្ទ</span>
+                <span class="bio-label">{{ $t('bio_phone') }}</span>
                 <input class="bio-line" type="text" wire:model.blur="data.guardian_phone" value="{{ $v('guardian_phone') }}">
             </div>
         </div>
 
         <div class="bio-confirm">
-            ក្នុងករណីមានការកែប្រែ ខ្ញុំបាទ-នាងខ្ញុំ សូមទទួលខុសត្រូវចំពោះមុខច្បាប់ជាធរមាន ។
+            {{ $t('bio_confirm') }}
         </div>
 
         <div class="bio-signature">
             <div class="bio-date">
-                <span>ថ្ងៃទី</span>
+                <span>{{ $t('day') }}</span>
                 <input type="text" wire:model.blur="data.extra_data.bio_day" value="{{ $v('extra_data.bio_day') }}">
-                <span>ខែ</span>
+                <span>{{ $t('month') }}</span>
                 <input type="text" wire:model.blur="data.extra_data.bio_month" value="{{ $v('extra_data.bio_month') }}">
-                <span>ឆ្នាំ</span>
+                <span>{{ $t('year') }}</span>
                 <input type="text" wire:model.blur="data.extra_data.bio_year" value="{{ $v('extra_data.bio_year') }}">
             </div>
 
             <div>
-                បេក្ខជនថ្ងៃទី
+                {{ $t('bio_candidate_date') }}
                 <input class="bio-sign-name" type="text" wire:model.blur="data.extra_data.sign_day" value="{{ $v('extra_data.sign_day') }}">
-                ខែ
+                {{ $t('month') }}
                 <input class="bio-sign-name" type="text" wire:model.blur="data.extra_data.sign_month" value="{{ $v('extra_data.sign_month') }}">
-                ឆ្នាំ២០២៦
+                {{ $t('year_2026') }}
             </div>
 
-            <div>ហត្ថលេខាសាមីខ្លួន</div>
+            <div>{{ $t('bio_self_signature') }}</div>
         </div>
 
         <div class="bio-page-number">2</div>

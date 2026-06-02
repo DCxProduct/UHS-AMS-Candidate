@@ -4,90 +4,181 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Facades\Storage;
 
 class NationalExitExamApplication extends Model
 {
     use HasFactory;
     use SoftDeletes;
 
+    protected $table = 'national_exit_exam_applications';
+
+    /*
+    |--------------------------------------------------------------------------
+    | Status Constants
+    |--------------------------------------------------------------------------
+    */
+    public const STATUS_DRAFT = 'draft';
+    public const STATUS_SUBMITTED = 'submitted';
+    public const STATUS_REVIEWING = 'reviewing';
+    public const STATUS_APPROVED = 'approved';
+    public const STATUS_REJECTED = 'rejected';
+
+    public const PAYMENT_UNPAID = 'unpaid';
+    public const PAYMENT_PAID = 'paid';
+
     protected $fillable = [
         'user_id',
+        'created_by',
+        'updated_by',
+        'reviewed_by',
+
         'application_no',
+        'receipt_no',
+        'academic_year',
+        'exam_year',
+        'exam_session',
+        'application_date',
+
+        'faculty_name',
+        'major_name',
+        'degree_level',
+        'exam_class',
+        'candidate_from',
+        'completed_study_level',
+        'completed_study_at',
+        'school_name',
+        'school_location',
+        'foreign_language',
+
         'full_name_kh',
         'full_name_latin',
         'gender',
         'nationality',
         'date_of_birth',
+
         'birth_place',
         'birth_village_group',
         'birth_commune',
         'birth_district',
         'birth_province',
-        'candidate_from',
-        'completed_study_level',
-        'completed_study_at',
-        'academic_year',
-        'exam_class',
-        'exam_session_date',
-        'phone',
+
         'current_address',
+        'current_village_group',
+        'current_commune',
+        'current_district',
+        'current_province',
+
+        'phone',
+        'email',
         'contact_address',
         'contact_phone',
-        'education_level',
-        'school_name',
-        'school_location',
-        'foreign_language',
+
         'marital_status',
+
         'spouse_name',
         'spouse_date_of_birth',
         'spouse_nationality',
         'spouse_occupation',
+
         'father_name',
         'father_status',
         'father_age',
         'father_birth_place',
         'father_nationality',
         'father_occupation',
+
         'mother_name',
         'mother_status',
         'mother_age',
         'mother_birth_place',
         'mother_nationality',
         'mother_occupation',
+
         'photo',
+        'national_id_file',
+        'birth_certificate_file',
+        'diploma_file',
+        'transcript_file',
+        'other_document_file',
+
         'payment_amount',
+        'payment_status',
+        'payment_date',
+        'payment_receipt_file',
+
+        'request_reason',
+        'notes',
+        'rejected_reason',
+
         'status',
         'submitted_at',
-        'reviewed_by',
         'reviewed_at',
-        'notes',
     ];
 
     protected function casts(): array
     {
         return [
+            'application_date' => 'date',
             'date_of_birth' => 'date',
             'spouse_date_of_birth' => 'date',
-            'payment_amount' => 'decimal:2',
+            'payment_date' => 'date',
+
             'submitted_at' => 'datetime',
             'reviewed_at' => 'datetime',
+
+            'payment_amount' => 'decimal:2',
+            'father_age' => 'integer',
+            'mother_age' => 'integer',
         ];
     }
 
     protected static function booted(): void
     {
-        static::created(function (NationalExitExamApplication $record): void {
-            if (blank($record->application_no)) {
-                $record->forceFill([
-                    'application_no' => 'NEE-' . now()->format('Y') . '-' . str_pad((string) $record->id, 5, '0', STR_PAD_LEFT),
-                ])->saveQuietly();
+        static::creating(function (NationalExitExamApplication $record): void {
+            if (auth()->check()) {
+                $record->user_id ??= auth()->id();
+                $record->created_by ??= auth()->id();
+                $record->updated_by ??= auth()->id();
             }
 
-            $record->ensureDefaultDocuments();
+            $record->status ??= self::STATUS_DRAFT;
+            $record->payment_status ??= self::PAYMENT_UNPAID;
         });
+
+        static::updating(function (NationalExitExamApplication $record): void {
+            if (auth()->check()) {
+                $record->updated_by = auth()->id();
+            }
+        });
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Relationships
+    |--------------------------------------------------------------------------
+    */
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function updater(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    public function reviewer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
     }
 
     public function documents(): HasMany
@@ -95,123 +186,199 @@ class NationalExitExamApplication extends Model
         return $this->hasMany(NationalExitExamApplicationDocument::class, 'application_id');
     }
 
-    public function getGenderKhAttribute(): string
+    /*
+    |--------------------------------------------------------------------------
+    | Options
+    |--------------------------------------------------------------------------
+    */
+
+    public static function statusOptions(): array
     {
-        return match ($this->gender) {
+        return [
+            self::STATUS_DRAFT => 'Draft',
+            self::STATUS_SUBMITTED => 'Submitted',
+            self::STATUS_REVIEWING => 'Reviewing',
+            self::STATUS_APPROVED => 'Approved',
+            self::STATUS_REJECTED => 'Rejected',
+        ];
+    }
+
+    public static function statusKhmerOptions(): array
+    {
+        return [
+            self::STATUS_DRAFT => 'ព្រាង',
+            self::STATUS_SUBMITTED => 'បានដាក់ស្នើ',
+            self::STATUS_REVIEWING => 'កំពុងពិនិត្យ',
+            self::STATUS_APPROVED => 'បានអនុម័ត',
+            self::STATUS_REJECTED => 'បានបដិសេធ',
+        ];
+    }
+
+    public static function paymentStatusOptions(): array
+    {
+        return [
+            self::PAYMENT_UNPAID => 'មិនទាន់បង់',
+            self::PAYMENT_PAID => 'បានបង់',
+        ];
+    }
+
+    public static function genderOptions(): array
+    {
+        return [
             'male' => 'ប្រុស',
             'female' => 'ស្រី',
-            default => '',
-        };
+        ];
     }
 
-    public function getMaritalStatusKhAttribute(): string
+    public static function maritalStatusOptions(): array
     {
-        return match ($this->marital_status) {
+        return [
             'single' => 'នៅលីវ',
-            'married' => 'មានគ្រួសារ',
-            default => '',
-        };
+            'married' => 'រៀបការ',
+        ];
     }
 
-    public function getStatusKhAttribute(): string
+    public static function parentStatusOptions(): array
     {
-        return match ($this->status) {
-            'draft' => 'ព្រាង',
-            'submitted' => 'បានដាក់ពាក្យ',
-            'approved' => 'បានអនុម័ត',
-            'rejected' => 'បដិសេធ',
-            default => '',
-        };
+        return [
+            'alive' => 'រស់',
+            'deceased' => 'ស្លាប់',
+        ];
     }
 
-    public function getPhotoUrlAttribute(): ?string
-    {
-        if (blank($this->photo)) {
-            return null;
-        }
+    /*
+    |--------------------------------------------------------------------------
+    | Default Document Checklist
+    |--------------------------------------------------------------------------
+    */
 
-        return Storage::disk('public')->url($this->photo);
-    }
-
-    public static function defaultDocumentRows(): array
+    public static function defaultDocuments(): array
     {
         return [
             [
-                'document_key' => 'receipt',
-                'document_name' => 'បង្កាន់ដៃទទួលពាក្យ',
-                'is_required' => true,
-                'is_submitted' => false,
+                'document_key' => 'birth_certificate',
+                'document_name' => 'សំបុត្រកំណើត ឬ អត្តសញ្ញាណប័ណ្ណ',
+                'document_group' => 'required',
+                'copies_required' => 1,
+                'sort_order' => 1,
             ],
             [
-                'document_key' => 'application_form',
-                'document_name' => 'ពាក្យសុំចុះឈ្មោះប្រឡង',
-                'is_required' => true,
-                'is_submitted' => false,
-            ],
-            [
-                'document_key' => 'bio_form',
-                'document_name' => 'ប្រវត្តិរូបសង្ខេបបានបិទរូបថតថ្មី ៤ x ៦',
-                'is_required' => true,
-                'is_submitted' => false,
-            ],
-            [
-                'document_key' => 'high_school_certificate',
-                'document_name' => 'សញ្ញាបត្រមធ្យមសិក្សាទុតិយភូមិ ឬ ព្រឹត្តិបត្រពិន្ទុ',
-                'is_required' => true,
-                'is_submitted' => false,
-            ],
-            [
-                'document_key' => 'associate_or_medical_certificate',
-                'document_name' => 'សញ្ញាបត្រ ឬ វិញ្ញាបនបត្របញ្ជាក់ការសិក្សាកម្រិតបរិញ្ញាបត្ររង ឬ គ្រូពេទ្យមធ្យម',
-                'is_required' => true,
-                'is_submitted' => false,
-            ],
-            [
-                'document_key' => 'completion_certificate',
-                'document_name' => 'វិញ្ញាបនបត្របញ្ចប់ការសិក្សាដោយជោគជ័យ',
-                'is_required' => true,
-                'is_submitted' => false,
+                'document_key' => 'diploma',
+                'document_name' => 'សញ្ញាបត្របញ្ជាក់ការបញ្ចប់ការសិក្សា',
+                'document_group' => 'required',
+                'copies_required' => 1,
+                'sort_order' => 2,
             ],
             [
                 'document_key' => 'transcript',
-                'document_name' => 'ព្រឹត្តិបត្រពិន្ទុការសិក្សាគ្រប់មុខវិជ្ជា និងគ្រប់ឆ្នាំសិក្សា',
-                'is_required' => true,
-                'is_submitted' => false,
+                'document_name' => 'ព្រឹត្តិបត្រពិន្ទុ',
+                'document_group' => 'required',
+                'copies_required' => 1,
+                'sort_order' => 3,
             ],
             [
-                'document_key' => 'national_exam_result',
-                'document_name' => 'លទ្ធផលប្រឡងថ្នាក់ជាតិចូលរៀនក្នុងវិស័យសុខាភិបាល',
-                'is_required' => true,
-                'is_submitted' => false,
+                'document_key' => 'photo_4x6',
+                'document_name' => 'រូបថត ៤ x ៦',
+                'document_group' => 'required',
+                'copies_required' => 2,
+                'sort_order' => 4,
             ],
             [
-                'document_key' => 'study_permission_letter',
-                'document_name' => 'លិខិតអនុញ្ញាតឱ្យចូលរៀន',
-                'is_required' => true,
-                'is_submitted' => false,
+                'document_key' => 'payment_receipt',
+                'document_name' => 'បង្កាន់ដៃបង់ប្រាក់',
+                'document_group' => 'payment',
+                'copies_required' => 1,
+                'sort_order' => 5,
             ],
             [
-                'document_key' => 'final_result_osce',
-                'document_name' => 'បញ្ជីលទ្ធផលប្រឡងបញ្ចប់ការសិក្សា ទ្រឹស្តី និង OSCE',
-                'is_required' => true,
-                'is_submitted' => false,
+                'document_key' => 'other',
+                'document_name' => 'ឯកសារផ្សេងៗ',
+                'document_group' => 'optional',
+                'copies_required' => 1,
+                'sort_order' => 99,
+                'is_required' => false,
             ],
         ];
     }
 
-    public function ensureDefaultDocuments(): void
+    public function createDefaultDocuments(): void
     {
-        foreach (self::defaultDocumentRows() as $document) {
+        foreach (self::defaultDocuments() as $document) {
             $this->documents()->firstOrCreate(
                 [
                     'document_key' => $document['document_key'],
                 ],
                 [
                     'document_name' => $document['document_name'],
-                    'is_required' => $document['is_required'],
-                    'is_submitted' => $document['is_submitted'],
+                    'document_group' => $document['document_group'] ?? 'required',
+                    'copies_required' => $document['copies_required'] ?? 1,
+                    'sort_order' => $document['sort_order'] ?? 0,
+                    'is_required' => $document['is_required'] ?? true,
+                    'is_submitted' => false,
                 ]
             );
         }
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Helpers / Accessors
+    |--------------------------------------------------------------------------
+    */
+
+    public function getDisplayNameAttribute(): string
+    {
+        return $this->full_name_kh
+            ?: $this->full_name_latin
+            ?: '-';
+    }
+
+    public function getGenderLabelAttribute(): string
+    {
+        return match ($this->gender) {
+            'male', 'ប្រុស' => 'ប្រុស',
+            'female', 'ស្រី' => 'ស្រី',
+            default => '-',
+        };
+    }
+
+    public function getStatusLabelAttribute(): string
+    {
+        return self::statusKhmerOptions()[$this->status] ?? '-';
+    }
+
+    public function getPaymentStatusLabelAttribute(): string
+    {
+        return self::paymentStatusOptions()[$this->payment_status] ?? '-';
+    }
+
+    public function isDraft(): bool
+    {
+        return $this->status === self::STATUS_DRAFT;
+    }
+
+    public function isSubmitted(): bool
+    {
+        return $this->status === self::STATUS_SUBMITTED;
+    }
+
+    public function isReviewing(): bool
+    {
+        return $this->status === self::STATUS_REVIEWING;
+    }
+
+    public function isApproved(): bool
+    {
+        return $this->status === self::STATUS_APPROVED;
+    }
+
+    public function isRejected(): bool
+    {
+        return $this->status === self::STATUS_REJECTED;
+    }
+
+    public function isPaid(): bool
+    {
+        return $this->payment_status === self::PAYMENT_PAID;
     }
 }
