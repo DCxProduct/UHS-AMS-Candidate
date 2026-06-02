@@ -4,9 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class UploadExcelStudent extends Model
+class UploadExcelCandidate extends Model
 {
-    protected $table = 'upload_excel_students';
+    protected $table = 'upload_excel_candidates';
 
     protected $fillable = [
         'name',
