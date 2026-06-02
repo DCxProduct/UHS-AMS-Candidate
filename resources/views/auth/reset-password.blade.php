@@ -278,7 +278,7 @@
     </form>
 
     <div class="back">
-        <a href="{{ url('/admin/login') }}">{{ __('app.sign_in') }}</a>
+        <a href="{{ url('/student/login') }}">{{ __('app.sign_in') }}</a>
     </div>
 </main>
 </body>
