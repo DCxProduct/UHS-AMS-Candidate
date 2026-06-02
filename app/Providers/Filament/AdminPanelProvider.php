@@ -44,6 +44,8 @@ class AdminPanelProvider extends PanelProvider
             ->databaseNotifications()
             ->viteTheme('resources/css/filament/admin/theme.css')
 
+            ->favicon(asset('images/UHS_logo.png'))
+
             ->brandName('UHS-AMS')
             ->brandLogo(fn (): View => view('filament.components.logo'))
             ->brandLogoHeight('6rem')
