@@ -12,7 +12,6 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Hidden as HiddenField;
-use Filament\Forms\Components\Select;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\View as SchemaView;
@@ -29,7 +28,7 @@ class NationalExitExamApplicationResource extends Resource
 {
     protected static ?string $model = NationalExitExamApplication::class;
 
-    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-academic-cap';
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-document-text';
 
     protected static ?int $navigationSort = 51;
 
@@ -37,11 +36,11 @@ class NationalExitExamApplicationResource extends Resource
 
     protected static bool $shouldRegisterNavigation = true;
 
-    protected static ?string $recordTitleAttribute = 'name';
+    protected static ?string $recordTitleAttribute = 'full_name_kh';
 
     public static function getNavigationLabel(): string
     {
-        return 'ពាក្យប្រឡងចេញថ្នាក់ជាតិ';
+        return __('national_exit_exam_applications.navigation_label');
     }
 
     public static function getNavigationGroup(): ?string
@@ -51,12 +50,12 @@ class NationalExitExamApplicationResource extends Resource
 
     public static function getModelLabel(): string
     {
-        return 'ពាក្យប្រឡងចេញថ្នាក់ជាតិ';
+        return __('national_exit_exam_applications.model_label');
     }
 
     public static function getPluralModelLabel(): string
     {
-        return 'ពាក្យប្រឡងចេញថ្នាក់ជាតិ';
+        return __('national_exit_exam_applications.plural_model_label');
     }
 
     public static function canViewAny(): bool
@@ -104,122 +103,93 @@ class NationalExitExamApplicationResource extends Resource
         return $schema
             ->columns(1)
             ->components([
-                Section::make('ទម្រង់ពាក្យប្រឡងចេញថ្នាក់ជាតិ')
+                Section::make(__('national_exit_exam_applications.form.section_title'))
                     ->schema([
-                        HiddenField::make('photo_path'),
+                        HiddenField::make('user_id')->default(fn (): ?int => auth()->id()),
+                        HiddenField::make('created_by')->default(fn (): ?int => auth()->id()),
+                        HiddenField::make('updated_by')->default(fn (): ?int => auth()->id()),
+                        HiddenField::make('reviewed_by'),
 
                         HiddenField::make('application_no'),
-                        HiddenField::make('registration_no'),
-                        HiddenField::make('academic_year'),
-                        HiddenField::make('exam_year'),
+                        HiddenField::make('receipt_no'),
+                        HiddenField::make('academic_year')->default('២០២៥-២០២៦'),
+                        HiddenField::make('exam_year')->default('២០២៦'),
+                        HiddenField::make('exam_session')->default('២៣-២៤ ខែឧសភា ឆ្នាំ២០២៦'),
+                        HiddenField::make('application_date'),
 
-                        HiddenField::make('name'),
-                        HiddenField::make('last_name'),
-                        HiddenField::make('first_name'),
-                        HiddenField::make('latin_name'),
+                        HiddenField::make('faculty_name'),
+                        HiddenField::make('major_name'),
+                        HiddenField::make('degree_level'),
+                        HiddenField::make('exam_class'),
+                        HiddenField::make('candidate_from'),
+                        HiddenField::make('completed_study_level'),
+                        HiddenField::make('completed_study_at'),
+                        HiddenField::make('school_name'),
+                        HiddenField::make('school_location'),
+                        HiddenField::make('foreign_language'),
 
+                        HiddenField::make('full_name_kh'),
+                        HiddenField::make('full_name_latin'),
                         HiddenField::make('gender'),
+                        HiddenField::make('nationality')->default(__('national_exit_exam_applications.defaults.khmer')),
                         HiddenField::make('date_of_birth'),
-                        HiddenField::make('age'),
-                        HiddenField::make('nationality')->default('ខ្មែរ'),
-                        HiddenField::make('citizenship')->default('ខ្មែរ'),
 
-                        HiddenField::make('birth_village'),
+                        HiddenField::make('birth_place'),
+                        HiddenField::make('birth_village_group'),
                         HiddenField::make('birth_commune'),
                         HiddenField::make('birth_district'),
                         HiddenField::make('birth_province'),
-                        HiddenField::make('birth_place'),
 
-                        HiddenField::make('phone'),
-                        HiddenField::make('telegram_phone'),
-                        HiddenField::make('email'),
-                        HiddenField::make('national_id'),
-                        HiddenField::make('passport_no'),
-
-                        HiddenField::make('current_house_no'),
-                        HiddenField::make('current_street_no'),
-                        HiddenField::make('current_group'),
-                        HiddenField::make('current_village'),
+                        HiddenField::make('current_address'),
+                        HiddenField::make('current_village_group'),
                         HiddenField::make('current_commune'),
                         HiddenField::make('current_district'),
                         HiddenField::make('current_province'),
-                        HiddenField::make('current_address'),
 
-                        HiddenField::make('permanent_house_no'),
-                        HiddenField::make('permanent_street_no'),
-                        HiddenField::make('permanent_group'),
-                        HiddenField::make('permanent_village'),
-                        HiddenField::make('permanent_commune'),
-                        HiddenField::make('permanent_district'),
-                        HiddenField::make('permanent_province'),
-                        HiddenField::make('permanent_address'),
-
-                        HiddenField::make('education_level'),
-                        HiddenField::make('high_school_name'),
-                        HiddenField::make('bac_year'),
-                        HiddenField::make('bac_exam_center'),
-                        HiddenField::make('bac_room'),
-                        HiddenField::make('bac_seat_no'),
-                        HiddenField::make('bac_grade'),
-                        HiddenField::make('bac_certificate_no'),
-                        HiddenField::make('faculty_applied'),
-                        HiddenField::make('major_applied'),
+                        HiddenField::make('phone'),
+                        HiddenField::make('email'),
+                        HiddenField::make('contact_address'),
+                        HiddenField::make('contact_phone'),
 
                         HiddenField::make('marital_status'),
                         HiddenField::make('spouse_name'),
                         HiddenField::make('spouse_date_of_birth'),
                         HiddenField::make('spouse_nationality'),
                         HiddenField::make('spouse_occupation'),
-                        HiddenField::make('spouse_phone'),
-                        HiddenField::make('spouse_address'),
 
                         HiddenField::make('father_name'),
-                        HiddenField::make('father_date_of_birth'),
+                        HiddenField::make('father_status'),
                         HiddenField::make('father_age'),
+                        HiddenField::make('father_birth_place'),
                         HiddenField::make('father_nationality'),
                         HiddenField::make('father_occupation'),
-                        HiddenField::make('father_phone'),
-                        HiddenField::make('father_status'),
-                        HiddenField::make('father_address'),
 
                         HiddenField::make('mother_name'),
-                        HiddenField::make('mother_date_of_birth'),
+                        HiddenField::make('mother_status'),
                         HiddenField::make('mother_age'),
+                        HiddenField::make('mother_birth_place'),
                         HiddenField::make('mother_nationality'),
                         HiddenField::make('mother_occupation'),
-                        HiddenField::make('mother_phone'),
-                        HiddenField::make('mother_status'),
-                        HiddenField::make('mother_address'),
 
-                        HiddenField::make('guardian_name'),
-                        HiddenField::make('guardian_relationship'),
-                        HiddenField::make('guardian_phone'),
-                        HiddenField::make('guardian_occupation'),
-                        HiddenField::make('guardian_address'),
+                        HiddenField::make('photo'),
+                        HiddenField::make('national_id_file'),
+                        HiddenField::make('birth_certificate_file'),
+                        HiddenField::make('diploma_file'),
+                        HiddenField::make('transcript_file'),
+                        HiddenField::make('other_document_file'),
 
-                        HiddenField::make('extra_data.birth_month'),
-                        HiddenField::make('extra_data.birth_year'),
-                        HiddenField::make('extra_data.workplace'),
+                        HiddenField::make('payment_amount')->default(100000),
+                        HiddenField::make('payment_status')->default('unpaid'),
+                        HiddenField::make('payment_date'),
+                        HiddenField::make('payment_receipt_file'),
 
-                        HiddenField::make('extra_data.application_day'),
-                        HiddenField::make('extra_data.application_month'),
-                        HiddenField::make('extra_data.application_year'),
+                        HiddenField::make('request_reason'),
+                        HiddenField::make('notes'),
+                        HiddenField::make('rejected_reason'),
 
-                        HiddenField::make('extra_data.nickname'),
-                        HiddenField::make('extra_data.foreign_language'),
-
-                        HiddenField::make('extra_data.bio_day'),
-                        HiddenField::make('extra_data.bio_month'),
-                        HiddenField::make('extra_data.bio_year'),
-
-                        HiddenField::make('extra_data.sign_day'),
-                        HiddenField::make('extra_data.sign_month'),
-                        HiddenField::make('extra_data.sign_year'),
-
-                        HiddenField::make('note'),
-
-                        HiddenField::make('created_by')
-                            ->default(fn (): ?int => auth()->id()),
+                        HiddenField::make('status')->default('draft'),
+                        HiddenField::make('submitted_at'),
+                        HiddenField::make('reviewed_at'),
 
                         SchemaView::make('filament.student.national-exit-exam-applications.pdf-form')
                             ->columnSpanFull(),
@@ -233,29 +203,42 @@ class NationalExitExamApplicationResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('row_number')
-                    ->label('No')
+                    ->label(__('national_exit_exam_applications.columns.no'))
                     ->rowIndex()
                     ->alignCenter()
                     ->width('60px'),
 
-                TextColumn::make('name')
-                    ->label('ឈ្មោះខ្មែរ')
+                TextColumn::make('application_no')
+                    ->label(__('national_exit_exam_applications.columns.application_no'))
                     ->placeholder('-')
                     ->searchable()
                     ->sortable(),
 
-                TextColumn::make('latin_name')
-                    ->label('ឈ្មោះឡាតាំង')
+                TextColumn::make('receipt_no')
+                    ->label(__('national_exit_exam_applications.columns.receipt_no'))
+                    ->placeholder('-')
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable(),
+
+                TextColumn::make('full_name_kh')
+                    ->label(__('national_exit_exam_applications.columns.full_name_kh'))
+                    ->placeholder('-')
+                    ->searchable()
+                    ->sortable(),
+
+                TextColumn::make('full_name_latin')
+                    ->label(__('national_exit_exam_applications.columns.full_name_latin'))
                     ->placeholder('-')
                     ->searchable()
                     ->toggleable(),
 
                 TextColumn::make('gender')
-                    ->label('ភេទ')
+                    ->label(__('national_exit_exam_applications.columns.gender'))
                     ->badge()
                     ->formatStateUsing(fn (?string $state): string => match ($state) {
-                        'male', 'ប្រុស' => 'ប្រុស',
-                        'female', 'ស្រី' => 'ស្រី',
+                        'male', 'ប្រុស' => __('national_exit_exam_applications.options.gender.male'),
+                        'female', 'ស្រី' => __('national_exit_exam_applications.options.gender.female'),
                         default => '-',
                     })
                     ->color(fn (?string $state): string => match ($state) {
@@ -265,37 +248,37 @@ class NationalExitExamApplicationResource extends Resource
                     }),
 
                 TextColumn::make('phone')
-                    ->label('លេខទូរស័ព្ទ')
+                    ->label(__('national_exit_exam_applications.columns.phone'))
                     ->placeholder('-')
                     ->searchable()
                     ->toggleable(),
 
                 TextColumn::make('academic_year')
-                    ->label('ឆ្នាំសិក្សា')
+                    ->label(__('national_exit_exam_applications.columns.academic_year'))
                     ->placeholder('-')
                     ->searchable()
                     ->sortable(),
 
                 TextColumn::make('exam_year')
-                    ->label('ឆ្នាំប្រឡង')
+                    ->label(__('national_exit_exam_applications.columns.exam_year'))
                     ->placeholder('-')
                     ->searchable()
                     ->sortable()
                     ->toggleable(),
 
                 TextColumn::make('status')
-                    ->label('ស្ថានភាព')
+                    ->label(__('national_exit_exam_applications.columns.status'))
                     ->badge()
                     ->formatStateUsing(fn (?string $state): string => match ($state) {
-                        'pending' => 'រង់ចាំ',
-                        'submitted' => 'បានដាក់ពាក្យ',
-                        'reviewing' => 'កំពុងពិនិត្យ',
-                        'approved' => 'អនុម័ត',
-                        'rejected' => 'បដិសេធ',
+                        'draft' => __('national_exit_exam_applications.options.status.draft'),
+                        'pending' => __('national_exit_exam_applications.options.status.pending'),
+                        'submitted' => __('national_exit_exam_applications.options.status.submitted'),
+                        'reviewing' => __('national_exit_exam_applications.options.status.reviewing'),
+                        'approved' => __('national_exit_exam_applications.options.status.approved'),
+                        'rejected' => __('national_exit_exam_applications.options.status.rejected'),
                         default => '-',
                     })
                     ->color(fn (?string $state): string => match ($state) {
-                        'pending' => 'warning',
                         'submitted' => 'info',
                         'reviewing' => 'primary',
                         'approved' => 'success',
@@ -305,49 +288,41 @@ class NationalExitExamApplicationResource extends Resource
                     ->sortable(),
 
                 TextColumn::make('created_at')
-                    ->label('ថ្ងៃបង្កើត')
+                    ->label(__('national_exit_exam_applications.columns.created_at'))
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
-
-                TextColumn::make('updated_at')
-                    ->label('ថ្ងៃកែប្រែ')
-                    ->dateTime('d/m/Y H:i')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 SelectFilter::make('status')
-                    ->label('ស្ថានភាព')
-                    ->options([
-                        'pending' => 'រង់ចាំ',
-                        'submitted' => 'បានដាក់ពាក្យ',
-                        'reviewing' => 'កំពុងពិនិត្យ',
-                        'approved' => 'អនុម័ត',
-                        'rejected' => 'បដិសេធ',
-                    ]),
+                    ->label(__('national_exit_exam_applications.columns.status'))
+                    ->options(__('national_exit_exam_applications.options.status')),
+
+                SelectFilter::make('gender')
+                    ->label(__('national_exit_exam_applications.columns.gender'))
+                    ->options(__('national_exit_exam_applications.options.gender')),
             ])
             ->recordActions([
                 EditAction::make()
-                    ->label('កែប្រែ')
+                    ->label(__('national_exit_exam_applications.actions.edit'))
                     ->icon('heroicon-o-pencil-square'),
 
                 DeleteAction::make()
-                    ->label('លុប')
+                    ->label(__('national_exit_exam_applications.actions.delete'))
                     ->icon('heroicon-o-trash')
                     ->color('danger')
-                    ->modalHeading('លុបពាក្យប្រឡងចេញថ្នាក់ជាតិ')
-                    ->modalDescription('តើអ្នកពិតជាចង់លុបទិន្នន័យនេះមែនទេ?')
-                    ->modalSubmitActionLabel('លុប'),
+                    ->modalHeading(__('national_exit_exam_applications.modal.delete_heading'))
+                    ->modalDescription(__('national_exit_exam_applications.modal.delete_description'))
+                    ->modalSubmitActionLabel(__('national_exit_exam_applications.modal.delete_submit')),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
-                        ->label('លុបដែលបានជ្រើស'),
+                        ->label(__('national_exit_exam_applications.actions.delete_selected')),
                 ]),
             ])
             ->defaultSort('created_at', 'desc')
-            ->emptyStateHeading('មិនទាន់មានពាក្យប្រឡងចេញថ្នាក់ជាតិ')
-            ->emptyStateDescription('សូមចុចប៊ូតុងបង្កើត ដើម្បីបញ្ចូលពាក្យថ្មី។');
+            ->emptyStateHeading(__('national_exit_exam_applications.empty.heading'))
+            ->emptyStateDescription(__('national_exit_exam_applications.empty.description'));
     }
 
     public static function getPages(): array

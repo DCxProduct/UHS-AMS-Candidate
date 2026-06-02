@@ -12,19 +12,19 @@ class ListNationalExitExamApplications extends ListRecords
 
     public function getTitle(): string
     {
-        return 'ពាក្យប្រឡងចេញថ្នាក់ជាតិ';
+        return __('national_exit_exam_applications.pages.list_title');
     }
 
     public function getHeading(): string
     {
-        return 'ពាក្យប្រឡងចេញថ្នាក់ជាតិ';
+        return __('national_exit_exam_applications.pages.list_heading');
     }
 
     protected function getHeaderActions(): array
     {
         return [
             CreateAction::make()
-                ->label('បង្កើតពាក្យថ្មី'),
+                ->label(__('national_exit_exam_applications.actions.create_new_application')),
         ];
     }
 }

@@ -11,12 +11,17 @@ class CreateNationalExitExamApplication extends CreateRecord
 
     public function getTitle(): string
     {
-        return 'បង្កើតពាក្យប្រឡងចេញថ្នាក់ជាតិ';
+        return __('national_exit_exam_applications.pages.create_title');
     }
 
     public function getHeading(): string
     {
-        return 'បង្កើតពាក្យប្រឡងចេញថ្នាក់ជាតិ';
+        return __('national_exit_exam_applications.pages.create_heading');
+    }
+
+    public function getBreadcrumb(): string
+    {
+        return __('national_exit_exam_applications.actions.create');
     }
 
     protected function mutateFormDataBeforeCreate(array $data): array
@@ -35,6 +40,6 @@ class CreateNationalExitExamApplication extends CreateRecord
 
     protected function getCreatedNotificationTitle(): ?string
     {
-        return 'បានបង្កើតពាក្យប្រឡងដោយជោគជ័យ';
+        return __('national_exit_exam_applications.notifications.created');
     }
 }

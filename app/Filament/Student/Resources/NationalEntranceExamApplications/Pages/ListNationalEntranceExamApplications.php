@@ -12,19 +12,19 @@ class ListNationalEntranceExamApplications extends ListRecords
 
     public function getTitle(): string
     {
-        return 'ពាក្យប្រឡងថ្នាក់ជាតិ';
+        return __('national_entrance_exam_applications.pages.list_title');
     }
 
     public function getHeading(): string
     {
-        return 'ពាក្យប្រឡងថ្នាក់ជាតិ';
+        return __('national_entrance_exam_applications.pages.list_heading');
     }
 
     protected function getHeaderActions(): array
     {
         return [
             Action::make('createNationalEntranceExamApplication')
-                ->label('បង្កើតពាក្យថ្មី')
+                ->label(__('national_entrance_exam_applications.actions.create_new_application'))
                 ->icon('heroicon-o-plus')
                 ->color('primary')
                 ->url(NationalEntranceExamApplicationResource::getUrl('create')),

@@ -12,19 +12,27 @@ class EditNationalExitExamApplication extends EditRecord
 
     public function getTitle(): string
     {
-        return 'កែប្រែពាក្យប្រឡងចេញថ្នាក់ជាតិ';
+        return __('national_exit_exam_applications.pages.edit_title');
     }
 
     public function getHeading(): string
     {
-        return 'កែប្រែពាក្យប្រឡងចេញថ្នាក់ជាតិ';
+        return __('national_exit_exam_applications.pages.edit_heading');
+    }
+
+    public function getBreadcrumb(): string
+    {
+        return __('national_exit_exam_applications.actions.edit');
     }
 
     protected function getHeaderActions(): array
     {
         return [
             DeleteAction::make()
-                ->label('លុប'),
+                ->label(__('national_exit_exam_applications.actions.delete'))
+                ->modalHeading(__('national_exit_exam_applications.modal.delete_heading'))
+                ->modalDescription(__('national_exit_exam_applications.modal.delete_description'))
+                ->modalSubmitActionLabel(__('national_exit_exam_applications.modal.delete_submit')),
         ];
     }
 
@@ -35,6 +43,6 @@ class EditNationalExitExamApplication extends EditRecord
 
     protected function getSavedNotificationTitle(): ?string
     {
-        return 'បានរក្សាទុកដោយជោគជ័យ';
+        return __('national_exit_exam_applications.notifications.updated');
     }
 }
