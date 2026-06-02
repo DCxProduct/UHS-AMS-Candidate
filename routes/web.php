@@ -4,7 +4,7 @@ use App\Http\Controllers\Auth\PasswordResetController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return redirect('/admin/login');
+    return redirect('/student/login');
 });
 
 Route::get('/language/toggle', function () {
