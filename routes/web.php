@@ -20,8 +20,8 @@ Route::get('/language/toggle', function () {
 })->name('language.toggle');
 
 Route::middleware('guest')
-    ->prefix('admin')
-    ->name('admin.')
+    ->prefix('student')
+    ->name('student.')
     ->group(function () {
         Route::get('/forgot-password', [PasswordResetController::class, 'showForgotPasswordForm'])
             ->name('password.request');

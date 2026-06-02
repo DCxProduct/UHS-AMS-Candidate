@@ -8,7 +8,71 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Kantumruy+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
+    <script>
+        (function () {
+            const html = document.documentElement;
+
+            const savedTheme =
+                localStorage.getItem('theme') ||
+                localStorage.getItem('appearance') ||
+                localStorage.getItem('filament-theme') ||
+                localStorage.getItem('color-theme') ||
+                'light';
+
+            const isDark =
+                savedTheme === 'dark' ||
+                (
+                    savedTheme === 'system' &&
+                    window.matchMedia('(prefers-color-scheme: dark)').matches
+                );
+
+            html.classList.toggle('dark', isDark);
+            html.classList.toggle('light', !isDark);
+        })();
+    </script>
+
     <style>
+        :root,
+        html.light {
+            --page-bg: #f8fafc;
+            --card-bg: #ffffff;
+            --card-border: #e5e7eb;
+            --text-main: #111827;
+            --text-muted: #64748b;
+            --input-bg: #ffffff;
+            --input-border: #d1d5db;
+            --input-text: #111827;
+            --input-placeholder: #9ca3af;
+            --button-bg: #1d4ed8;
+            --button-hover: #1e40af;
+            --link-color: #f59e0b;
+            --error-color: #dc2626;
+            --status-bg: #ecfdf5;
+            --status-border: #bbf7d0;
+            --status-text: #166534;
+            --shadow: 0 20px 35px -15px rgba(15, 23, 42, 0.18);
+        }
+
+        html.dark {
+            --page-bg: #050506;
+            --card-bg: #18181b;
+            --card-border: #2f2f33;
+            --text-main: #ffffff;
+            --text-muted: #a1a1aa;
+            --input-bg: #27272a;
+            --input-border: #52525b;
+            --input-text: #ffffff;
+            --input-placeholder: #71717a;
+            --button-bg: #1e40af;
+            --button-hover: #1e3a8a;
+            --link-color: #f59e0b;
+            --error-color: #f87171;
+            --status-bg: rgba(34, 197, 94, 0.12);
+            --status-border: rgba(34, 197, 94, 0.35);
+            --status-text: #86efac;
+            --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+        }
+
         * {
             box-sizing: border-box;
         }
@@ -16,13 +80,14 @@
         body {
             margin: 0;
             min-height: 100vh;
-            background: #050506;
-            color: #ffffff;
+            background: var(--page-bg);
+            color: var(--text-main);
             font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 24px 16px;
+            transition: background-color 0.25s ease, color 0.25s ease;
         }
 
         .language {
@@ -32,15 +97,15 @@
             z-index: 50;
         }
 
-        /* 1. Scaled down the main card container */
         .card {
             width: 100%;
-            max-width: 440px; /* Reduced from 760px */
-            background: #18181b;
-            border: 1px solid #2f2f33;
-            padding: 40px 32px; /* Reduced padding */
-            border-radius: 16px; /* Added nice rounded corners to the card */
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5); /* Subtle depth */
+            max-width: 440px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            padding: 40px 32px;
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            transition: background-color 0.25s ease, border-color 0.25s ease;
         }
 
         .logo {
@@ -50,57 +115,109 @@
         }
 
         .logo img {
-            width: 72px; /* Reduced from 96px */
-            height: 72px;
-            object-fit: contain;
+            object-fit: contain !important;
+            width: 90px !important;
+            height: 90px !important;
         }
 
         h1 {
             margin: 0 0 10px;
-            font-size: 26px; /* Reduced from 38px */
+            font-size: 26px;
             line-height: 1.3;
             font-weight: 800;
             text-align: center;
+            color: var(--text-main);
         }
 
         .description {
             margin: 0 auto 28px;
-            color: #a1a1aa;
+            color: var(--text-muted);
             text-align: center;
-            font-size: 14px; /* Reduced from 16px */
+            font-size: 14px;
             line-height: 1.6;
         }
 
         label {
             display: block;
             margin-bottom: 8px;
-            font-size: 14px; /* Reduced from 18px */
+            font-size: 14px;
             font-weight: 600;
+            color: var(--text-main);
         }
 
-        /* 2. Scaled down the input field */
         input {
             width: 100%;
-            height: 48px; /* Reduced from 58px */
+            height: 48px;
             border-radius: 10px;
-            border: 1px solid #52525b;
-            background: #27272a;
-            color: #ffffff;
-            padding: 0 16px;
-            font-size: 15px; /* Reduced from 18px */
+            border: 1px solid var(--input-border);
+            background: var(--input-bg);
+            color: var(--input-text);
+            padding: 6 12px;
+            font-size: 15px;
             font-family: inherit;
             outline: none;
-            transition: border-color 0.2s, box-shadow 0.2s;
+            transition: border-color 0.2s, box-shadow 0.2s, background-color 0.25s ease, color 0.25s ease;
+        }
+
+        input::placeholder {
+            color: var(--input-placeholder);
         }
 
         input:focus {
             border-color: #f59e0b;
-            box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2); /* Softer focus ring */
+            box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+        }
+
+        .input-wrapper {
+            width: 100%;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+            border-radius: 10px;
+            border: 1px solid var(--input-border);
+            background: var(--input-bg);
+            transition: border-color 0.2s, box-shadow 0.2s, background-color 0.25s ease;
+        }
+
+        .input-wrapper:focus-within {
+            border-color: #f59e0b;
+            box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+        }
+
+        .input-prefix {
+            width: 56px;
+            min-width: 56px;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-right: 1px solid var(--input-border);
+            color: var(--input-placeholder);
+        }
+
+        .input-prefix svg {
+            width: 22px;
+            height: 22px;
+        }
+
+        .input-wrapper input {
+            height: 100%;
+            border: 0;
+            border-radius: 0;
+            box-shadow: none;
+            background: transparent;
+            padding: 0 16px;
+        }
+
+        .input-wrapper input:focus {
+            border-color: transparent;
+            box-shadow: none;
         }
 
         .error {
             margin-top: 6px;
-            color: #f87171;
+            color: var(--error-color);
             font-size: 13px;
             line-height: 1.5;
         }
@@ -108,24 +225,23 @@
         .status {
             margin-bottom: 20px;
             border-radius: 10px;
-            background: rgba(34, 197, 94, 0.12);
-            border: 1px solid rgba(34, 197, 94, 0.35);
-            color: #86efac;
+            background: var(--status-bg);
+            border: 1px solid var(--status-border);
+            color: var(--status-text);
             padding: 12px 16px;
             font-size: 14px;
             line-height: 1.5;
         }
 
-        /* 3. Scaled down the button */
         button {
             width: 100%;
-            height: 48px; /* Reduced from 58px */
+            height: 48px;
             margin-top: 24px;
             border: 0;
             border-radius: 10px;
-            background: #1e40af;
+            background: var(--button-bg);
             color: #ffffff;
-            font-size: 15px; /* Reduced from 18px */
+            font-size: 15px;
             font-weight: 700;
             font-family: inherit;
             cursor: pointer;
@@ -133,22 +249,22 @@
         }
 
         button:hover {
-            background: #1e3a8a;
+            background: var(--button-hover);
         }
 
         button:active {
-            transform: scale(0.98); /* Nice click effect */
+            transform: scale(0.98);
         }
 
         .back {
             margin-top: 28px;
             text-align: center;
-            font-size: 14px; /* Reduced from 18px */
-            color: #a1a1aa;
+            font-size: 16px;
+            color: var(--text-muted);
         }
 
         .back a {
-            color: #f59e0b;
+            color: var(--link-color);
             text-decoration: none;
             font-weight: 700;
             transition: opacity 0.2s;
@@ -159,7 +275,6 @@
             text-decoration: underline;
         }
 
-        /* Language Switcher Overrides */
         .fls-display-on {
             position: fixed !important;
             top: 18px !important;
@@ -210,14 +325,13 @@
             object-position: center !important;
         }
 
-        /* Mobile adjustments */
         @media (max-width: 640px) {
             .card {
                 padding: 32px 24px;
             }
 
             h1 {
-                font-size: 22px;
+                font-size: 24px;
             }
         }
     </style>
@@ -244,23 +358,31 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ route('admin.password.email') }}">
+    <form method="POST" action="{{ route('student.password.email') }}">
         @csrf
 
         <label for="email">
             {{ __('app.email_address') }}<span style="color:#f87171; margin-left: 4px;">*</span>
         </label>
 
-        <input
-            id="email"
-            name="email"
-            type="email"
-            value="{{ old('email') }}"
-            placeholder="{{ __('app.enter_email_address') }}"
-            autocomplete="email"
-            autofocus
-            required
-        >
+        <div class="input-wrapper">
+            <div class="input-prefix">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M21.75 6.75v10.5A2.25 2.25 0 0 1 19.5 19.5h-15A2.25 2.25 0 0 1 2.25 17.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15A2.25 2.25 0 0 0 2.25 6.75m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+                </svg>
+            </div>
+
+            <input
+                id="email"
+                name="email"
+                type="email"
+                value="{{ old('email') }}"
+                placeholder="{{ __('app.enter_email_address') }}"
+                autocomplete="email"
+                autofocus
+                required
+            >
+        </div>
 
         @error('email')
         <div class="error">{{ $message }}</div>
