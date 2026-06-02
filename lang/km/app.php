@@ -342,4 +342,8 @@ return [
     'yes' => 'បាទ/ចាស',
     'no' => 'ទេ',
     'please_input_data_before_save' => 'សូមបញ្ចូលទិន្នន័យមុនពេលរក្សាទុក។',
+
+    'enrollment_not_in_national_exam_list' => 'ឈ្មោះរបស់អ្នកមិនមាននៅក្នុងបញ្ជីប្រឡងថ្នាក់ជាតិ',
+    'already_registered' => 'អ្នកបានចុះឈ្មោះរួចហើយ',
+    
 ];

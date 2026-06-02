@@ -2,7 +2,7 @@
     <span style="color: #9ca3af;">{{ __('app.already_have_account') }}</span>
 
     <a
-        href="{{ url('/admin/login') }}"
+        href="{{ url('/student/login') }}"
         style="color: #f59e0b; font-weight: 800; text-decoration: none;"
     >
         {{ __('app.sign_in') }}

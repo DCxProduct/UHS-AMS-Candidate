@@ -106,7 +106,7 @@ class PasswordResetController extends Controller
         );
 
         if ($status === Password::PASSWORD_RESET) {
-            return redirect('/admin/login')
+            return redirect('/student/login')
                 ->with('status', __('app.password_reset_success'));
         }
 
