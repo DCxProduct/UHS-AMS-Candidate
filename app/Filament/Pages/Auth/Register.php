@@ -3,6 +3,8 @@
 namespace App\Filament\Pages\Auth;
 
 use App\Models\User;
+use App\Services\EnrollmentStudentVerifier;
+use Carbon\Carbon;
 use Filament\Auth\Pages\Register as BaseRegister;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
@@ -10,9 +12,11 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Schemas\Schema;
 use Illuminate\Contracts\Support\Htmlable;
+use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class Register extends BaseRegister
 {
@@ -139,7 +143,6 @@ class Register extends BaseRegister
                         'unique' => __('app.email_unique'),
                     ]),
 
-
                 Select::make('academic_year')
                     ->label(__('app.academic_year'))
                     ->placeholder(__('app.select_academic_year'))
@@ -161,12 +164,13 @@ class Register extends BaseRegister
                     ->hidden(fn ($get): bool => $get('registration_type') !== 'enrollment')
                     ->dehydrated(fn ($get): bool => $get('registration_type') === 'enrollment')
                     ->maxLength(50)
-                    ->unique(User::class, 'seat_number')
                     ->prefixIcon('heroicon-o-hashtag')
-                    ->dehydrateStateUsing(fn ($state) => blank($state) ? null : trim((string) $state))
+                    ->dehydrateStateUsing(fn ($state) => blank($state)
+                        ? null
+                        : trim((string) $state)
+                    )
                     ->validationMessages([
                         'required' => __('app.seat_number_required'),
-                        'unique' => __('app.seat_number_unique'),
                     ]),
 
                 DatePicker::make('date_of_birth')
@@ -251,31 +255,102 @@ class Register extends BaseRegister
     {
         $registrationType = $data['registration_type'] ?? 'national_exam';
 
-        $username = trim((string) ($data['username'] ?? ''));
+        $username = Str::lower(trim((string) ($data['username'] ?? '')));
 
         $phone = blank($data['phone'] ?? null)
             ? null
             : preg_replace('/[^0-9]/', '', (string) $data['phone']);
-        return User::create([
+
+        $email = filled($data['email'] ?? null)
+            ? Str::lower(trim((string) $data['email']))
+            : null;
+
+        $dateOfBirth = Carbon::parse($data['date_of_birth'])->format('Y-m-d');
+
+        $academicYear = $registrationType === 'enrollment'
+            ? trim((string) ($data['academic_year'] ?? ''))
+            : null;
+
+        $seatNumber = $registrationType === 'enrollment'
+            ? trim((string) ($data['seat_number'] ?? ''))
+            : null;
+
+        $matchedStudent = null;
+
+        if ($registrationType === 'enrollment') {
+            $matchedStudent = app(EnrollmentStudentVerifier::class)->verify(
+                $academicYear,
+                $seatNumber,
+                $dateOfBirth,
+            );
+
+            if (! $matchedStudent) {
+                $message = __('app.enrollment_not_in_national_exam_list');
+
+                Notification::make()
+                    ->title($message)
+                    ->danger()
+                    ->send();
+
+                throw ValidationException::withMessages([
+                    'seat_number' => $message,
+                ]);
+            }
+
+            $alreadyRegistered = User::query()
+                ->where('registration_type', 'enrollment')
+                ->where('academic_year', $academicYear)
+                ->where('seat_number', $seatNumber)
+                ->whereDate('date_of_birth', $dateOfBirth)
+                ->exists();
+
+            if ($alreadyRegistered) {
+                $message = __('app.already_registered');
+
+                Notification::make()
+                    ->title($message)
+                    ->danger()
+                    ->send();
+
+                throw ValidationException::withMessages([
+                    'seat_number' => $message,
+                ]);
+            }
+        }
+
+        $user = User::create([
             'registration_type' => $registrationType,
+
             'academic_year' => $registrationType === 'enrollment'
-                ? ($data['academic_year'] ?? null)
+                ? $academicYear
                 : null,
-            'name' => $username,
-            'name_latin' => null,
+
+            'name' => $registrationType === 'enrollment'
+                ? $matchedStudent?->name
+                : $username,
+
+            'name_latin' => $registrationType === 'enrollment'
+                ? $matchedStudent?->name_latin
+                : null,
+
             'username' => $username,
-            'email' => filled($data['email'] ?? null)
-                ? Str::lower(trim((string) $data['email']))
-                : null,
+            'email' => $email,
             'phone' => $phone,
-            'date_of_birth' => $data['date_of_birth'],
+            'date_of_birth' => $dateOfBirth,
+
             'seat_number' => $registrationType === 'enrollment'
-                ? trim((string) ($data['seat_number'] ?? ''))
+                ? $seatNumber
                 : null,
 
             'password' => Hash::make($data['password']),
             'is_active' => true,
         ]);
+
+        if (method_exists($user, 'assignRole')) {
+            $user->assignRole('Student');
+        }
+
+        return $user;
     }
 
     protected static function getAcademicYearOptions(): array

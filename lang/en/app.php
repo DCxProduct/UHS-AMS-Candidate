@@ -343,5 +343,8 @@ return [
     'no' => 'No',
     'please_input_data_before_save' => 'Please input data before saving.',
 
+    'enrollment_not_in_national_exam_list' => 'Your name is not in the national examination list.',
+    'already_registered' => 'You have already registered.',
+
 
 ];
