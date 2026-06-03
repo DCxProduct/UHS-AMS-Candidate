@@ -51,6 +51,7 @@ class AdminPanelProvider extends PanelProvider
             ->brandLogoHeight('6rem')
 
             ->sidebarCollapsibleOnDesktop()
+            ->globalSearch(false)
 
             ->renderHook(
                 PanelsRenderHook::AUTH_LOGIN_FORM_AFTER,
