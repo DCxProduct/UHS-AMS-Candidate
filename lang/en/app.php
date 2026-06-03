@@ -346,5 +346,28 @@ return [
     'enrollment_not_in_national_exam_list' => 'Your name is not in the national examination list.',
     'already_registered' => 'You have already registered.',
 
+    'contact_us' => 'Contact Us',
+    'student_support' => 'Student Support',
+    'contact_admissions_support' => 'Contact Admissions Support',
+    'application_period_ended' => 'The application period for this form has ended. Please contact our support team for more information or assistance.',
+    'this_form' => 'This form',
+    'form_has_expired' => ':name has expired.',
+    'expired_default_message' => 'The application period has ended. Please contact our office for more information.',
+    'application_period' => 'Application Period',
+    'call_us' => 'Call Us',
+    'email_us' => 'Email Us',
+    'telegram' => 'Telegram',
+
+    'admissions_office' => 'Admissions Office',
+    'admissions_office_short' => 'AO',
+    'admissions_support_position' => 'Student Application Support',
+
+    'registrar_office' => 'Registrar Office',
+    'registrar_office_short' => 'RO',
+    'registrar_support_position' => 'Registration Support',
+
+    'form_currently_available' => 'This form is currently available.',
+    'application_not_open_yet' => 'This application is not open yet.',
+
 
 ];

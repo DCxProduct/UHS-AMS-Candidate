@@ -345,5 +345,28 @@ return [
 
     'enrollment_not_in_national_exam_list' => 'ឈ្មោះរបស់អ្នកមិនមាននៅក្នុងបញ្ជីប្រឡងថ្នាក់ជាតិ',
     'already_registered' => 'អ្នកបានចុះឈ្មោះរួចហើយ',
-    
+
+    'contact_us' => 'ទំនាក់ទំនង',
+    'student_support' => 'ជំនួយនិស្សិត',
+    'contact_admissions_support' => 'ទំនាក់ទំនងផ្នែកជំនួយការទទួលនិស្សិត',
+    'application_period_ended' => 'រយៈពេលដាក់ពាក្យសម្រាប់ទម្រង់នេះបានបញ្ចប់ហើយ។ សូមទាក់ទងក្រុមជំនួយរបស់យើងសម្រាប់ព័ត៌មានបន្ថែម ឬជំនួយ។',
+    'this_form' => 'ទម្រង់នេះ',
+    'form_has_expired' => ':name បានផុតកំណត់ហើយ។',
+    'expired_default_message' => 'រយៈពេលដាក់ពាក្យបានបញ្ចប់ហើយ។ សូមទាក់ទងការិយាល័យរបស់យើងសម្រាប់ព័ត៌មានបន្ថែម។',
+    'application_period' => 'រយៈពេលដាក់ពាក្យ',
+    'call_us' => 'ទូរស័ព្ទមកយើង',
+    'email_us' => 'ផ្ញើអ៊ីមែលមកយើង',
+    'telegram' => 'តេឡេក្រាម',
+
+    'admissions_office' => 'ការិយាល័យទទួលនិស្សិត',
+    'admissions_office_short' => 'ទន',
+    'admissions_support_position' => 'ផ្នែកជំនួយពាក្យស្នើសុំនិស្សិត',
+
+    'registrar_office' => 'ការិយាល័យចុះឈ្មោះ',
+    'registrar_office_short' => 'ចឈ',
+    'registrar_support_position' => 'ផ្នែកជំនួយការចុះឈ្មោះ',
+
+    'form_currently_available' => 'ទម្រង់នេះកំពុងបើកឱ្យប្រើប្រាស់។',
+    'application_not_open_yet' => 'ពាក្យស្នើសុំនេះមិនទាន់បើកទេ។',
+
 ];

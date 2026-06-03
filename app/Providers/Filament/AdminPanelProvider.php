@@ -5,6 +5,7 @@ namespace App\Providers\Filament;
 use App\Filament\Pages\Auth\Login;
 use App\Filament\Pages\Auth\Register;
 use App\Filament\Pages\StudentDynamicFormPage;
+use App\Filament\Student\Pages\ContactUs;
 use App\Filament\Student\Pages\StudentDashboard;
 use BezhanSalleh\LanguageSwitch\Http\Middleware\SwitchLanguageLocale;
 use Filament\Actions\Action;
@@ -109,6 +110,7 @@ class AdminPanelProvider extends PanelProvider
             ->pages([
                 StudentDashboard::class,
                 StudentDynamicFormPage::class,
+                ContactUs::class,
             ])
 
             ->discoverWidgets(
@@ -156,19 +158,44 @@ class AdminPanelProvider extends PanelProvider
                 'active',
             ]);
 
-            $query = DB::table('custom_forms');
+            $today = now()->toDateString();
+
+            $query = DB::table('custom_forms')
+                ->where(function ($query) use ($today): void {
+                    $query
+                        ->whereNotExists(function ($subQuery): void {
+                            $subQuery
+                                ->selectRaw('1')
+                                ->from('closing_dates')
+                                ->whereNull('closing_dates.deleted_at')
+                                ->whereRaw("closing_dates.type = CONCAT('custom_form:', custom_forms.id)");
+                        })
+
+                        ->orWhereExists(function ($subQuery) use ($today): void {
+                            $subQuery
+                                ->selectRaw('1')
+                                ->from('closing_dates')
+                                ->whereNull('closing_dates.deleted_at')
+                                ->whereRaw("closing_dates.type = CONCAT('custom_form:', custom_forms.id)")
+                                ->where('closing_dates.status', 'open')
+                                ->whereDate('closing_dates.start_date', '<=', $today)
+                                ->whereDate('closing_dates.end_date', '>=', $today);
+                        })
+
+                        ->orWhereExists(function ($subQuery): void {
+                            $subQuery
+                                ->selectRaw('1')
+                                ->from('closing_dates')
+                                ->whereNull('closing_dates.deleted_at')
+                                ->whereRaw("closing_dates.type = CONCAT('custom_form:', custom_forms.id)")
+                                ->where('closing_dates.status', 'closed');
+                        });
+                });
 
             if ($activeColumn) {
                 $query->where($activeColumn, true);
             }
 
-            /*
-            |--------------------------------------------------------------------------
-            | Optional allowed_roles filter
-            |--------------------------------------------------------------------------
-            | This is safe for PostgreSQL JSON columns.
-            | If you do not use allowed_roles, it will not affect anything.
-            */
             if (in_array('allowed_roles', $columns, true)) {
                 $driver = DB::connection()->getDriverName();
 
@@ -208,12 +235,24 @@ class AdminPanelProvider extends PanelProvider
 
                     $formId = (int) ($form->id ?? 0);
 
+                    $deadline = DB::table('closing_dates')
+                        ->whereNull('deleted_at')
+                        ->where('type', 'custom_form:' . $formId)
+                        ->latest('id')
+                        ->first();
+
+                    $url = url('/student/custom-form-entries?tableFilters[custom_form_id][value]=' . $formId);
+
+                    if ($deadline && $deadline->status === 'closed') {
+                        $url = url('/student/contact-us?form_id=' . $formId);
+                    }
+
                     return NavigationItem::make('student-form-' . $formId)
                         ->label(fn (): string => $this->getDynamicFormNavigationLabel($slug, $name))
                         ->group(fn (): string => __('app.student_application'))
                         ->icon($this->getDynamicFormIcon($slug))
                         ->sort($this->getFormSortNumber($form, $slug))
-                        ->url(url('/student/custom-form-entries?tableFilters[custom_form_id][value]=' . $formId))
+                        ->url($url)
                         ->isActiveWhen(
                             fn (): bool => request()->is('student/custom-form-entries*')
                                 && (int) data_get(request()->query('tableFilters'), 'custom_form_id.value') === $formId
@@ -222,6 +261,8 @@ class AdminPanelProvider extends PanelProvider
                 ->values()
                 ->all();
         } catch (Throwable $e) {
+            report($e);
+
             return [];
         }
     }
