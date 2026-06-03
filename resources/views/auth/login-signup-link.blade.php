@@ -13,26 +13,58 @@
     .fi-simple-header .fi-link {
         display: none !important;
     }
+
+    .uhs-auth-links {
+        margin-top: 1.75rem;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 1.75rem;
+        font-size: 0.95rem;
+        font-weight: 800;
+    }
+
+    .uhs-auth-link {
+        color: #f59e0b;
+        text-decoration: none;
+        background: transparent !important;
+        transition: all 0.2s ease;
+    }
+
+    .uhs-auth-link:hover {
+        color: #fbbf24;
+        text-decoration: underline;
+        text-underline-offset: 4px;
+    }
+
+    .uhs-auth-divider {
+        width: 1px;
+        height: 18px;
+        background: rgba(156, 163, 175, 0.45);
+    }
+
+    @media (max-width: 480px) {
+        .uhs-auth-links {
+            flex-direction: column;
+            gap: 0.65rem;
+        }
+
+        .uhs-auth-divider {
+            display: none;
+        }
+    }
 </style>
 
-<div style="margin-top: 1.25rem; text-align: center; font-size: 1rem;">
-    <a
-        href="{{ route('student.password.request') }}"
-        style="color: #f59e0b; font-weight: 800; text-decoration: none;"
-    >
-        {{ __('app.forgot_password') }}
+<div class="uhs-auth-links">
+    <a href="{{ route('student.password.request') }}" class="uhs-auth-link">
+        {{ __('auth.forgot_password.label') }}
     </a>
-</div>
 
-@if ($registerUrl)
-    <div style="margin-top: 1.25rem; text-align: center; font-size: 1rem;">
-        <span style="color: #9ca3af;">{{ __('app.or') }}</span>
+    @if ($registerUrl)
+        <span class="uhs-auth-divider"></span>
 
-        <a
-            href="{{ $registerUrl }}"
-            style="color: #f59e0b; font-weight: 800; text-decoration: none;"
-        >
-            {{ __('app.sign_up_new_account') }}
+        <a href="{{ $registerUrl }}" class="uhs-auth-link">
+            {{ __('auth.register.sign_up_new_account') }}
         </a>
-    </div>
-@endif
+    @endif
+</div>
