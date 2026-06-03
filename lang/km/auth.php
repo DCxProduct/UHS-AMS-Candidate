@@ -24,4 +24,5 @@ return [
         'or' => 'ឬ',
         'sign_up_new_account' => 'បង្កើតគណនីថ្មី',
     ],
+    'logout' => 'ចាកចេញ',
 ];

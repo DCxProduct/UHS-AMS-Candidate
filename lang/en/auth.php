@@ -24,4 +24,5 @@ return [
         'or' => 'or',
         'sign_up_new_account' => 'Create new account',
     ],
+    'logout' => 'Logout',
 ];

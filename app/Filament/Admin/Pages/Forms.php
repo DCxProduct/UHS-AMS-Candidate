@@ -16,7 +16,7 @@ class Forms extends Page implements HasSchemas
 
     protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-document-text';
 
-    protected static ?int $navigationSort = 50;
+    protected static ?int $navigationSort = 10;
 
     protected static ?string $slug = 'forms';
 

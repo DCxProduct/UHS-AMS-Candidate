@@ -7,6 +7,7 @@ use App\Filament\Pages\Auth\Register;
 use App\Filament\Pages\StudentDynamicFormPage;
 use App\Filament\Student\Pages\StudentDashboard;
 use BezhanSalleh\LanguageSwitch\Http\Middleware\SwitchLanguageLocale;
+use Filament\Actions\Action;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -37,6 +38,11 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('student')
+
+            ->userMenuItems([
+                'logout' => Action::make('logout')
+                    ->label(__('auth.logout')),
+            ])
 
             ->login(Login::class)
             ->registration(Register::class)
@@ -150,15 +156,6 @@ class AdminPanelProvider extends PanelProvider
                 'active',
             ]);
 
-            $sortColumn = $this->firstExistingColumn($columns, [
-                'display_order',
-                'sort',
-                'sort_order',
-                'order_column',
-                'ordering',
-                'position',
-            ]);
-
             $query = DB::table('custom_forms');
 
             if ($activeColumn) {
@@ -192,11 +189,7 @@ class AdminPanelProvider extends PanelProvider
                 });
             }
 
-            if ($sortColumn) {
-                $query->orderBy($sortColumn);
-            } else {
-                $query->orderBy('id');
-            }
+            $query->orderBy('id');
 
             return $query
                 ->get()
@@ -219,7 +212,7 @@ class AdminPanelProvider extends PanelProvider
                         ->label(fn (): string => $this->getDynamicFormNavigationLabel($slug, $name))
                         ->group(fn (): string => __('app.student_application'))
                         ->icon($this->getDynamicFormIcon($slug))
-                        ->sort($this->getFormSortNumber($form))
+                        ->sort($this->getFormSortNumber($form, $slug))
                         ->url(url('/student/custom-form-entries?tableFilters[custom_form_id][value]=' . $formId))
                         ->isActiveWhen(
                             fn (): bool => request()->is('student/custom-form-entries*')
@@ -259,8 +252,21 @@ class AdminPanelProvider extends PanelProvider
         };
     }
 
-    protected function getFormSortNumber(object $form): int
+    protected function getFormSortNumber(object $form, string $slug): int
     {
+        $preferredSort = [
+            'profile' => 10,
+            'national-exam' => 20,
+            'national-examination' => 20,
+            'enrollment' => 30,
+            'request-document' => 40,
+            'request-documents' => 40,
+        ];
+
+        if (array_key_exists($slug, $preferredSort)) {
+            return $preferredSort[$slug];
+        }
+
         foreach ([
                      'display_order',
                      'sort',
