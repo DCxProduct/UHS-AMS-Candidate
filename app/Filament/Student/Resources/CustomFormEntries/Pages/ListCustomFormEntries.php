@@ -59,7 +59,7 @@ class ListCustomFormEntries extends ListRecords
                 ->color('info')
                 ->url(
                     $form?->slug
-                        ? url('/admin/student-form/' . $form->slug . '?mode=create')
+                        ? url('/student/student-form/' . $form->slug . '?mode=create')
                         : '#'
                 ),
         ];

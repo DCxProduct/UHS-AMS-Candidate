@@ -336,6 +336,12 @@ form button[type="submit"].fi-btn:hover,
     border-radius: 14px !important;
 }
 
+.fi-select-input .fi-dropdown-panel.fi-scrollable {
+    max-height: min(18rem, calc(100vh - 2rem)) !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+}
+
 .fi-topbar .fi-dropdown-trigger,
 .fi-topbar .fi-icon-btn {
     margin-left: 6px !important;
@@ -393,4 +399,3 @@ form button[type="submit"].fi-btn:hover,
     font-weight: 700 !important;
     line-height: 1 !important;
 }
-
