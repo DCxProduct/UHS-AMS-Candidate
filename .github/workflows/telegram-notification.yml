@@ -1,0 +1,37 @@
+name: Telegram Notification
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  telegram:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send Telegram Message
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          COMMIT_URL="https://github.com/${{ github.repository }}/commit/${{ github.sha }}"
+
+          MESSAGE="🚀 New code pushed to main branch"$'\n\n'
+          MESSAGE+="📦 Repository: ${{ github.repository }}"$'\n'
+          MESSAGE+="🌿 Branch: main"$'\n'
+          MESSAGE+="👨‍💻 Developer: ${{ github.actor }}"$'\n\n'
+          MESSAGE+="📝 Commit Message: ${{ github.event.head_commit.message }}"$'\n\n'
+          MESSAGE+="🔗 Commit URL: <a href=\"${COMMIT_URL}\">Link</a>"
+
+          RESPONSE=$(curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "text=${MESSAGE}" \
+            --data-urlencode "parse_mode=HTML" \
+            --data-urlencode "disable_web_page_preview=true")
+
+          echo "$RESPONSE"
+
+          if echo "$RESPONSE" | grep -q '"ok":false'; then
+            exit 1
+          fi
