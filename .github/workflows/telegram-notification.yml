@@ -17,12 +17,14 @@ jobs:
         run: |
           COMMIT_URL="https://github.com/${{ github.repository }}/commit/${{ github.sha }}"
 
-          MESSAGE="🚀 New code pushed to main branch"$'\n\n'
-          MESSAGE+="📦 Repository: ${{ github.repository }}"$'\n'
-          MESSAGE+="🌿 Branch: main"$'\n'
-          MESSAGE+="👨‍💻 Developer: ${{ github.actor }}"$'\n\n'
-          MESSAGE+="📝 Commit Message: ${{ github.event.head_commit.message }}"$'\n\n'
-          MESSAGE+="🔗 Commit URL: <a href=\"${COMMIT_URL}\">Link</a>"
+          MESSAGE="🚀 <b>${{ github.event.repository.name }}</b>"$'\n'
+          MESSAGE+="━━━━━━━━━━━━━━━━━━"$'\n\n'
+          MESSAGE+="📦 <b>Repository:</b> ${{ github.repository }}"$'\n'
+          MESSAGE+="🌿 <b>Branch:</b> main"$'\n'
+          MESSAGE+="👨‍💻 <b>Developer:</b> ${{ github.actor }}"$'\n\n'
+          MESSAGE+="📝 <b>Commit Message:</b>"$'\n'
+          MESSAGE+="${{ github.event.head_commit.message }}"$'\n\n'
+          MESSAGE+="🔗 <a href=\"${COMMIT_URL}\"><b>Open Commit</b></a>"
 
           RESPONSE=$(curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
