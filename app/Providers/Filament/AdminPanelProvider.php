@@ -40,11 +40,6 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('student')
 
-            ->userMenuItems([
-                'logout' => Action::make('logout')
-                    ->label(__('auth.logout')),
-            ])
-
             ->login(Login::class)
             ->registration(Register::class)
 
