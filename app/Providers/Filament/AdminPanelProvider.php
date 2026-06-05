@@ -6,6 +6,7 @@ use App\Filament\Pages\Auth\Login;
 use App\Filament\Pages\Auth\Register;
 use App\Filament\Pages\StudentDynamicFormPage;
 use App\Filament\Student\Pages\ContactUs;
+use App\Filament\Student\Pages\MyProfile;
 use App\Filament\Student\Pages\StudentDashboard;
 use BezhanSalleh\LanguageSwitch\Http\Middleware\SwitchLanguageLocale;
 use Filament\Actions\Action;
@@ -13,6 +14,7 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\MenuItem;
 use Filament\Navigation\NavigationGroup;
 use Filament\Navigation\NavigationItem;
 use Filament\Panel;
@@ -106,6 +108,14 @@ class AdminPanelProvider extends PanelProvider
                 StudentDashboard::class,
                 StudentDynamicFormPage::class,
                 ContactUs::class,
+                MyProfile::class,
+            ])
+
+            ->userMenuItems([
+                MenuItem::make()
+                    ->label(fn (): string => __('student_profile.my_profile'))
+                    ->icon('heroicon-o-user-circle')
+                    ->url(fn (): string => MyProfile::getUrl()),
             ])
 
             ->discoverWidgets(
