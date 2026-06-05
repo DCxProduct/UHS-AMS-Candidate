@@ -79,14 +79,15 @@
 
     <style>
         h1.fi-header-heading {
-            font-size: 32px !important;
-            font-weight: 900 !important;
-            line-height: 1.2 !important;
-            letter-spacing: -0.02em;
+            font-family: 'Battambang', 'Inter', system-ui, sans-serif !important;
+            font-size: 25px !important;
+            line-height: 1.6 !important;
+            font-weight: 700 !important;
+            letter-spacing: 0 !important;
         }
 
         .hero-title {
-            font-size: 32px !important;
+            font-size: 25px !important;
             font-weight: 900;
             color: var(--text-main);
             line-height: 1.2;
