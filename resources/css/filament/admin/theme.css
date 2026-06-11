@@ -1,0 +1,409 @@
+@source '../../../../vendor/bezhansalleh/filament-language-switch/';
+
+@import url('https://fonts.googleapis.com/css2?family=Battambang:wght@100;300;400;700;900&family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+@import '/vendor/filament/filament/resources/css/theme.css';
+
+@source '../../../../app/Filament/Admin//*';
+@source '../../../../resources/views/filament//*';
+@source '../../../../resources/views/components//*';
+@source '../../../../resources/views/livewire//*';
+@source '../../../../app/Livewire//*';
+
+/* =====================================================
+   GLOBAL LANGUAGE FONT SETUP
+   English = Inter
+   Khmer   = Battambang
+===================================================== */
+
+:root {
+    --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+html[lang='en'],
+html[lang='en'] body {
+    --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+    letter-spacing: 0 !important;
+}
+
+html[lang='km'],
+html[lang='km'] body {
+    --font-sans: 'Battambang', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: 'Battambang', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+    letter-spacing: 0 !important;
+}
+
+/* Khmer text anywhere should use Battambang */
+[lang='km'],
+:lang(km) {
+    font-family: 'Battambang', 'Inter', system-ui, sans-serif !important;
+    letter-spacing: 0 !important;
+}
+
+/* English text anywhere should use Inter */
+[lang='en'],
+:lang(en) {
+    font-family: 'Inter', system-ui, sans-serif !important;
+}
+
+/* =====================================================
+   FILAMENT GLOBAL FONT
+===================================================== */
+
+html,
+body,
+.fi-body,
+.fi-layout,
+.fi-main,
+.fi-page,
+.fi-sidebar,
+.fi-topbar,
+.fi-section,
+.fi-modal,
+.fi-dropdown,
+.fi-ta,
+.fi-fo,
+.fi-btn,
+.fi-input,
+.fi-select-input,
+.fi-textarea {
+    font-family: var(--font-sans) !important;
+    letter-spacing: 0 !important;
+}
+
+.fi-logo,
+.fi-topbar,
+.fi-topbar * {
+    font-family: var(--font-sans) !important;
+}
+
+.fi-header-heading {
+    font-family: var(--font-sans) !important;
+    font-size: 25px !important;
+    line-height: 1.6 !important;
+    font-weight: 700 !important;
+    letter-spacing: 0 !important;
+}
+
+.fi-breadcrumbs,
+.fi-breadcrumbs * {
+    font-family: var(--font-sans) !important;
+    font-size: 13px !important;
+    line-height: 1.7 !important;
+}
+
+.fi-sidebar-item-label {
+    font-family: var(--font-sans) !important;
+    font-size: 14px !important;
+    line-height: 1.7 !important;
+    font-weight: 600 !important;
+}
+
+.fi-sidebar-group-label {
+    font-family: var(--font-sans) !important;
+    font-size: 13px !important;
+    line-height: 1.7 !important;
+    font-weight: 600 !important;
+}
+
+.fi-fo-field-wrp-label,
+.fi-fo-field-wrp-label span {
+    font-family: var(--font-sans) !important;
+    font-size: 14px !important;
+    line-height: 1.8 !important;
+    font-weight: 600 !important;
+}
+
+.fi-input,
+.fi-select-input,
+.fi-textarea,
+.fi-input-wrp input,
+.fi-input-wrp select,
+.fi-input-wrp textarea {
+    font-family: var(--font-sans) !important;
+    font-size: 14px !important;
+    line-height: 1.8 !important;
+    font-weight: 400 !important;
+}
+
+.fi-btn,
+.fi-btn-label {
+    font-family: var(--font-sans) !important;
+    font-size: 14px !important;
+    line-height: 1.6 !important;
+    font-weight: 600 !important;
+}
+
+.fi-ta table,
+.fi-ta-header-cell,
+.fi-ta-cell,
+.fi-ta-text {
+    font-family: var(--font-sans) !important;
+    font-size: 14px !important;
+    line-height: 1.8 !important;
+}
+
+.fi-tabs,
+.fi-tabs *,
+.fi-fo-wizard,
+.fi-fo-wizard * {
+    font-family: var(--font-sans) !important;
+}
+
+.fi-fo-wizard-header-step-label {
+    font-size: 14px !important;
+    line-height: 1.7 !important;
+    font-weight: 600 !important;
+}
+
+/* =====================================================
+   ADMIN LOGO / BRAND
+===================================================== */
+
+.fi-logo,
+.fi-logo a,
+.fi-logo div,
+.fi-sidebar-header,
+.fi-sidebar-header .fi-logo,
+.fi-sidebar-header .fi-logo a,
+.fi-sidebar-header .fi-logo div,
+.fi-topbar .fi-logo,
+.fi-topbar .fi-logo a,
+.fi-topbar .fi-logo div {
+    width: auto !important;
+    max-width: none !important;
+    overflow: visible !important;
+}
+
+.uhs-brand-logo,
+html[lang='en'] .uhs-brand-logo,
+html[lang='km'] .uhs-brand-logo {
+    display: flex !important;
+    align-items: center !important;
+    gap: 16px !important;
+    width: auto !important;
+    max-width: none !important;
+    min-width: max-content !important;
+    overflow: visible !important;
+}
+
+.fi-sidebar-header .uhs-brand-logo-image,
+.fi-topbar .uhs-brand-logo-image,
+.uhs-brand-logo-image,
+html[lang='en'] .uhs-brand-logo-image,
+html[lang='km'] .uhs-brand-logo-image {
+    width: 86px !important;
+    height: 86px !important;
+    min-width: 86px !important;
+    min-height: 86px !important;
+    object-fit: contain !important;
+}
+
+.fi-sidebar-header .uhs-brand-logo-text,
+.fi-topbar .uhs-brand-logo-text,
+.uhs-brand-logo-text,
+html[lang='en'] .uhs-brand-logo-text,
+html[lang='km'] .uhs-brand-logo-text {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    width: auto !important;
+    max-width: none !important;
+    min-width: max-content !important;
+    overflow: visible !important;
+    white-space: nowrap !important;
+    text-overflow: unset !important;
+    line-height: 1.15 !important;
+}
+
+.fi-sidebar-header .uhs-brand-logo-kh,
+.fi-topbar .uhs-brand-logo-kh,
+.uhs-brand-logo-kh {
+    font-family: 'Battambang', 'Kh Muol', 'Moul', sans-serif !important;
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    line-height: 1.35 !important;
+    white-space: nowrap !important;
+}
+
+.uhs-brand-logo-en {
+    font-family: 'Inter', 'Times New Roman', Times, serif !important;
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    line-height: 1.2 !important;
+    margin-top: 5px !important;
+    white-space: nowrap !important;
+}
+
+html:not(.dark) .uhs-brand-logo-kh,
+html:not(.dark) .uhs-brand-logo-en {
+    color: #111827 !important;
+}
+
+html.dark .uhs-brand-logo-kh,
+html.dark .uhs-brand-logo-en,
+.dark .uhs-brand-logo-kh,
+.dark .uhs-brand-logo-en {
+    color: #ffffff !important;
+}
+
+/* Auth page logo */
+.uhs-auth-logo {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.uhs-auth-logo-image {
+    width: 90px !important;
+    height: 90px !important;
+    object-fit: contain !important;
+}
+
+/* =====================================================
+   ADMIN BUTTON STYLE
+===================================================== */
+
+.fi-main {
+    max-width: 100% !important;
+}
+
+form button[type="submit"].fi-btn,
+.fi-page .fi-btn.fi-color-primary,
+.fi-main button[type="submit"] {
+    background-color: #1d4ed8 !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    transition: background-color 0.2s ease-in-out !important;
+}
+
+form button[type="submit"].fi-btn:hover,
+.fi-page .fi-btn.fi-color-primary:hover,
+.fi-main button[type="submit"]:hover {
+    background-color: #1e40af !important;
+}
+
+/* =====================================================
+   TOPBAR AVATARS & DROPDOWNS
+===================================================== */
+
+.fi-topbar {
+    overflow: visible !important;
+}
+
+.fi-topbar nav,
+.fi-topbar .fi-actions {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+}
+
+.fi-dropdown-panel {
+    overflow: hidden !important;
+    border-radius: 14px !important;
+}
+
+.fi-select-input .fi-dropdown-panel.fi-scrollable {
+    max-height: min(18rem, calc(100vh - 2rem)) !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+}
+
+.fi-topbar .fi-dropdown-trigger,
+.fi-topbar .fi-icon-btn {
+    margin-left: 6px !important;
+    margin-right: 6px !important;
+}
+
+/* Language switch button */
+.uhs-one-click-language {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 9999px !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+}
+
+.uhs-one-click-language-flag,
+.uhs-one-click-language img {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
+    border-radius: 9999px !important;
+    object-fit: cover !important;
+    object-position: center !important;
+}
+
+/* Profile avatar */
+.fi-topbar .fi-avatar,
+.fi-topbar img.fi-avatar,
+.fi-topbar .fi-avatar img,
+.fi-user-avatar,
+.fi-user-avatar img {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    border-radius: 9999px !important;
+    object-fit: cover !important;
+    object-position: center !important;
+}
+
+/* Letter avatar */
+.fi-topbar .fi-avatar {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: #050506 !important;
+    color: #ffffff !important;
+    font-size: 20px !important;
+    font-weight: 700 !important;
+    line-height: 1 !important;
+}
+
+/* =====================================================
+   TABLE / CARD CLEAN STYLE
+===================================================== */
+
+.fi-section {
+    border-radius: 18px !important;
+}
+
+.fi-ta-content {
+    border-radius: 14px !important;
+}
+
+.fi-ta-header-cell-label {
+    font-weight: 700 !important;
+}
+
+.fi-badge {
+    font-family: var(--font-sans) !important;
+    font-weight: 700 !important;
+}
+
+/* =====================================================
+   DARK MODE FIX
+===================================================== */
+
+html.dark .fi-section,
+.dark .fi-section {
+    background-color: #111827 !important;
+}
+
+html.dark .fi-sidebar,
+.dark .fi-sidebar {
+    background-color: #030712 !important;
+}
+
+html.dark .fi-topbar,
+.dark .fi-topbar {
+    background-color: #030712 !important;
+}
