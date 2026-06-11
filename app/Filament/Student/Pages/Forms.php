@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Admin\Pages;
+namespace App\Filament\Student\Pages;
 
 use BackedEnum;
 use Filament\Forms\Components\Select;
@@ -26,17 +26,17 @@ class Forms extends Page implements HasSchemas
 
     public static function getNavigationLabel(): string
     {
-        return __('admin_forms.navigation_label');
+        return __('student_forms.navigation_label');
     }
 
     public function getTitle(): string
     {
-        return __('admin_forms.title');
+        return __('student_forms.title');
     }
 
     public function getHeading(): string
     {
-        return __('admin_forms.heading');
+        return __('student_forms.heading');
     }
 
     public function mount(): void
@@ -51,11 +51,11 @@ class Forms extends Page implements HasSchemas
         return $schema
             ->columns(1)
             ->components([
-                Section::make(__('admin_forms.section.title'))
+                Section::make(__('student_forms.section.title'))
                     ->schema([
                         Select::make('form_type')
-                            ->label(__('admin_forms.fields.form_type'))
-                            ->placeholder(__('admin_forms.placeholders.form_type'))
+                            ->label(__('student_forms.fields.form_type'))
+                            ->placeholder(__('student_forms.placeholders.form_type'))
                             ->options($this->getFormTypeOptions())
                             ->native(false)
                             ->searchable()
@@ -71,15 +71,15 @@ class Forms extends Page implements HasSchemas
     protected function getFormTypeOptions(): array
     {
         return [
-            'document_condition' => __('admin_forms.options.document_condition'),
-            'new_student_registration' => __('admin_forms.options.new_student_registration'),
-            'des_candidate_application' => __('admin_forms.options.des_candidate_application'),
+            'document_condition' => __('student_forms.options.document_condition'),
+            'new_student_registration' => __('student_forms.options.new_student_registration'),
+            'des_candidate_application' => __('student_forms.options.des_candidate_application'),
 
-            'bachelor_transfer_applications' => __('admin_forms.options.bachelor_transfer_applications'),
-            'master_science_national_exit_exam_applications' => __('admin_forms.options.master_science_national_exit_exam_applications'),
-            'national_entrance_exam_applications' => __('admin_forms.options.national_entrance_exam_applications'),
-            'national_exit_exam_applications' => __('admin_forms.options.national_exit_exam_applications'),
-            'old_student_registrations' => __('admin_forms.options.old_student_registrations'),
+            'bachelor_transfer_applications' => __('student_forms.options.bachelor_transfer_applications'),
+            'master_science_national_exit_exam_applications' => __('student_forms.options.master_science_national_exit_exam_applications'),
+            'national_entrance_exam_applications' => __('student_forms.options.national_entrance_exam_applications'),
+            'national_exit_exam_applications' => __('student_forms.options.national_exit_exam_applications'),
+            'old_student_registrations' => __('student_forms.options.old_student_registrations'),
         ];
     }
 
