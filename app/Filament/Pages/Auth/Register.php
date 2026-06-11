@@ -3,21 +3,17 @@
 namespace App\Filament\Pages\Auth;
 
 use App\Models\User;
-use App\Services\EnrollmentStudentVerifier;
 use Carbon\Carbon;
 use Filament\Auth\Pages\Register as BaseRegister;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\ToggleButtons;
 use Filament\Schemas\Schema;
 use Illuminate\Contracts\Support\Htmlable;
-use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
 
 class Register extends BaseRegister
 {
@@ -40,28 +36,9 @@ class Register extends BaseRegister
     {
         return $schema
             ->components([
-                ToggleButtons::make('registration_type')
-                    ->hiddenLabel()
-                    ->options([
-                        'national_exam' => __('app.national_examination'),
-                        'enrollment' => __('app.enrollment'),
-                    ])
-                    ->icons([
-                        'national_exam' => 'heroicon-o-clipboard-document-check',
-                        'enrollment' => 'heroicon-o-academic-cap',
-                    ])
-                    ->colors([
-                        'national_exam' => 'warning',
-                        'enrollment' => 'warning',
-                    ])
+                Hidden::make('registration_type')
                     ->default('national_exam')
-                    ->inline()
-                    ->live()
-                    ->markAsRequired(false)
-                    ->columnSpanFull()
-                    ->extraAttributes([
-                        'class' => 'uhs-register-type-wrapper flex flex-col items-center justify-center w-full',
-                    ]),
+                    ->dehydrated(true),
 
                 TextInput::make('username')
                     ->label(__('app.username'))
@@ -100,13 +77,13 @@ class Register extends BaseRegister
                 TextInput::make('phone')
                     ->label(__('app.phone_number'))
                     ->placeholder(__('app.enter_phone_number'))
-                    ->required(fn ($get): bool => $get('registration_type') === 'national_exam')
+                    ->required()
                     ->tel()
                     ->inputMode('numeric')
                     ->minLength(9)
                     ->maxLength(10)
                     ->rules([
-                        'nullable',
+                        'required',
                         'regex:/^[0-9]{9,10}$/',
                     ])
                     ->validationMessages([
@@ -142,36 +119,6 @@ class Register extends BaseRegister
                     ->validationMessages([
                         'email' => __('app.email_invalid'),
                         'unique' => __('app.email_unique'),
-                    ]),
-
-                Select::make('academic_year')
-                    ->label(__('app.academic_year'))
-                    ->placeholder(__('app.select_academic_year'))
-                    ->options(self::getAcademicYearOptions())
-                    ->required(fn ($get): bool => $get('registration_type') === 'enrollment')
-                    ->hidden(fn ($get): bool => $get('registration_type') !== 'enrollment')
-                    ->dehydrated(fn ($get): bool => $get('registration_type') === 'enrollment')
-                    ->native(false)
-                    ->searchable()
-                    ->prefixIcon('heroicon-o-calendar')
-                    ->validationMessages([
-                        'required' => __('app.academic_year_required'),
-                    ]),
-
-                TextInput::make('seat_number')
-                    ->label(__('app.seat_number'))
-                    ->placeholder(__('app.enter_seat_number'))
-                    ->required(fn ($get): bool => $get('registration_type') === 'enrollment')
-                    ->hidden(fn ($get): bool => $get('registration_type') !== 'enrollment')
-                    ->dehydrated(fn ($get): bool => $get('registration_type') === 'enrollment')
-                    ->maxLength(50)
-                    ->prefixIcon('heroicon-o-hashtag')
-                    ->dehydrateStateUsing(fn ($state) => blank($state)
-                        ? null
-                        : trim((string) $state)
-                    )
-                    ->validationMessages([
-                        'required' => __('app.seat_number_required'),
                     ]),
 
                 DatePicker::make('date_of_birth')
@@ -254,8 +201,6 @@ class Register extends BaseRegister
 
     protected function handleRegistration(array $data): Model
     {
-        $registrationType = $data['registration_type'] ?? 'national_exam';
-
         $username = Str::lower(trim((string) ($data['username'] ?? '')));
 
         $phone = blank($data['phone'] ?? null)
@@ -268,92 +213,23 @@ class Register extends BaseRegister
 
         $dateOfBirth = Carbon::parse($data['date_of_birth'])->format('Y-m-d');
 
-        $academicYear = $registrationType === 'enrollment'
-            ? trim((string) ($data['academic_year'] ?? ''))
-            : null;
-
-        $seatNumber = $registrationType === 'enrollment'
-            ? trim((string) ($data['seat_number'] ?? ''))
-            : null;
-
-        $matchedStudent = null;
-
-        if ($registrationType === 'enrollment') {
-            $matchedStudent = app(EnrollmentStudentVerifier::class)->verify(
-                $academicYear,
-                $seatNumber,
-                $dateOfBirth,
-            );
-
-            if (! $matchedStudent) {
-                $message = __('app.enrollment_not_in_national_exam_list');
-
-                Notification::make()
-                    ->title($message)
-                    ->danger()
-                    ->send();
-
-                throw ValidationException::withMessages([
-                    'seat_number' => $message,
-                ]);
-            }
-
-            $alreadyRegistered = User::query()
-                ->where('registration_type', 'enrollment')
-                ->where('academic_year', $academicYear)
-                ->where('seat_number', $seatNumber)
-                ->whereDate('date_of_birth', $dateOfBirth)
-                ->exists();
-
-            if ($alreadyRegistered) {
-                $message = __('app.already_registered');
-
-                Notification::make()
-                    ->title($message)
-                    ->danger()
-                    ->send();
-
-                throw ValidationException::withMessages([
-                    'seat_number' => $message,
-                ]);
-            }
-        }
-
         return DB::transaction(function () use (
-            $registrationType,
             $username,
             $phone,
             $email,
             $dateOfBirth,
-            $academicYear,
-            $seatNumber,
-            $matchedStudent,
             $data,
         ): Model {
             $user = User::query()->create([
-                'registration_type' => $registrationType,
-
-                'academic_year' => $registrationType === 'enrollment'
-                    ? $academicYear
-                    : null,
-
-                'name' => $registrationType === 'enrollment'
-                    ? $matchedStudent?->name
-                    : $username,
-
-                'name_latin' => $registrationType === 'enrollment'
-                    ? $matchedStudent?->name_latin
-                    : null,
-
+                'registration_type' => 'national_exam',
+                'academic_year' => null,
+                'name' => $username,
+                'name_latin' => null,
                 'username' => $username,
                 'email' => $email,
                 'phone' => $phone,
                 'date_of_birth' => $dateOfBirth,
-
-                'seat_number' => $registrationType === 'enrollment'
-                    ? $seatNumber
-                    : null,
-
+                'seat_number' => null,
                 'password' => Hash::make($data['password']),
                 'email_verified_at' => now(),
                 'is_active' => true,
@@ -363,22 +239,7 @@ class Register extends BaseRegister
                 $user->assignRole('Student');
             }
 
-            if ($registrationType === 'enrollment' && $matchedStudent) {
-                $matchedStudent->delete();
-            }
-
             return $user;
         });
-    }
-
-    protected static function getAcademicYearOptions(): array
-    {
-        $currentYear = now()->year;
-
-        return [
-            ($currentYear - 1) . '-' . $currentYear => ($currentYear - 1) . '-' . $currentYear,
-            $currentYear . '-' . ($currentYear + 1) => $currentYear . '-' . ($currentYear + 1),
-            ($currentYear + 1) . '-' . ($currentYear + 2) => ($currentYear + 1) . '-' . ($currentYear + 2),
-        ];
     }
 }
