@@ -106,12 +106,22 @@ return [
     'overall_progress' => 'Overall Progress',
     'forms_submitted' => 'Forms Submitted',
 
+    'enrollment_form_status' => 'Enrollment Form Status',
+    'your_enrollment_status' => 'Your Enrollment Status',
+
+    'enrollment_by_year' => 'Enrollment by Year',
+    'enrollment_status' => 'Enrollment Status',
+    'enrollment_progress' => 'Enrollment Progress',
     'progress' => 'Progress',
+    'start_enrollment' => 'Start enrollment',
     'submitted_once' => 'Submitted once',
     'registrar_review' => 'Registrar review',
     'final_result' => 'Final result',
     'submission_by_month' => 'Submission by Month',
 
+    'enrollment_data' => 'Enrollment Data',
+    'enrollment_data_description' => 'Showing only your enrollment record for the current academic year.',
+    'showing_only_your_enrollment_record' => 'Showing only your enrollment record for the current academic year.',
     'application_data' => 'Application Data',
     'my_submission_data' => 'My Submission Data',
 
@@ -211,6 +221,8 @@ return [
     'waiting_review_title' => 'Waiting review',
     'waiting_review_message' => 'Your enrollment was submitted. You cannot submit again this academic year.',
 
+    'enrollment_is_open_message' => 'Enrollment is open.',
+
     /*
     |--------------------------------------------------------------------------
     | Navigation
@@ -223,6 +235,7 @@ return [
         'profile' => 'Profile',
         'print-application' => 'Print Application',
         'national-exam' => 'National Examination',
+        'enrollment' => 'Enrollment',
         'request-document' => 'Request Document',
         'testing' => 'Testing',
         'test' => 'Test',
