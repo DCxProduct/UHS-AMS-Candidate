@@ -67,7 +67,7 @@ class StudentPanelProvider extends PanelProvider
             )
 
             ->colors([
-                'primary' => Color::Amber,
+                'primary' => Color::Blue,
             ])
 
             /*
