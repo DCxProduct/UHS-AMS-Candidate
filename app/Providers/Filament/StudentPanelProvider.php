@@ -9,7 +9,6 @@ use App\Filament\Student\Pages\ContactUs;
 use App\Filament\Student\Pages\MyProfile;
 use App\Filament\Student\Pages\StudentDashboard;
 use BezhanSalleh\LanguageSwitch\Http\Middleware\SwitchLanguageLocale;
-use Filament\Actions\Action;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -33,20 +32,20 @@ use Illuminate\Support\Str;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Throwable;
 
-class AdminPanelProvider extends PanelProvider
+class StudentPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
         return $panel
             ->default()
-            ->id('admin')
+            ->id('student')
             ->path('student')
 
             ->login(Login::class)
             ->registration(Register::class)
 
             ->databaseNotifications()
-            ->viteTheme('resources/css/filament/admin/theme.css')
+            ->viteTheme('resources/css/filament/student/theme.css')
 
             ->favicon(asset('images/UHS_logo.png'))
 
@@ -73,37 +72,24 @@ class AdminPanelProvider extends PanelProvider
 
             /*
             |--------------------------------------------------------------------------
-            | Admin resources
-            |--------------------------------------------------------------------------
-            */
-            ->discoverResources(
-                in: app_path('Filament/Admin/Resources'),
-                for: 'App\\Filament\\Admin\\Resources',
-            )
-
-            /*
-            |--------------------------------------------------------------------------
             | Student resources
             |--------------------------------------------------------------------------
-            | Example:
-            | app/Filament/Student/Resources/CustomFormEntries
-            | app/Filament/Student/Resources/DocumentRequests
             */
             ->discoverResources(
                 in: app_path('Filament/Student/Resources'),
                 for: 'App\\Filament\\Student\\Resources',
             )
 
-            ->discoverPages(
-                in: app_path('Filament/Admin/Pages'),
-                for: 'App\\Filament\\Admin\\Pages',
-            )
-
             /*
             |--------------------------------------------------------------------------
-            | Student pages used inside this panel
+            | Student pages
             |--------------------------------------------------------------------------
             */
+            ->discoverPages(
+                in: app_path('Filament/Student/Pages'),
+                for: 'App\\Filament\\Student\\Pages',
+            )
+
             ->pages([
                 StudentDashboard::class,
                 StudentDynamicFormPage::class,
@@ -111,17 +97,22 @@ class AdminPanelProvider extends PanelProvider
                 MyProfile::class,
             ])
 
+            /*
+            |--------------------------------------------------------------------------
+            | Student widgets
+            |--------------------------------------------------------------------------
+            */
+            ->discoverWidgets(
+                in: app_path('Filament/Student/Widgets'),
+                for: 'App\\Filament\\Student\\Widgets',
+            )
+
             ->userMenuItems([
                 MenuItem::make()
                     ->label(fn (): string => __('student_profile.my_profile'))
                     ->icon('heroicon-o-user-circle')
                     ->url(fn (): string => MyProfile::getUrl()),
             ])
-
-            ->discoverWidgets(
-                in: app_path('Filament/Admin/Widgets'),
-                for: 'App\\Filament\\Admin\\Widgets',
-            )
 
             ->navigationGroups([
                 NavigationGroup::make()
@@ -289,7 +280,6 @@ class AdminPanelProvider extends PanelProvider
     {
         return match ($slug) {
             'profile' => 'heroicon-o-user',
-            'enrollment' => 'heroicon-o-academic-cap',
             'request-document',
             'request-documents' => 'heroicon-o-document-text',
             'national-exam',
@@ -304,7 +294,6 @@ class AdminPanelProvider extends PanelProvider
             'profile' => 10,
             'national-exam' => 20,
             'national-examination' => 20,
-            'enrollment' => 30,
             'request-document' => 40,
             'request-documents' => 40,
         ];
