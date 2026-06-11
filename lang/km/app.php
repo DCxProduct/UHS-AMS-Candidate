@@ -106,22 +106,12 @@ return [
     'overall_progress' => 'វឌ្ឍនភាពសរុប',
     'forms_submitted' => 'ទម្រង់បានដាក់ស្នើ',
 
-    'enrollment_form_status' => 'ស្ថានភាពទម្រង់ចុះឈ្មោះ',
-    'your_enrollment_status' => 'ស្ថានភាពចុះឈ្មោះរបស់អ្នក',
-
-    'enrollment_by_year' => 'ការចុះឈ្មោះតាមឆ្នាំ',
-    'enrollment_status' => 'ស្ថានភាពចុះឈ្មោះ',
-    'enrollment_progress' => 'វឌ្ឍនភាពចុះឈ្មោះ',
     'progress' => 'វឌ្ឍនភាព',
-    'start_enrollment' => 'ចាប់ផ្តើមចុះឈ្មោះ',
     'submitted_once' => 'បានដាក់ស្នើម្តង',
     'registrar_review' => 'ការិយាល័យចុះឈ្មោះពិនិត្យ',
     'final_result' => 'លទ្ធផលចុងក្រោយ',
     'submission_by_month' => 'ការដាក់ស្នើតាមខែ',
 
-    'enrollment_data' => 'ទិន្នន័យចុះឈ្មោះ',
-    'enrollment_data_description' => 'បង្ហាញតែកំណត់ត្រាចុះឈ្មោះរបស់អ្នកសម្រាប់ឆ្នាំសិក្សាបច្ចុប្បន្ន។',
-    'showing_only_your_enrollment_record' => 'បង្ហាញតែកំណត់ត្រាចុះឈ្មោះរបស់អ្នកសម្រាប់ឆ្នាំសិក្សាបច្ចុប្បន្ន។',
     'application_data' => 'ទិន្នន័យពាក្យស្នើសុំ',
     'my_submission_data' => 'ទិន្នន័យការដាក់ស្នើរបស់ខ្ញុំ',
 
@@ -221,8 +211,6 @@ return [
     'waiting_review_title' => 'កំពុងរង់ចាំពិនិត្យ',
     'waiting_review_message' => 'ការចុះឈ្មោះរបស់អ្នកត្រូវបានដាក់ស្នើ។ អ្នកមិនអាចដាក់ស្នើម្តងទៀតក្នុងឆ្នាំសិក្សានេះបានទេ។',
 
-    'enrollment_is_open_message' => 'ការចុះឈ្មោះកំពុងបើក។',
-
     /*
     |--------------------------------------------------------------------------
     | Navigation
@@ -235,7 +223,6 @@ return [
         'profile' => 'ប្រវត្តិរូប',
         'print-application' => 'បោះពុម្ពពាក្យស្នើសុំ',
         'national-exam' => 'ប្រឡងថ្នាក់ជាតិ',
-        'enrollment' => 'ការចុះឈ្មោះ',
         'request-document' => 'ស្នើសុំឯកសារ',
         'testing' => 'សាកល្បង',
         'test' => 'សាកល្បង',
