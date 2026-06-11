@@ -11,18 +11,11 @@ return [
     'sign_up_new_account' => 'ចុះឈ្មោះគណនីថ្មី',
     'already_have_account' => 'មានគណនីរួចហើយ?',
 
-    'register_as' => 'ចុះឈ្មោះជា',
-    'enrollment' => 'ចុះឈ្មោះចូលរៀន',
     'national_examination' => 'ប្រឡងថ្នាក់ជាតិ',
 
     'academic_year' => 'ឆ្នាំសិក្សា',
     'select_academic_year' => 'ជ្រើសរើសឆ្នាំសិក្សា',
     'academic_year_required' => 'សូមជ្រើសរើសឆ្នាំសិក្សា។',
-
-    'seat_number' => 'លេខតុ',
-    'enter_seat_number' => 'បញ្ចូលលេខតុ',
-    'seat_number_required' => 'សូមបញ្ចូលលេខតុ។',
-    'seat_number_unique' => 'លេខតុនេះត្រូវបានចុះឈ្មោះរួចហើយ។',
 
     'username_email_phone' => 'ឈ្មោះអ្នកប្រើប្រាស់ អ៊ីមែល ឬលេខទូរស័ព្ទ',
     'enter_username_email_phone' => 'បញ្ចូលឈ្មោះអ្នកប្រើប្រាស់ អ៊ីមែល ឬលេខទូរស័ព្ទ',

@@ -115,11 +115,6 @@ class Login extends BaseLogin
                         $nationalExamQuery
                             ->where('registration_type', 'national_exam')
                             ->whereRaw('LOWER(name_latin) = ?', [$normalizedLogin]);
-                    })
-                    ->orWhere(function ($nationalExamQuery) use ($normalizedLogin) {
-                        $nationalExamQuery
-                            ->where('registration_type', 'national_exam')
-                            ->whereRaw('LOWER(seat_number) = ?', [$normalizedLogin]);
                     });
             })
             ->first();
