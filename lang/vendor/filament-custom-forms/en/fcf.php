@@ -1,5 +1,5 @@
 <?php
-
+ 
  return [
      'admin' => [
          'parent_container' => 'Parent Container',
@@ -85,16 +85,9 @@
              'repeater_fields' => 'Repeater Fields',
          ],
      ],
-
-     'navigation' => [
-         'form_builder' => 'Form Builder',
-         'form_entry' => 'Form Entry',
-     ],
-
      'general' => [
          'created_at' => 'Created At',
          'updated_at' => 'Updated At',
          'deleted_at' => 'Deleted At',
      ],
-
  ];

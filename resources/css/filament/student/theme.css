@@ -399,3 +399,112 @@ form button[type="submit"].fi-btn:hover,
     font-weight: 700 !important;
     line-height: 1 !important;
 }
+
+/* =====================================================
+   CLEAN CUSTOM FORM CREATE / EDIT UI
+===================================================== */
+
+.fi-page form {
+    max-width: 1320px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+}
+
+.fi-page .fi-fo-component-ctn {
+    gap: 22px !important;
+}
+
+.fi-page .fi-section {
+    border-radius: 22px !important;
+    overflow: hidden !important;
+    border: 1px solid #dbeafe !important;
+    background: #ffffff !important;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06) !important;
+}
+
+.fi-page .fi-section-header {
+    background: linear-gradient(90deg, #eff6ff 0%, #ffffff 100%) !important;
+    border-bottom: 1px solid #dbeafe !important;
+    padding: 18px 22px !important;
+}
+
+.fi-page .fi-section-header-heading {
+    color: #1e3a8a !important;
+    font-size: 18px !important;
+    font-weight: 800 !important;
+    line-height: 1.6 !important;
+}
+
+.fi-page .fi-section-content {
+    padding: 22px !important;
+}
+
+.fi-page .fi-fo-field-wrp-label,
+.fi-page .fi-fo-field-wrp-label span {
+    color: #334155 !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+}
+
+.fi-page .fi-input-wrp,
+.fi-page .fi-select-input,
+.fi-page .fi-textarea {
+    min-height: 44px !important;
+    border-radius: 12px !important;
+    border-color: #cbd5e1 !important;
+    background-color: #ffffff !important;
+}
+
+.fi-page .fi-input,
+.fi-page .fi-select-input,
+.fi-page .fi-textarea {
+    font-size: 14px !important;
+}
+
+.fi-page .fi-input-wrp:focus-within,
+.fi-page .fi-select-input:focus,
+.fi-page .fi-textarea:focus {
+    border-color: #2563eb !important;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15) !important;
+}
+
+.fi-page .fi-fo-repeater-item {
+    border-radius: 18px !important;
+    border: 1px solid #dbeafe !important;
+    background: #f8fbff !important;
+    box-shadow: none !important;
+}
+
+.fi-page .fi-fo-repeater-item-header {
+    background: #eff6ff !important;
+    border-bottom: 1px solid #dbeafe !important;
+}
+
+.fi-page .fi-fo-repeater-add-action {
+    margin-top: 12px !important;
+}
+
+.fi-page .fi-btn.fi-color-primary,
+.fi-page form button[type="submit"] {
+    border-radius: 14px !important;
+    background-color: #1d4ed8 !important;
+    border-color: #1d4ed8 !important;
+    color: #ffffff !important;
+    font-weight: 800 !important;
+}
+
+.fi-page .fi-btn.fi-color-primary:hover,
+.fi-page form button[type="submit"]:hover {
+    background-color: #1e40af !important;
+    border-color: #1e40af !important;
+}
+
+@media (max-width: 1024px) {
+    .fi-page form {
+        max-width: 100% !important;
+    }
+
+    .fi-page .fi-section-content {
+        padding: 16px !important;
+    }
+}
