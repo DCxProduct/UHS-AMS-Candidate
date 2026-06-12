@@ -25,7 +25,10 @@ class DocumentTemplateResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return __('filament-document-builder::document-builder.navigation.form_builder');
+        /** @var DocumentBuilderPlugin $plugin */
+        $plugin = filament('filament-document-builder');
+
+        return $plugin->getNavigationGroup();
     }
 
     public static function getNavigationSort(): ?int
@@ -34,26 +37,6 @@ class DocumentTemplateResource extends Resource
         $plugin = filament('filament-document-builder');
 
         return $plugin->getNavigationSort();
-    }
-
-    public static function getNavigationLabel(): string
-    {
-        return __('filament-document-builder::document-builder.navigation.document_template');
-    }
-
-    public static function getModelLabel(): string
-    {
-        return __('filament-document-builder::document-builder.navigation.document_template');
-    }
-
-    public static function getPluralModelLabel(): string
-    {
-        return __('filament-document-builder::document-builder.navigation.document_templates');
-    }
-
-    public static function getBreadcrumb(): string
-    {
-        return __('filament-document-builder::document-builder.navigation.document_template');
     }
 
     public static function form(Schema $schema): Schema

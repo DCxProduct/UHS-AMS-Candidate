@@ -21,16 +21,16 @@ class EditDocumentTemplate extends EditRecord
     {
         return [
             Action::make('load_example_layout')
-                ->label(__('filament-document-builder::document-builder.actions.load_example_layout'))
+                ->label('Load Example Layout')
                 ->icon('heroicon-o-document-text')
                 ->color('info')
                 ->requiresConfirmation()
-                ->modalHeading(__('filament-document-builder::document-builder.actions.load_example_layout'))
-                ->modalDescription(__('filament-document-builder::document-builder.messages.load_example_warning'))
-                ->modalSubmitActionLabel(__('filament-document-builder::document-builder.actions.load_layout'))
+                ->modalHeading('Load Example Layout')
+                ->modalDescription('Warning: This will overwrite any existing content in your Document Designer.')
+                ->modalSubmitActionLabel('Load Layout')
                 ->form([
                     Select::make('layout')
-                        ->label(__('filament-document-builder::document-builder.actions.select_layout'))
+                        ->label('Select a Layout')
                         ->options(LayoutTemplates::getOptions())
                         ->required(),
                 ])
@@ -46,13 +46,12 @@ class EditDocumentTemplate extends EditRecord
                     }
 
                     Notification::make()
-                        ->title(__('filament-document-builder::document-builder.messages.layout_loaded'))
+                        ->title('Layout Loaded')
                         ->success()
                         ->send();
                 }),
-
             Action::make('preview_pdf')
-                ->label(__('filament-document-builder::document-builder.actions.preview_pdf'))
+                ->label('Preview PDF')
                 ->icon('heroicon-o-document-magnifying-glass')
                 ->color('success')
                 ->action(function () {
@@ -62,8 +61,8 @@ class EditDocumentTemplate extends EditRecord
 
                     if (empty($record->model_class)) {
                         Notification::make()
-                            ->title(__('filament-document-builder::document-builder.labels.no_model_selected_title'))
-                            ->body(__('filament-document-builder::document-builder.labels.no_model_selected_body'))
+                            ->title('No Database Model Selected')
+                            ->body('You must select a Database Model in the Template Details and click Save before you can preview.')
                             ->warning()
                             ->send();
 
@@ -71,18 +70,14 @@ class EditDocumentTemplate extends EditRecord
                     }
 
                     $data = [];
-
                     if (class_exists($record->model_class)) {
                         $sampleRecord = $record->model_class::first();
-
                         if ($sampleRecord) {
                             $data = $sampleRecord;
                         } else {
                             Notification::make()
-                                ->title(__('filament-document-builder::document-builder.labels.no_records_found_title'))
-                                ->body(__('filament-document-builder::document-builder.labels.no_records_found_body', [
-                                    'model' => $record->model_class,
-                                ]))
+                                ->title('No Records Found')
+                                ->body("There are no records in the {$record->model_class} table to preview with.")
                                 ->warning()
                                 ->send();
 
@@ -90,10 +85,8 @@ class EditDocumentTemplate extends EditRecord
                         }
                     } else {
                         Notification::make()
-                            ->title(__('filament-document-builder::document-builder.labels.invalid_model_title'))
-                            ->body(__('filament-document-builder::document-builder.labels.invalid_model_body', [
-                                'model' => $record->model_class,
-                            ]))
+                            ->title('Invalid Model')
+                            ->body("The model {$record->model_class} does not exist.")
                             ->danger()
                             ->send();
 
@@ -105,9 +98,8 @@ class EditDocumentTemplate extends EditRecord
 
                     return response()->streamDownload(function () use ($pdf) {
                         echo $pdf->output();
-                    }, 'preview-' . Str::slug((string) $record->getAttribute('name')) . '.pdf');
+                    }, 'preview-'.Str::slug((string) $record->getAttribute('name')).'.pdf');
                 }),
-
             Actions\DeleteAction::make(),
         ];
     }
