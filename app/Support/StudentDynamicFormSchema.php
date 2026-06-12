@@ -132,9 +132,7 @@ class StudentDynamicFormSchema
                 )
                 ->columns((int) ($config['columns'] ?? 12))
                 ->defaultItems((int) ($config['default_items'] ?? 0))
-                ->addActionLabel(
-                    (string) ($config['add_action_label'] ?? __('app.add') . ' ' . $label)
-                );
+                ->addActionLabel($this->getRepeaterAddActionLabel($config, $label));
 
             return $this->applyCommonConfig($component, $field, $config, true);
         }
@@ -368,14 +366,7 @@ class StudentDynamicFormSchema
 
         $columns = Schema::getColumnListing($table);
 
-        $labelColumn = $this->firstExistingColumn($columns, [
-            'name',
-            'name_en',
-            'name_km',
-            'title',
-            'label',
-            'khmer_name',
-        ]);
+        $labelColumn = $this->localizedLabelColumn($columns);
 
         $valueColumn = $this->firstExistingColumn($columns, [
             'id',
@@ -394,7 +385,11 @@ class StudentDynamicFormSchema
             ->pluck($labelColumn, $valueColumn)
             ->mapWithKeys(function ($label, $value) use ($field): array {
                 return [
-                    (string) $value => $this->getTranslatedOptionLabel($field, (string) $value, (string) $label),
+                    (string) $value => $this->getTranslatedOptionLabel(
+                        $field,
+                        (string) $value,
+                        (string) $label
+                    ),
                 ];
             })
             ->all();
@@ -414,14 +409,7 @@ class StudentDynamicFormSchema
             'level',
         ]);
 
-        $labelColumn = $this->firstExistingColumn($columns, [
-            'name',
-            'name_en',
-            'name_km',
-            'label',
-            'title',
-            'khmer_name',
-        ]);
+        $labelColumn = $this->localizedLabelColumn($columns);
 
         $valueColumn = $this->firstExistingColumn($columns, [
             'id',
@@ -446,7 +434,11 @@ class StudentDynamicFormSchema
             ->pluck($labelColumn, $valueColumn)
             ->mapWithKeys(function ($label, $value) use ($field): array {
                 return [
-                    (string) $value => $this->getTranslatedOptionLabel($field, (string) $value, (string) $label),
+                    (string) $value => $this->getTranslatedOptionLabel(
+                        $field,
+                        (string) $value,
+                        (string) $label
+                    ),
                 ];
             })
             ->all();
@@ -500,11 +492,15 @@ class StudentDynamicFormSchema
 
         foreach ($options as $key => $value) {
             if (is_array($value)) {
-                $optionValue = $value['value'] ?? $value['id'] ?? $value['key'] ?? $value['label'] ?? $key;
-                $optionLabel = $value['label'] ?? $value['name'] ?? $value['title'] ?? $value['value'] ?? $key;
+                $optionValue = $value['value']
+                    ?? $value['id']
+                    ?? $value['key']
+                    ?? $key;
+
+                $optionLabel = $this->localizedOptionLabel($value, (string) $optionValue);
             } else {
                 $optionValue = is_string($key) ? $key : $value;
-                $optionLabel = $value;
+                $optionLabel = (string) $value;
             }
 
             if (is_array($optionValue) || is_array($optionLabel)) {
@@ -527,7 +523,7 @@ class StudentDynamicFormSchema
 
         $fallback = (string) (
             $this->localizedConfigValue($config, 'label')
-            ?? $field->{'label_' . app()->getLocale()} ?? null
+            ?? $this->localizedFieldColumnValue($field, 'label')
             ?? $field->label ?? null
             ?? Str::headline($name)
         );
@@ -612,13 +608,73 @@ class StudentDynamicFormSchema
         );
     }
 
+    protected function getRepeaterAddActionLabel(array $config, string $label): string
+    {
+        $fallback = $this->localizedConfigValue($config, 'add_action_label');
+
+        if (is_string($fallback) && filled($fallback)) {
+            return $fallback;
+        }
+
+        return __('app.add') . ' ' . $label;
+    }
+
     protected function localizedConfigValue(array $config, string $key): mixed
     {
         $locale = app()->getLocale();
 
         return $config[$key . '_' . $locale]
             ?? $config[$locale][$key] ?? null
+            ?? (is_array($config[$key] ?? null)
+                ? ($config[$key][$locale] ?? $config[$key]['en'] ?? null)
+                : null);
+    }
+
+    protected function localizedFieldColumnValue($field, string $key): mixed
+    {
+        $locale = app()->getLocale();
+
+        $localizedColumn = $key . '_' . $locale;
+
+        return $field->{$localizedColumn}
+            ?? $field->{$key . '_en'} ?? null
             ?? null;
+    }
+
+    protected function localizedOptionLabel(array $option, string $fallback): string
+    {
+        $locale = app()->getLocale();
+
+        return (string) (
+            $option['label_' . $locale]
+            ?? $option[$locale]['label'] ?? null
+            ?? $option['label_en'] ?? null
+            ?? $option['label'] ?? null
+            ?? $option['name_' . $locale] ?? null
+            ?? $option['name'] ?? null
+            ?? $option['title_' . $locale] ?? null
+            ?? $option['title'] ?? null
+            ?? $fallback
+        );
+    }
+
+    protected function localizedLabelColumn(array $columns): ?string
+    {
+        $locale = app()->getLocale();
+
+        $preferred = [
+            'name_' . $locale,
+            'label_' . $locale,
+            'title_' . $locale,
+            $locale === 'km' ? 'khmer_name' : 'name_en',
+            'name',
+            'name_en',
+            'label',
+            'title',
+            'khmer_name',
+        ];
+
+        return $this->firstExistingColumn($columns, $preferred);
     }
 
     protected function translationKeyPart(string $value): string

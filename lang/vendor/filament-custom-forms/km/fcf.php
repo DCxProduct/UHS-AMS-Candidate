@@ -1,5 +1,5 @@
 <?php
-
+ 
  return [
      'admin' => [
          'parent_container' => 'ធុងផ្ទុកមេ',
@@ -90,9 +90,4 @@
          'updated_at' => 'បានធ្វើបច្ចុប្បន្នភាពនៅ',
          'deleted_at' => 'បានលុបនៅ',
      ],
-
-     'navigation' => [
-        'form_builder' => 'កម្មវិធីបង្កើតទម្រង់',
-        'form_entry' => 'ទិន្នន័យបញ្ចូលទម្រង់',
-    ],
  ];
