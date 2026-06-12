@@ -4,6 +4,8 @@ namespace App\Providers\Filament;
 
 use App\Filament\Pages\Auth\Login;
 use BezhanSalleh\LanguageSwitch\Http\Middleware\SwitchLanguageLocale;
+use Chanthoeun\FilamentCustomForms\CustomFormPlugin;
+use Chanthoeun\FilamentDocumentBuilder\DocumentBuilderPlugin;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -45,6 +47,19 @@ class AdminPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Blue,
             ])
+
+            ->plugins([
+                CustomFormPlugin::make()
+                    ->navigationGroup('Form Builder')
+                    ->navigationFormIcon('heroicon-o-document-duplicate')
+                    ->navigationEntryIcon('heroicon-o-clipboard-document-list')
+            ])
+
+            ->plugin(
+                DocumentBuilderPlugin::make()
+                    ->navigationGroup('Form Builder')
+                    ->navigationIcon('heroicon-o-document-text')
+            )
 
             ->discoverResources(
                 in: app_path('Filament/Admin/Resources'),
