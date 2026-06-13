@@ -96,7 +96,7 @@ class CustomFormEntryResource extends Resource
 
                 $items[] = NavigationItem::make($form->name)
                     ->group(CustomFormPlugin::get()->getNavigationEntryGroup())
-                    ->icon(CustomFormPlugin::get()->getNavigationEntryIcon())
+                    ->icon(static::getDynamicFormIcon($form))
                     ->isActiveWhen(fn() => $activeFormId == $form->id)
                     ->url(static::getUrl('index', [
                         'tableFilters' => [
@@ -111,6 +111,25 @@ class CustomFormEntryResource extends Resource
         }
 
         return $items;
+    }
+
+    protected static function getDynamicFormIcon(CustomForm $form): string
+    {
+        $slug = (string) ($form->slug ?? '');
+
+        $customIcon = $form->navigation_icon
+            ?? $form->icon
+            ?? null;
+
+        if (filled($customIcon)) {
+            return (string) $customIcon;
+        }
+
+        return match ($slug) {
+            'profile' => 'heroicon-o-user',
+            'enrollment' => 'heroicon-o-document-text',
+            default => CustomFormPlugin::get()->getNavigationEntryIcon(),
+        };
     }
 
     public static function form(Schema $schema): Schema
