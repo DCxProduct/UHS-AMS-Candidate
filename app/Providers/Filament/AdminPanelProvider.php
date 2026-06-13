@@ -96,6 +96,7 @@ class AdminPanelProvider extends PanelProvider
                 NavigationGroup::make()
                     ->label(fn (): string => __('admin.navigation_groups.settings'))
                     ->collapsible(),
+
             ])
 
             ->middleware([
