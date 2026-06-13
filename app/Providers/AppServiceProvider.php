@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\User;
+use App\Support\NotificationLanguage;
 use BezhanSalleh\LanguageSwitch\LanguageSwitch;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
@@ -160,10 +161,17 @@ class AppServiceProvider extends ServiceProvider
 
             foreach ($admins as $admin) {
                 Notification::make()
-                    ->title(__('review_applications.notifications.enrollment_submitted_title'))
-                    ->body(__('review_applications.notifications.enrollment_submitted_body', [
-                        'student' => $studentName,
-                    ]))
+                    ->title(NotificationLanguage::transForUser(
+                        $admin,
+                        'review_applications.notifications.enrollment_submitted_title'
+                    ))
+                    ->body(NotificationLanguage::transForUser(
+                        $admin,
+                        'review_applications.notifications.enrollment_submitted_body',
+                        [
+                            'student' => $studentName,
+                        ]
+                    ))
                     ->icon('heroicon-o-clipboard-document-check')
                     ->iconColor('warning')
                     ->sendToDatabase($admin);
