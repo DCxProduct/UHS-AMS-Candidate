@@ -1,6 +1,10 @@
 <x-filament-panels::page>
     @php
         $form = $this->getForm();
+        $formTitle = method_exists($this, 'getFormTitle')
+            ? $this->getFormTitle()
+            : ($form?->name ?? __('app.this_form'));
+
         $status = $this->getClosingDateStatus();
         $contacts = $this->getContacts();
 
@@ -40,6 +44,8 @@
                 --uhs-primary-soft: rgba(245, 158, 11, 0.12);
                 --uhs-danger: #ef4444;
                 --uhs-danger-soft: rgba(239, 68, 68, 0.10);
+                --uhs-warning: #f59e0b;
+                --uhs-warning-soft: rgba(245, 158, 11, 0.12);
                 --uhs-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
                 width: 100%;
             }
@@ -94,19 +100,27 @@
                 font-size: 1rem;
             }
 
-            .uhs-expired-box {
+            .uhs-status-box {
                 max-width: 880px;
                 margin: 0 auto 2rem auto;
                 padding: 1rem 1.15rem;
                 border-radius: 18px;
-                border: 1px solid rgba(239, 68, 68, 0.30);
-                background: var(--uhs-danger-soft);
                 display: flex;
                 gap: 0.9rem;
                 align-items: flex-start;
             }
 
-            .uhs-expired-icon {
+            .uhs-status-box.is-expired {
+                border: 1px solid rgba(239, 68, 68, 0.30);
+                background: var(--uhs-danger-soft);
+            }
+
+            .uhs-status-box.is-not-open {
+                border: 1px solid rgba(245, 158, 11, 0.35);
+                background: var(--uhs-warning-soft);
+            }
+
+            .uhs-status-icon {
                 width: 42px;
                 height: 42px;
                 min-width: 42px;
@@ -114,20 +128,34 @@
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                background: var(--uhs-danger);
                 color: #ffffff;
                 font-weight: 900;
                 font-size: 1.15rem;
             }
 
-            .uhs-expired-title {
-                color: var(--uhs-danger);
+            .uhs-status-box.is-expired .uhs-status-icon {
+                background: var(--uhs-danger);
+            }
+
+            .uhs-status-box.is-not-open .uhs-status-icon {
+                background: var(--uhs-warning);
+            }
+
+            .uhs-status-title {
                 font-weight: 900;
                 font-size: 1rem;
                 margin-bottom: 0.25rem;
             }
 
-            .uhs-expired-message {
+            .uhs-status-box.is-expired .uhs-status-title {
+                color: var(--uhs-danger);
+            }
+
+            .uhs-status-box.is-not-open .uhs-status-title {
+                color: var(--uhs-warning);
+            }
+
+            .uhs-status-message {
                 color: var(--uhs-muted);
                 line-height: 1.65;
                 font-size: 0.92rem;
@@ -135,8 +163,11 @@
 
             .uhs-contact-grid {
                 display: grid;
-                grid-template-columns: repeat(2, minmax(0, 1fr));
+                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
                 gap: 1.25rem;
+                width: 100%;
+                max-width: 760px;
+                margin: 0 auto;
             }
 
             .uhs-contact-card {
@@ -252,18 +283,12 @@
                 word-break: break-word;
             }
 
-            @media (max-width: 1024px) {
-                .uhs-contact-grid {
-                    grid-template-columns: 1fr;
-                }
-            }
-
             @media (max-width: 640px) {
                 .uhs-contact-title {
                     font-size: 1.55rem;
                 }
 
-                .uhs-expired-box,
+                .uhs-status-box,
                 .uhs-person-row {
                     flex-direction: column;
                 }
@@ -295,22 +320,45 @@
             </div>
 
             @if (($status['status'] ?? null) === 'expired')
-                <div class="uhs-expired-box">
-                    <div class="uhs-expired-icon">!</div>
+                <div class="uhs-status-box is-expired">
+                    <div class="uhs-status-icon">!</div>
 
                     <div>
-                        <div class="uhs-expired-title">
+                        <div class="uhs-status-title">
                             {{ __('app.form_has_expired', [
-                                'name' => $form?->name ?? __('app.this_form'),
+                                'name' => $formTitle,
                             ]) }}
                         </div>
 
-                        <div class="uhs-expired-message">
+                        <div class="uhs-status-message">
                             {{ $status['message'] ?? __('app.expired_default_message') }}
                         </div>
 
                         @if (! blank($status['start_date'] ?? null) && ! blank($status['end_date'] ?? null))
-                            <div class="uhs-expired-message" style="margin-top: 0.4rem;">
+                            <div class="uhs-status-message" style="margin-top: 0.4rem;">
+                                {{ __('app.application_period') }}:
+                                <strong>{{ $status['start_date'] }}</strong>
+                                -
+                                <strong>{{ $status['end_date'] }}</strong>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            @elseif (($status['status'] ?? null) === 'not_open')
+                <div class="uhs-status-box is-not-open">
+                    <div class="uhs-status-icon">!</div>
+
+                    <div>
+                        <div class="uhs-status-title">
+                            {{ __('app.application_not_open_yet') }}
+                        </div>
+
+                        <div class="uhs-status-message">
+                            {{ $status['message'] ?? __('app.application_not_open_yet') }}
+                        </div>
+
+                        @if (! blank($status['start_date'] ?? null) && ! blank($status['end_date'] ?? null))
+                            <div class="uhs-status-message" style="margin-top: 0.4rem;">
                                 {{ __('app.application_period') }}:
                                 <strong>{{ $status['start_date'] }}</strong>
                                 -
