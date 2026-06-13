@@ -8,6 +8,7 @@ use App\Filament\Pages\StudentDynamicFormPage;
 use App\Filament\Student\Pages\ContactUs;
 use App\Filament\Student\Pages\MyProfile;
 use App\Filament\Student\Pages\StudentDashboard;
+use App\Http\Middleware\SaveUserLocale;
 use BezhanSalleh\LanguageSwitch\Http\Middleware\SwitchLanguageLocale;
 use Chanthoeun\FilamentCustomForms\CustomFormPlugin;
 use Filament\Http\Middleware\Authenticate;
@@ -117,6 +118,7 @@ class StudentPanelProvider extends PanelProvider
                 AddQueuedCookiesToResponse::class,
                 StartSession::class,
                 SwitchLanguageLocale::class,
+                SaveUserLocale::class,
                 AuthenticateSession::class,
                 ShareErrorsFromSession::class,
                 PreventRequestForgery::class,

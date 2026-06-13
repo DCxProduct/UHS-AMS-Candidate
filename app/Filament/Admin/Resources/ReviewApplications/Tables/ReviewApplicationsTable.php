@@ -12,6 +12,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use App\Support\NotificationLanguage;
 
 class ReviewApplicationsTable
 {
@@ -197,10 +198,17 @@ class ReviewApplicationsTable
 
         if ($status === 'accepted') {
             Notification::make()
-                ->title(__('review_applications.notifications.student_accepted_title'))
-                ->body(__('review_applications.notifications.student_accepted_body', [
-                    'student' => $studentName,
-                ]))
+                ->title(NotificationLanguage::transForUser(
+                    $student,
+                    'review_applications.notifications.student_accepted_title'
+                ))
+                ->body(NotificationLanguage::transForUser(
+                    $student,
+                    'review_applications.notifications.student_accepted_body',
+                    [
+                        'student' => $studentName,
+                    ]
+                ))
                 ->icon('heroicon-o-check-circle')
                 ->iconColor('success')
                 ->success()
@@ -210,11 +218,23 @@ class ReviewApplicationsTable
         }
 
         Notification::make()
-            ->title(__('review_applications.notifications.student_rejected_title'))
-            ->body(__('review_applications.notifications.student_rejected_body', [
-                'student' => $studentName,
-                'note' => filled($note) ? $note : __('review_applications.notifications.no_reject_note'),
-            ]))
+            ->title(NotificationLanguage::transForUser(
+                $student,
+                'review_applications.notifications.student_rejected_title'
+            ))
+            ->body(NotificationLanguage::transForUser(
+                $student,
+                'review_applications.notifications.student_rejected_body',
+                [
+                    'student' => $studentName,
+                    'note' => filled($note)
+                        ? $note
+                        : NotificationLanguage::transForUser(
+                            $student,
+                            'review_applications.notifications.no_reject_note'
+                        ),
+                ]
+            ))
             ->icon('heroicon-o-x-circle')
             ->iconColor('danger')
             ->danger()
