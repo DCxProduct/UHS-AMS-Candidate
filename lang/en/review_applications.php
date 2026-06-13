@@ -1,0 +1,66 @@
+<?php
+
+return [
+    'navigation_label' => 'Review Applications',
+    'navigation_group' => 'Review Document',
+
+    'model_label' => 'Review Application',
+    'plural_model_label' => 'Review Applications',
+
+    'all_fields' => 'All Fields',
+    'fields_count' => 'fields',
+
+    'list_title' => 'Review Applications',
+    'breadcrumb_list' => 'List',
+
+    'id' => 'ID',
+    'student' => 'Student',
+    'student_id' => 'Student ID',
+    'first_name_en' => 'First Name EN',
+    'last_name_en' => 'Last Name EN',
+    'first_name_kh' => 'First Name KH',
+    'last_name_kh' => 'Last Name KH',
+    'review_status' => 'Review Status',
+    'review_note' => 'Review Note',
+    'review_note_placeholder' => 'Enter reject reason or review note',
+    'reviewed_at' => 'Reviewed At',
+    'submitted_at' => 'Submitted At',
+
+    'details_title' => 'Application Details',
+    'application_information' => 'Application Information',
+    'no_data' => 'No data found.',
+
+    'accept_confirm_title' => 'Accept Application',
+    'accept_confirm_description' => 'Are you sure you want to accept this enrollment application?',
+    'reject_title' => 'Reject Application',
+
+    'statuses' => [
+        'pending' => 'Pending',
+        'accepted' => 'Accepted',
+        'rejected' => 'Rejected',
+    ],
+
+    'actions' => [
+        'view_details' => 'View Details',
+        'accept' => 'Accept',
+        'reject' => 'Reject',
+        'close' => 'Close',
+    ],
+
+    'notifications' => [
+        'enrollment_submitted_title' => 'New Enrollment Submitted',
+        'enrollment_submitted_body' => ':student submitted an enrollment application. Please review the document.',
+        'unknown_student' => 'Unknown student',
+
+        'student_accepted_title' => 'Enrollment Approved',
+        'student_accepted_body' => 'Dear :student, your enrollment application has been approved.',
+        'student_rejected_title' => 'Enrollment Rejected',
+        'student_rejected_body' => 'Dear :student, your enrollment application has been rejected. Reason: :note',
+        'no_reject_note' => 'No reason provided',
+
+        'admin_accept_success_title' => 'Application approved',
+        'admin_accept_success_body' => 'The student has been notified.',
+        'admin_reject_success_title' => 'Application rejected',
+        'admin_reject_success_body' => 'The student has been notified.',
+    ],
+];
