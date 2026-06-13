@@ -23,7 +23,8 @@ class CustomFormEntriesTable
 
         return $table
             ->columns(self::getColumns($formId))
-            ->filters(self::getFilters($formId))
+//            ->filters(self::getFilters($formId))
+            ->filters([])
             ->recordActions(self::getRecordActions())
             ->toolbarActions([
                 BulkActionGroup::make([
@@ -92,9 +93,9 @@ class CustomFormEntriesTable
             $label = \Illuminate\Support\Str::headline($key);
 
             $column = TextColumn::make($columnKey)
-                ->label($label)
-                ->searchable()
-                ->toggleable(isToggledHiddenByDefault: false);
+                ->label($label);
+//                ->searchable()
+//                ->toggleable(isToggledHiddenByDefault: false);
 
             if (($fieldTypes[$key] ?? null) === 'number_input') {
                 $column->numeric();
