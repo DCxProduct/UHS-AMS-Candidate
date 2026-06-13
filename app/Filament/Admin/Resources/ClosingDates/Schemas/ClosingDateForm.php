@@ -19,50 +19,59 @@ class ClosingDateForm
         return $schema
             ->columns(12)
             ->components([
-                Section::make('Closing Date Information')
-                    ->description('Manage start date and end date for each dynamic form.')
+                Section::make(__('closing_dates.closing_date_information'))
+                    ->description(__('closing_dates.closing_date_information_description'))
                     ->schema([
                         TextInput::make('name')
-                            ->label('Name')
-                            ->placeholder('Enter name feature')
+                            ->label(__('closing_dates.name'))
+                            ->placeholder(__('closing_dates.name_placeholder'))
                             ->required()
                             ->maxLength(150)
+                            ->validationMessages([
+                                'required' => __('closing_dates.name_required'),
+                            ])
                             ->columnSpan(12),
 
                         Select::make('type')
-                            ->label('Student Application')
-                            ->placeholder('Select dynamic form')
+                            ->label(__('closing_dates.student_application'))
+                            ->placeholder(__('closing_dates.type_placeholder'))
                             ->options(fn (): array => ClosingDate::typeOptions())
                             ->searchable()
                             ->preload()
                             ->required()
+                            ->validationMessages([
+                                'required' => __('closing_dates.type_required'),
+                            ])
                             ->columnSpan(12),
 
                         Select::make('status')
-                            ->label('Status')
+                            ->label(__('closing_dates.status'))
+                            ->placeholder(__('closing_dates.status_placeholder'))
                             ->options([
-                                'not_open' => 'Not Open',
-                                'open' => 'Open',
-                                'closed' => 'Closed',
+                                'not_open' => __('closing_dates.statuses.not_open'),
+                                'open' => __('closing_dates.statuses.open'),
+                                'closed' => __('closing_dates.statuses.closed'),
                             ])
-                            ->placeholder('Select status')
                             ->searchable()
                             ->required()
+                            ->validationMessages([
+                                'required' => __('closing_dates.status_required'),
+                            ])
                             ->columnSpan(12),
 
                         DatePicker::make('start_date')
-                            ->label('Start Date')
+                            ->label(__('closing_dates.start_date'))
                             ->native(false)
                             ->displayFormat('d M Y')
                             ->format('Y-m-d')
-                            ->placeholder('Select start date')
+                            ->placeholder(__('closing_dates.start_date_placeholder'))
                             ->required()
                             ->live()
                             ->maxDate(fn (Get $get) => $get('end_date') ?: null)
                             ->rules([
                                 'required',
                                 'date',
-                                fn (Get $get): Closure => function (string $attribute, $value, Closure $fail) use ($get) {
+                                fn (Get $get): Closure => function (string $attribute, $value, Closure $fail) use ($get): void {
                                     $endDate = $get('end_date');
 
                                     if (! $value || ! $endDate) {
@@ -70,25 +79,29 @@ class ClosingDateForm
                                     }
 
                                     if (Carbon::parse($value)->gt(Carbon::parse($endDate))) {
-                                        $fail('Start date must be before or equal to end date.');
+                                        $fail(__('closing_dates.start_date_before_or_equal_end_date'));
                                     }
                                 },
+                            ])
+                            ->validationMessages([
+                                'required' => __('closing_dates.start_date_required'),
+                                'date' => __('closing_dates.start_date_valid'),
                             ])
                             ->columnSpan(6),
 
                         DatePicker::make('end_date')
-                            ->label('End Date')
+                            ->label(__('closing_dates.end_date'))
                             ->native(false)
                             ->displayFormat('d M Y')
                             ->format('Y-m-d')
-                            ->placeholder('Select end date')
+                            ->placeholder(__('closing_dates.end_date_placeholder'))
                             ->required()
                             ->live()
                             ->minDate(fn (Get $get) => $get('start_date') ?: null)
                             ->rules([
                                 'required',
                                 'date',
-                                fn (Get $get): Closure => function (string $attribute, $value, Closure $fail) use ($get) {
+                                fn (Get $get): Closure => function (string $attribute, $value, Closure $fail) use ($get): void {
                                     $startDate = $get('start_date');
 
                                     if (! $value || ! $startDate) {
@@ -96,9 +109,13 @@ class ClosingDateForm
                                     }
 
                                     if (Carbon::parse($value)->lt(Carbon::parse($startDate))) {
-                                        $fail('End date must be after or equal to start date.');
+                                        $fail(__('closing_dates.end_date_after_or_equal_start_date'));
                                     }
                                 },
+                            ])
+                            ->validationMessages([
+                                'required' => __('closing_dates.end_date_required'),
+                                'date' => __('closing_dates.end_date_valid'),
                             ])
                             ->columnSpan(6),
                     ])
