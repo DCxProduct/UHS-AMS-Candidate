@@ -56,6 +56,53 @@ class CustomFormEntryResource extends Resource
         return $query;
     }
 
+    public static function canAccess(): bool
+    {
+        return true;
+    }
+
+    protected static function studentHasCompletedProfile(): bool
+    {
+        if (! auth()->check()) {
+            return false;
+        }
+
+        if (
+            ! \Illuminate\Support\Facades\Schema::hasTable('custom_forms')
+            || ! \Illuminate\Support\Facades\Schema::hasTable('custom_form_entries')
+        ) {
+            return false;
+        }
+
+        $profileFormId = CustomForm::query()
+            ->where('slug', 'profile')
+            ->value('id');
+
+        if (! $profileFormId) {
+            return false;
+        }
+
+        $columns = \Illuminate\Support\Facades\Schema::getColumnListing('custom_form_entries');
+
+        $ownerColumn = null;
+
+        foreach (['created_by', 'user_id', 'created_by_id'] as $column) {
+            if (in_array($column, $columns, true)) {
+                $ownerColumn = $column;
+                break;
+            }
+        }
+
+        if (! $ownerColumn) {
+            return false;
+        }
+
+        return \Illuminate\Support\Facades\DB::table('custom_form_entries')
+            ->where('custom_form_id', $profileFormId)
+            ->where($ownerColumn, auth()->id())
+            ->exists();
+    }
+
     public static function getNavigationIcon(): string|BackedEnum|null
     {
         return CustomFormPlugin::get()->getNavigationEntryIcon();
@@ -108,7 +155,7 @@ class CustomFormEntryResource extends Resource
         |--------------------------------------------------------------------------
         | Hide package form-entry navigation in Student panel
         |--------------------------------------------------------------------------
-        | Student panel uses your custom dynamic sidebar navigation.
+        | Student panel uses custom dynamic sidebar navigation.
         | We still keep this Resource route active, so students can open:
         | /student/custom-form-entries
         */

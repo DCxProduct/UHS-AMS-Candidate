@@ -5,7 +5,9 @@ namespace App\Providers;
 use App\Models\User;
 use BezhanSalleh\LanguageSwitch\LanguageSwitch;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
+use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -38,6 +40,26 @@ class AppServiceProvider extends ServiceProvider
                     'student',
                     'admin',
                 ], JSON_UNESCAPED_UNICODE);
+            }
+        });
+
+        CustomFormEntry::creating(function (CustomFormEntry $entry): void {
+            if (! auth()->check()) {
+                return;
+            }
+
+            $userId = auth()->id();
+
+            if (Schema::hasColumn('custom_form_entries', 'created_by') && blank($entry->created_by)) {
+                $entry->created_by = $userId;
+            }
+
+            if (Schema::hasColumn('custom_form_entries', 'user_id') && blank($entry->user_id)) {
+                $entry->user_id = $userId;
+            }
+
+            if (Schema::hasColumn('custom_form_entries', 'created_by_id') && blank($entry->created_by_id)) {
+                $entry->created_by_id = $userId;
             }
         });
 
