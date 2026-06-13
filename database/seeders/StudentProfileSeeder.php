@@ -35,18 +35,22 @@ class StudentProfileSeeder extends Seeder
             'updated_at' => $now,
         ];
 
+        if (Schema::hasColumn('custom_forms', 'icon')) {
+            $formData['icon'] = 'heroicon-o-user-circle';
+        }
+
+        if (Schema::hasColumn('custom_forms', 'navigation_icon')) {
+            $formData['navigation_icon'] = 'heroicon-o-user-circle';
+        }
+
         if (Schema::hasColumn('custom_forms', 'schema')) {
             $formData['schema'] = null;
         }
 
-        if (Schema::hasColumn('custom_forms', 'allowed_roles')) {
-            $formData['allowed_roles'] = json_encode([
-                'Student',
-                'Developer',
-                'admin',
-                'super_admin',
-            ], JSON_UNESCAPED_UNICODE);
-        }
+        $formData['allowed_roles'] = json_encode([
+            'student',
+            'admin',
+        ], JSON_UNESCAPED_UNICODE);
 
         if ($form) {
             DB::table('custom_forms')

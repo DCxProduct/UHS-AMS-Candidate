@@ -26,7 +26,34 @@ class CustomFormEntryResource extends Resource
 
     public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
     {
-        return parent::getEloquentQuery();
+        $query = parent::getEloquentQuery();
+
+        if (
+            \Filament\Facades\Filament::getCurrentPanel()
+            && \Filament\Facades\Filament::getCurrentPanel()->getId() === 'student'
+        ) {
+            $userId = auth()->id();
+
+            if (! $userId) {
+                return $query->whereRaw('1 = 0');
+            }
+
+            if (\Illuminate\Support\Facades\Schema::hasColumn('custom_form_entries', 'created_by')) {
+                return $query->where('created_by', $userId);
+            }
+
+            if (\Illuminate\Support\Facades\Schema::hasColumn('custom_form_entries', 'user_id')) {
+                return $query->where('user_id', $userId);
+            }
+
+            if (\Illuminate\Support\Facades\Schema::hasColumn('custom_form_entries', 'created_by_id')) {
+                return $query->where('created_by_id', $userId);
+            }
+
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query;
     }
 
     public static function getNavigationIcon(): string|BackedEnum|null
@@ -37,23 +64,30 @@ class CustomFormEntryResource extends Resource
     public static function getModelLabel(): string
     {
         $id = request()->input('tableFilters.custom_form_id.value');
+
         if ($id) {
-            // Using find() here is technically 1 query, but if called multiple times it's better to cache
             $form = static::getFormFromCache($id);
-            if ($form)
+
+            if ($form) {
                 return __('filament-custom-forms::fcf.entry.entry', ['form' => $form->name]);
+            }
         }
+
         return __('filament-custom-forms::fcf.entry.single');
     }
 
     public static function getPluralModelLabel(): string
     {
         $id = request()->input('tableFilters.custom_form_id.value');
+
         if ($id) {
             $form = static::getFormFromCache($id);
-            if ($form)
+
+            if ($form) {
                 return __('filament-custom-forms::fcf.entry.entries', ['form' => $form->name]);
+            }
         }
+
         return __('filament-custom-forms::fcf.entry.plural');
     }
 
@@ -61,18 +95,34 @@ class CustomFormEntryResource extends Resource
 
     protected static function getFormFromCache(string $id): ?CustomForm
     {
-        if (!isset(static::$formCache[$id])) {
+        if (! isset(static::$formCache[$id])) {
             static::$formCache[$id] = CustomForm::find($id);
         }
+
         return static::$formCache[$id];
     }
 
     public static function getNavigationItems(): array
     {
+        /*
+        |--------------------------------------------------------------------------
+        | Hide package form-entry navigation in Student panel
+        |--------------------------------------------------------------------------
+        | Student panel uses your custom dynamic sidebar navigation.
+        | We still keep this Resource route active, so students can open:
+        | /student/custom-form-entries
+        */
+        if (
+            \Filament\Facades\Filament::getCurrentPanel()
+            && \Filament\Facades\Filament::getCurrentPanel()->getId() === 'student'
+        ) {
+            return [];
+        }
+
         $items = [];
 
         try {
-            if (!config('filament-custom-forms.navigation.dynamic_navigation', true)) {
+            if (! config('filament-custom-forms.navigation.dynamic_navigation', true)) {
                 return [
                     NavigationItem::make(__('filament-custom-forms::fcf.entry.plural'))
                         ->group(CustomFormPlugin::get()->getNavigationEntryGroup())
@@ -82,16 +132,18 @@ class CustomFormEntryResource extends Resource
                 ];
             }
 
-            if (!\Illuminate\Support\Facades\Schema::hasTable('custom_forms')) {
+            if (! \Illuminate\Support\Facades\Schema::hasTable('custom_forms')) {
                 return [];
             }
 
-            // Pre-fetch all active forms at once to avoid N+1 in the loop
-            $forms = CustomForm::where('is_active', true)->whereNotNull('name')->get();
+            $forms = CustomForm::where('is_active', true)
+                ->whereNotNull('name')
+                ->get()
+                ->filter(fn (CustomForm $form): bool => static::canCurrentUserAccessForm($form));
+
             $activeFormId = data_get(request()->query('tableFilters'), 'custom_form_id.value');
 
             foreach ($forms as $form) {
-                // Populate cache for label methods to use if they haven't run yet
                 static::$formCache[$form->id] = $form;
 
                 $items[] = NavigationItem::make($form->name)
@@ -111,6 +163,53 @@ class CustomFormEntryResource extends Resource
         }
 
         return $items;
+    }
+
+    protected static function canCurrentUserAccessForm(CustomForm $form): bool
+    {
+        $role = strtolower((string) (auth()->user()?->registration_type ?? ''));
+
+        if (! in_array($role, ['student', 'admin'], true)) {
+            return false;
+        }
+
+        return in_array($role, static::getFormAllowedRoles($form), true);
+    }
+
+    protected static function getFormAllowedRoles(CustomForm $form): array
+    {
+        $roles = $form->allowed_roles ?? [];
+
+        if (blank($roles)) {
+            return ['student', 'admin'];
+        }
+
+        if (is_string($roles)) {
+            $decoded = json_decode($roles, true);
+
+            if (is_array($decoded)) {
+                $roles = $decoded;
+            } else {
+                $roles = explode(',', $roles);
+            }
+        }
+
+        if (is_object($roles)) {
+            $roles = json_decode(json_encode($roles), true) ?: [];
+        }
+
+        if (! is_array($roles)) {
+            return ['student', 'admin'];
+        }
+
+        $roles = collect($roles)
+            ->map(fn ($role): string => strtolower(trim((string) $role)))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        return empty($roles) ? ['student', 'admin'] : $roles;
     }
 
     protected static function getDynamicFormIcon(CustomForm $form): string

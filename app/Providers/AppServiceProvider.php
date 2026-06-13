@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\User;
 use BezhanSalleh\LanguageSwitch\LanguageSwitch;
+use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Support\ServiceProvider;
 
@@ -20,6 +21,24 @@ class AppServiceProvider extends ServiceProvider
                 'token' => $token,
                 'email' => $user->getEmailForPasswordReset(),
             ]);
+        });
+
+        CustomForm::creating(function (CustomForm $form): void {
+            if (blank($form->allowed_roles)) {
+                $form->allowed_roles = json_encode([
+                    'student',
+                    'admin',
+                ], JSON_UNESCAPED_UNICODE);
+            }
+        });
+
+        CustomForm::saving(function (CustomForm $form): void {
+            if (blank($form->allowed_roles)) {
+                $form->allowed_roles = json_encode([
+                    'student',
+                    'admin',
+                ], JSON_UNESCAPED_UNICODE);
+            }
         });
 
         LanguageSwitch::configureUsing(function (LanguageSwitch $switch) {

@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             StudentProfileSeeder::class,
             EnrollmentFormSeeder::class,
             StudentUsersSeeder::class,
+            CustomFormDocumentTemplateSeeder::class
         ]);
     }
 }

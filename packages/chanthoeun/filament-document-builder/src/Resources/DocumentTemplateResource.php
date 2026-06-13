@@ -15,6 +15,21 @@ class DocumentTemplateResource extends Resource
 {
     protected static ?string $model = DocumentTemplate::class;
 
+    /*
+    |--------------------------------------------------------------------------
+    | Only Admin can see/control Document Templates
+    |--------------------------------------------------------------------------
+    */
+    public static function shouldRegisterNavigation(): bool
+    {
+        return \Filament\Facades\Filament::getCurrentPanel()?->getId() === 'admin';
+    }
+
+    public static function canAccess(): bool
+    {
+        return \Filament\Facades\Filament::getCurrentPanel()?->getId() === 'admin';
+    }
+
     public static function getNavigationIcon(): string|\BackedEnum|null
     {
         /** @var DocumentBuilderPlugin $plugin */

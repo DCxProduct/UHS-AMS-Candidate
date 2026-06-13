@@ -36,14 +36,10 @@ class EnrollmentFormSeeder extends Seeder
             $formData['schema'] = null;
         }
 
-        if (Schema::hasColumn('custom_forms', 'allowed_roles')) {
-            $formData['allowed_roles'] = json_encode([
-                'Developer',
-                'Student',
-                'admin',
-                'super_admin',
-            ], JSON_UNESCAPED_UNICODE);
-        }
+        $formData['allowed_roles'] = json_encode([
+            'student',
+            'admin',
+        ], JSON_UNESCAPED_UNICODE);
 
         $form = DB::table('custom_forms')
             ->where('slug', $formSlug)
