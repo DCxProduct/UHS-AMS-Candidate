@@ -412,12 +412,6 @@ html.dark .fi-topbar,
    CLEAN CUSTOM FORM CREATE / EDIT UI
 ===================================================== */
 
-.fi-page form {
-    max-width: 1320px !important;
-    margin-left: auto !important;
-    margin-right: auto !important;
-}
-
 .fi-page .fi-fo-component-ctn {
     gap: 22px !important;
 }
