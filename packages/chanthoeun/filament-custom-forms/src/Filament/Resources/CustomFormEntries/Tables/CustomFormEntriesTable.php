@@ -213,7 +213,35 @@ class CustomFormEntriesTable
 
     protected static function applyQueryConstraints(Builder $query, ?string $formId): Builder
     {
-        return $query->with(['creator', 'customForm'])
-            ->when($formId, fn($q, $id) => $q->where('custom_form_id', $id));
+        $query
+            ->with(['creator', 'customForm'])
+            ->when($formId, fn ($q, $id) => $q->where('custom_form_id', $id));
+
+        if (
+            \Filament\Facades\Filament::getCurrentPanel()
+            && \Filament\Facades\Filament::getCurrentPanel()->getId() === 'student'
+        ) {
+            $userId = auth()->id();
+
+            if (! $userId) {
+                return $query->whereRaw('1 = 0');
+            }
+
+            if (\Illuminate\Support\Facades\Schema::hasColumn('custom_form_entries', 'created_by')) {
+                return $query->where('created_by', $userId);
+            }
+
+            if (\Illuminate\Support\Facades\Schema::hasColumn('custom_form_entries', 'user_id')) {
+                return $query->where('user_id', $userId);
+            }
+
+            if (\Illuminate\Support\Facades\Schema::hasColumn('custom_form_entries', 'created_by_id')) {
+                return $query->where('created_by_id', $userId);
+            }
+
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query;
     }
 }

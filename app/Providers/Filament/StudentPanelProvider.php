@@ -9,6 +9,7 @@ use App\Filament\Student\Pages\ContactUs;
 use App\Filament\Student\Pages\MyProfile;
 use App\Filament\Student\Pages\StudentDashboard;
 use BezhanSalleh\LanguageSwitch\Http\Middleware\SwitchLanguageLocale;
+use Chanthoeun\FilamentCustomForms\CustomFormPlugin;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -55,6 +56,10 @@ class StudentPanelProvider extends PanelProvider
 
             ->sidebarCollapsibleOnDesktop()
             ->globalSearch(false)
+
+            ->plugins([
+                CustomFormPlugin::make(),
+            ])
 
             ->renderHook(
                 PanelsRenderHook::AUTH_LOGIN_FORM_AFTER,

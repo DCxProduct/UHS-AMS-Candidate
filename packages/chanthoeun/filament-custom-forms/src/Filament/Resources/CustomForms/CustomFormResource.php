@@ -20,6 +20,21 @@ class CustomFormResource extends Resource
         return CustomFormPlugin::get()->getFormModel();
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Only Admin can see/control Custom Forms Builder
+    |--------------------------------------------------------------------------
+    */
+    public static function shouldRegisterNavigation(): bool
+    {
+        return \Filament\Facades\Filament::getCurrentPanel()?->getId() === 'admin';
+    }
+
+    public static function canAccess(): bool
+    {
+        return \Filament\Facades\Filament::getCurrentPanel()?->getId() === 'admin';
+    }
+
     public static function getModelLabel(): string
     {
         return __('filament-custom-forms::fcf.form.single');
