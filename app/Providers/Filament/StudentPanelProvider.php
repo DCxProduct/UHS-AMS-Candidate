@@ -75,21 +75,11 @@ class StudentPanelProvider extends PanelProvider
                 'primary' => Color::Blue,
             ])
 
-            /*
-            |--------------------------------------------------------------------------
-            | Student resources
-            |--------------------------------------------------------------------------
-            */
             ->discoverResources(
                 in: app_path('Filament/Student/Resources'),
                 for: 'App\\Filament\\Student\\Resources',
             )
 
-            /*
-            |--------------------------------------------------------------------------
-            | Student pages
-            |--------------------------------------------------------------------------
-            */
             ->discoverPages(
                 in: app_path('Filament/Student/Pages'),
                 for: 'App\\Filament\\Student\\Pages',
@@ -102,11 +92,6 @@ class StudentPanelProvider extends PanelProvider
                 MyProfile::class,
             ])
 
-            /*
-            |--------------------------------------------------------------------------
-            | Student widgets
-            |--------------------------------------------------------------------------
-            */
             ->discoverWidgets(
                 in: app_path('Filament/Student/Widgets'),
                 for: 'App\\Filament\\Student\\Widgets',
@@ -254,6 +239,7 @@ class StudentPanelProvider extends PanelProvider
                         ->icon($this->getDynamicFormIcon($slug))
                         ->sort($this->getFormSortNumber($form, $slug))
                         ->url($url)
+                        ->visible(fn (): bool => $this->canShowStudentForm($slug))
                         ->isActiveWhen(
                             fn (): bool => request()->is('student/custom-form-entries*')
                                 && (int) data_get(request()->query('tableFilters'), 'custom_form_id.value') === $formId
@@ -266,6 +252,76 @@ class StudentPanelProvider extends PanelProvider
 
             return [];
         }
+    }
+
+    protected function canShowStudentForm(string $slug): bool
+    {
+        if ($slug === 'profile') {
+            return true;
+        }
+
+        return $this->hasCompletedProfile();
+    }
+
+    protected function hasCompletedProfile(): bool
+    {
+        try {
+            if (! auth()->check()) {
+                return false;
+            }
+
+            if (
+                ! Schema::hasTable('custom_forms')
+                || ! Schema::hasTable('custom_form_entries')
+            ) {
+                return false;
+            }
+
+            $profileFormId = DB::table('custom_forms')
+                ->where('slug', 'profile')
+                ->value('id');
+
+            if (! $profileFormId) {
+                return false;
+            }
+
+            $ownerColumns = $this->getExistingOwnerColumns();
+
+            if (empty($ownerColumns)) {
+                return false;
+            }
+
+            return DB::table('custom_form_entries')
+                ->where('custom_form_id', $profileFormId)
+                ->where(function ($query) use ($ownerColumns): void {
+                    foreach ($ownerColumns as $ownerColumn) {
+                        $query->orWhere($ownerColumn, auth()->id());
+                    }
+                })
+                ->exists();
+        } catch (Throwable $e) {
+            report($e);
+
+            return false;
+        }
+    }
+
+    protected function getExistingOwnerColumns(): array
+    {
+        if (! Schema::hasTable('custom_form_entries')) {
+            return [];
+        }
+
+        $columns = Schema::getColumnListing('custom_form_entries');
+
+        return collect([
+            'created_by',
+            'user_id',
+            'created_by_id',
+        ])
+            ->filter(fn (string $column): bool => in_array($column, $columns, true))
+            ->values()
+            ->all();
     }
 
     protected function getDynamicFormNavigationLabel(string $slug, string $fallbackName): string
@@ -285,6 +341,7 @@ class StudentPanelProvider extends PanelProvider
     {
         return match ($slug) {
             'profile' => 'heroicon-o-user',
+            'enrollment' => 'heroicon-o-document-text',
             'request-document',
             'request-documents' => 'heroicon-o-document-text',
             'national-exam',
@@ -297,8 +354,9 @@ class StudentPanelProvider extends PanelProvider
     {
         $preferredSort = [
             'profile' => 10,
-            'national-exam' => 20,
-            'national-examination' => 20,
+            'enrollment' => 20,
+            'national-exam' => 30,
+            'national-examination' => 30,
             'request-document' => 40,
             'request-documents' => 40,
         ];

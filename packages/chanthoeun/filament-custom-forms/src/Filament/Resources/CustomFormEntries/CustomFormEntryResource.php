@@ -38,22 +38,106 @@ class CustomFormEntryResource extends Resource
                 return $query->whereRaw('1 = 0');
             }
 
-            if (\Illuminate\Support\Facades\Schema::hasColumn('custom_form_entries', 'created_by')) {
-                return $query->where('created_by', $userId);
+            $ownerColumns = static::getExistingOwnerColumns();
+
+            if (empty($ownerColumns)) {
+                return $query->whereRaw('1 = 0');
             }
 
-            if (\Illuminate\Support\Facades\Schema::hasColumn('custom_form_entries', 'user_id')) {
-                return $query->where('user_id', $userId);
-            }
-
-            if (\Illuminate\Support\Facades\Schema::hasColumn('custom_form_entries', 'created_by_id')) {
-                return $query->where('created_by_id', $userId);
-            }
-
-            return $query->whereRaw('1 = 0');
+            return $query->where(function ($query) use ($ownerColumns, $userId): void {
+                foreach ($ownerColumns as $ownerColumn) {
+                    $query->orWhere($ownerColumn, $userId);
+                }
+            });
         }
 
         return $query;
+    }
+
+    public static function canAccess(): bool
+    {
+        if (
+            \Filament\Facades\Filament::getCurrentPanel()
+            && \Filament\Facades\Filament::getCurrentPanel()->getId() === 'student'
+        ) {
+            $formId = request()->input('tableFilters.custom_form_id.value')
+                ?? data_get(request()->query('tableFilters'), 'custom_form_id.value')
+                ?? request()->query('form_id')
+                ?? request()->input('custom_form_id');
+
+            if (! $formId) {
+                return true;
+            }
+
+            $form = CustomForm::query()->find($formId);
+
+            if (! $form) {
+                return false;
+            }
+
+            if ((string) $form->slug === 'profile') {
+                return true;
+            }
+
+            return static::studentHasCompletedProfile();
+        }
+
+        return true;
+    }
+
+    protected static function studentHasCompletedProfile(): bool
+    {
+        if (! auth()->check()) {
+            return false;
+        }
+
+        if (
+            ! \Illuminate\Support\Facades\Schema::hasTable('custom_forms')
+            || ! \Illuminate\Support\Facades\Schema::hasTable('custom_form_entries')
+        ) {
+            return false;
+        }
+
+        $profileFormId = CustomForm::query()
+            ->where('slug', 'profile')
+            ->value('id');
+
+        if (! $profileFormId) {
+            return false;
+        }
+
+        $ownerColumns = static::getExistingOwnerColumns();
+
+        if (empty($ownerColumns)) {
+            return false;
+        }
+
+        return \Illuminate\Support\Facades\DB::table('custom_form_entries')
+            ->where('custom_form_id', $profileFormId)
+            ->where(function ($query) use ($ownerColumns): void {
+                foreach ($ownerColumns as $ownerColumn) {
+                    $query->orWhere($ownerColumn, auth()->id());
+                }
+            })
+            ->exists();
+    }
+
+    protected static function getExistingOwnerColumns(): array
+    {
+        if (! \Illuminate\Support\Facades\Schema::hasTable('custom_form_entries')) {
+            return [];
+        }
+
+        $columns = \Illuminate\Support\Facades\Schema::getColumnListing('custom_form_entries');
+
+        return collect([
+            'created_by',
+            'user_id',
+            'created_by_id',
+        ])
+            ->filter(fn (string $column): bool => in_array($column, $columns, true))
+            ->values()
+            ->all();
     }
 
     public static function getNavigationIcon(): string|BackedEnum|null
@@ -108,7 +192,7 @@ class CustomFormEntryResource extends Resource
         |--------------------------------------------------------------------------
         | Hide package form-entry navigation in Student panel
         |--------------------------------------------------------------------------
-        | Student panel uses your custom dynamic sidebar navigation.
+        | Student panel uses custom dynamic sidebar navigation.
         | We still keep this Resource route active, so students can open:
         | /student/custom-form-entries
         */
