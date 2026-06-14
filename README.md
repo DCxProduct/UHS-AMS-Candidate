@@ -39,7 +39,7 @@ php artisan key:generate
 Run the migration command:
 
 ```bash
-php artisan migrate
+php artisan migrate:fresh --seed
 ```
 
 ## Run the Project
@@ -49,3 +49,13 @@ Start the Laravel development server:
 ```bash
 php artisan serve
 ```
+
+## Queue Worker (Notifications)
+
+To process queued notifications, emails, and background jobs, run:
+
+```bash
+php artisan queue:work
+```
+
+> Make sure the queue connection is configured correctly in your `.env` file before starting the queue worker.
