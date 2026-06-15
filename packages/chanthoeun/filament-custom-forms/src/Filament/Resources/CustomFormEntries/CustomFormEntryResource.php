@@ -86,8 +86,16 @@ class CustomFormEntryResource extends Resource
             return true;
         }
 
+        /*
+        |--------------------------------------------------------------------------
+        | Direct URL protection
+        |--------------------------------------------------------------------------
+        | If Profile is not open or closed, students cannot access Enrollment /
+        | other forms by typing the URL manually.
+        |--------------------------------------------------------------------------
+        */
         if (static::profileFeatureIsHidden() || static::profileFeatureShowsContact()) {
-            return true;
+            return false;
         }
 
         return static::studentHasCompletedProfile();
@@ -275,18 +283,52 @@ class CustomFormEntryResource extends Resource
 
     protected static function canShowStudentForm(string $slug): bool
     {
+        /*
+        |--------------------------------------------------------------------------
+        | Profile form itself
+        |--------------------------------------------------------------------------
+        | Profile can show when:
+        | - open
+        | - closed/contact
+        |
+        | Profile will be hidden automatically when ClosingDateWorkflow says
+        | can_see_form = false.
+        |--------------------------------------------------------------------------
+        */
         if ($slug === 'profile') {
             return true;
         }
 
+        /*
+        |--------------------------------------------------------------------------
+        | Profile = Not Open / Hidden
+        |--------------------------------------------------------------------------
+        | Hide Enrollment and all other forms.
+        |--------------------------------------------------------------------------
+        */
         if (static::profileFeatureIsHidden()) {
-            return true;
+            return false;
         }
 
+        /*
+        |--------------------------------------------------------------------------
+        | Profile = Closed / Contact
+        |--------------------------------------------------------------------------
+        | Show Profile only.
+        | Hide Enrollment and all other forms.
+        |--------------------------------------------------------------------------
+        */
         if (static::profileFeatureShowsContact()) {
-            return true;
+            return false;
         }
 
+        /*
+        |--------------------------------------------------------------------------
+        | Profile = Open
+        |--------------------------------------------------------------------------
+        | Show Enrollment / other forms only after Profile completed.
+        |--------------------------------------------------------------------------
+        */
         return static::studentHasCompletedProfile();
     }
 
