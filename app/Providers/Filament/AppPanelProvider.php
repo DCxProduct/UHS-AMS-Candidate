@@ -118,7 +118,7 @@ class AppPanelProvider extends PanelProvider
                     ->label(fn (): string => __('student_profile.my_profile'))
                     ->icon('heroicon-o-user-circle')
                     ->url(fn (): string => MyProfile::getUrl())
-                    ->visible(fn (): bool => $this->isStudent()),
+                    ->visible(fn (): bool => $this->isAdmin() || $this->isStudent()),
             ])
 
             ->navigationGroups([
