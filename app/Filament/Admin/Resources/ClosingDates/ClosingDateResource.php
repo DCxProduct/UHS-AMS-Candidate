@@ -22,9 +22,9 @@ class ClosingDateResource extends Resource
 
     protected static ?string $model = ClosingDate::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCalendarDays;
+    protected static string | BackedEnum | null $navigationIcon = Heroicon::OutlinedCalendarDays;
 
-    protected static ?int $navigationSort = 9;
+    protected static ?int $navigationSort = 1;
 
     protected static ?string $recordTitleAttribute = 'name';
 
@@ -33,9 +33,14 @@ class ClosingDateResource extends Resource
         return __('closing_dates.navigation_label');
     }
 
-    public static function getNavigationGroup(): string|UnitEnum|null
+    public static function getNavigationGroup(): string | UnitEnum | null
     {
-        return __('closing_dates.navigation_group');
+        return 'Settings';
+    }
+
+    public static function getNavigationSort(): ?int
+    {
+        return 1;
     }
 
     public static function getModelLabel(): string

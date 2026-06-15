@@ -206,7 +206,7 @@ class CustomFormEntryResource extends Resource
         $items = [];
 
         try {
-            if (! DatabaseSchema::hasTable('custom_forms')) {
+            if (! \Illuminate\Support\Facades\Schema::hasTable('custom_forms')) {
                 return [];
             }
 
@@ -214,9 +214,9 @@ class CustomFormEntryResource extends Resource
                 ->whereNotNull('name')
                 ->orderBy('id');
 
-            if (DatabaseSchema::hasColumn('custom_forms', 'is_active')) {
+            if (\Illuminate\Support\Facades\Schema::hasColumn('custom_forms', 'is_active')) {
                 $query->where('is_active', true);
-            } elseif (DatabaseSchema::hasColumn('custom_forms', 'active')) {
+            } elseif (\Illuminate\Support\Facades\Schema::hasColumn('custom_forms', 'active')) {
                 $query->where('active', true);
             }
 
@@ -249,7 +249,7 @@ class CustomFormEntryResource extends Resource
 
                 $items[] = NavigationItem::make('custom-form-entry-' . $formId)
                     ->label((string) $form->name)
-                    ->group(CustomFormPlugin::get()->getNavigationEntryGroup())
+                    ->group('Form Entry')
                     ->icon(static::getDynamicFormIcon($form))
                     ->sort(static::getFormSortNumber($form))
                     ->url($url)
@@ -265,7 +265,9 @@ class CustomFormEntryResource extends Resource
                     );
             }
         } catch (\Throwable $e) {
-            Log::error('CustomFormEntryResource Navigation Error: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error(
+                'CustomFormEntryResource Navigation Error: ' . $e->getMessage()
+            );
         }
 
         return $items;
@@ -498,15 +500,18 @@ class CustomFormEntryResource extends Resource
         $preferredSort = [
             'profile' => 10,
             'enrollment' => 20,
-            'national-exam' => 30,
-            'national-examination' => 30,
         ];
 
         if (array_key_exists($slug, $preferredSort)) {
             return $preferredSort[$slug];
         }
 
-        return (int) ($form->id ?? 100);
+        /*
+        |--------------------------------------------------------------------------
+        | Admin-created custom forms come after Profile and Enrollment
+        |--------------------------------------------------------------------------
+        */
+        return 100 + (int) ($form->id ?? 0);
     }
 
     public static function form(Schema $schema): Schema

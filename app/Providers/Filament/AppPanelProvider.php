@@ -69,7 +69,7 @@ class AppPanelProvider extends PanelProvider
                     ->navigationEntryIcon('heroicon-o-clipboard-document-list'),
 
                 DocumentBuilderPlugin::make()
-                    ->navigationGroup('Document Builder')
+                    ->navigationGroup('Form Builder')
                     ->navigationIcon('heroicon-o-document-text'),
             ])
 
@@ -131,23 +131,15 @@ class AppPanelProvider extends PanelProvider
                     ->collapsible(),
 
                 NavigationGroup::make()
-                    ->label('Form Builder')
-                    ->collapsible(),
-
-                NavigationGroup::make()
-                    ->label('Document Builder')
-                    ->collapsible(),
-
-                NavigationGroup::make()
-                    ->label('Settings')
-                    ->collapsible(),
-
-                NavigationGroup::make()
                     ->label(fn (): string => __('review_applications.navigation_group'))
                     ->collapsible(),
 
                 NavigationGroup::make()
-                    ->label(fn (): string => __('app.student_application'))
+                    ->label('Form Builder')
+                    ->collapsible(),
+
+                NavigationGroup::make()
+                    ->label('Settings')
                     ->collapsible(),
             ])
 
