@@ -5,11 +5,12 @@ namespace App\Providers\Filament;
 use App\Filament\Pages\Auth\Login;
 use App\Filament\Pages\Auth\Register;
 use App\Filament\Pages\Dashboard;
-use App\Filament\Pages\StudentDynamicFormPage;
 use App\Filament\Student\Pages\ContactUs;
 use App\Filament\Student\Pages\MyProfile;
+use App\Support\ClosingDateWorkflow;
 use BezhanSalleh\LanguageSwitch\Http\Middleware\SwitchLanguageLocale;
 use Chanthoeun\FilamentCustomForms\CustomFormPlugin;
+use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource as PackageCustomFormEntryResource;
 use Chanthoeun\FilamentDocumentBuilder\DocumentBuilderPlugin;
 use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
@@ -34,7 +35,6 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Throwable;
-use App\Support\ClosingDateWorkflow;
 
 class AppPanelProvider extends PanelProvider
 {
@@ -63,7 +63,14 @@ class AppPanelProvider extends PanelProvider
             ->globalSearch(false)
 
             ->plugins([
-                CustomFormPlugin::make(),
+                CustomFormPlugin::make()
+                    ->navigationGroup('Form Builder')
+                    ->navigationFormIcon('heroicon-o-document-duplicate')
+                    ->navigationEntryIcon('heroicon-o-clipboard-document-list'),
+
+                DocumentBuilderPlugin::make()
+                    ->navigationGroup('Document Builder')
+                    ->navigationIcon('heroicon-o-document-text'),
             ])
 
             ->renderHook(
@@ -80,19 +87,6 @@ class AppPanelProvider extends PanelProvider
                 'primary' => Color::Blue,
             ])
 
-            ->plugins([
-                CustomFormPlugin::make()
-                    ->navigationGroup('Form Builder')
-                    ->navigationFormIcon('heroicon-o-document-duplicate')
-                    ->navigationEntryIcon('heroicon-o-clipboard-document-list')
-            ])
-
-            ->plugin(
-                DocumentBuilderPlugin::make()
-                    ->navigationGroup('Form Builder')
-                    ->navigationIcon('heroicon-o-document-text')
-            )
-
             ->discoverResources(
                 in: app_path('Filament/Admin/Resources'),
                 for: 'App\\Filament\\Admin\\Resources',
@@ -105,7 +99,6 @@ class AppPanelProvider extends PanelProvider
 
             ->pages([
                 Dashboard::class,
-                StudentDynamicFormPage::class,
                 ContactUs::class,
                 MyProfile::class,
             ])
@@ -134,6 +127,22 @@ class AppPanelProvider extends PanelProvider
                     ->collapsible(),
 
                 NavigationGroup::make()
+                    ->label('Form Entry')
+                    ->collapsible(),
+
+                NavigationGroup::make()
+                    ->label('Form Builder')
+                    ->collapsible(),
+
+                NavigationGroup::make()
+                    ->label('Document Builder')
+                    ->collapsible(),
+
+                NavigationGroup::make()
+                    ->label('Settings')
+                    ->collapsible(),
+
+                NavigationGroup::make()
                     ->label(fn (): string => __('review_applications.navigation_group'))
                     ->collapsible(),
 
@@ -142,7 +151,7 @@ class AppPanelProvider extends PanelProvider
                     ->collapsible(),
             ])
 
-            ->navigationItems($this->getDynamicStudentFormNavigationItems())
+            ->navigationItems([])
 
             ->middleware([
                 EncryptCookies::class,
@@ -165,10 +174,6 @@ class AppPanelProvider extends PanelProvider
     protected function getDynamicStudentFormNavigationItems(): array
     {
         try {
-            if (! $this->isStudent()) {
-                return [];
-            }
-
             if (! Schema::hasTable('custom_forms')) {
                 return [];
             }
@@ -186,6 +191,16 @@ class AppPanelProvider extends PanelProvider
                 $query->where($activeColumn, true);
             }
 
+            /*
+            |--------------------------------------------------------------------------
+            | Student Role Access
+            |--------------------------------------------------------------------------
+            | Show form to student if:
+            | - allowed_roles is null
+            | - allowed_roles is empty
+            | - allowed_roles contains "student"
+            |--------------------------------------------------------------------------
+            */
             if (in_array('allowed_roles', $columns, true)) {
                 $driver = DB::connection()->getDriverName();
 
@@ -194,6 +209,7 @@ class AppPanelProvider extends PanelProvider
 
                     if ($driver === 'pgsql') {
                         $query
+                            ->orWhereRaw("allowed_roles::text = ''")
                             ->orWhereRaw("allowed_roles::text = '[]'")
                             ->orWhereRaw("allowed_roles::text = 'null'")
                             ->orWhereRaw("allowed_roles::text ILIKE ?", ['%student%']);
@@ -209,11 +225,6 @@ class AppPanelProvider extends PanelProvider
             return $query
                 ->orderBy('id')
                 ->get()
-                ->filter(function ($form): bool {
-                    $formId = (int) ($form->id ?? 0);
-
-                    return ClosingDateWorkflow::shouldShowFeature($formId);
-                })
                 ->map(function ($form): NavigationItem {
                     $name = (string) (
                         $form->name
@@ -229,19 +240,39 @@ class AppPanelProvider extends PanelProvider
 
                     $formId = (int) ($form->id ?? 0);
 
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Correct URL for student role
+                    |--------------------------------------------------------------------------
+                    | Same package UI as admin:
+                    | /custom-form-entries?tableFilters[custom_form_id][value]=1
+                    |--------------------------------------------------------------------------
+                    */
                     $url = ClosingDateWorkflow::shouldShowContact($formId)
                         ? url('/contact-us?form_id=' . $formId)
-                        : url('/student-form/' . $slug);
+                        : PackageCustomFormEntryResource::getUrl('index', [
+                            'tableFilters' => [
+                                'custom_form_id' => [
+                                    'value' => $formId,
+                                ],
+                            ],
+                        ]);
 
                     return NavigationItem::make('student-form-' . $formId)
                         ->label(fn (): string => $this->getDynamicFormNavigationLabel($slug, $name))
-                        ->group(fn (): string => __('app.student_application'))
+                        ->group('Form Entry')
                         ->icon($this->getDynamicFormIcon($slug))
                         ->sort($this->getFormSortNumber($form, $slug))
                         ->url($url)
-                        ->visible(fn (): bool => $this->isStudent() && $this->canShowStudentForm($slug))
+                        ->visible(fn (): bool => auth()->check()
+                            && $this->isStudent()
+                            && ClosingDateWorkflow::shouldShowFeature($formId)
+                            && $this->canShowStudentForm($slug))
                         ->isActiveWhen(
-                            fn (): bool => request()->is('student-form/' . $slug)
+                            fn (): bool => (
+                                    request()->is('custom-form-entries*')
+                                    && (int) data_get(request()->query('tableFilters'), 'custom_form_id.value') === $formId
+                                )
                                 || (
                                     request()->is('contact-us*')
                                     && (int) request()->query('form_id') === $formId
@@ -273,7 +304,81 @@ class AppPanelProvider extends PanelProvider
             return true;
         }
 
+        /*
+        |--------------------------------------------------------------------------
+        | Profile Not Open / Hidden
+        |--------------------------------------------------------------------------
+        | Hide only Profile.
+        | Enrollment / Testing / other forms still follow their own closing date.
+        |--------------------------------------------------------------------------
+        */
+        if ($this->profileFeatureIsHidden()) {
+            return true;
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Profile Closed
+        |--------------------------------------------------------------------------
+        | Profile shows and redirects to Contact Us.
+        | Other forms still follow their own closing date.
+        |--------------------------------------------------------------------------
+        */
+        if ($this->profileFeatureShowsContact()) {
+            return true;
+        }
+
         return $this->hasCompletedProfile();
+    }
+
+    protected function profileFeatureIsHidden(): bool
+    {
+        try {
+            if (! Schema::hasTable('custom_forms')) {
+                return false;
+            }
+
+            $profileFormId = DB::table('custom_forms')
+                ->where('slug', 'profile')
+                ->value('id');
+
+            if (! $profileFormId) {
+                return false;
+            }
+
+            $workflow = ClosingDateWorkflow::checkByCustomFormId((int) $profileFormId);
+
+            return ($workflow['can_see_form'] ?? true) === false;
+        } catch (Throwable $e) {
+            report($e);
+
+            return false;
+        }
+    }
+
+    protected function profileFeatureShowsContact(): bool
+    {
+        try {
+            if (! Schema::hasTable('custom_forms')) {
+                return false;
+            }
+
+            $profileFormId = DB::table('custom_forms')
+                ->where('slug', 'profile')
+                ->value('id');
+
+            if (! $profileFormId) {
+                return false;
+            }
+
+            $workflow = ClosingDateWorkflow::checkByCustomFormId((int) $profileFormId);
+
+            return (bool) ($workflow['show_contact'] ?? false);
+        } catch (Throwable $e) {
+            report($e);
+
+            return false;
+        }
     }
 
     protected function hasCompletedProfile(): bool
