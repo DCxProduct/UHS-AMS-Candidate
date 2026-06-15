@@ -53,24 +53,14 @@ class StudentDynamicFormPage extends Page implements HasForms
 
         $workflow = ClosingDateWorkflow::checkByCustomFormId((int) $this->customForm->id);
 
-        /*
-        |--------------------------------------------------------------------------
-        | Status closed = show feature but go to Contact Us
-        |--------------------------------------------------------------------------
-        */
-        if ($workflow['show_contact']) {
+        if ($workflow['show_contact'] ?? false) {
             $this->redirect('/contact-us?form_id=' . $this->customForm->id, navigate: false);
 
             return;
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Status not open / expired / outside date range = no permission by URL
-        |--------------------------------------------------------------------------
-        */
-        if (! $workflow['can_submit']) {
-            abort(403, $workflow['message']);
+        if (! ($workflow['can_open_form'] ?? $workflow['can_submit'] ?? true)) {
+            abort(403, $workflow['message'] ?? __('app.form_not_open_message'));
         }
 
         $this->sections = $this->loadSections();
@@ -150,14 +140,19 @@ class StudentDynamicFormPage extends Page implements HasForms
     {
         $workflow = ClosingDateWorkflow::checkByCustomFormId((int) $this->customForm->id);
 
-        if ($workflow['show_contact']) {
+        if ($workflow['show_contact'] ?? false) {
             $this->redirect('/contact-us?form_id=' . $this->customForm->id, navigate: false);
 
             return;
         }
 
-        if (! $workflow['can_submit']) {
-            abort(403, $workflow['message']);
+        if (! ($workflow['can_submit'] ?? true)) {
+            Notification::make()
+                ->title($workflow['message'] ?? __('app.form_not_open_message'))
+                ->warning()
+                ->send();
+
+            return;
         }
 
         $state = $this->getCleanState();
@@ -189,19 +184,17 @@ class StudentDynamicFormPage extends Page implements HasForms
     {
         $workflow = ClosingDateWorkflow::checkByCustomFormId((int) $this->customForm->id);
 
-        if ($workflow['show_contact']) {
+        if ($workflow['show_contact'] ?? false) {
             $this->redirect('/contact-us?form_id=' . $this->customForm->id, navigate: false);
 
             return;
         }
 
-        if (! $workflow['can_submit']) {
+        if (! ($workflow['can_submit'] ?? true)) {
             Notification::make()
-                ->title($workflow['message'])
+                ->title($workflow['message'] ?? __('app.form_not_open_message'))
                 ->warning()
                 ->send();
-
-            $this->redirect('/dashboard', navigate: false);
 
             return;
         }

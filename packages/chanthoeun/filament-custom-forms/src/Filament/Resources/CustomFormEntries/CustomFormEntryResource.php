@@ -2,18 +2,20 @@
 
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries;
 
+use App\Support\ClosingDateWorkflow;
+use BackedEnum;
+use Chanthoeun\FilamentCustomForms\CustomFormPlugin;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Pages;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Schemas\CustomFormEntryForm;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Tables\CustomFormEntriesTable;
-use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
+use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Filament\Navigation\NavigationItem;
 use Filament\Resources\Resource;
-use Filament\Tables\Table;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
-use BackedEnum;
-use Chanthoeun\FilamentCustomForms\Models\CustomForm;
-use Chanthoeun\FilamentCustomForms\CustomFormPlugin;
+use Filament\Tables\Table;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema as DatabaseSchema;
 
 class CustomFormEntryResource extends Resource
 {
@@ -24,14 +26,86 @@ class CustomFormEntryResource extends Resource
 
     protected static ?string $slug = 'custom-form-entries';
 
+    /*
+    |--------------------------------------------------------------------------
+    | Navigation
+    |--------------------------------------------------------------------------
+    | Admin   = sees all custom forms from database.
+    | Student = sees only allowed/open custom forms from database.
+    |--------------------------------------------------------------------------
+    */
+    public static function shouldRegisterNavigation(): bool
+    {
+        return static::currentUserIsAdmin() || static::currentUserIsStudent();
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Access
+    |--------------------------------------------------------------------------
+    | Admin can access all entry data.
+    | Student can access only allowed form entry pages.
+    |--------------------------------------------------------------------------
+    */
+    public static function canAccess(): bool
+    {
+        if (static::currentUserIsAdmin()) {
+            return true;
+        }
+
+        if (! static::currentUserIsStudent()) {
+            return false;
+        }
+
+        $formId = request()->input('tableFilters.custom_form_id.value')
+            ?? data_get(request()->query('tableFilters'), 'custom_form_id.value')
+            ?? request()->query('form_id')
+            ?? request()->input('custom_form_id');
+
+        if (! $formId) {
+            return true;
+        }
+
+        $form = CustomForm::query()->find($formId);
+
+        if (! $form) {
+            return false;
+        }
+
+        if (! static::canCurrentUserAccessForm($form)) {
+            return false;
+        }
+
+        $workflow = ClosingDateWorkflow::checkByCustomFormId((int) $form->id);
+
+        if (! ($workflow['can_open_form'] ?? $workflow['can_submit'] ?? $workflow['can_see_form'] ?? true)) {
+            return false;
+        }
+
+        if ((string) $form->slug === 'profile') {
+            return true;
+        }
+
+        if (static::profileFeatureIsHidden() || static::profileFeatureShowsContact()) {
+            return true;
+        }
+
+        return static::studentHasCompletedProfile();
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Query
+    |--------------------------------------------------------------------------
+    | Admin   = sees all data.
+    | Student = sees only own submitted data.
+    |--------------------------------------------------------------------------
+    */
     public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
     {
         $query = parent::getEloquentQuery();
 
-        if (
-            \Filament\Facades\Filament::getCurrentPanel()
-            && \Filament\Facades\Filament::getCurrentPanel()->getId() === 'student'
-        ) {
+        if (static::currentUserIsStudent()) {
             $userId = auth()->id();
 
             if (! $userId) {
@@ -54,35 +128,214 @@ class CustomFormEntryResource extends Resource
         return $query;
     }
 
-    public static function canAccess(): bool
+    protected static function currentUserIsAdmin(): bool
     {
-        if (
-            \Filament\Facades\Filament::getCurrentPanel()
-            && \Filament\Facades\Filament::getCurrentPanel()->getId() === 'student'
-        ) {
-            $formId = request()->input('tableFilters.custom_form_id.value')
-                ?? data_get(request()->query('tableFilters'), 'custom_form_id.value')
-                ?? request()->query('form_id')
-                ?? request()->input('custom_form_id');
+        return auth()->user()?->registration_type === 'admin';
+    }
 
-            if (! $formId) {
-                return true;
+    protected static function currentUserIsStudent(): bool
+    {
+        return auth()->user()?->registration_type === 'student';
+    }
+
+    public static function getNavigationIcon(): string | BackedEnum | null
+    {
+        return CustomFormPlugin::get()->getNavigationEntryIcon();
+    }
+
+    public static function getModelLabel(): string
+    {
+        $id = request()->input('tableFilters.custom_form_id.value')
+            ?? data_get(request()->query('tableFilters'), 'custom_form_id.value');
+
+        if ($id) {
+            $form = static::getFormFromCache((string) $id);
+
+            if ($form) {
+                return __('filament-custom-forms::fcf.entry.entry', [
+                    'form' => $form->name,
+                ]);
+            }
+        }
+
+        return __('filament-custom-forms::fcf.entry.single');
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        $id = request()->input('tableFilters.custom_form_id.value')
+            ?? data_get(request()->query('tableFilters'), 'custom_form_id.value');
+
+        if ($id) {
+            $form = static::getFormFromCache((string) $id);
+
+            if ($form) {
+                return __('filament-custom-forms::fcf.entry.entries', [
+                    'form' => $form->name,
+                ]);
+            }
+        }
+
+        return __('filament-custom-forms::fcf.entry.plural');
+    }
+
+    protected static array $formCache = [];
+
+    protected static function getFormFromCache(string $id): ?CustomForm
+    {
+        if (! isset(static::$formCache[$id])) {
+            static::$formCache[$id] = CustomForm::find($id);
+        }
+
+        return static::$formCache[$id];
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Dynamic Navigation Items
+    |--------------------------------------------------------------------------
+    | This makes forms created by admin appear dynamically for student too.
+    |--------------------------------------------------------------------------
+    */
+    public static function getNavigationItems(): array
+    {
+        if (! static::currentUserIsAdmin() && ! static::currentUserIsStudent()) {
+            return [];
+        }
+
+        $items = [];
+
+        try {
+            if (! DatabaseSchema::hasTable('custom_forms')) {
+                return [];
             }
 
-            $form = CustomForm::query()->find($formId);
+            $query = CustomForm::query()
+                ->whereNotNull('name')
+                ->orderBy('id');
 
-            if (! $form) {
+            if (DatabaseSchema::hasColumn('custom_forms', 'is_active')) {
+                $query->where('is_active', true);
+            } elseif (DatabaseSchema::hasColumn('custom_forms', 'active')) {
+                $query->where('active', true);
+            }
+
+            $forms = $query->get();
+
+            if (static::currentUserIsStudent()) {
+                $forms = $forms
+                    ->filter(fn (CustomForm $form): bool => static::canCurrentUserAccessForm($form))
+                    ->filter(fn (CustomForm $form): bool => static::formShouldShowFeature((int) $form->id))
+                    ->filter(fn (CustomForm $form): bool => static::canShowStudentForm((string) $form->slug))
+                    ->values();
+            }
+
+            $activeFormId = data_get(request()->query('tableFilters'), 'custom_form_id.value');
+
+            foreach ($forms as $form) {
+                static::$formCache[$form->id] = $form;
+
+                $formId = (int) $form->id;
+
+                $url = static::currentUserIsStudent() && static::formShouldShowContact($formId)
+                    ? url('/contact-us?form_id=' . $formId)
+                    : static::getUrl('index', [
+                        'tableFilters' => [
+                            'custom_form_id' => [
+                                'value' => $formId,
+                            ],
+                        ],
+                    ]);
+
+                $items[] = NavigationItem::make('custom-form-entry-' . $formId)
+                    ->label((string) $form->name)
+                    ->group(CustomFormPlugin::get()->getNavigationEntryGroup())
+                    ->icon(static::getDynamicFormIcon($form))
+                    ->sort(static::getFormSortNumber($form))
+                    ->url($url)
+                    ->isActiveWhen(
+                        fn (): bool => (
+                                request()->is('custom-form-entries*')
+                                && (string) $activeFormId === (string) $formId
+                            )
+                            || (
+                                request()->is('contact-us*')
+                                && (int) request()->query('form_id') === $formId
+                            )
+                    );
+            }
+        } catch (\Throwable $e) {
+            Log::error('CustomFormEntryResource Navigation Error: ' . $e->getMessage());
+        }
+
+        return $items;
+    }
+
+    protected static function canShowStudentForm(string $slug): bool
+    {
+        if ($slug === 'profile') {
+            return true;
+        }
+
+        if (static::profileFeatureIsHidden()) {
+            return true;
+        }
+
+        if (static::profileFeatureShowsContact()) {
+            return true;
+        }
+
+        return static::studentHasCompletedProfile();
+    }
+
+    protected static function profileFeatureIsHidden(): bool
+    {
+        try {
+            if (! DatabaseSchema::hasTable('custom_forms')) {
                 return false;
             }
 
-            if ((string) $form->slug === 'profile') {
-                return true;
+            $profileFormId = DB::table('custom_forms')
+                ->where('slug', 'profile')
+                ->value('id');
+
+            if (! $profileFormId) {
+                return false;
             }
 
-            return static::studentHasCompletedProfile();
-        }
+            $workflow = ClosingDateWorkflow::checkByCustomFormId((int) $profileFormId);
 
-        return true;
+            return ($workflow['can_see_form'] ?? true) === false;
+        } catch (\Throwable $e) {
+            report($e);
+
+            return false;
+        }
+    }
+
+    protected static function profileFeatureShowsContact(): bool
+    {
+        try {
+            if (! DatabaseSchema::hasTable('custom_forms')) {
+                return false;
+            }
+
+            $profileFormId = DB::table('custom_forms')
+                ->where('slug', 'profile')
+                ->value('id');
+
+            if (! $profileFormId) {
+                return false;
+            }
+
+            $workflow = ClosingDateWorkflow::checkByCustomFormId((int) $profileFormId);
+
+            return (bool) ($workflow['show_contact'] ?? false);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return false;
+        }
     }
 
     protected static function studentHasCompletedProfile(): bool
@@ -92,8 +345,8 @@ class CustomFormEntryResource extends Resource
         }
 
         if (
-            ! \Illuminate\Support\Facades\Schema::hasTable('custom_forms')
-            || ! \Illuminate\Support\Facades\Schema::hasTable('custom_form_entries')
+            ! DatabaseSchema::hasTable('custom_forms')
+            || ! DatabaseSchema::hasTable('custom_form_entries')
         ) {
             return false;
         }
@@ -112,7 +365,7 @@ class CustomFormEntryResource extends Resource
             return false;
         }
 
-        return \Illuminate\Support\Facades\DB::table('custom_form_entries')
+        return DB::table('custom_form_entries')
             ->where('custom_form_id', $profileFormId)
             ->where(function ($query) use ($ownerColumns): void {
                 foreach ($ownerColumns as $ownerColumn) {
@@ -124,11 +377,11 @@ class CustomFormEntryResource extends Resource
 
     protected static function getExistingOwnerColumns(): array
     {
-        if (! \Illuminate\Support\Facades\Schema::hasTable('custom_form_entries')) {
+        if (! DatabaseSchema::hasTable('custom_form_entries')) {
             return [];
         }
 
-        $columns = \Illuminate\Support\Facades\Schema::getColumnListing('custom_form_entries');
+        $columns = DatabaseSchema::getColumnListing('custom_form_entries');
 
         return collect([
             'created_by',
@@ -140,117 +393,12 @@ class CustomFormEntryResource extends Resource
             ->all();
     }
 
-    public static function getNavigationIcon(): string|BackedEnum|null
-    {
-        return CustomFormPlugin::get()->getNavigationEntryIcon();
-    }
-
-    public static function getModelLabel(): string
-    {
-        $id = request()->input('tableFilters.custom_form_id.value');
-
-        if ($id) {
-            $form = static::getFormFromCache($id);
-
-            if ($form) {
-                return __('filament-custom-forms::fcf.entry.entry', ['form' => $form->name]);
-            }
-        }
-
-        return __('filament-custom-forms::fcf.entry.single');
-    }
-
-    public static function getPluralModelLabel(): string
-    {
-        $id = request()->input('tableFilters.custom_form_id.value');
-
-        if ($id) {
-            $form = static::getFormFromCache($id);
-
-            if ($form) {
-                return __('filament-custom-forms::fcf.entry.entries', ['form' => $form->name]);
-            }
-        }
-
-        return __('filament-custom-forms::fcf.entry.plural');
-    }
-
-    protected static array $formCache = [];
-
-    protected static function getFormFromCache(string $id): ?CustomForm
-    {
-        if (! isset(static::$formCache[$id])) {
-            static::$formCache[$id] = CustomForm::find($id);
-        }
-
-        return static::$formCache[$id];
-    }
-
-    public static function getNavigationItems(): array
-    {
-        /*
-        |--------------------------------------------------------------------------
-        | Hide package form-entry navigation in Student panel
-        |--------------------------------------------------------------------------
-        | Student panel uses custom dynamic sidebar navigation.
-        | We still keep this Resource route active, so students can open:
-        | /student/custom-form-entries
-        */
-        if (
-            \Filament\Facades\Filament::getCurrentPanel()
-            && \Filament\Facades\Filament::getCurrentPanel()->getId() === 'student'
-        ) {
-            return [];
-        }
-
-        $items = [];
-
-        try {
-            if (! config('filament-custom-forms.navigation.dynamic_navigation', true)) {
-                return [
-                    NavigationItem::make(__('filament-custom-forms::fcf.entry.plural'))
-                        ->group(CustomFormPlugin::get()->getNavigationEntryGroup())
-                        ->icon(CustomFormPlugin::get()->getNavigationEntryIcon())
-                        ->isActiveWhen(fn() => request()->routeIs(static::getRouteBaseName() . '.*'))
-                        ->url(static::getUrl('index')),
-                ];
-            }
-
-            if (! \Illuminate\Support\Facades\Schema::hasTable('custom_forms')) {
-                return [];
-            }
-
-            $forms = CustomForm::where('is_active', true)
-                ->whereNotNull('name')
-                ->get()
-                ->filter(fn (CustomForm $form): bool => static::canCurrentUserAccessForm($form));
-
-            $activeFormId = data_get(request()->query('tableFilters'), 'custom_form_id.value');
-
-            foreach ($forms as $form) {
-                static::$formCache[$form->id] = $form;
-
-                $items[] = NavigationItem::make($form->name)
-                    ->group(CustomFormPlugin::get()->getNavigationEntryGroup())
-                    ->icon(static::getDynamicFormIcon($form))
-                    ->isActiveWhen(fn() => $activeFormId == $form->id)
-                    ->url(static::getUrl('index', [
-                        'tableFilters' => [
-                            'custom_form_id' => [
-                                'value' => $form->id,
-                            ],
-                        ],
-                    ]));
-            }
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('CustomFormEntryResource Navigation Error: ' . $e->getMessage());
-        }
-
-        return $items;
-    }
-
     protected static function canCurrentUserAccessForm(CustomForm $form): bool
     {
+        if (static::currentUserIsAdmin()) {
+            return true;
+        }
+
         $role = strtolower((string) (auth()->user()?->registration_type ?? ''));
 
         if (! in_array($role, ['student', 'admin'], true)) {
@@ -296,6 +444,32 @@ class CustomFormEntryResource extends Resource
         return empty($roles) ? ['student', 'admin'] : $roles;
     }
 
+    protected static function formShouldShowFeature(int $formId): bool
+    {
+        if (method_exists(ClosingDateWorkflow::class, 'shouldShowFeature')) {
+            return ClosingDateWorkflow::shouldShowFeature($formId);
+        }
+
+        if (method_exists(ClosingDateWorkflow::class, 'canSeeCustomFormId')) {
+            return ClosingDateWorkflow::canSeeCustomFormId($formId);
+        }
+
+        $workflow = ClosingDateWorkflow::checkByCustomFormId($formId);
+
+        return (bool) ($workflow['can_see_form'] ?? true);
+    }
+
+    protected static function formShouldShowContact(int $formId): bool
+    {
+        if (method_exists(ClosingDateWorkflow::class, 'shouldShowContact')) {
+            return ClosingDateWorkflow::shouldShowContact($formId);
+        }
+
+        $workflow = ClosingDateWorkflow::checkByCustomFormId($formId);
+
+        return (bool) ($workflow['show_contact'] ?? false);
+    }
+
     protected static function getDynamicFormIcon(CustomForm $form): string
     {
         $slug = (string) ($form->slug ?? '');
@@ -311,8 +485,28 @@ class CustomFormEntryResource extends Resource
         return match ($slug) {
             'profile' => 'heroicon-o-user',
             'enrollment' => 'heroicon-o-document-text',
+            'national-exam',
+            'national-examination' => 'heroicon-o-academic-cap',
             default => CustomFormPlugin::get()->getNavigationEntryIcon(),
         };
+    }
+
+    protected static function getFormSortNumber(CustomForm $form): int
+    {
+        $slug = (string) ($form->slug ?? '');
+
+        $preferredSort = [
+            'profile' => 10,
+            'enrollment' => 20,
+            'national-exam' => 30,
+            'national-examination' => 30,
+        ];
+
+        if (array_key_exists($slug, $preferredSort)) {
+            return $preferredSort[$slug];
+        }
+
+        return (int) ($form->id ?? 100);
     }
 
     public static function form(Schema $schema): Schema
