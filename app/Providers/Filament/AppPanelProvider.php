@@ -4,13 +4,14 @@ namespace App\Providers\Filament;
 
 use App\Filament\Pages\Auth\Login;
 use App\Filament\Pages\Auth\Register;
+use App\Filament\Pages\Dashboard;
 use App\Filament\Pages\StudentDynamicFormPage;
 use App\Filament\Student\Pages\ContactUs;
 use App\Filament\Student\Pages\MyProfile;
-use App\Filament\Student\Pages\StudentDashboard;
-use App\Http\Middleware\SaveUserLocale;
 use BezhanSalleh\LanguageSwitch\Http\Middleware\SwitchLanguageLocale;
 use Chanthoeun\FilamentCustomForms\CustomFormPlugin;
+use Chanthoeun\FilamentDocumentBuilder\DocumentBuilderPlugin;
+use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -33,15 +34,19 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Throwable;
+use App\Support\ClosingDateWorkflow;
 
-class StudentPanelProvider extends PanelProvider
+class AppPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
         return $panel
             ->default()
-            ->id('student')
-            ->path('student')
+            ->id('app')
+            ->path('')
+
+            ->defaultThemeMode(ThemeMode::Dark)
+            ->homeUrl('/dashboard')
 
             ->login(Login::class)
             ->registration(Register::class)
@@ -50,7 +55,6 @@ class StudentPanelProvider extends PanelProvider
             ->viteTheme('resources/css/filament/student/theme.css')
 
             ->favicon(asset('images/UHS_logo.png'))
-
             ->brandName('UHS-AMS')
             ->brandLogo(fn (): View => view('filament.components.logo'))
             ->brandLogoHeight('6rem')
@@ -76,22 +80,40 @@ class StudentPanelProvider extends PanelProvider
                 'primary' => Color::Blue,
             ])
 
+            ->plugins([
+                CustomFormPlugin::make()
+                    ->navigationGroup('Form Builder')
+                    ->navigationFormIcon('heroicon-o-document-duplicate')
+                    ->navigationEntryIcon('heroicon-o-clipboard-document-list')
+            ])
+
+            ->plugin(
+                DocumentBuilderPlugin::make()
+                    ->navigationGroup('Form Builder')
+                    ->navigationIcon('heroicon-o-document-text')
+            )
+
+            ->discoverResources(
+                in: app_path('Filament/Admin/Resources'),
+                for: 'App\\Filament\\Admin\\Resources',
+            )
+
             ->discoverResources(
                 in: app_path('Filament/Student/Resources'),
                 for: 'App\\Filament\\Student\\Resources',
             )
 
-            ->discoverPages(
-                in: app_path('Filament/Student/Pages'),
-                for: 'App\\Filament\\Student\\Pages',
-            )
-
             ->pages([
-                StudentDashboard::class,
+                Dashboard::class,
                 StudentDynamicFormPage::class,
                 ContactUs::class,
                 MyProfile::class,
             ])
+
+            ->discoverWidgets(
+                in: app_path('Filament/Admin/Widgets'),
+                for: 'App\\Filament\\Admin\\Widgets',
+            )
 
             ->discoverWidgets(
                 in: app_path('Filament/Student/Widgets'),
@@ -102,10 +124,19 @@ class StudentPanelProvider extends PanelProvider
                 MenuItem::make()
                     ->label(fn (): string => __('student_profile.my_profile'))
                     ->icon('heroicon-o-user-circle')
-                    ->url(fn (): string => MyProfile::getUrl()),
+                    ->url(fn (): string => MyProfile::getUrl())
+                    ->visible(fn (): bool => $this->isStudent()),
             ])
 
             ->navigationGroups([
+                NavigationGroup::make()
+                    ->label(fn (): string => __('app.dashboard'))
+                    ->collapsible(),
+
+                NavigationGroup::make()
+                    ->label(fn (): string => __('review_applications.navigation_group'))
+                    ->collapsible(),
+
                 NavigationGroup::make()
                     ->label(fn (): string => __('app.student_application'))
                     ->collapsible(),
@@ -118,7 +149,6 @@ class StudentPanelProvider extends PanelProvider
                 AddQueuedCookiesToResponse::class,
                 StartSession::class,
                 SwitchLanguageLocale::class,
-                SaveUserLocale::class,
                 AuthenticateSession::class,
                 ShareErrorsFromSession::class,
                 PreventRequestForgery::class,
@@ -135,6 +165,10 @@ class StudentPanelProvider extends PanelProvider
     protected function getDynamicStudentFormNavigationItems(): array
     {
         try {
+            if (! $this->isStudent()) {
+                return [];
+            }
+
             if (! Schema::hasTable('custom_forms')) {
                 return [];
             }
@@ -146,39 +180,7 @@ class StudentPanelProvider extends PanelProvider
                 'active',
             ]);
 
-            $today = now()->toDateString();
-
-            $query = DB::table('custom_forms')
-                ->where(function ($query) use ($today): void {
-                    $query
-                        ->whereNotExists(function ($subQuery): void {
-                            $subQuery
-                                ->selectRaw('1')
-                                ->from('closing_dates')
-                                ->whereNull('closing_dates.deleted_at')
-                                ->whereRaw("closing_dates.type = CONCAT('custom_form:', custom_forms.id)");
-                        })
-
-                        ->orWhereExists(function ($subQuery) use ($today): void {
-                            $subQuery
-                                ->selectRaw('1')
-                                ->from('closing_dates')
-                                ->whereNull('closing_dates.deleted_at')
-                                ->whereRaw("closing_dates.type = CONCAT('custom_form:', custom_forms.id)")
-                                ->where('closing_dates.status', 'open')
-                                ->whereDate('closing_dates.start_date', '<=', $today)
-                                ->whereDate('closing_dates.end_date', '>=', $today);
-                        })
-
-                        ->orWhereExists(function ($subQuery): void {
-                            $subQuery
-                                ->selectRaw('1')
-                                ->from('closing_dates')
-                                ->whereNull('closing_dates.deleted_at')
-                                ->whereRaw("closing_dates.type = CONCAT('custom_form:', custom_forms.id)")
-                                ->where('closing_dates.status', 'closed');
-                        });
-                });
+            $query = DB::table('custom_forms');
 
             if ($activeColumn) {
                 $query->where($activeColumn, true);
@@ -204,10 +206,14 @@ class StudentPanelProvider extends PanelProvider
                 });
             }
 
-            $query->orderBy('id');
-
             return $query
+                ->orderBy('id')
                 ->get()
+                ->filter(function ($form): bool {
+                    $formId = (int) ($form->id ?? 0);
+
+                    return ClosingDateWorkflow::shouldShowFeature($formId);
+                })
                 ->map(function ($form): NavigationItem {
                     $name = (string) (
                         $form->name
@@ -223,17 +229,9 @@ class StudentPanelProvider extends PanelProvider
 
                     $formId = (int) ($form->id ?? 0);
 
-                    $deadline = DB::table('closing_dates')
-                        ->whereNull('deleted_at')
-                        ->where('type', 'custom_form:' . $formId)
-                        ->latest('id')
-                        ->first();
-
-                    $url = url('/student/custom-form-entries?tableFilters[custom_form_id][value]=' . $formId);
-
-                    if ($deadline && $deadline->status === 'closed') {
-                        $url = url('/student/contact-us?form_id=' . $formId);
-                    }
+                    $url = ClosingDateWorkflow::shouldShowContact($formId)
+                        ? url('/contact-us?form_id=' . $formId)
+                        : url('/student-form/' . $slug);
 
                     return NavigationItem::make('student-form-' . $formId)
                         ->label(fn (): string => $this->getDynamicFormNavigationLabel($slug, $name))
@@ -241,10 +239,13 @@ class StudentPanelProvider extends PanelProvider
                         ->icon($this->getDynamicFormIcon($slug))
                         ->sort($this->getFormSortNumber($form, $slug))
                         ->url($url)
-                        ->visible(fn (): bool => $this->canShowStudentForm($slug))
+                        ->visible(fn (): bool => $this->isStudent() && $this->canShowStudentForm($slug))
                         ->isActiveWhen(
-                            fn (): bool => request()->is('student/custom-form-entries*')
-                                && (int) data_get(request()->query('tableFilters'), 'custom_form_id.value') === $formId
+                            fn (): bool => request()->is('student-form/' . $slug)
+                                || (
+                                    request()->is('contact-us*')
+                                    && (int) request()->query('form_id') === $formId
+                                )
                         );
                 })
                 ->values()
@@ -254,6 +255,16 @@ class StudentPanelProvider extends PanelProvider
 
             return [];
         }
+    }
+
+    protected function isAdmin(): bool
+    {
+        return auth()->user()?->registration_type === 'admin';
+    }
+
+    protected function isStudent(): bool
+    {
+        return auth()->user()?->registration_type === 'student';
     }
 
     protected function canShowStudentForm(string $slug): bool
@@ -287,7 +298,16 @@ class StudentPanelProvider extends PanelProvider
                 return false;
             }
 
-            $ownerColumns = $this->getExistingOwnerColumns();
+            $entriesColumns = Schema::getColumnListing('custom_form_entries');
+
+            $ownerColumns = collect([
+                'created_by',
+                'user_id',
+                'created_by_id',
+            ])
+                ->filter(fn (string $column): bool => in_array($column, $entriesColumns, true))
+                ->values()
+                ->all();
 
             if (empty($ownerColumns)) {
                 return false;
@@ -306,24 +326,6 @@ class StudentPanelProvider extends PanelProvider
 
             return false;
         }
-    }
-
-    protected function getExistingOwnerColumns(): array
-    {
-        if (! Schema::hasTable('custom_form_entries')) {
-            return [];
-        }
-
-        $columns = Schema::getColumnListing('custom_form_entries');
-
-        return collect([
-            'created_by',
-            'user_id',
-            'created_by_id',
-        ])
-            ->filter(fn (string $column): bool => in_array($column, $columns, true))
-            ->values()
-            ->all();
     }
 
     protected function getDynamicFormNavigationLabel(string $slug, string $fallbackName): string

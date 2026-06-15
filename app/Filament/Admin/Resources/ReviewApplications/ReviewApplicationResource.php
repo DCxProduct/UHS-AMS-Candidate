@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Resources\ReviewApplications;
 
 use App\Filament\Admin\Resources\ReviewApplications\Pages;
 use App\Filament\Admin\Resources\ReviewApplications\Tables\ReviewApplicationsTable;
+use App\Filament\Concerns\AdminOnly;
 use BackedEnum;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Resources\Resource;
@@ -15,6 +16,7 @@ use UnitEnum;
 
 class ReviewApplicationResource extends Resource
 {
+    use AdminOnly;
     public static function getModel(): string
     {
         return CustomFormEntry::class;

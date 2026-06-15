@@ -2,6 +2,7 @@
 
 namespace Chanthoeun\FilamentDocumentBuilder\Resources;
 
+use BackedEnum;
 use Chanthoeun\FilamentDocumentBuilder\DocumentBuilderPlugin;
 use Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate;
 use Chanthoeun\FilamentDocumentBuilder\Resources\DocumentTemplateResource\Pages;
@@ -15,22 +16,22 @@ class DocumentTemplateResource extends Resource
 {
     protected static ?string $model = DocumentTemplate::class;
 
-    /*
-    |--------------------------------------------------------------------------
-    | Only Admin can see/control Document Templates
-    |--------------------------------------------------------------------------
-    */
     public static function shouldRegisterNavigation(): bool
     {
-        return \Filament\Facades\Filament::getCurrentPanel()?->getId() === 'admin';
+        return static::isAdmin();
     }
 
     public static function canAccess(): bool
     {
-        return \Filament\Facades\Filament::getCurrentPanel()?->getId() === 'admin';
+        return static::isAdmin();
     }
 
-    public static function getNavigationIcon(): string|\BackedEnum|null
+    protected static function isAdmin(): bool
+    {
+        return auth()->user()?->registration_type === 'admin';
+    }
+
+    public static function getNavigationIcon(): string | BackedEnum | null
     {
         /** @var DocumentBuilderPlugin $plugin */
         $plugin = filament('filament-document-builder');

@@ -53,12 +53,11 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
             return false;
         }
 
-        if ($panel->getId() === 'admin') {
-            return $this->registration_type === 'admin';
-        }
-
-        if ($panel->getId() === 'student') {
-            return $this->registration_type === 'student';
+        if ($panel->getId() === 'app') {
+            return in_array((string) $this->registration_type, [
+                'admin',
+                'student',
+            ], true);
         }
 
         return false;

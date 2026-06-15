@@ -7,6 +7,7 @@ use App\Filament\Admin\Resources\ClosingDates\Pages\EditClosingDate;
 use App\Filament\Admin\Resources\ClosingDates\Pages\ListClosingDates;
 use App\Filament\Admin\Resources\ClosingDates\Schemas\ClosingDateForm;
 use App\Filament\Admin\Resources\ClosingDates\Tables\ClosingDatesTable;
+use App\Filament\Concerns\AdminOnly;
 use App\Models\ClosingDate;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -17,6 +18,8 @@ use UnitEnum;
 
 class ClosingDateResource extends Resource
 {
+    use AdminOnly;
+
     protected static ?string $model = ClosingDate::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCalendarDays;

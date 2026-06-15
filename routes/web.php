@@ -4,7 +4,7 @@ use App\Http\Controllers\Auth\PasswordResetController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return redirect('/student/login');
+    return redirect('/login');
 });
 
 Route::get('/language/toggle', function () {
@@ -12,7 +12,9 @@ Route::get('/language/toggle', function () {
 
     $nextLocale = $currentLocale === 'km' ? 'en' : 'km';
 
-    session(['locale' => $nextLocale]);
+    session([
+        'locale' => $nextLocale,
+    ]);
 
     app()->setLocale($nextLocale);
 
@@ -20,7 +22,6 @@ Route::get('/language/toggle', function () {
 })->name('language.toggle');
 
 Route::middleware('guest')
-    ->prefix('student')
     ->name('student.')
     ->group(function () {
         Route::get('/forgot-password', [PasswordResetController::class, 'showForgotPasswordForm'])
