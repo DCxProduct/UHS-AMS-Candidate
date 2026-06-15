@@ -2,7 +2,9 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Concerns\StudentOnly;
 use App\Filament\Student\Resources\CustomFormEntries\CustomFormEntryResource;
+use App\Support\ClosingDateWorkflow;
 use App\Support\StudentDynamicFormSchema;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -18,6 +20,7 @@ use Illuminate\Support\Str;
 
 class StudentDynamicFormPage extends Page implements HasForms
 {
+    use StudentOnly;
     use InteractsWithForms;
 
     protected string $view = 'filament.pages.student-dynamic-form-page';
@@ -34,9 +37,41 @@ class StudentDynamicFormPage extends Page implements HasForms
 
     public int $activeSectionIndex = 0;
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->registration_type === 'student';
+    }
+
     public function mount(string $slug): void
     {
         $this->customForm = $this->findActiveForm($slug);
+
+        $workflow = ClosingDateWorkflow::checkByCustomFormId((int) $this->customForm->id);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Status closed = show feature but go to Contact Us
+        |--------------------------------------------------------------------------
+        */
+        if ($workflow['show_contact']) {
+            $this->redirect('/contact-us?form_id=' . $this->customForm->id, navigate: false);
+
+            return;
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Status not open / expired / outside date range = no permission by URL
+        |--------------------------------------------------------------------------
+        */
+        if (! $workflow['can_submit']) {
+            abort(403, $workflow['message']);
+        }
 
         $this->sections = $this->loadSections();
 
@@ -113,6 +148,18 @@ class StudentDynamicFormPage extends Page implements HasForms
 
     public function save(): void
     {
+        $workflow = ClosingDateWorkflow::checkByCustomFormId((int) $this->customForm->id);
+
+        if ($workflow['show_contact']) {
+            $this->redirect('/contact-us?form_id=' . $this->customForm->id, navigate: false);
+
+            return;
+        }
+
+        if (! $workflow['can_submit']) {
+            abort(403, $workflow['message']);
+        }
+
         $state = $this->getCleanState();
 
         if (! $this->hasFormData($state)) {
@@ -140,6 +187,25 @@ class StudentDynamicFormPage extends Page implements HasForms
 
     public function saveAndCreateAnother(): void
     {
+        $workflow = ClosingDateWorkflow::checkByCustomFormId((int) $this->customForm->id);
+
+        if ($workflow['show_contact']) {
+            $this->redirect('/contact-us?form_id=' . $this->customForm->id, navigate: false);
+
+            return;
+        }
+
+        if (! $workflow['can_submit']) {
+            Notification::make()
+                ->title($workflow['message'])
+                ->warning()
+                ->send();
+
+            $this->redirect('/dashboard', navigate: false);
+
+            return;
+        }
+
         $state = $this->getCleanState();
 
         if (! $this->hasFormData($state)) {
@@ -195,6 +261,10 @@ class StudentDynamicFormPage extends Page implements HasForms
             'created_at' => now(),
             'updated_at' => now(),
         ];
+
+        if (in_array('review_status', $columns, true)) {
+            $payload['review_status'] = 'pending';
+        }
 
         $payload = collect($payload)
             ->filter(fn ($value, string $key): bool => in_array($key, $columns, true))

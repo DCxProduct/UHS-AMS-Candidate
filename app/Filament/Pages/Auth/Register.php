@@ -37,7 +37,7 @@ class Register extends BaseRegister
         return $schema
             ->components([
                 Hidden::make('registration_type')
-                    ->default('national_exam')
+                    ->default('student')
                     ->dehydrated(true),
 
                 TextInput::make('username')
@@ -221,7 +221,7 @@ class Register extends BaseRegister
             $data,
         ): Model {
             $user = User::query()->create([
-                'registration_type' => 'national_exam',
+                'registration_type' => 'student',
                 'academic_year' => null,
                 'name' => $username,
                 'name_latin' => null,

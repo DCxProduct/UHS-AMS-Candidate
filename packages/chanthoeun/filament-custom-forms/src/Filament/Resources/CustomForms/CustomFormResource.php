@@ -2,16 +2,14 @@
 
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomForms;
 
+use BackedEnum;
+use Chanthoeun\FilamentCustomForms\CustomFormPlugin;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomForms\Pages;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomForms\Schemas\CustomFormForm;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomForms\Tables\CustomFormsTable;
-use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Filament\Resources\Resource;
-use Filament\Tables\Table;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
-use BackedEnum;
-use Chanthoeun\FilamentCustomForms\CustomFormPlugin;
+use Filament\Tables\Table;
 
 class CustomFormResource extends Resource
 {
@@ -20,19 +18,19 @@ class CustomFormResource extends Resource
         return CustomFormPlugin::get()->getFormModel();
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Only Admin can see/control Custom Forms Builder
-    |--------------------------------------------------------------------------
-    */
     public static function shouldRegisterNavigation(): bool
     {
-        return \Filament\Facades\Filament::getCurrentPanel()?->getId() === 'admin';
+        return static::isAdmin();
     }
 
     public static function canAccess(): bool
     {
-        return \Filament\Facades\Filament::getCurrentPanel()?->getId() === 'admin';
+        return static::isAdmin();
+    }
+
+    protected static function isAdmin(): bool
+    {
+        return auth()->user()?->registration_type === 'admin';
     }
 
     public static function getModelLabel(): string
@@ -45,7 +43,7 @@ class CustomFormResource extends Resource
         return __('filament-custom-forms::fcf.form.plural');
     }
 
-    public static function getNavigationIcon(): string|BackedEnum|null
+    public static function getNavigationIcon(): string | BackedEnum | null
     {
         return CustomFormPlugin::get()->getNavigationFormIcon();
     }
