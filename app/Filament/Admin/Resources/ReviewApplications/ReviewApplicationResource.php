@@ -9,7 +9,6 @@ use BackedEnum;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
@@ -17,6 +16,7 @@ use UnitEnum;
 class ReviewApplicationResource extends Resource
 {
     use AdminOnly;
+
     public static function getModel(): string
     {
         return CustomFormEntry::class;
@@ -36,6 +36,11 @@ class ReviewApplicationResource extends Resource
     public static function getNavigationGroup(): string | UnitEnum | null
     {
         return __('review_applications.navigation_group');
+    }
+
+    public static function getNavigationSort(): ?int
+    {
+        return 1;
     }
 
     public static function getModelLabel(): string

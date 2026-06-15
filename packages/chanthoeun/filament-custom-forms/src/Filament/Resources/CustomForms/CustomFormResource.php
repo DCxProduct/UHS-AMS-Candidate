@@ -50,12 +50,12 @@ class CustomFormResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return CustomFormPlugin::get()->getNavigationGroup();
+        return 'Form Builder';
     }
 
     public static function getNavigationSort(): ?int
     {
-        return CustomFormPlugin::get()->getNavigationSort();
+        return 1;
     }
 
     public static function form(Schema $schema): Schema

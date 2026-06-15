@@ -41,18 +41,12 @@ class DocumentTemplateResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        /** @var DocumentBuilderPlugin $plugin */
-        $plugin = filament('filament-document-builder');
-
-        return $plugin->getNavigationGroup();
+        return 'Form Builder';
     }
 
     public static function getNavigationSort(): ?int
     {
-        /** @var DocumentBuilderPlugin $plugin */
-        $plugin = filament('filament-document-builder');
-
-        return $plugin->getNavigationSort();
+        return 2;
     }
 
     public static function form(Schema $schema): Schema
