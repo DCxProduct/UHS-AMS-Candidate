@@ -21,6 +21,14 @@ Route::get('/language/toggle', function () {
     return back();
 })->name('language.toggle');
 
+/*
+|--------------------------------------------------------------------------
+| Password Reset
+|--------------------------------------------------------------------------
+| Keep name student.* because your AppServiceProvider / old code may use:
+| route('student.password.reset')
+|--------------------------------------------------------------------------
+*/
 Route::middleware('guest')
     ->name('student.')
     ->group(function () {
