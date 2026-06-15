@@ -19,7 +19,7 @@ jobs:
           command_timeout: 15m
           script: |
             set -e
-            APP_DIR="/var/www/html/UHS-AMS-Student"
+            APP_DIR="/var/www/html/UHS-AMS-Candidate"
             
             # ─────────────────────────────────────────────
             # 🔧 Load Node.js (FIX for npm not found)
@@ -45,20 +45,21 @@ jobs:
               git clean -fd
 
               echo "⬇️ Pulling latest code..."
-              git pull https://oauth2:${{ secrets.TOKEN }}@github.com/DCxProduct/UHS-AMS-Student.git
+              git pull https://oauth2:${{ secrets.TOKEN }}@github.com/DCxProduct/UHS-AMS-Candidate.git
             else
-              git clone https://oauth2:${{ secrets.TOKEN }}@github.com/DCxProduct/UHS-AMS-Student.git $APP_DIR
+              git clone https://oauth2:${{ secrets.TOKEN }}@github.com/DCxProduct/UHS-AMS-Candidate.git $APP_DIR
               cd $APP_DIR
             fi
             
             # ── Install Dependencies ───────────────────────────── 
             echo "📦 Installing PHP dependencies..." 
-            composer install --ignore-platform-reqs
+            composer install
             npm install
             npm run build
             # ── Laravel Setup ──────────────────────────────────── 
-            echo "🔧 1 Running migrations..." 
+            echo "🔧 Running migrations..." 
             php artisan migrate:fresh --force
+            php artisan db:seed
 
             # ── Optimize ──────────────────────────────────────── 
             php artisan optimize:clear
