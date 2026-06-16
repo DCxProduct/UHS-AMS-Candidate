@@ -4,19 +4,18 @@ namespace App\Filament\Pages;
 
 use App\Filament\Widgets\AdminReviewStatusChart;
 use App\Filament\Widgets\AdminStatsOverview;
+use App\Filament\Widgets\AdminSubmissionsByFormChart;
 use App\Filament\Widgets\AdminSubmissionsTrendChart;
+use App\Filament\Widgets\StudentCompletionDoughnutChart;
 use App\Filament\Widgets\StudentProgressChart;
 use App\Filament\Widgets\StudentQuickActions;
 use App\Filament\Widgets\StudentStatsOverview;
+use App\Filament\Widgets\StudentSubmissionTrendChart;
 use Filament\Pages\Dashboard as BaseDashboard;
 use Illuminate\Contracts\Support\Htmlable;
 
 class Dashboard extends BaseDashboard
 {
-    /**
-     * Dashboard URL:
-     * http://127.0.0.1:8000/dashboard
-     */
     protected static string $routePath = 'dashboard';
 
     protected static ?int $navigationSort = -100;
@@ -63,14 +62,25 @@ class Dashboard extends BaseDashboard
     public function getWidgets(): array
     {
         return [
-            // Admin widgets
+            /*
+            |--------------------------------------------------------------------------
+            | Admin dashboard
+            |--------------------------------------------------------------------------
+            */
             AdminStatsOverview::class,
             AdminSubmissionsTrendChart::class,
+            AdminSubmissionsByFormChart::class,
             AdminReviewStatusChart::class,
 
-            // Student widgets
+            /*
+            |--------------------------------------------------------------------------
+            | Student dashboard
+            |--------------------------------------------------------------------------
+            */
             StudentStatsOverview::class,
             StudentProgressChart::class,
+            StudentSubmissionTrendChart::class,
+            StudentCompletionDoughnutChart::class,
             StudentQuickActions::class,
         ];
     }

@@ -5,7 +5,7 @@ namespace App\Filament\Widgets;
 use App\Support\DashboardMetrics;
 use Filament\Widgets\ChartWidget;
 
-class AdminReviewStatusChart extends ChartWidget
+class StudentCompletionDoughnutChart extends ChartWidget
 {
     protected static ?int $sort = 4;
 
@@ -20,42 +20,61 @@ class AdminReviewStatusChart extends ChartWidget
 
     public static function canView(): bool
     {
-        return auth()->user()?->registration_type === 'admin';
+        return auth()->user()?->registration_type === 'student';
     }
 
     public function getHeading(): ?string
     {
-        return __('dashboard.review_status');
+        return __('dashboard.completion_overview');
     }
 
     public function getDescription(): ?string
     {
-        return __('dashboard.application_review_summary');
+        $summary = DashboardMetrics::studentCompletionSummary(
+            (int) auth()->id()
+        );
+
+        if ($summary['total'] === 0) {
+            return __('dashboard.no_available_forms');
+        }
+
+        return __('dashboard.completion_summary', [
+            'completed' => $summary['completed'],
+            'total' => $summary['total'],
+        ]);
     }
 
     protected function getData(): array
     {
-        $statuses = DashboardMetrics::reviewStatusCounts();
+        $summary = DashboardMetrics::studentCompletionSummary(
+            (int) auth()->id()
+        );
+
+        $completed = $summary['completed'];
+        $remaining = $summary['remaining'];
+
+        // Avoid an empty doughnut chart when no forms exist.
+        if ($summary['total'] === 0) {
+            $completed = 0;
+            $remaining = 1;
+        }
 
         return [
             'datasets' => [
                 [
                     'data' => [
-                        $statuses['pending'],
-                        $statuses['accepted'],
-                        $statuses['rejected'],
+                        $completed,
+                        $remaining,
                     ],
 
                     'backgroundColor' => [
-                        '#f59e0b',
                         '#10b981',
-                        '#ef4444',
+                        '#94a3b8',
                     ],
 
                     'borderColor' => [
-                        '#f59e0b',
-                        '#10b981',
-                        '#ef4444',
+                        '#059669',
+                        '#64748b',
                     ],
 
                     'borderWidth' => 1,
@@ -64,9 +83,8 @@ class AdminReviewStatusChart extends ChartWidget
             ],
 
             'labels' => [
-                __('dashboard.statuses.pending'),
-                __('dashboard.statuses.accepted'),
-                __('dashboard.statuses.rejected'),
+                __('dashboard.completed_forms'),
+                __('dashboard.remaining_forms'),
             ],
         ];
     }

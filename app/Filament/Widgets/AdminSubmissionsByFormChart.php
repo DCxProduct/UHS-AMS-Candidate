@@ -5,9 +5,9 @@ namespace App\Filament\Widgets;
 use App\Support\DashboardMetrics;
 use Filament\Widgets\ChartWidget;
 
-class AdminSubmissionsTrendChart extends ChartWidget
+class AdminSubmissionsByFormChart extends ChartWidget
 {
-    protected static ?int $sort = 2;
+    protected static ?int $sort = 3;
 
     protected int | string | array $columnSpan = 1;
 
@@ -24,39 +24,37 @@ class AdminSubmissionsTrendChart extends ChartWidget
 
     public function getHeading(): ?string
     {
-        return __('dashboard.submissions_trend');
+        return __('dashboard.submissions_by_form');
     }
 
     public function getDescription(): ?string
     {
-        return __('dashboard.last_six_months');
+        return __('dashboard.submissions_by_form_description');
     }
 
     protected function getData(): array
     {
-        $trend = DashboardMetrics::monthlySubmissions(6);
+        $chart = DashboardMetrics::submissionsByForm(8);
 
         return [
             'datasets' => [
                 [
                     'label' => __('dashboard.submissions'),
-                    'data' => $trend['data'],
-                    'borderColor' => '#3b82f6',
-                    'backgroundColor' => 'rgba(59, 130, 246, 0.20)',
-                    'fill' => true,
-                    'tension' => 0.4,
-                    'pointRadius' => 4,
-                    'pointHoverRadius' => 7,
+                    'data' => $chart['data'],
+                    'backgroundColor' => 'rgba(16, 185, 129, 0.75)',
+                    'borderColor' => '#10b981',
+                    'borderWidth' => 1,
+                    'borderRadius' => 8,
                 ],
             ],
 
-            'labels' => $trend['labels'],
+            'labels' => $chart['labels'],
         ];
     }
 
     protected function getType(): string
     {
-        return 'line';
+        return 'bar';
     }
 
     protected function getOptions(): array
@@ -76,6 +74,13 @@ class AdminSubmissionsTrendChart extends ChartWidget
 
                     'ticks' => [
                         'precision' => 0,
+                    ],
+                ],
+
+                'x' => [
+                    'ticks' => [
+                        'maxRotation' => 25,
+                        'minRotation' => 0,
                     ],
                 ],
             ],

@@ -3,7 +3,7 @@
 namespace App\Support;
 
 use Carbon\Carbon;
-use Illuminate\Support\Collection;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -12,7 +12,7 @@ class DashboardMetrics
 {
     /*
     |--------------------------------------------------------------------------
-    | Admin metrics
+    | Admin statistics
     |--------------------------------------------------------------------------
     */
 
@@ -84,43 +84,11 @@ class DashboardMetrics
         return $query->count();
     }
 
-    public static function reviewStatusCounts(): array
-    {
-        $default = [
-            'pending' => 0,
-            'accepted' => 0,
-            'rejected' => 0,
-        ];
-
-        if (! Schema::hasTable('custom_form_entries')) {
-            return $default;
-        }
-
-        $statusColumn = static::entryStatusColumn();
-
-        if (! $statusColumn) {
-            return [
-                'pending' => static::totalSubmissions(),
-                'accepted' => 0,
-                'rejected' => 0,
-            ];
-        }
-
-        $statuses = DB::table('custom_form_entries')
-            ->pluck($statusColumn);
-
-        $result = $default;
-
-        foreach ($statuses as $status) {
-            $normalizedStatus = static::normalizeStatus($status);
-
-            if (array_key_exists($normalizedStatus, $result)) {
-                $result[$normalizedStatus]++;
-            }
-        }
-
-        return $result;
-    }
+    /*
+    |--------------------------------------------------------------------------
+    | Admin line chart
+    |--------------------------------------------------------------------------
+    */
 
     public static function monthlySubmissions(int $monthCount = 6): array
     {
@@ -145,10 +113,7 @@ class DashboardMetrics
             Schema::hasTable('custom_form_entries')
             && Schema::hasColumn('custom_form_entries', 'created_at')
         ) {
-            $startDate = $months
-                ->first()
-                ?->copy()
-                ->startOfMonth();
+            $startDate = $months->first()?->copy()->startOfMonth();
 
             $createdDates = DB::table('custom_form_entries')
                 ->where('created_at', '>=', $startDate)
@@ -179,7 +144,13 @@ class DashboardMetrics
         ];
     }
 
-    public static function submissionsByForm(): array
+    /*
+    |--------------------------------------------------------------------------
+    | Admin bar diagram
+    |--------------------------------------------------------------------------
+    */
+
+    public static function submissionsByForm(int $limit = 8): array
     {
         if (
             ! Schema::hasTable('custom_forms')
@@ -192,46 +163,237 @@ class DashboardMetrics
             ];
         }
 
-        $forms = DB::table('custom_forms')
+        $query = DB::table('custom_forms')
             ->select([
                 'custom_forms.id',
                 'custom_forms.name',
             ])
-            ->selectRaw(
-                'COUNT(custom_form_entries.id) AS entry_count'
-            )
+            ->selectRaw('COUNT(custom_form_entries.id) AS entry_count')
             ->leftJoin(
                 'custom_form_entries',
                 'custom_forms.id',
                 '=',
                 'custom_form_entries.custom_form_id'
             )
+            ->whereNotNull('custom_forms.name');
+
+        if (Schema::hasColumn('custom_forms', 'is_active')) {
+            $query->where('custom_forms.is_active', true);
+        } elseif (Schema::hasColumn('custom_forms', 'active')) {
+            $query->where('custom_forms.active', true);
+        }
+
+        $forms = $query
             ->groupBy([
                 'custom_forms.id',
                 'custom_forms.name',
             ])
             ->orderByDesc('entry_count')
-            ->limit(10)
+            ->limit($limit)
             ->get();
 
         return [
             'labels' => $forms
                 ->pluck('name')
                 ->map(fn ($name): string => (string) $name)
+                ->values()
                 ->all(),
 
             'data' => $forms
                 ->pluck('entry_count')
                 ->map(fn ($count): int => (int) $count)
+                ->values()
                 ->all(),
         ];
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Student metrics
+    | Admin doughnut chart
     |--------------------------------------------------------------------------
     */
+
+    public static function reviewStatusCounts(): array
+    {
+        $result = [
+            'pending' => 0,
+            'accepted' => 0,
+            'rejected' => 0,
+        ];
+
+        if (! Schema::hasTable('custom_form_entries')) {
+            return $result;
+        }
+
+        $statusColumn = static::entryStatusColumn();
+
+        if (! $statusColumn) {
+            return [
+                'pending' => static::totalSubmissions(),
+                'accepted' => 0,
+                'rejected' => 0,
+            ];
+        }
+
+        $statuses = DB::table('custom_form_entries')
+            ->pluck($statusColumn);
+
+        foreach ($statuses as $status) {
+            $normalizedStatus = static::normalizeStatus($status);
+
+            if (array_key_exists($normalizedStatus, $result)) {
+                $result[$normalizedStatus]++;
+            }
+        }
+
+        return $result;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Student personal line chart
+    |--------------------------------------------------------------------------
+    */
+
+    public static function studentMonthlySubmissions(
+        int $userId,
+        int $monthCount = 6,
+    ): array {
+        $monthCount = max(1, $monthCount);
+
+        $months = collect(range($monthCount - 1, 0))
+            ->map(
+                fn (int $offset): Carbon => now()
+                    ->subMonths($offset)
+                    ->startOfMonth()
+            );
+
+        $counts = $months
+            ->mapWithKeys(
+                fn (Carbon $month): array => [
+                    $month->format('Y-m') => 0,
+                ]
+            )
+            ->all();
+
+        if (
+            ! Schema::hasTable('custom_form_entries')
+            || ! Schema::hasColumn('custom_form_entries', 'created_at')
+        ) {
+            return [
+                'labels' => $months
+                    ->map(
+                        fn (Carbon $month): string => static::localizedMonthLabel($month)
+                    )
+                    ->values()
+                    ->all(),
+
+                'data' => array_values($counts),
+            ];
+        }
+
+        $ownerColumns = static::entryOwnerColumns();
+
+        if (empty($ownerColumns)) {
+            return [
+                'labels' => $months
+                    ->map(
+                        fn (Carbon $month): string => static::localizedMonthLabel($month)
+                    )
+                    ->values()
+                    ->all(),
+
+                'data' => array_values($counts),
+            ];
+        }
+
+        $startDate = $months->first()?->copy()->startOfMonth();
+
+        $query = DB::table('custom_form_entries')
+            ->where('created_at', '>=', $startDate);
+
+        static::applyStudentOwnerFilter($query, $userId);
+
+        $createdDates = $query->pluck('created_at');
+
+        foreach ($createdDates as $createdAt) {
+            if (blank($createdAt)) {
+                continue;
+            }
+
+            $key = Carbon::parse($createdAt)->format('Y-m');
+
+            if (array_key_exists($key, $counts)) {
+                $counts[$key]++;
+            }
+        }
+
+        return [
+            'labels' => $months
+                ->map(
+                    fn (Carbon $month): string => static::localizedMonthLabel($month)
+                )
+                ->values()
+                ->all(),
+
+            'data' => array_values($counts),
+        ];
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Student form completion
+    |--------------------------------------------------------------------------
+    */
+
+    public static function studentProgressItems(int $userId): array
+    {
+        return collect(static::studentAvailableForms($userId))
+            ->map(function (array $form) use ($userId): array {
+                return [
+                    'id' => $form['id'],
+                    'slug' => $form['slug'],
+                    'name' => $form['name'],
+
+                    'completed' => static::studentHasEntryForForm(
+                        $userId,
+                        $form['id']
+                    ),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    public static function studentProgressPercentage(int $userId): int
+    {
+        $summary = static::studentCompletionSummary($userId);
+
+        if ($summary['total'] === 0) {
+            return 0;
+        }
+
+        return (int) round(
+            ($summary['completed'] / $summary['total']) * 100
+        );
+    }
+
+    public static function studentCompletionSummary(int $userId): array
+    {
+        $items = static::studentProgressItems($userId);
+
+        $total = count($items);
+
+        $completed = collect($items)
+            ->where('completed', true)
+            ->count();
+
+        return [
+            'total' => $total,
+            'completed' => $completed,
+            'remaining' => max(0, $total - $completed),
+        ];
+    }
 
     public static function studentHasCompletedForm(
         int $userId,
@@ -266,14 +428,12 @@ class DashboardMetrics
             return false;
         }
 
-        return DB::table('custom_form_entries')
-            ->where('custom_form_id', $formId)
-            ->where(function ($query) use ($ownerColumns, $userId): void {
-                foreach ($ownerColumns as $column) {
-                    $query->orWhere($column, $userId);
-                }
-            })
-            ->exists();
+        $query = DB::table('custom_form_entries')
+            ->where('custom_form_id', $formId);
+
+        static::applyStudentOwnerFilter($query, $userId);
+
+        return $query->exists();
     }
 
     public static function studentLatestStatus(int $userId): string
@@ -288,12 +448,9 @@ class DashboardMetrics
             return 'not_submitted';
         }
 
-        $query = DB::table('custom_form_entries')
-            ->where(function ($query) use ($ownerColumns, $userId): void {
-                foreach ($ownerColumns as $column) {
-                    $query->orWhere($column, $userId);
-                }
-            });
+        $query = DB::table('custom_form_entries');
+
+        static::applyStudentOwnerFilter($query, $userId);
 
         if (! $query->exists()) {
             return 'not_submitted';
@@ -312,84 +469,11 @@ class DashboardMetrics
         return static::normalizeStatus($status);
     }
 
-    public static function studentProgressItems(int $userId): array
-    {
-        return collect(static::studentAvailableForms($userId))
-            ->map(function (array $form) use ($userId): array {
-                return [
-                    'id' => $form['id'],
-                    'slug' => $form['slug'],
-                    'name' => $form['name'],
-                    'completed' => static::studentHasEntryForForm(
-                        $userId,
-                        $form['id']
-                    ),
-                ];
-            })
-            ->values()
-            ->all();
-    }
-
-    public static function studentProgressPercentage(int $userId): int
-    {
-        $items = static::studentProgressItems($userId);
-
-        if (empty($items)) {
-            return 0;
-        }
-
-        $completedCount = collect($items)
-            ->where('completed', true)
-            ->count();
-
-        return (int) round(
-            ($completedCount / count($items)) * 100
-        );
-    }
-
     /*
     |--------------------------------------------------------------------------
-    | Dynamic student quick actions
+    | Student dynamic forms
     |--------------------------------------------------------------------------
     */
-
-    public static function studentQuickActions(int $userId): array
-    {
-        $forms = static::studentAvailableForms($userId);
-
-        return collect($forms)
-            ->map(function (array $form) use ($userId): array {
-                $completed = static::studentHasEntryForForm(
-                    $userId,
-                    $form['id']
-                );
-
-                $workflow = static::formWorkflow($form['id']);
-
-                $showContact = (bool) (
-                    $workflow['show_contact'] ?? false
-                );
-
-                $url = $showContact
-                    ? url('/contact-us?form_id=' . $form['id'])
-                    : static::customFormEntryUrl($form['id']);
-
-                return [
-                    'id' => $form['id'],
-                    'name' => $form['name'],
-                    'slug' => $form['slug'],
-                    'url' => $url,
-                    'completed' => $completed,
-                    'expired' => $showContact,
-                    'icon' => static::formIcon($form['slug']),
-                    'color' => $completed
-                        ? 'success'
-                        : ($showContact ? 'danger' : 'primary'),
-                ];
-            })
-            ->values()
-            ->all();
-    }
 
     public static function studentAvailableForms(int $userId): array
     {
@@ -409,28 +493,64 @@ class DashboardMetrics
 
         $forms = $query->get();
 
-        $profileCompleted = static::studentHasCompletedForm(
-            $userId,
-            'profile'
+        $profileForm = $forms->first(
+            fn ($form): bool => (string) ($form->slug ?? '') === 'profile'
+        );
+
+        $profileFormId = $profileForm
+            ? (int) $profileForm->id
+            : null;
+
+        $profileCompleted = $profileFormId
+            ? static::studentHasEntryForForm($userId, $profileFormId)
+            : true;
+
+        $profileWorkflow = $profileFormId
+            ? static::formWorkflow($profileFormId)
+            : [
+                'can_see_form' => true,
+                'show_contact' => false,
+            ];
+
+        $profileCanBeSeen = (bool) (
+            $profileWorkflow['can_see_form'] ?? true
+        );
+
+        $profileShowsContact = (bool) (
+            $profileWorkflow['show_contact'] ?? false
         );
 
         return $forms
-            ->filter(function ($form) use ($profileCompleted): bool {
-                $slug = (string) ($form->slug ?? '');
-
+            ->filter(function ($form) use (
+                $profileCompleted,
+                $profileCanBeSeen,
+                $profileShowsContact,
+            ): bool {
                 if (! static::formAllowsStudent($form)) {
                     return false;
                 }
 
-                if ($slug !== 'profile' && ! $profileCompleted) {
-                    return false;
-                }
+                $slug = (string) ($form->slug ?? '');
 
                 $workflow = static::formWorkflow((int) $form->id);
 
-                return (bool) (
-                    $workflow['can_see_form'] ?? true
-                );
+                if (! ($workflow['can_see_form'] ?? true)) {
+                    return false;
+                }
+
+                if ($slug === 'profile') {
+                    return true;
+                }
+
+                if (! $profileCanBeSeen) {
+                    return false;
+                }
+
+                if ($profileShowsContact) {
+                    return false;
+                }
+
+                return $profileCompleted;
             })
             ->map(function ($form): array {
                 return [
@@ -443,11 +563,37 @@ class DashboardMetrics
             ->all();
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Form helpers
-    |--------------------------------------------------------------------------
-    */
+    public static function studentQuickActions(int $userId): array
+    {
+        return collect(static::studentAvailableForms($userId))
+            ->map(function (array $form) use ($userId): array {
+                $completed = static::studentHasEntryForForm(
+                    $userId,
+                    $form['id']
+                );
+
+                $workflow = static::formWorkflow($form['id']);
+
+                $showContact = (bool) (
+                    $workflow['show_contact'] ?? false
+                );
+
+                return [
+                    'id' => $form['id'],
+                    'name' => $form['name'],
+                    'slug' => $form['slug'],
+                    'completed' => $completed,
+                    'expired' => $showContact,
+                    'icon' => static::formIcon($form['slug']),
+
+                    'url' => $showContact
+                        ? url('/contact-us?form_id=' . $form['id'])
+                        : static::customFormEntryUrl($form['id']),
+                ];
+            })
+            ->values()
+            ->all();
+    }
 
     public static function formIdBySlug(string $slug): ?int
     {
@@ -477,6 +623,90 @@ class DashboardMetrics
                 ],
             ]);
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Owner detection
+    |--------------------------------------------------------------------------
+    */
+
+    private static function studentOwnerIds(int $userId): array
+    {
+        $ids = collect([$userId]);
+
+        if (
+            ! Schema::hasTable('users')
+            || ! Schema::hasTable('system_users')
+        ) {
+            return $ids->unique()->values()->all();
+        }
+
+        $user = DB::table('users')
+            ->where('id', $userId)
+            ->first();
+
+        if (! $user) {
+            return $ids->unique()->values()->all();
+        }
+
+        $criteria = [];
+
+        foreach (['username', 'email', 'phone'] as $column) {
+            if (
+                Schema::hasColumn('system_users', $column)
+                && filled($user->{$column} ?? null)
+            ) {
+                $criteria[] = [
+                    'column' => $column,
+                    'value' => $user->{$column},
+                ];
+            }
+        }
+
+        if (empty($criteria)) {
+            return $ids->unique()->values()->all();
+        }
+
+        $systemUserIds = DB::table('system_users')
+            ->where(function ($query) use ($criteria): void {
+                foreach ($criteria as $criterion) {
+                    $query->orWhere(
+                        $criterion['column'],
+                        $criterion['value']
+                    );
+                }
+            })
+            ->pluck('id');
+
+        return $ids
+            ->merge($systemUserIds)
+            ->map(fn ($id): int => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private static function applyStudentOwnerFilter(
+        Builder $query,
+        int $userId,
+    ): Builder {
+        $ownerColumns = static::entryOwnerColumns();
+        $ownerIds = static::studentOwnerIds($userId);
+
+        return $query->where(
+            function ($query) use ($ownerColumns, $ownerIds): void {
+                foreach ($ownerColumns as $column) {
+                    $query->orWhereIn($column, $ownerIds);
+                }
+            }
+        );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Other helpers
+    |--------------------------------------------------------------------------
+    */
 
     private static function formWorkflow(int $formId): array
     {
@@ -541,17 +771,13 @@ class DashboardMetrics
         return match ($slug) {
             'profile' => 'heroicon-o-user-circle',
             'enrollment' => 'heroicon-o-document-text',
+
             'national-exam',
             'national-examination' => 'heroicon-o-academic-cap',
+
             default => 'heroicon-o-clipboard-document-list',
         };
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Database schema helpers
-    |--------------------------------------------------------------------------
-    */
 
     private static function entryOwnerColumns(): array
     {
@@ -620,22 +846,14 @@ class DashboardMetrics
             'deny',
             'denied' => 'rejected',
 
-            '',
-            'new',
-            'submitted',
-            'pending',
-            'reviewing',
-            'in_review' => 'pending',
-
             default => 'pending',
         };
     }
 
-    private static function localizedMonthLabel(
-        Carbon $month
-    ): string {
+    private static function localizedMonthLabel(Carbon $month): string
+    {
         if (app()->getLocale() === 'km') {
-            $khmerMonths = [
+            $months = [
                 1 => 'មករា',
                 2 => 'កុម្ភៈ',
                 3 => 'មីនា',
@@ -650,7 +868,7 @@ class DashboardMetrics
                 12 => 'ធ្នូ',
             ];
 
-            return ($khmerMonths[$month->month] ?? '')
+            return ($months[$month->month] ?? '')
                 . ' '
                 . $month->year;
         }

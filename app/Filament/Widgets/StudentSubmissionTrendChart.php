@@ -5,13 +5,13 @@ namespace App\Filament\Widgets;
 use App\Support\DashboardMetrics;
 use Filament\Widgets\ChartWidget;
 
-class AdminSubmissionsTrendChart extends ChartWidget
+class StudentSubmissionTrendChart extends ChartWidget
 {
-    protected static ?int $sort = 2;
+    protected static ?int $sort = 3;
 
     protected int | string | array $columnSpan = 1;
 
-    protected ?string $maxHeight = '330px';
+    protected ?string $maxHeight = '350px';
 
     protected ?string $pollingInterval = '60s';
 
@@ -19,30 +19,33 @@ class AdminSubmissionsTrendChart extends ChartWidget
 
     public static function canView(): bool
     {
-        return auth()->user()?->registration_type === 'admin';
+        return auth()->user()?->registration_type === 'student';
     }
 
     public function getHeading(): ?string
     {
-        return __('dashboard.submissions_trend');
+        return __('dashboard.my_submission_trend');
     }
 
     public function getDescription(): ?string
     {
-        return __('dashboard.last_six_months');
+        return __('dashboard.my_submission_trend_description');
     }
 
     protected function getData(): array
     {
-        $trend = DashboardMetrics::monthlySubmissions(6);
+        $trend = DashboardMetrics::studentMonthlySubmissions(
+            (int) auth()->id(),
+            6
+        );
 
         return [
             'datasets' => [
                 [
-                    'label' => __('dashboard.submissions'),
+                    'label' => __('dashboard.my_submissions'),
                     'data' => $trend['data'],
-                    'borderColor' => '#3b82f6',
-                    'backgroundColor' => 'rgba(59, 130, 246, 0.20)',
+                    'borderColor' => '#8b5cf6',
+                    'backgroundColor' => 'rgba(139, 92, 246, 0.20)',
                     'fill' => true,
                     'tension' => 0.4,
                     'pointRadius' => 4,

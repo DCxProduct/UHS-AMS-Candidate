@@ -9,7 +9,7 @@ class StudentProgressChart extends ChartWidget
 {
     protected static ?int $sort = 2;
 
-    protected int | string | array $columnSpan = 'full';
+    protected int | string | array $columnSpan = 1;
 
     protected ?string $maxHeight = '350px';
 
@@ -61,8 +61,17 @@ class StudentProgressChart extends ChartWidget
                         ->values()
                         ->all(),
 
+                    'borderColor' => collect($items)
+                        ->map(
+                            fn (array $item): string => $item['completed']
+                                ? '#059669'
+                                : '#d97706'
+                        )
+                        ->values()
+                        ->all(),
+
+                    'borderWidth' => 1,
                     'borderRadius' => 8,
-                    'borderWidth' => 0,
                 ],
             ],
 
@@ -97,10 +106,6 @@ class StudentProgressChart extends ChartWidget
 
                     'ticks' => [
                         'stepSize' => 25,
-
-                        'callback' => <<<'JS'
-                            (value) => value + '%'
-                        JS,
                     ],
                 ],
 
