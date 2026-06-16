@@ -161,7 +161,7 @@ class CustomFormEntryResource extends Resource
 
             if ($form) {
                 return __('filament-custom-forms::fcf.entry.entry', [
-                    'form' => $form->name,
+                    'form' => static::getTranslatedFormName($form),
                 ]);
             }
         }
@@ -179,7 +179,7 @@ class CustomFormEntryResource extends Resource
 
             if ($form) {
                 return __('filament-custom-forms::fcf.entry.entries', [
-                    'form' => $form->name,
+                    'form' => static::getTranslatedFormName($form),
                 ]);
             }
         }
@@ -198,13 +198,24 @@ class CustomFormEntryResource extends Resource
         return static::$formCache[$id];
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Dynamic Navigation Items
-    |--------------------------------------------------------------------------
-    | This makes forms created by admin appear dynamically for student too.
-    |--------------------------------------------------------------------------
-    */
+    protected static function getTranslatedFormName(
+        CustomForm $form
+    ): string {
+        $slug = strtolower(
+            trim((string) ($form->slug ?? ''))
+        );
+
+        return match ($slug) {
+            'profile' => __('navigation.forms.profile'),
+
+            'enrollment' => __('navigation.forms.enrollment'),
+
+            default => (string) (
+                $form->name
+                ?? __('navigation.forms.untitled')
+            ),
+        };
+    }
     public static function getNavigationItems(): array
     {
         if (! static::currentUserIsAdmin() && ! static::currentUserIsStudent()) {
@@ -256,8 +267,8 @@ class CustomFormEntryResource extends Resource
                     ]);
 
                 $items[] = NavigationItem::make('custom-form-entry-' . $formId)
-                    ->label((string) $form->name)
-                    ->group('Form Entry')
+                    ->label(static::getTranslatedFormName($form))
+                    ->group(__('navigation.groups.form_entry'))
                     ->icon(static::getDynamicFormIcon($form))
                     ->sort(static::getFormSortNumber($form))
                     ->url($url)

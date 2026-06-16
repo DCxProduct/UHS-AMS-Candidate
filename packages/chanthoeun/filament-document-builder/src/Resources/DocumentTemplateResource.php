@@ -14,6 +14,16 @@ use Filament\Tables\Table;
 
 class DocumentTemplateResource extends Resource
 {
+    public static function getNavigationLabel(): string
+    {
+        return __('navigation.document_templates');
+    }
+
+    public static function getNavigationGroup(): ?string
+    {
+        return __('navigation.groups.form_builder');
+    }
+
     protected static ?string $model = DocumentTemplate::class;
 
     public static function shouldRegisterNavigation(): bool
@@ -37,11 +47,6 @@ class DocumentTemplateResource extends Resource
         $plugin = filament('filament-document-builder');
 
         return $plugin->getNavigationIcon();
-    }
-
-    public static function getNavigationGroup(): ?string
-    {
-        return 'Form Builder';
     }
 
     public static function getNavigationSort(): ?int
