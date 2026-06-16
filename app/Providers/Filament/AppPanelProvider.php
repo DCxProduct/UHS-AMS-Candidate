@@ -141,6 +141,7 @@ class AppPanelProvider extends PanelProvider
                 NavigationGroup::make()
                     ->label('Settings')
                     ->collapsible(),
+
             ])
 
             ->navigationItems([])

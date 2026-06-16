@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages\Auth;
 
+use App\Models\SystemUser;
 use App\Models\User;
 use Carbon\Carbon;
 use Filament\Auth\Pages\Register as BaseRegister;
@@ -14,6 +15,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class Register extends BaseRegister
 {
@@ -54,6 +56,7 @@ class Register extends BaseRegister
                         'min:6',
                         'max:15',
                         'regex:/^[a-z0-9_]+$/',
+                        Rule::unique('system_users', 'username'),
                     ])
                     ->extraInputAttributes([
                         'oninput' => "this.value = this.value.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 15)",
@@ -85,6 +88,7 @@ class Register extends BaseRegister
                     ->rules([
                         'required',
                         'regex:/^[0-9]{9,10}$/',
+                        Rule::unique('system_users', 'phone'),
                     ])
                     ->validationMessages([
                         'required' => __('app.phone_required'),
@@ -109,14 +113,20 @@ class Register extends BaseRegister
                     ->placeholder(__('app.enter_email_address'))
                     ->prefixIcon('heroicon-o-envelope')
                     ->email()
-                    ->nullable()
+                    ->required()
                     ->maxLength(255)
                     ->unique(User::class, 'email')
+                    ->rules([
+                        'required',
+                        'email',
+                        Rule::unique('system_users', 'email'),
+                    ])
                     ->dehydrateStateUsing(fn (?string $state): ?string => filled($state)
                         ? Str::lower(trim($state))
                         : null
                     )
                     ->validationMessages([
+                        'required' => __('app.email_required'),
                         'email' => __('app.email_invalid'),
                         'unique' => __('app.email_unique'),
                     ]),
@@ -207,9 +217,7 @@ class Register extends BaseRegister
             ? null
             : preg_replace('/[^0-9]/', '', (string) $data['phone']);
 
-        $email = filled($data['email'] ?? null)
-            ? Str::lower(trim((string) $data['email']))
-            : null;
+        $email = Str::lower(trim((string) ($data['email'] ?? '')));
 
         $dateOfBirth = Carbon::parse($data['date_of_birth'])->format('Y-m-d');
 
@@ -220,6 +228,13 @@ class Register extends BaseRegister
             $dateOfBirth,
             $data,
         ): Model {
+            $hashedPassword = Hash::make($data['password']);
+
+            /*
+            |--------------------------------------------------------------------------
+            | Store login account in users table
+            |--------------------------------------------------------------------------
+            */
             $user = User::query()->create([
                 'registration_type' => 'student',
                 'academic_year' => null,
@@ -230,14 +245,32 @@ class Register extends BaseRegister
                 'phone' => $phone,
                 'date_of_birth' => $dateOfBirth,
                 'seat_number' => null,
-                'password' => Hash::make($data['password']),
+                'avatar' => null,
+                'password' => $hashedPassword,
                 'email_verified_at' => now(),
                 'is_active' => true,
             ]);
 
-            if (method_exists($user, 'assignRole')) {
-                $user->assignRole('Student');
-            }
+            /*
+            |--------------------------------------------------------------------------
+            | Store student in system_users table
+            |--------------------------------------------------------------------------
+            */
+            SystemUser::query()->create([
+                'name' => $username,
+                'username' => $username,
+                'email' => $email,
+                'phone' => $phone,
+                'password' => $hashedPassword,
+                'avatar' => null,
+                'roles' => [
+                    'Student',
+                ],
+                'permissions' => null,
+                'is_active' => true,
+                'email_verified_at' => now(),
+                'last_login_at' => null,
+            ]);
 
             return $user;
         });
