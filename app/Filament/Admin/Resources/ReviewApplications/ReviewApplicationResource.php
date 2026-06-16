@@ -26,7 +26,7 @@ class ReviewApplicationResource extends Resource
 
     protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-clipboard-document-check';
 
-    protected static ?int $navigationSort = 1;
+    protected static ?int $navigationSort = 30;
 
     public static function getNavigationLabel(): string
     {
@@ -61,7 +61,7 @@ class ReviewApplicationResource extends Resource
                 'customForm',
             ])
             ->whereHas('customForm', function (Builder $query): void {
-                $query->where('slug', 'enrollment');
+                $query->where('slug', 'national-examination-registration');
             })
             ->latest('id');
     }

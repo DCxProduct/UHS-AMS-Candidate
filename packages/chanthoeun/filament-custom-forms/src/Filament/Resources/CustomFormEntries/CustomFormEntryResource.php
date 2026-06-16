@@ -208,7 +208,7 @@ class CustomFormEntryResource extends Resource
         return match ($slug) {
             'profile' => __('navigation.forms.profile'),
 
-            'enrollment' => __('navigation.forms.enrollment'),
+            'national-examination-registration' => __('navigation.national_examination_registration'),
 
             default => (string) (
                 $form->name
@@ -552,7 +552,7 @@ class CustomFormEntryResource extends Resource
 
         $preferredSort = [
             'profile' => 10,
-            'enrollment' => 20,
+            'national-examination-registration' => 20,
         ];
 
         if (array_key_exists($slug, $preferredSort)) {

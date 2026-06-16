@@ -124,25 +124,20 @@ class AppPanelProvider extends PanelProvider
 
             ->navigationGroups([
                 NavigationGroup::make()
-                    ->label(fn (): string => __('app.dashboard'))
-                    ->collapsible(),
-
-                NavigationGroup::make()
                     ->label(fn (): string => __('navigation.groups.form_entry'))
                     ->collapsible(),
 
                 NavigationGroup::make()
-                    ->label(fn (): string => __('review_applications.navigation_group'))
+                    ->label(fn (): string => __('navigation.groups.review_document'))
                     ->collapsible(),
 
                 NavigationGroup::make()
-                    ->label('Form Builder')
+                    ->label(fn (): string => __('navigation.groups.form_builder'))
                     ->collapsible(),
 
                 NavigationGroup::make()
-                    ->label('Settings')
+                    ->label(fn (): string => __('navigation.groups.settings'))
                     ->collapsible(),
-
             ])
 
             ->navigationItems([])

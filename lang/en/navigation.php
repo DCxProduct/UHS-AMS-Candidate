@@ -11,7 +11,7 @@ return [
     ],
 
     'profile' => 'Profile',
-    'enrollment' => 'Enrollment',
+    'national_examination_registration' => 'National Examination Registration',
     'review_applications' => 'Review Applications',
     'custom_forms' => 'Custom Forms',
     'document_templates' => 'Document Templates',
@@ -20,6 +20,6 @@ return [
 
     'forms' => [
         'profile' => 'Profile',
-        'enrollment' => 'Enrollment',
+        'national_examination_registration' => 'National Examination Registration',
     ],
 ];
