@@ -2,164 +2,86 @@
 
 namespace App\Filament\Pages;
 
-use BackedEnum;
-use Filament\Pages\Page;
+use App\Filament\Widgets\AdminReviewStatusChart;
+use App\Filament\Widgets\AdminStatsOverview;
+use App\Filament\Widgets\AdminSubmissionsByFormChart;
+use App\Filament\Widgets\AdminSubmissionsTrendChart;
+use App\Filament\Widgets\StudentCompletionDoughnutChart;
+use App\Filament\Widgets\StudentProgressChart;
+use App\Filament\Widgets\StudentQuickActions;
+use App\Filament\Widgets\StudentStatsOverview;
+use App\Filament\Widgets\StudentSubmissionTrendChart;
+use Filament\Pages\Dashboard as BaseDashboard;
 use Illuminate\Contracts\Support\Htmlable;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
-class Dashboard extends Page
+class Dashboard extends BaseDashboard
 {
-    protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-home';
+    protected static string $routePath = 'dashboard';
 
-    protected string $view = 'filament.pages.dashboard';
-
-    protected static ?string $slug = 'dashboard';
-
-    protected static ?int $navigationSort = 1;
+    protected static ?int $navigationSort = -100;
 
     public static function getNavigationLabel(): string
     {
-        return __('app.dashboard');
+        return __('dashboard.navigation_label');
     }
 
     public function getTitle(): string | Htmlable
     {
-        return __('app.dashboard');
+        return __('dashboard.title');
     }
 
-    public static function canAccess(): bool
+    public function getHeading(): string | Htmlable
     {
-        return in_array(auth()->user()?->registration_type, [
-            'admin',
-            'student',
-        ], true);
+        $user = auth()->user();
+
+        $name = $user?->name
+            ?: $user?->username
+                ?: __('dashboard.user');
+
+        return __('dashboard.welcome', [
+            'name' => $name,
+        ]);
     }
 
-    public static function shouldRegisterNavigation(): bool
+    public function getSubheading(): string | Htmlable | null
     {
-        return auth()->check();
+        return auth()->user()?->registration_type === 'admin'
+            ? __('dashboard.admin_subheading')
+            : __('dashboard.student_subheading');
     }
 
-    public function isAdmin(): bool
+    public function getColumns(): int | array
     {
-        return auth()->user()?->registration_type === 'admin';
-    }
-
-    public function isStudent(): bool
-    {
-        return auth()->user()?->registration_type === 'student';
-    }
-
-    public function getAdminStats(): array
-    {
-        if (! Schema::hasTable('custom_form_entries') || ! Schema::hasTable('custom_forms')) {
-            return [
-                'pending' => 0,
-                'accepted' => 0,
-                'rejected' => 0,
-                'total' => 0,
-            ];
-        }
-
-        $baseQuery = DB::table('custom_form_entries')
-            ->join('custom_forms', 'custom_forms.id', '=', 'custom_form_entries.custom_form_id')
-            ->where('custom_forms.slug', 'enrollment');
-
         return [
-            'pending' => (clone $baseQuery)->where('review_status', 'pending')->count(),
-            'accepted' => (clone $baseQuery)->where('review_status', 'accepted')->count(),
-            'rejected' => (clone $baseQuery)->where('review_status', 'rejected')->count(),
-            'total' => (clone $baseQuery)->count(),
+            'default' => 1,
+            'md' => 2,
+            'xl' => 2,
         ];
     }
 
-    public function getStudentStats(): array
+    public function getWidgets(): array
     {
-        $userId = auth()->id();
-
-        if (
-            ! $userId
-            || ! Schema::hasTable('custom_forms')
-            || ! Schema::hasTable('custom_form_entries')
-        ) {
-            return [
-                'profile_completed' => false,
-                'enrollment_status' => 'pending',
-            ];
-        }
-
-        $profileFormId = DB::table('custom_forms')->where('slug', 'profile')->value('id');
-        $enrollmentFormId = DB::table('custom_forms')->where('slug', 'enrollment')->value('id');
-
-        $ownerColumns = collect([
-            'created_by',
-            'user_id',
-            'created_by_id',
-        ])
-            ->filter(fn (string $column): bool => Schema::hasColumn('custom_form_entries', $column))
-            ->values()
-            ->all();
-
-        if (empty($ownerColumns)) {
-            return [
-                'profile_completed' => false,
-                'enrollment_status' => 'pending',
-            ];
-        }
-
-        $profileCompleted = false;
-
-        if ($profileFormId) {
-            $profileCompleted = DB::table('custom_form_entries')
-                ->where('custom_form_id', $profileFormId)
-                ->where(function ($query) use ($ownerColumns, $userId): void {
-                    foreach ($ownerColumns as $column) {
-                        $query->orWhere($column, $userId);
-                    }
-                })
-                ->exists();
-        }
-
-        $enrollmentStatus = 'pending';
-
-        if ($enrollmentFormId) {
-            $enrollmentStatus = DB::table('custom_form_entries')
-                ->where('custom_form_id', $enrollmentFormId)
-                ->where(function ($query) use ($ownerColumns, $userId): void {
-                    foreach ($ownerColumns as $column) {
-                        $query->orWhere($column, $userId);
-                    }
-                })
-                ->latest('id')
-                ->value('review_status') ?? 'pending';
-        }
-
         return [
-            'profile_completed' => $profileCompleted,
-            'enrollment_status' => $enrollmentStatus,
+            /*
+            |--------------------------------------------------------------------------
+            | Admin dashboard
+            |--------------------------------------------------------------------------
+            */
+            AdminStatsOverview::class,
+            AdminSubmissionsTrendChart::class,
+            AdminSubmissionsByFormChart::class,
+            AdminReviewStatusChart::class,
+
+            /*
+            |--------------------------------------------------------------------------
+            | Student dashboard
+            |--------------------------------------------------------------------------
+            */
+            StudentStatsOverview::class,
+            StudentProgressChart::class,
+            StudentSubmissionTrendChart::class,
+            StudentCompletionDoughnutChart::class,
+            StudentQuickActions::class,
         ];
-    }
-
-    public function getProfileUrl(): string
-    {
-        $profileFormId = Schema::hasTable('custom_forms')
-            ? DB::table('custom_forms')->where('slug', 'profile')->value('id')
-            : null;
-
-        return $profileFormId
-            ? url('/custom-form-entries?tableFilters[custom_form_id][value]=' . $profileFormId)
-            : url('/custom-form-entries');
-    }
-
-    public function getEnrollmentUrl(): string
-    {
-        $enrollmentFormId = Schema::hasTable('custom_forms')
-            ? DB::table('custom_forms')->where('slug', 'enrollment')->value('id')
-            : null;
-
-        return $enrollmentFormId
-            ? url('/custom-form-entries?tableFilters[custom_form_id][value]=' . $enrollmentFormId)
-            : url('/custom-form-entries');
     }
 }
