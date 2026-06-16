@@ -113,20 +113,20 @@ class Register extends BaseRegister
                     ->placeholder(__('app.enter_email_address'))
                     ->prefixIcon('heroicon-o-envelope')
                     ->email()
-                    ->required()
+                    ->nullable()
                     ->maxLength(255)
-                    ->unique(User::class, 'email')
                     ->rules([
-                        'required',
+                        'nullable',
                         'email',
+                        Rule::unique('users', 'email'),
                         Rule::unique('system_users', 'email'),
                     ])
-                    ->dehydrateStateUsing(fn (?string $state): ?string => filled($state)
-                        ? Str::lower(trim($state))
-                        : null
+                    ->dehydrateStateUsing(
+                        fn (?string $state): ?string => filled($state)
+                            ? Str::lower(trim($state))
+                            : null
                     )
                     ->validationMessages([
-                        'required' => __('app.email_required'),
                         'email' => __('app.email_invalid'),
                         'unique' => __('app.email_unique'),
                     ]),
