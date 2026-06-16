@@ -35,6 +35,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Throwable;
+use App\Filament\Pages\Dashboard as AppDashboard;
 
 class AppPanelProvider extends PanelProvider
 {
@@ -98,7 +99,7 @@ class AppPanelProvider extends PanelProvider
             )
 
             ->pages([
-                Dashboard::class,
+                AppDashboard::class,
                 ContactUs::class,
                 MyProfile::class,
             ])
