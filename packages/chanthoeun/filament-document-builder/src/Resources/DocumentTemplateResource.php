@@ -24,6 +24,11 @@ class DocumentTemplateResource extends Resource
         return __('navigation.groups.form_builder');
     }
 
+    public static function getNavigationSort(): ?int
+    {
+        return 50;
+    }
+
     protected static ?string $model = DocumentTemplate::class;
 
     public static function shouldRegisterNavigation(): bool
@@ -47,11 +52,6 @@ class DocumentTemplateResource extends Resource
         $plugin = filament('filament-document-builder');
 
         return $plugin->getNavigationIcon();
-    }
-
-    public static function getNavigationSort(): ?int
-    {
-        return 2;
     }
 
     public static function form(Schema $schema): Schema

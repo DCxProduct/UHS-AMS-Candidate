@@ -18,6 +18,11 @@ class CustomFormResource extends Resource
         return __('navigation.custom_forms');
     }
 
+    public static function getNavigationSort(): ?int
+    {
+        return 40;
+    }
+
     public static function getNavigationGroup(): ?string
     {
         return __('navigation.groups.form_builder');
@@ -55,11 +60,6 @@ class CustomFormResource extends Resource
     public static function getNavigationIcon(): string | BackedEnum | null
     {
         return CustomFormPlugin::get()->getNavigationFormIcon();
-    }
-
-    public static function getNavigationSort(): ?int
-    {
-        return 1;
     }
 
     public static function form(Schema $schema): Schema
