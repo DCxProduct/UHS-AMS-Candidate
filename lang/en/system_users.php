@@ -65,4 +65,14 @@ return [
         'activate' => 'Activate Account',
         'deactivate' => 'Deactivate Account',
     ],
+
+    'filters' => [
+        'active' => 'Active',
+        'inactive' => 'Inactive',
+    ],
+
+    'notifications' => [
+        'activated' => 'Account activated successfully.',
+        'deactivated' => 'Account deactivated successfully.',
+    ],
 ];
