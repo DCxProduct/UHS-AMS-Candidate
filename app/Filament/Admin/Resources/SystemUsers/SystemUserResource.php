@@ -19,17 +19,24 @@ use UnitEnum;
 class SystemUserResource extends Resource
 {
     use AdminOnly;
+
     protected static ?string $model = SystemUser::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUserGroup;
+    protected static string | BackedEnum | null $navigationIcon =
+        Heroicon::OutlinedUserGroup;
 
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 1;
 
     protected static ?string $recordTitleAttribute = 'name';
 
-    public static function getNavigationGroup(): string|UnitEnum|null
+    public static function getNavigationGroup(): string | UnitEnum | null
     {
-        return __('system_users.navigation_group');
+        return 'Settings';
+    }
+
+    public static function getNavigationSort(): ?int
+    {
+        return 1;
     }
 
     public static function getNavigationLabel(): string
