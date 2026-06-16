@@ -11,7 +11,7 @@ return [
     ],
 
     'profile' => 'ប្រវត្តិរូប',
-    'enrollment' => 'ការចុះឈ្មោះចូលរៀន',
+    'national_examination_registration' => 'ការចុះឈ្មោះប្រឡងថ្នាក់ជាតិ',
     'review_applications' => 'ពិនិត្យពាក្យស្នើសុំ',
     'custom_forms' => 'ទម្រង់កំណត់តាមតម្រូវការ',
     'document_templates' => 'គំរូឯកសារ',
@@ -20,6 +20,6 @@ return [
 
     'forms' => [
         'profile' => 'ប្រវត្តិរូប',
-        'enrollment' => 'ការចុះឈ្មោះចូលរៀន',
+        'national_examination_registration' => 'ការចុះឈ្មោះប្រឡងថ្នាក់ជាតិ',
     ],
 ];

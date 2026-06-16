@@ -61,7 +61,7 @@ class ReviewApplicationResource extends Resource
                 'customForm',
             ])
             ->whereHas('customForm', function (Builder $query): void {
-                $query->where('slug', 'enrollment');
+                $query->where('slug', 'national-examination-registration');
             })
             ->latest('id');
     }

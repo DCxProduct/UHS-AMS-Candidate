@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\ReviewApplications\Tables;
 
 use App\Models\User;
+use App\Support\NotificationLanguage;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
@@ -12,7 +13,6 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use App\Support\NotificationLanguage;
 
 class ReviewApplicationsTable
 {
@@ -56,10 +56,10 @@ class ReviewApplicationsTable
                 TextColumn::make('review_status')
                     ->label(__('review_applications.review_status'))
                     ->badge()
-                    ->formatStateUsing(fn (?string $state): string => __('review_applications.statuses.' . ($state ?: 'pending')))
+                    ->formatStateUsing(fn (?string $state): string => self::statusLabel($state))
                     ->color(fn (?string $state): string => match ($state) {
-                        'accepted' => 'success',
-                        'rejected' => 'danger',
+                        'passed', 'accepted' => 'success',
+                        'failed', 'rejected' => 'danger',
                         default => 'warning',
                     })
                     ->sortable(),
@@ -84,9 +84,9 @@ class ReviewApplicationsTable
                 SelectFilter::make('review_status')
                     ->label(__('review_applications.review_status'))
                     ->options([
-                        'pending' => __('review_applications.statuses.pending'),
-                        'accepted' => __('review_applications.statuses.accepted'),
-                        'rejected' => __('review_applications.statuses.rejected'),
+                        'pending' => self::statusLabel('pending'),
+                        'passed' => self::statusLabel('passed'),
+                        'failed' => self::statusLabel('failed'),
                     ]),
             ])
             ->recordActions([
@@ -106,20 +106,20 @@ class ReviewApplicationsTable
                         ],
                     )),
 
-                Action::make('accept')
-                    ->label(__('review_applications.actions.accept'))
+                Action::make('passed')
+                    ->label(self::actionLabel('passed'))
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->modalHeading(__('review_applications.accept_confirm_title'))
-                    ->modalDescription(__('review_applications.accept_confirm_description'))
-                    ->modalSubmitActionLabel(__('review_applications.actions.accept'))
-                    ->visible(fn (CustomFormEntry $record): bool => $record->review_status !== 'accepted')
+                    ->modalHeading(self::actionLabel('passed'))
+                    ->modalDescription('Are you sure this application has passed?')
+                    ->modalSubmitActionLabel(self::actionLabel('passed'))
+                    ->visible(fn (CustomFormEntry $record): bool => ! in_array($record->review_status, ['passed', 'accepted'], true))
                     ->action(function (CustomFormEntry $record): void {
                         DB::table('custom_form_entries')
                             ->where('id', $record->id)
                             ->update([
-                                'review_status' => 'accepted',
+                                'review_status' => 'passed',
                                 'review_note' => null,
                                 'reviewed_by' => auth()->id(),
                                 'reviewed_at' => now(),
@@ -130,24 +130,24 @@ class ReviewApplicationsTable
 
                         self::notifyStudentReviewResult(
                             record: $record,
-                            status: 'accepted',
+                            status: 'passed',
                             note: null,
                         );
 
                         Notification::make()
-                            ->title(__('review_applications.notifications.admin_accept_success_title'))
-                            ->body(__('review_applications.notifications.admin_accept_success_body'))
+                            ->title('Application Passed')
+                            ->body('The application has been marked as passed.')
                             ->success()
                             ->send();
                     }),
 
-                Action::make('reject')
-                    ->label(__('review_applications.actions.reject'))
+                Action::make('failed')
+                    ->label(self::actionLabel('failed'))
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
-                    ->modalHeading(__('review_applications.reject_title'))
-                    ->modalSubmitActionLabel(__('review_applications.actions.reject'))
-                    ->visible(fn (CustomFormEntry $record): bool => $record->review_status !== 'rejected')
+                    ->modalHeading(self::actionLabel('failed'))
+                    ->modalSubmitActionLabel(self::actionLabel('failed'))
+                    ->visible(fn (CustomFormEntry $record): bool => ! in_array($record->review_status, ['failed', 'rejected'], true))
                     ->form([
                         Textarea::make('review_note')
                             ->label(__('review_applications.review_note'))
@@ -161,7 +161,7 @@ class ReviewApplicationsTable
                         DB::table('custom_form_entries')
                             ->where('id', $record->id)
                             ->update([
-                                'review_status' => 'rejected',
+                                'review_status' => 'failed',
                                 'review_note' => $note,
                                 'reviewed_by' => auth()->id(),
                                 'reviewed_at' => now(),
@@ -172,17 +172,35 @@ class ReviewApplicationsTable
 
                         self::notifyStudentReviewResult(
                             record: $record,
-                            status: 'rejected',
+                            status: 'failed',
                             note: $note,
                         );
 
                         Notification::make()
-                            ->title(__('review_applications.notifications.admin_reject_success_title'))
-                            ->body(__('review_applications.notifications.admin_reject_success_body'))
+                            ->title('Application Failed')
+                            ->body('The application has been marked as failed.')
                             ->success()
                             ->send();
                     }),
             ]);
+    }
+
+    protected static function statusLabel(?string $state): string
+    {
+        return match ($state) {
+            'passed', 'accepted' => 'Passed',
+            'failed', 'rejected' => 'Failed',
+            default => 'Pending',
+        };
+    }
+
+    protected static function actionLabel(string $action): string
+    {
+        return match ($action) {
+            'passed' => 'Passed',
+            'failed' => 'Failed',
+            default => 'Pending',
+        };
     }
 
     protected static function notifyStudentReviewResult(CustomFormEntry $record, string $status, ?string $note = null): void
@@ -196,7 +214,7 @@ class ReviewApplicationsTable
         $data = self::normalizeData($record->data);
         $studentName = self::getStudentName($data, $student->name);
 
-        if ($status === 'accepted') {
+        if (in_array($status, ['passed', 'accepted'], true)) {
             Notification::make()
                 ->title(NotificationLanguage::transForUser(
                     $student,
