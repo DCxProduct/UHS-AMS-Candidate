@@ -3,7 +3,7 @@
 
     $registerUrl = \Illuminate\Support\Facades\Route::has($registerRoute)
         ? route($registerRoute)
-        : url('/student/register');
+        : url('register');
 @endphp
 
 <style>
