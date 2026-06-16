@@ -30,12 +30,12 @@ class ClosingDateResource extends Resource
 
     public static function getNavigationLabel(): string
     {
-        return __('closing_dates.navigation_label');
+        return __('navigation.closing_date');
     }
 
-    public static function getNavigationGroup(): string | UnitEnum | null
+    public static function getNavigationGroup(): ?string
     {
-        return 'Settings';
+        return __('navigation.groups.settings');
     }
 
     public static function getNavigationSort(): ?int

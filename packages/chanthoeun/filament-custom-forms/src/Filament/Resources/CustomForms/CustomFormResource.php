@@ -13,6 +13,15 @@ use Filament\Tables\Table;
 
 class CustomFormResource extends Resource
 {
+    public static function getNavigationLabel(): string
+    {
+        return __('navigation.custom_forms');
+    }
+
+    public static function getNavigationGroup(): ?string
+    {
+        return __('navigation.groups.form_builder');
+    }
     public static function getModel(): string
     {
         return CustomFormPlugin::get()->getFormModel();
@@ -46,11 +55,6 @@ class CustomFormResource extends Resource
     public static function getNavigationIcon(): string | BackedEnum | null
     {
         return CustomFormPlugin::get()->getNavigationFormIcon();
-    }
-
-    public static function getNavigationGroup(): ?string
-    {
-        return 'Form Builder';
     }
 
     public static function getNavigationSort(): ?int

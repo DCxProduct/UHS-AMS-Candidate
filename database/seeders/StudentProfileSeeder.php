@@ -8,6 +8,15 @@ use Illuminate\Support\Facades\Schema;
 
 class StudentProfileSeeder extends Seeder
 {
+    public static function getNavigationLabel(): string
+    {
+        return __('navigation.profile');
+    }
+
+    public static function getNavigationGroup(): ?string
+    {
+        return __('navigation.groups.form_entry');
+    }
     public function run(): void
     {
         if (! Schema::hasTable('custom_forms')) {

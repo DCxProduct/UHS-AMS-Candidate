@@ -128,7 +128,7 @@ class AppPanelProvider extends PanelProvider
                     ->collapsible(),
 
                 NavigationGroup::make()
-                    ->label('Form Entry')
+                    ->label(fn (): string => __('navigation.groups.form_entry'))
                     ->collapsible(),
 
                 NavigationGroup::make()

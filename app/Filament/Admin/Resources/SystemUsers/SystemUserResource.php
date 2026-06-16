@@ -29,19 +29,19 @@ class SystemUserResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'name';
 
-    public static function getNavigationGroup(): string | UnitEnum | null
+    public static function getNavigationLabel(): string
     {
-        return 'Settings';
+        return __('navigation.system_users');
+    }
+
+    public static function getNavigationGroup(): ?string
+    {
+        return __('navigation.groups.settings');
     }
 
     public static function getNavigationSort(): ?int
     {
         return 1;
-    }
-
-    public static function getNavigationLabel(): string
-    {
-        return __('system_users.navigation_label');
     }
 
     public static function getModelLabel(): string

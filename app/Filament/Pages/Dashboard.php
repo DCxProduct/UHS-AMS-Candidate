@@ -16,14 +16,13 @@ use Illuminate\Contracts\Support\Htmlable;
 
 class Dashboard extends BaseDashboard
 {
+    public static function getNavigationLabel(): string
+    {
+        return __('navigation.dashboard');
+    }
     protected static string $routePath = 'dashboard';
 
     protected static ?int $navigationSort = -100;
-
-    public static function getNavigationLabel(): string
-    {
-        return __('dashboard.navigation_label');
-    }
 
     public function getTitle(): string | Htmlable
     {

@@ -30,12 +30,12 @@ class ReviewApplicationResource extends Resource
 
     public static function getNavigationLabel(): string
     {
-        return __('review_applications.navigation_label');
+        return __('navigation.review_applications');
     }
 
-    public static function getNavigationGroup(): string | UnitEnum | null
+    public static function getNavigationGroup(): ?string
     {
-        return __('review_applications.navigation_group');
+        return __('navigation.groups.review_document');
     }
 
     public static function getNavigationSort(): ?int
