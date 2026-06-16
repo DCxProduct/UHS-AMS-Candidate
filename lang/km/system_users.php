@@ -65,4 +65,14 @@ return [
         'activate' => 'បើកគណនី',
         'deactivate' => 'បិទគណនី',
     ],
+
+    'filters' => [
+        'active' => 'សកម្ម',
+        'inactive' => 'មិនសកម្ម',
+    ],
+
+    'notifications' => [
+        'activated' => 'បានបើកគណនីដោយជោគជ័យ។',
+        'deactivated' => 'បានបិទគណនីដោយជោគជ័យ។',
+    ],
 ];
