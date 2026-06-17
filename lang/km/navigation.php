@@ -4,15 +4,15 @@ return [
     'dashboard' => 'ផ្ទាំងគ្រប់គ្រង',
 
     'groups' => [
-        'form_entry' => 'ពាក្យស្នើសុំនិស្សិត',
-        'review_document' => 'ការពិនិត្យឯកសារ',
+        'form_entry' => 'ពាក្យស្នើសុំបេក្ខជន',
+        'candidates' => 'បេក្ខជន',
         'form_builder' => 'ការបង្កើតទម្រង់',
         'settings' => 'ការកំណត់',
     ],
 
     'profile' => 'ប្រវត្តិរូប',
     'national_examination_registration' => 'ការចុះឈ្មោះប្រឡងថ្នាក់ជាតិ',
-    'review_applications' => 'ពិនិត្យពាក្យស្នើសុំ',
+    'review_applications' => 'បញ្ជីបេក្ខជន',
     'custom_forms' => 'ទម្រង់កំណត់តាមតម្រូវការ',
     'document_templates' => 'គំរូឯកសារ',
     'closing_date' => 'កាលបរិច្ឆេទបិទ',
