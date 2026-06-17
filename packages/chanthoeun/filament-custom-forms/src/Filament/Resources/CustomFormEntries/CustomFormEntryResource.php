@@ -249,7 +249,10 @@ class CustomFormEntryResource extends Resource
                     ->values();
             }
 
-            $activeFormId = data_get(request()->query('tableFilters'), 'custom_form_id.value');
+            $activeFormId =
+                data_get(request()->query('tableFilters'), 'custom_form_id.value')
+                ?? request()->query('form_id')
+                ?? request()->input('form_id');
 
             foreach ($forms as $form) {
                 static::$formCache[$form->id] = $form;
@@ -272,16 +275,33 @@ class CustomFormEntryResource extends Resource
                     ->icon(static::getDynamicFormIcon($form))
                     ->sort(static::getFormSortNumber($form))
                     ->url($url)
-                    ->isActiveWhen(
-                        fn (): bool => (
+                    ->isActiveWhen(function () use ($formId): bool {
+
+                        $activeFormId =
+                            data_get(request()->query('tableFilters'), 'custom_form_id.value')
+                            ?? request()->query('form_id')
+                            ?? request()->input('form_id');
+
+                        // Edit page
+                        if (! $activeFormId && request()->route('record')) {
+
+                            $record = request()->route('record');
+
+                            if (is_numeric($record)) {
+                                $entry = static::getModel()::find($record);
+
+                                $activeFormId = $entry?->custom_form_id;
+                            }
+                        }
+
+                        return (
                                 request()->is('custom-form-entries*')
                                 && (string) $activeFormId === (string) $formId
-                            )
-                            || (
+                            ) || (
                                 request()->is('contact-us*')
                                 && (int) request()->query('form_id') === $formId
-                            )
-                    );
+                            );
+                    });
             }
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error(
