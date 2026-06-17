@@ -46,6 +46,10 @@ class CustomFormEntriesTable
 
     protected static function getColumns(?string $formId): array
     {
+        if ($formId && self::isNationalExaminationForm($formId)) {
+            return self::getNationalExaminationColumns();
+        }
+
         if ($formId && self::isProfileForm($formId)) {
             return self::getProfileColumns();
         }
@@ -122,6 +126,51 @@ class CustomFormEntriesTable
         }
 
         return $columns;
+    }
+
+    protected static function isNationalExaminationForm(string $formId): bool
+    {
+        return \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
+            ->whereKey($formId)
+            ->where('slug', 'national-examination-registration')
+            ->exists();
+    }
+
+    protected static function getNationalExaminationColumns(): array
+    {
+        return [
+            TextColumn::make('data.student_id')
+                ->label('Student ID')
+                ->placeholder('-')
+                ->wrap(),
+
+            TextColumn::make('data.national_registration_number')
+                ->label('National Registration Number')
+                ->placeholder('-')
+                ->wrap(),
+
+            TextColumn::make('data.first_name_kh')
+                ->label('First Name (Khmer)')
+                ->placeholder('-')
+                ->wrap(),
+
+            TextColumn::make('data.last_name_kh')
+                ->label('Last Name (Khmer)')
+                ->placeholder('-')
+                ->wrap(),
+
+            TextColumn::make('data.registration_status')
+                ->label('Registration Status')
+                ->placeholder('-')
+                ->badge(),
+
+            TextColumn::make('data.registration_date')
+                ->label('Registration Date')
+                ->formatStateUsing(
+                    fn (mixed $state): string => self::formatProfileDate($state)
+                )
+                ->placeholder('-'),
+        ];
     }
 
     protected static function isProfileForm(string $formId): bool
