@@ -26,7 +26,7 @@ class CustomFormEntryForm
     public static function configure(Schema $schema): Schema
     {
         $livewire = $schema->getLivewire();
-        
+
         $preselectedFormId = property_exists($livewire, 'form_id') && $livewire->form_id
             ? $livewire->form_id
             : (request()->query('form_id') ?? request()->input('tableFilters.custom_form_id.value'));
@@ -64,7 +64,7 @@ class CustomFormEntryForm
 
                         // Fetch only root fields, subsequent recursion will lazy load children or we can eager load if needed.
                         // Ideally we should eager load 'children' recursively but simplified for now:
-            
+
                         $rootFields = $customForm->fields()->roots()->get();
 
                         return self::getFields($rootFields);
@@ -89,7 +89,7 @@ class CustomFormEntryForm
             // Handle Layouts
             if ($type === 'section') {
                 $component = Section::make($isHiddenLabel ? null : $fieldModel->label) // Use label as heading
-                    ->schema(self::getFields($fieldModel->children))
+                ->schema(self::getFields($fieldModel->children))
                     ->columns($options['columns'] ?? 2);
             } elseif ($type === 'grid') {
                 $component = Grid::make($options['columns'] ?? 2)
@@ -103,12 +103,12 @@ class CustomFormEntryForm
                 // If children are sections, each section becomes a step
                 // If children are fields, group them all into a single step
                 $steps = [];
-                
+
                 // Check if children are sections/containers or actual fields
                 $hasContainers = $fieldModel->children->contains(function ($child) {
                     return in_array($child->type, ['section', 'fieldset', 'grid']);
                 });
-                
+
                 if ($hasContainers) {
                     // Children are sections/containers - each becomes a step
                     foreach ($fieldModel->children as $child) {
@@ -121,16 +121,16 @@ class CustomFormEntryForm
                     $stepFields = self::getFields($fieldModel->children);
                     $step = WizardStep::make($fieldModel->label)
                         ->schema($stepFields);
-                    
+
                     // Apply columns from wizard options
                     $wizardOpts = $fieldModel->options ?? [];
                     if (!empty($wizardOpts['columns'])) {
                         $step->columns($wizardOpts['columns']);
                     }
-                    
+
                     $steps[] = $step;
                 }
-                
+
                 $component = Wizard::make()
                     ->schema($steps);
             } elseif ($type === 'repeater') {
@@ -244,6 +244,16 @@ class CustomFormEntryForm
                 if ($component) {
                     $component->label($label);
 
+                    // Apply only the placeholder from the field options/database.
+                    $placeholder = self::resolvePlaceholder($fieldModel, $options);
+
+                    if (
+                        filled($placeholder)
+                        && method_exists($component, 'placeholder')
+                    ) {
+                        $component->placeholder($placeholder);
+                    }
+
                     if ($required)
                         $component->required();
 
@@ -285,5 +295,35 @@ class CustomFormEntryForm
         }
 
         return $components;
+    }
+
+    /**
+     * Resolve the placeholder without changing any other field settings.
+     */
+    protected static function resolvePlaceholder(
+        object $fieldModel,
+        array $options,
+    ): ?string {
+        $locale = strtolower((string) app()->getLocale());
+
+        if (in_array($locale, ['km', 'kh'], true)) {
+            $placeholder = $options['placeholder_km']
+                ?? $options['placeholder']
+                ?? $fieldModel->placeholder
+                ?? null;
+        } else {
+            $placeholder = $options['placeholder_en']
+                ?? $options['placeholder']
+                ?? $fieldModel->placeholder
+                ?? null;
+        }
+
+        if (! is_string($placeholder)) {
+            return null;
+        }
+
+        $placeholder = trim($placeholder);
+
+        return $placeholder !== '' ? $placeholder : null;
     }
 }
