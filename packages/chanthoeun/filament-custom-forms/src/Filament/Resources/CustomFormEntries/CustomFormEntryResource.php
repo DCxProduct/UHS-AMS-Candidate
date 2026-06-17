@@ -26,27 +26,11 @@ class CustomFormEntryResource extends Resource
 
     protected static ?string $slug = 'custom-form-entries';
 
-    /*
-    |--------------------------------------------------------------------------
-    | Navigation
-    |--------------------------------------------------------------------------
-    | Admin   = sees all custom forms from database.
-    | Student = sees only allowed/open custom forms from database.
-    |--------------------------------------------------------------------------
-    */
     public static function shouldRegisterNavigation(): bool
     {
         return static::currentUserIsAdmin() || static::currentUserIsStudent();
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Access
-    |--------------------------------------------------------------------------
-    | Admin can access all entry data.
-    | Student can access only allowed form entry pages.
-    |--------------------------------------------------------------------------
-    */
     public static function canAccess(): bool
     {
         if (static::currentUserIsAdmin()) {
@@ -86,14 +70,6 @@ class CustomFormEntryResource extends Resource
             return true;
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Direct URL protection
-        |--------------------------------------------------------------------------
-        | If Profile is not open or closed, students cannot access Enrollment /
-        | other forms by typing the URL manually.
-        |--------------------------------------------------------------------------
-        */
         if (static::profileFeatureIsHidden() || static::profileFeatureShowsContact()) {
             return false;
         }
@@ -101,14 +77,6 @@ class CustomFormEntryResource extends Resource
         return static::studentHasCompletedProfile();
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Query
-    |--------------------------------------------------------------------------
-    | Admin   = sees all data.
-    | Student = sees only own submitted data.
-    |--------------------------------------------------------------------------
-    */
     public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
     {
         $query = parent::getEloquentQuery();
@@ -198,24 +166,17 @@ class CustomFormEntryResource extends Resource
         return static::$formCache[$id];
     }
 
-    protected static function getTranslatedFormName(
-        CustomForm $form
-    ): string {
-        $slug = strtolower(
-            trim((string) ($form->slug ?? ''))
-        );
+    protected static function getTranslatedFormName(CustomForm $form): string
+    {
+        $slug = strtolower(trim((string) ($form->slug ?? '')));
 
         return match ($slug) {
             'profile' => __('navigation.forms.profile'),
-
             'national-examination-registration' => __('navigation.national_examination_registration'),
-
-            default => (string) (
-                $form->name
-                ?? __('navigation.forms.untitled')
-            ),
+            default => (string) ($form->name ?? __('navigation.forms.untitled')),
         };
     }
+
     public static function getNavigationItems(): array
     {
         if (! static::currentUserIsAdmin() && ! static::currentUserIsStudent()) {
@@ -225,7 +186,7 @@ class CustomFormEntryResource extends Resource
         $items = [];
 
         try {
-            if (! \Illuminate\Support\Facades\Schema::hasTable('custom_forms')) {
+            if (! DatabaseSchema::hasTable('custom_forms')) {
                 return [];
             }
 
@@ -233,26 +194,17 @@ class CustomFormEntryResource extends Resource
                 ->whereNotNull('name')
                 ->orderBy('id');
 
-            if (\Illuminate\Support\Facades\Schema::hasColumn('custom_forms', 'is_active')) {
+            if (DatabaseSchema::hasColumn('custom_forms', 'is_active')) {
                 $query->where('is_active', true);
-            } elseif (\Illuminate\Support\Facades\Schema::hasColumn('custom_forms', 'active')) {
+            } elseif (DatabaseSchema::hasColumn('custom_forms', 'active')) {
                 $query->where('active', true);
             }
 
-            $forms = $query->get();
-
-            if (static::currentUserIsStudent()) {
-                $forms = $forms
-                    ->filter(fn (CustomForm $form): bool => static::canCurrentUserAccessForm($form))
-                    ->filter(fn (CustomForm $form): bool => static::formShouldShowFeature((int) $form->id))
-                    ->filter(fn (CustomForm $form): bool => static::canShowStudentForm((string) $form->slug))
-                    ->values();
-            }
-
-            $activeFormId =
-                data_get(request()->query('tableFilters'), 'custom_form_id.value')
-                ?? request()->query('form_id')
-                ?? request()->input('form_id');
+            $forms = $query->get()
+                ->filter(fn (CustomForm $form): bool => static::canCurrentUserAccessForm($form))
+                ->filter(fn (CustomForm $form): bool => static::formShouldShowFeature((int) $form->id))
+                ->filter(fn (CustomForm $form): bool => static::canShowStudentForm((string) $form->slug))
+                ->values();
 
             foreach ($forms as $form) {
                 static::$formCache[$form->id] = $form;
@@ -276,20 +228,16 @@ class CustomFormEntryResource extends Resource
                     ->sort(static::getFormSortNumber($form))
                     ->url($url)
                     ->isActiveWhen(function () use ($formId): bool {
-
                         $activeFormId =
                             data_get(request()->query('tableFilters'), 'custom_form_id.value')
                             ?? request()->query('form_id')
                             ?? request()->input('form_id');
 
-                        // Edit page
                         if (! $activeFormId && request()->route('record')) {
-
                             $record = request()->route('record');
 
                             if (is_numeric($record)) {
                                 $entry = static::getModel()::find($record);
-
                                 $activeFormId = $entry?->custom_form_id;
                             }
                         }
@@ -304,9 +252,7 @@ class CustomFormEntryResource extends Resource
                     });
             }
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error(
-                'CustomFormEntryResource Navigation Error: ' . $e->getMessage()
-            );
+            Log::error('CustomFormEntryResource Navigation Error: ' . $e->getMessage());
         }
 
         return $items;
@@ -314,52 +260,22 @@ class CustomFormEntryResource extends Resource
 
     protected static function canShowStudentForm(string $slug): bool
     {
-        /*
-        |--------------------------------------------------------------------------
-        | Profile form itself
-        |--------------------------------------------------------------------------
-        | Profile can show when:
-        | - open
-        | - closed/contact
-        |
-        | Profile will be hidden automatically when ClosingDateWorkflow says
-        | can_see_form = false.
-        |--------------------------------------------------------------------------
-        */
+        if (static::currentUserIsAdmin()) {
+            return $slug !== 'profile';
+        }
+
         if ($slug === 'profile') {
             return true;
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Profile = Not Open / Hidden
-        |--------------------------------------------------------------------------
-        | Hide Enrollment and all other forms.
-        |--------------------------------------------------------------------------
-        */
         if (static::profileFeatureIsHidden()) {
             return false;
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Profile = Closed / Contact
-        |--------------------------------------------------------------------------
-        | Show Profile only.
-        | Hide Enrollment and all other forms.
-        |--------------------------------------------------------------------------
-        */
         if (static::profileFeatureShowsContact()) {
             return false;
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Profile = Open
-        |--------------------------------------------------------------------------
-        | Show Enrollment / other forms only after Profile completed.
-        |--------------------------------------------------------------------------
-        */
         return static::studentHasCompletedProfile();
     }
 
@@ -559,7 +475,7 @@ class CustomFormEntryResource extends Resource
 
         return match ($slug) {
             'profile' => 'heroicon-o-user',
-            'enrollment' => 'heroicon-o-document-text',
+            'national-examination-registration',
             'national-exam',
             'national-examination' => 'heroicon-o-academic-cap',
             default => CustomFormPlugin::get()->getNavigationEntryIcon(),
@@ -579,11 +495,6 @@ class CustomFormEntryResource extends Resource
             return $preferredSort[$slug];
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Admin-created custom forms come after Profile and Enrollment
-        |--------------------------------------------------------------------------
-        */
         return 100 + (int) ($form->id ?? 0);
     }
 

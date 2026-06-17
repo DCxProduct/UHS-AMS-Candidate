@@ -148,7 +148,7 @@ class StudentProfileSeeder extends Seeder
             'I. Personal Information',
             'section',
             false,
-            ['columns' => 3, 'column_span_full' => true],
+            ['columns' => 2, 'column_span_full' => true],
             null,
             $sort++,
         );
@@ -206,7 +206,7 @@ class StudentProfileSeeder extends Seeder
             'II. Family Information',
             'section',
             false,
-            ['columns' => 3, 'column_span_full' => true],
+            ['columns' => 2, 'column_span_full' => true],
             null,
             $sort++,
         );
@@ -258,7 +258,7 @@ class StudentProfileSeeder extends Seeder
             'B. About Siblings',
             'repeater',
             false,
-            ['columns' => 3, 'column_span_full' => true],
+            ['columns' => 2, 'column_span_full' => true],
             $familySection,
             $sort++,
         );
@@ -297,7 +297,7 @@ class StudentProfileSeeder extends Seeder
             'III. Educational Information',
             'section',
             false,
-            ['columns' => 3, 'column_span_full' => true],
+            ['columns' => 2, 'column_span_full' => true],
             null,
             $sort++,
         );
@@ -310,7 +310,7 @@ class StudentProfileSeeder extends Seeder
             'Education',
             'repeater',
             false,
-            ['columns' => 3, 'column_span_full' => true],
+            ['columns' => 2, 'column_span_full' => true],
             $educationSection,
             $sort++,
         );
@@ -318,12 +318,12 @@ class StudentProfileSeeder extends Seeder
         $keepNames[] = 'educations';
 
         $educationFields = [
-            ['name' => 'educational_institution', 'label' => 'Educational Institution', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Educational Institution', 'placeholder_km' => 'បញ្ចូលស្ថាប័នអប់រំ']],
+            ['name' => 'educational_institution', 'label' => 'Educational Institution', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Educational Institution', 'placeholder_km' => 'បញ្ចូលស្ថាប័នអប់រំ', 'column_span_full' => true]],
             ['name' => 'degree_level_major', 'label' => 'Degree Level / Major', 'type' => 'select_dropdown', 'options' => ['choices' => $degreeOptions]],
             ['name' => 'country', 'label' => 'Country', 'type' => 'select_dropdown', 'options' => ['choices' => $countryOptions]],
             ['name' => 'from_year', 'label' => 'From Year', 'type' => 'select_dropdown', 'options' => ['choices' => $yearOptions]],
             ['name' => 'to_year', 'label' => 'To Year', 'type' => 'select_dropdown', 'options' => ['choices' => $yearOptions]],
-            ['name' => 'graduation_year', 'label' => 'Graduation Year', 'type' => 'select_dropdown', 'options' => ['choices' => $yearOptions]],
+            ['name' => 'graduation_year', 'label' => 'Graduation Year', 'type' => 'select_dropdown', 'options' => ['choices' => $yearOptions, 'column_span_full' => true]],
         ];
 
         $this->upsertFields($customFormId, $educationRepeater, $educationFields, $keepNames, $sort);
@@ -339,7 +339,7 @@ class StudentProfileSeeder extends Seeder
             'IV. Work History',
             'section',
             false,
-            ['columns' => 3, 'column_span_full' => true],
+            ['columns' => 2, 'column_span_full' => true],
             null,
             $sort++,
         );
@@ -352,7 +352,7 @@ class StudentProfileSeeder extends Seeder
             'Work History',
             'repeater',
             false,
-            ['columns' => 3, 'column_span_full' => true],
+            ['columns' => 2, 'column_span_full' => true],
             $cvSection,
             $sort++,
         );

@@ -1,5 +1,5 @@
 <?php
- 
+
  return [
      'admin' => [
          'parent_container' => 'ធុងផ្ទុកមេ',
@@ -30,7 +30,7 @@
          'entries' => 'ការបំពេញទម្រង់ :form ទាំងអស់',
          'action' => [
              'create' => 'បង្កើត :name',
-             'export_data' => 'នាំចេញទិន្នន័យ',
+             'export_data' => 'ទាញយក PDF',
          ],
          'field' => [
              'export_format' => 'ទម្រង់នាំចេញ',

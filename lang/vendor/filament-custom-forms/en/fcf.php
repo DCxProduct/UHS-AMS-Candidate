@@ -1,5 +1,5 @@
 <?php
- 
+
  return [
      'admin' => [
          'parent_container' => 'Parent Container',
@@ -30,7 +30,7 @@
          'entries' => ':form Entries',
          'action' => [
              'create' => 'Create :name',
-             'export_data' => 'Export Data',
+             'export_data' => 'Download PDF',
          ],
          'field' => [
              'export_format' => 'Export Format',

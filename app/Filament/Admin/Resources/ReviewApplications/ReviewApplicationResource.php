@@ -35,7 +35,7 @@ class ReviewApplicationResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return __('navigation.groups.review_document');
+        return __('navigation.groups.candidates');
     }
 
     public static function getNavigationSort(): ?int
