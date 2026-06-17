@@ -76,7 +76,7 @@ class ListCustomFormEntries extends ListRecords
 
         return [
             \Chanthoeun\FilamentDocumentBuilder\Actions\DownloadAllPdfAction::make('export_pdf')
-                ->label('Download PDF')
+                ->label(__('filament-custom-forms::fcf.entry.action.export_data'))
                 ->icon('heroicon-o-document-arrow-down')
                 ->color('success')
                 ->records(function () {
