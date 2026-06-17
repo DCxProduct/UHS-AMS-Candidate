@@ -163,30 +163,30 @@ class StudentProfileSeeder extends Seeder
             ['name' => 'first_name_en', 'label' => 'First Name (English)', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter First Name', 'placeholder_km' => 'បញ្ចូលនាមខ្លួន']],
             ['name' => 'last_name_en', 'label' => 'Last Name (English)', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Last Name', 'placeholder_km' => 'បញ្ចូលនាមត្រកូល']],
 
-            ['name' => 'gender', 'label' => 'Gender', 'type' => 'select_dropdown', 'options' => ['choices' => $genderOptions, 'placeholder_en' => 'Select Gender', 'placeholder_km' => 'ជ្រើសរើសភេទ']],
-            ['name' => 'nationality', 'label' => 'Nationality', 'type' => 'select_dropdown', 'options' => ['choices' => $nationalityOptions, 'placeholder_en' => 'Select Nationality', 'placeholder_km' => 'ជ្រើសរើសសញ្ជាតិ']],
-            ['name' => 'ethnicity', 'label' => 'Ethnicity', 'type' => 'select_dropdown', 'options' => ['choices' => $ethnicityOptions, 'placeholder_en' => 'Select Ethnicity', 'placeholder_km' => 'ជ្រើសរើសជនជាតិ']],
-            ['name' => 'religion', 'label' => 'Religion', 'type' => 'select_dropdown', 'options' => ['choices' => $religionOptions, 'placeholder_en' => 'Select Religion', 'placeholder_km' => 'ជ្រើសរើសសាសនា']],
-            ['name' => 'married_status', 'label' => 'Marital Status', 'type' => 'select_dropdown', 'options' => ['choices' => $marriedStatusOptions, 'placeholder_en' => 'Select Marital Status', 'placeholder_km' => 'ជ្រើសរើសស្ថានភាពគ្រួសារ']],
+            ['name' => 'gender', 'label' => 'Gender', 'type' => 'select_dropdown', 'options' => ['choices' => $genderOptions]],
+            ['name' => 'nationality', 'label' => 'Nationality', 'type' => 'select_dropdown', 'options' => ['choices' => $nationalityOptions]],
+            ['name' => 'ethnicity', 'label' => 'Ethnicity', 'type' => 'select_dropdown', 'options' => ['choices' => $ethnicityOptions]],
+            ['name' => 'religion', 'label' => 'Religion', 'type' => 'select_dropdown', 'options' => ['choices' => $religionOptions]],
+            ['name' => 'married_status', 'label' => 'Marital Status', 'type' => 'select_dropdown', 'options' => ['choices' => $marriedStatusOptions]],
 
             ['name' => 'date_of_birth', 'label' => 'Date of Birth', 'type' => 'date_picker', 'options' => ['placeholder_en' => 'Enter Date of Birth', 'placeholder_km' => 'ជ្រើសរើសថ្ងៃខែឆ្នាំកំណើត']],
 
             ['name' => 'place_of_birth_heading', 'label' => 'Place of Birth', 'type' => 'info', 'options' => ['content' => 'Place of Birth', 'column_span_full' => true, 'is_hidden_label' => true]],
-            ['name' => 'birth_province_city', 'label' => 'Province / City', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('province', null, 'Select Province / City', 'ជ្រើសរើសរាជធានី / ខេត្ត')],
-            ['name' => 'birth_district_khan', 'label' => 'District / Khan', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('district', 'birth_province_city', 'Select District / Khan', 'ជ្រើសរើសស្រុក / ខណ្ឌ')],
-            ['name' => 'birth_commune_sangkat', 'label' => 'Commune / Sangkat', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('commune', 'birth_district_khan', 'Select Commune / Sangkat', 'ជ្រើសរើសឃុំ / សង្កាត់')],
-            ['name' => 'birth_village', 'label' => 'Village', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('village', 'birth_commune_sangkat', 'Select Village', 'ជ្រើសរើសភូមិ')],
+            ['name' => 'birth_province_city', 'label' => 'Province / City', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('province')],
+            ['name' => 'birth_district_khan', 'label' => 'District / Khan', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('district', 'birth_province_city')],
+            ['name' => 'birth_commune_sangkat', 'label' => 'Commune / Sangkat', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('commune', 'birth_district_khan')],
+            ['name' => 'birth_village', 'label' => 'Village', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('village', 'birth_commune_sangkat')],
 
             ['name' => 'current_address_heading', 'label' => 'Current Address', 'type' => 'info', 'options' => ['content' => 'Current Address', 'column_span_full' => true, 'is_hidden_label' => true]],
             ['name' => 'current_house_number', 'label' => 'House Number', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter House Number', 'placeholder_km' => 'បញ្ចូលលេខផ្ទះ']],
             ['name' => 'current_street_number', 'label' => 'Street Number', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Street Number', 'placeholder_km' => 'បញ្ចូលលេខផ្លូវ']],
-            ['name' => 'current_capital_province', 'label' => 'Capital / Province', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('province', null, 'Select Capital / Province', 'ជ្រើសរើសរាជធានី / ខេត្ត')],
-            ['name' => 'current_district_khan', 'label' => 'District / Khan', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('district', 'current_capital_province', 'Select District / Khan', 'ជ្រើសរើសស្រុក / ខណ្ឌ')],
-            ['name' => 'current_commune_sangkat', 'label' => 'Commune / Sangkat', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('commune', 'current_district_khan', 'Select Commune / Sangkat', 'ជ្រើសរើសឃុំ / សង្កាត់')],
-            ['name' => 'current_village', 'label' => 'Village', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('village', 'current_commune_sangkat', 'Select Village', 'ជ្រើសរើសភូមិ')],
+            ['name' => 'current_capital_province', 'label' => 'Capital / Province', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('province')],
+            ['name' => 'current_district_khan', 'label' => 'District / Khan', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('district', 'current_capital_province')],
+            ['name' => 'current_commune_sangkat', 'label' => 'Commune / Sangkat', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('commune', 'current_district_khan')],
+            ['name' => 'current_village', 'label' => 'Village', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('village', 'current_commune_sangkat')],
 
             ['name' => 'education_employment_information', 'label' => 'Education And Employment Information', 'type' => 'info', 'options' => ['content' => 'Education And Employment Information', 'column_span_full' => true, 'is_hidden_label' => true]],
-            ['name' => 'culture_level', 'label' => 'Culture Level', 'type' => 'select_dropdown', 'options' => ['choices' => $cultureLevelOptions, 'placeholder_en' => 'Select Culture Level', 'placeholder_km' => 'ជ្រើសរើសកម្រិតវប្បធម៌']],
+            ['name' => 'culture_level', 'label' => 'Culture Level', 'type' => 'select_dropdown', 'options' => ['choices' => $cultureLevelOptions]],
             ['name' => 'exam_period', 'label' => 'Exam Date', 'type' => 'date_picker', 'options' => ['placeholder_en' => 'Enter Exam Date', 'placeholder_km' => 'ជ្រើសរើសថ្ងៃខែឆ្នាំដែលបានប្រឡង']],
             ['name' => 'exam_center', 'label' => 'Exam Center', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Exam Center', 'placeholder_km' => 'បញ្ចូលទីតាំងដែលប្រឡង']],
             ['name' => 'current_occupation', 'label' => 'Current Occupation', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Current Occupation', 'placeholder_km' => 'បញ្ចូលមុខរបរបច្ចុប្បន្ន']],
@@ -218,34 +218,34 @@ class StudentProfileSeeder extends Seeder
 
             ['name' => 'father_heading', 'label' => "Father's Information", 'type' => 'info', 'options' => ['content' => "Father's Information", 'column_span_full' => true, 'is_hidden_label' => true]],
             ['name' => 'father_name', 'label' => "Father's Name", 'type' => 'text_input', 'options' => ['placeholder_en' => "Enter Father's Name", 'placeholder_km' => 'បញ្ចូលនាមឪពុក']],
-            ['name' => 'father_date_of_birth', 'label' => "Father's Date of Birth", 'type' => 'date_picker', 'options' => ['placeholder_en' => "Enter Father's Date of Birth", 'placeholder_km' => 'ជ្រើសរើសថ្ងៃខែឆ្នាំកំណើតឪពុក']],
-            ['name' => 'father_ethnicity', 'label' => "Father's Ethnicity", 'type' => 'select_dropdown', 'options' => ['choices' => $ethnicityOptions, 'placeholder_en' => 'Select Ethnicity', 'placeholder_km' => 'ជ្រើសរើសជនជាតិ']],
-            ['name' => 'father_nationality', 'label' => "Father's Nationality", 'type' => 'select_dropdown', 'options' => ['choices' => $nationalityOptions, 'placeholder_en' => 'Select Nationality', 'placeholder_km' => 'ជ្រើសរើសសញ្ជាតិ']],
-            ['name' => 'father_status', 'label' => "Father's Status", 'type' => 'select_dropdown', 'options' => ['choices' => $parentStatusOptions, 'placeholder_en' => 'Select Status', 'placeholder_km' => 'ជ្រើសរើសស្ថានភាព']],
-            ['name' => 'father_occupation', 'label' => "Father's Occupation", 'type' => 'text_input', 'options' => ['placeholder_en' => "Enter Father's Occupation", 'placeholder_km' => 'បញ្ចូលមុខរបរឪពុក']],
-            ['name' => 'father_place_of_work', 'label' => "Father's Place of Work", 'type' => 'text_input', 'options' => ['placeholder_en' => "Enter Father's Place of Work", 'placeholder_km' => 'បញ្ចូលទីតាំងធ្វើការឪពុក']],
-            ['name' => 'father_phone_number', 'label' => "Father's Phone Number", 'type' => 'phone', 'options' => ['placeholder_en' => "Enter Father's Phone Number", 'placeholder_km' => 'បញ្ចូលលេខទំនាក់ទំនងឪពុក']],
+            ['name' => 'father_date_of_birth', 'label' => "Father's Date of Birth", 'type' => 'date_picker', 'options' => ['placeholder_en' => "Enter Father Date of Birth", 'placeholder_km' => 'ជ្រើសរើសថ្ងៃខែឆ្នាំកំណើតឪពុក']],
+            ['name' => 'father_ethnicity', 'label' => "Father's Ethnicity", 'type' => 'select_dropdown', 'options' => ['choices' => $ethnicityOptions]],
+            ['name' => 'father_nationality', 'label' => "Father's Nationality", 'type' => 'select_dropdown', 'options' => ['choices' => $nationalityOptions]],
+            ['name' => 'father_status', 'label' => "Father's Status", 'type' => 'select_dropdown', 'options' => ['choices' => $parentStatusOptions]],
+            ['name' => 'father_occupation', 'label' => "Father's Occupation", 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Father Occupation', 'placeholder_km' => 'បញ្ចូលមុខរបរឪពុក']],
+            ['name' => 'father_place_of_work', 'label' => "Father's Place of Work", 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Father Place of Work', 'placeholder_km' => 'បញ្ចូលទីតាំងធ្វើការឪពុក']],
+            ['name' => 'father_phone_number', 'label' => "Father's Phone Number", 'type' => 'phone', 'options' => ['placeholder_en' => 'Enter Father Phone Number', 'placeholder_km' => 'បញ្ចូលលេខទំនាក់ទំនងឪពុក']],
 
             ['name' => 'mother_heading', 'label' => "Mother's Information", 'type' => 'info', 'options' => ['content' => "Mother's Information", 'column_span_full' => true, 'is_hidden_label' => true]],
-            ['name' => 'mother_name', 'label' => "Mother's Name", 'type' => 'text_input', 'options' => ['placeholder_en' => "Enter Mother's Name", 'placeholder_km' => 'បញ្ចូលនាមម្ដាយ']],
-            ['name' => 'mother_date_of_birth', 'label' => "Mother's Date of Birth", 'type' => 'date_picker', 'options' => ['placeholder_en' => "Enter Mother's Date of Birth", 'placeholder_km' => 'ជ្រើសរើសថ្ងៃខែឆ្នាំកំណើតម្ដាយ']],
-            ['name' => 'mother_ethnicity', 'label' => "Mother's Ethnicity", 'type' => 'select_dropdown', 'options' => ['choices' => $ethnicityOptions, 'placeholder_en' => 'Select Ethnicity', 'placeholder_km' => 'ជ្រើសរើសជនជាតិ']],
-            ['name' => 'mother_nationality', 'label' => "Mother's Nationality", 'type' => 'select_dropdown', 'options' => ['choices' => $nationalityOptions, 'placeholder_en' => 'Select Nationality', 'placeholder_km' => 'ជ្រើសរើសសញ្ជាតិ']],
-            ['name' => 'mother_status', 'label' => "Mother's Status", 'type' => 'select_dropdown', 'options' => ['choices' => $parentStatusOptions, 'placeholder_en' => 'Select Status', 'placeholder_km' => 'ជ្រើសរើសស្ថានភាព']],
-            ['name' => 'mother_occupation', 'label' => "Mother's Occupation", 'type' => 'text_input', 'options' => ['placeholder_en' => "Enter Mother's Occupation", 'placeholder_km' => 'បញ្ចូលមុខរបរម្ដាយ']],
-            ['name' => 'mother_place_of_work', 'label' => "Mother's Place of Work", 'type' => 'text_input', 'options' => ['placeholder_en' => "Enter Mother's Place of Work", 'placeholder_km' => 'បញ្ចូលទីតាំងធ្វើការម្ដាយ']],
-            ['name' => 'mother_phone_number', 'label' => "Mother's Phone Number", 'type' => 'phone', 'options' => ['placeholder_en' => "Enter Mother's Phone Number", 'placeholder_km' => 'បញ្ចូលលេខទំនាក់ទំនងម្ដាយ']],
+            ['name' => 'mother_name', 'label' => "Mother's Name", 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Mother Name', 'placeholder_km' => 'បញ្ចូលនាមម្ដាយ']],
+            ['name' => 'mother_date_of_birth', 'label' => "Mother's Date of Birth", 'type' => 'date_picker', 'options' => ['placeholder_en' => 'Enter Mother Date of Birth', 'placeholder_km' => 'ជ្រើសរើសថ្ងៃខែឆ្នាំកំណើតម្ដាយ']],
+            ['name' => 'mother_ethnicity', 'label' => "Mother's Ethnicity", 'type' => 'select_dropdown', 'options' => ['choices' => $ethnicityOptions]],
+            ['name' => 'mother_nationality', 'label' => "Mother's Nationality", 'type' => 'select_dropdown', 'options' => ['choices' => $nationalityOptions]],
+            ['name' => 'mother_status', 'label' => "Mother's Status", 'type' => 'select_dropdown', 'options' => ['choices' => $parentStatusOptions]],
+            ['name' => 'mother_occupation', 'label' => "Mother's Occupation", 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Mother Occupation', 'placeholder_km' => 'បញ្ចូលមុខរបរម្ដាយ']],
+            ['name' => 'mother_place_of_work', 'label' => "Mother's Place of Work", 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Mother Place of Work', 'placeholder_km' => 'បញ្ចូលទីតាំងធ្វើការម្ដាយ']],
+            ['name' => 'mother_phone_number', 'label' => "Mother's Phone Number", 'type' => 'phone', 'options' => ['placeholder_en' => 'Enter Mother Phone Number', 'placeholder_km' => 'បញ្ចូលលេខទំនាក់ទំនងម្ដាយ']],
 
             ['name' => 'parents_current_address_heading', 'label' => 'Parents Current Address', 'type' => 'info', 'options' => ['content' => 'Parents Current Address', 'column_span_full' => true, 'is_hidden_label' => true]],
             ['name' => 'parents_house_number', 'label' => 'House Number', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter House Number', 'placeholder_km' => 'បញ្ចូលលេខផ្ទះ']],
             ['name' => 'parents_street_number', 'label' => 'Street Number', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Street Number', 'placeholder_km' => 'បញ្ចូលលេខផ្លូវ']],
-            ['name' => 'parents_capital_province', 'label' => 'Capital / Province', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('province', null, 'Select Capital / Province', 'ជ្រើសរើសរាជធានី / ខេត្ត')],
-            ['name' => 'parents_district_khan', 'label' => 'District / Khan', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('district', 'parents_capital_province', 'Select District / Khan', 'ជ្រើសរើសស្រុក / ខណ្ឌ')],
-            ['name' => 'parents_commune_sangkat', 'label' => 'Commune / Sangkat', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('commune', 'parents_district_khan', 'Select Commune / Sangkat', 'ជ្រើសរើសឃុំ / សង្កាត់')],
-            ['name' => 'parents_village', 'label' => 'Village', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('village', 'parents_commune_sangkat', 'Select Village', 'ជ្រើសរើសភូមិ')],
+            ['name' => 'parents_capital_province', 'label' => 'Capital / Province', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('province')],
+            ['name' => 'parents_district_khan', 'label' => 'District / Khan', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('district', 'parents_capital_province')],
+            ['name' => 'parents_commune_sangkat', 'label' => 'Commune / Sangkat', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('commune', 'parents_district_khan')],
+            ['name' => 'parents_village', 'label' => 'Village', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('village', 'parents_commune_sangkat')],
 
             ['name' => 'guardian_heading', 'label' => 'Guardian Information', 'type' => 'info', 'options' => ['content' => 'Guardian Information', 'column_span_full' => true, 'is_hidden_label' => true]],
-            ['name' => 'guardian_name', 'label' => "Guardian's Name", 'type' => 'text_input', 'options' => ['placeholder_en' => "Enter Guardian's Name", 'placeholder_km' => 'បញ្ចូលឈ្មោះអាណាព្យាបាល']],
+            ['name' => 'guardian_name', 'label' => "Guardian's Name", 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Guardian Name', 'placeholder_km' => 'បញ្ចូលឈ្មោះអាណាព្យាបាល']],
             ['name' => 'guardian_relationship', 'label' => 'Guardian Relationship', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Guardian Relationship', 'placeholder_km' => 'បញ្ចូលទំនាក់ទំនងអាណាព្យាបាល']],
             ['name' => 'guardian_phone_number', 'label' => 'Guardian Phone Number', 'type' => 'phone', 'options' => ['placeholder_en' => 'Enter Guardian Phone Number', 'placeholder_km' => 'បញ្ចូលលេខទំនាក់ទំនងអាណាព្យាបាល']],
         ];
@@ -267,7 +267,7 @@ class StudentProfileSeeder extends Seeder
 
         $siblingFields = [
             ['name' => 'sibling_name', 'label' => 'Name', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Sibling Name', 'placeholder_km' => 'បញ្ចូលឈ្មោះបងប្អូន']],
-            ['name' => 'sibling_gender', 'label' => 'Gender', 'type' => 'select_dropdown', 'options' => ['choices' => $genderOptions, 'placeholder_en' => 'Select Gender', 'placeholder_km' => 'ជ្រើសរើសភេទ']],
+            ['name' => 'sibling_gender', 'label' => 'Gender', 'type' => 'select_dropdown', 'options' => ['choices' => $genderOptions]],
             ['name' => 'sibling_year_of_birth', 'label' => 'Date of Birth', 'type' => 'date_picker', 'options' => ['placeholder_en' => 'Enter Sibling Date of Birth', 'placeholder_km' => 'ជ្រើសរើសថ្ងៃខែឆ្នាំកំណើតបងប្អូន']],
             ['name' => 'sibling_occupation', 'label' => 'Occupation', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Sibling Occupation', 'placeholder_km' => 'បញ្ចូលមុខរបរបងប្អូន']],
         ];
@@ -319,11 +319,11 @@ class StudentProfileSeeder extends Seeder
 
         $educationFields = [
             ['name' => 'educational_institution', 'label' => 'Educational Institution', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Educational Institution', 'placeholder_km' => 'បញ្ចូលស្ថាប័នអប់រំ', 'column_span_full' => true]],
-            ['name' => 'degree_level_major', 'label' => 'Degree Level / Major', 'type' => 'select_dropdown', 'options' => ['choices' => $degreeOptions, 'placeholder_en' => 'Select Degree Level / Major', 'placeholder_km' => 'ជ្រើសរើសកម្រិតសញ្ញាបត្រ / ជំនាញ']],
-            ['name' => 'country', 'label' => 'Country', 'type' => 'select_dropdown', 'options' => ['choices' => $countryOptions, 'placeholder_en' => 'Select Country', 'placeholder_km' => 'ជ្រើសរើសប្រទេស']],
-            ['name' => 'from_year', 'label' => 'From Year', 'type' => 'select_dropdown', 'options' => ['choices' => $yearOptions, 'placeholder_en' => 'Select Year', 'placeholder_km' => 'ជ្រើសរើសឆ្នាំ']],
-            ['name' => 'to_year', 'label' => 'To Year', 'type' => 'select_dropdown', 'options' => ['choices' => $yearOptions, 'placeholder_en' => 'Select Year', 'placeholder_km' => 'ជ្រើសរើសឆ្នាំ']],
-            ['name' => 'graduation_year', 'label' => 'Graduation Year', 'type' => 'select_dropdown', 'options' => ['choices' => $yearOptions, 'placeholder_en' => 'Select Year', 'placeholder_km' => 'ជ្រើសរើសឆ្នាំ', 'column_span_full' => true]],
+            ['name' => 'degree_level_major', 'label' => 'Degree Level / Major', 'type' => 'select_dropdown', 'options' => ['choices' => $degreeOptions]],
+            ['name' => 'country', 'label' => 'Country', 'type' => 'select_dropdown', 'options' => ['choices' => $countryOptions]],
+            ['name' => 'from_year', 'label' => 'From Year', 'type' => 'select_dropdown', 'options' => ['choices' => $yearOptions]],
+            ['name' => 'to_year', 'label' => 'To Year', 'type' => 'select_dropdown', 'options' => ['choices' => $yearOptions]],
+            ['name' => 'graduation_year', 'label' => 'Graduation Year', 'type' => 'select_dropdown', 'options' => ['choices' => $yearOptions, 'column_span_full' => true]],
         ];
 
         $this->upsertFields($customFormId, $educationRepeater, $educationFields, $keepNames, $sort);
@@ -538,13 +538,11 @@ class StudentProfileSeeder extends Seeder
             ->toArray();
     }
 
-    private function geoLocationOptions(string $type, ?string $parentField = null, ?string $placeholderEn = null, ?string $placeholderKm = null): array
+    private function geoLocationOptions(string $type, ?string $parentField = null): array
     {
         return array_filter([
             'geo_location_type' => $type,
             'geo_location_parent_field' => $parentField,
-            'placeholder_en' => $placeholderEn,
-            'placeholder_km' => $placeholderKm,
         ]);
     }
 
