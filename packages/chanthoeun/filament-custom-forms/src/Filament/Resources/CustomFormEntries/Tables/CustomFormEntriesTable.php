@@ -46,6 +46,10 @@ class CustomFormEntriesTable
 
     protected static function getColumns(?string $formId): array
     {
+        if ($formId && self::isProfileForm($formId)) {
+            return self::getProfileColumns();
+        }
+
         $columns = [];
 
         $fieldsMetadata = \Chanthoeun\FilamentCustomForms\Models\CustomFormField::query()
@@ -118,6 +122,67 @@ class CustomFormEntriesTable
         }
 
         return $columns;
+    }
+
+    protected static function isProfileForm(string $formId): bool
+    {
+        return \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
+            ->whereKey($formId)
+            ->where('slug', 'profile')
+            ->exists();
+    }
+
+    protected static function getProfileColumns(): array
+    {
+        return [
+            TextColumn::make('data.first_name_kh')
+                ->label('First Name (Khmer)')
+                ->placeholder('-'),
+
+            TextColumn::make('data.last_name_kh')
+                ->label('Last Name (Khmer)')
+                ->placeholder('-'),
+
+            TextColumn::make('data.date_of_birth')
+                ->label('Date of Birth')
+                ->formatStateUsing(
+                    fn (mixed $state): string => self::formatProfileDate($state)
+                )
+                ->placeholder('-'),
+
+            TextColumn::make('data.exam_period')
+                ->label('Exam Date')
+                ->formatStateUsing(
+                    fn (mixed $state): string => self::formatProfileDate($state)
+                )
+                ->placeholder('-'),
+
+            TextColumn::make('data.exam_center')
+                ->label('Exam Center')
+                ->placeholder('-'),
+
+            TextColumn::make('data.current_occupation')
+                ->label('Current Occupation')
+                ->placeholder('-'),
+
+            TextColumn::make('data.place_of_work')
+                ->label('Place of Work / Organization')
+                ->placeholder('-')
+                ->wrap(),
+        ];
+    }
+
+    protected static function formatProfileDate(mixed $state): string
+    {
+        if (blank($state)) {
+            return '-';
+        }
+
+        try {
+            return \Carbon\Carbon::parse($state)->format('d/m/Y');
+        } catch (\Throwable) {
+            return (string) $state;
+        }
     }
 
     protected static function getFilters(?string $formId): array
