@@ -4,7 +4,7 @@ return [
     'dashboard' => 'ផ្ទាំងគ្រប់គ្រង',
 
     'groups' => [
-        'form_entry' => 'ការបំពេញទម្រង់',
+        'form_entry' => 'ពាក្យស្នើសុំនិស្សិត',
         'review_document' => 'ការពិនិត្យឯកសារ',
         'form_builder' => 'ការបង្កើតទម្រង់',
         'settings' => 'ការកំណត់',

@@ -4,7 +4,7 @@ return [
     'dashboard' => 'Dashboard',
 
     'groups' => [
-        'form_entry' => 'Form Entry',
+        'form_entry' => 'Student Applications',
         'review_document' => 'Review Document',
         'form_builder' => 'Form Builder',
         'settings' => 'Settings',
