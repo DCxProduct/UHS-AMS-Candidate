@@ -34,10 +34,15 @@ return [
     'accept_confirm_description' => 'Are you sure you want to accept this enrollment application?',
     'reject_title' => 'Reject Application',
 
+    // Added keys for Passed/Failed modals
+    'passed_confirm_description' => 'Are you sure this application has passed?',
+
     'statuses' => [
         'pending' => 'Pending',
         'accepted' => 'Accepted',
         'rejected' => 'Rejected',
+        'passed' => 'Passed',
+        'failed' => 'Failed',
     ],
 
     'actions' => [
@@ -45,6 +50,9 @@ return [
         'accept' => 'Accept',
         'reject' => 'Reject',
         'close' => 'Close',
+        // Added actions for the modal buttons
+        'passed' => 'Pass',
+        'failed' => 'Fail',
     ],
 
     'notifications' => [
@@ -62,5 +70,11 @@ return [
         'admin_accept_success_body' => 'The student has been notified.',
         'admin_reject_success_title' => 'Application rejected',
         'admin_reject_success_body' => 'The student has been notified.',
+
+        // Added notifications for Passed/Failed
+        'admin_passed_success_title' => 'Application Passed',
+        'admin_passed_success_body' => 'The application has been marked as passed.',
+        'admin_failed_success_title' => 'Application Failed',
+        'admin_failed_success_body' => 'The application has been marked as failed.',
     ],
 ];

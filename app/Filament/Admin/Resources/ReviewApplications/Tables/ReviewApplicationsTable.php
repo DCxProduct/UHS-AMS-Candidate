@@ -56,7 +56,7 @@ class ReviewApplicationsTable
                 TextColumn::make('review_status')
                     ->label(__('review_applications.review_status'))
                     ->badge()
-                    ->formatStateUsing(fn (?string $state): string => self::statusLabel($state))
+                    ->formatStateUsing(fn (?string $state): string => $state ? __('review_applications.statuses.' . $state) : '-')
                     ->color(fn (?string $state): string => match ($state) {
                         'passed', 'accepted' => 'success',
                         'failed', 'rejected' => 'danger',
@@ -107,13 +107,13 @@ class ReviewApplicationsTable
                     )),
 
                 Action::make('passed')
-                    ->label(self::actionLabel('passed'))
+                    ->label(__('review_applications.statuses.passed'))
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->modalHeading(self::actionLabel('passed'))
-                    ->modalDescription('Are you sure this application has passed?')
-                    ->modalSubmitActionLabel(self::actionLabel('passed'))
+                    ->modalHeading(__('review_applications.actions.passed'))
+                    ->modalDescription(__('review_applications.passed_confirm_description'))
+                    ->modalSubmitActionLabel(__('review_applications.actions.passed'))
                     ->visible(fn (CustomFormEntry $record): bool => ! in_array($record->review_status, ['passed', 'accepted'], true))
                     ->action(function (CustomFormEntry $record): void {
                         DB::table('custom_form_entries')
@@ -135,18 +135,18 @@ class ReviewApplicationsTable
                         );
 
                         Notification::make()
-                            ->title('Application Passed')
-                            ->body('The application has been marked as passed.')
+                            ->title(__('review_applications.notifications.admin_passed_success_title'))
+                            ->body(__('review_applications.notifications.admin_passed_success_body'))
                             ->success()
                             ->send();
                     }),
 
                 Action::make('failed')
-                    ->label(self::actionLabel('failed'))
+                    ->label(__('review_applications.statuses.failed'))
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
-                    ->modalHeading(self::actionLabel('failed'))
-                    ->modalSubmitActionLabel(self::actionLabel('failed'))
+                    ->modalHeading(__('review_applications.actions.failed'))
+                    ->modalSubmitActionLabel(__('review_applications.actions.failed'))
                     ->visible(fn (CustomFormEntry $record): bool => ! in_array($record->review_status, ['failed', 'rejected'], true))
                     ->form([
                         Textarea::make('review_note')
@@ -177,8 +177,8 @@ class ReviewApplicationsTable
                         );
 
                         Notification::make()
-                            ->title('Application Failed')
-                            ->body('The application has been marked as failed.')
+                            ->title(__('review_applications.notifications.admin_failed_success_title'))
+                            ->body(__('review_applications.notifications.admin_failed_success_body'))
                             ->success()
                             ->send();
                     }),
