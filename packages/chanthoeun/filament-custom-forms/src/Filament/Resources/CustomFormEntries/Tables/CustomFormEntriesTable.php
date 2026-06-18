@@ -261,6 +261,11 @@ class CustomFormEntriesTable
     protected static function canEdit($record): bool
     {
         $status = strtolower((string) ($record->review_status ?? 'pending'));
+        $slug = $record->customForm?->slug;
+
+        if ($slug === 'profile') {
+            return ! self::studentHasAcceptedNationalExam();
+        }
 
         return in_array($status, [
             '',
@@ -268,6 +273,41 @@ class CustomFormEntriesTable
             'failed',
             'rejected',
         ], true);
+    }
+
+    protected static function studentHasAcceptedNationalExam(): bool
+    {
+        $userId = auth()->id();
+
+        if (! $userId) {
+            return false;
+        }
+
+        $nationalExamFormId = \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
+            ->where('slug', 'national-examination-registration')
+            ->value('id');
+
+        if (! $nationalExamFormId) {
+            return false;
+        }
+
+        return \Chanthoeun\FilamentCustomForms\Models\CustomFormEntry::query()
+            ->where('custom_form_id', $nationalExamFormId)
+            ->whereIn('review_status', ['passed', 'accepted', 'approved'])
+            ->where(function ($query) use ($userId): void {
+                if (\Illuminate\Support\Facades\Schema::hasColumn('custom_form_entries', 'created_by')) {
+                    $query->orWhere('created_by', $userId);
+                }
+
+                if (\Illuminate\Support\Facades\Schema::hasColumn('custom_form_entries', 'user_id')) {
+                    $query->orWhere('user_id', $userId);
+                }
+
+                if (\Illuminate\Support\Facades\Schema::hasColumn('custom_form_entries', 'created_by_id')) {
+                    $query->orWhere('created_by_id', $userId);
+                }
+            })
+            ->exists();
     }
 
     protected static function canDownloadPdf($record): bool
