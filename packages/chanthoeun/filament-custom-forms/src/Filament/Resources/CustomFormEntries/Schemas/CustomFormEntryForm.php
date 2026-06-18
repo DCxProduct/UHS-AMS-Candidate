@@ -236,8 +236,11 @@ class CustomFormEntryForm
                     case 'select':
                     case 'select_dropdown':
                     $component = Select::make("data.{$name}")
-                        ->options($options['choices'] ?? [])
-                        ->placeholder($isLocked ? null : __('filament-custom-forms::fcf.general.select_option'));
+                        ->options($options['choices'] ?? []);
+
+                    if (! $isLocked) {
+                        $component->placeholder('Select option');
+                    }
                         break;
                 }
 
