@@ -23,6 +23,55 @@ class ListCustomFormEntries extends ListRecords
         $this->activeFormId = request()->input('tableFilters.custom_form_id.value')
             ?? data_get(request()->query('tableFilters'), 'custom_form_id.value')
             ?? request()->query('form_id');
+
+        if (auth()->user()?->registration_type === 'student' && $this->activeFormId) {
+            $customForm = \Chanthoeun\FilamentCustomForms\Models\CustomForm::find($this->activeFormId);
+
+            if ($customForm?->slug === 'profile') {
+                $entry = $this->studentCurrentFormEntry();
+
+                if ($entry) {
+                    $this->redirect(CustomFormEntryResource::getUrl('edit', [
+                        'record' => $entry->id,
+                    ]));
+
+                    return;
+                }
+
+                $this->redirect(CustomFormEntryResource::getUrl('create', [
+                    'form_id' => $this->activeFormId,
+                ]));
+
+                return;
+            }
+        }
+    }
+
+    protected function studentCurrentFormEntry(): ?\Chanthoeun\FilamentCustomForms\Models\CustomFormEntry
+    {
+        if (! $this->activeFormId || ! auth()->check()) {
+            return null;
+        }
+
+        $userId = auth()->id();
+
+        return \Chanthoeun\FilamentCustomForms\Models\CustomFormEntry::query()
+            ->where('custom_form_id', $this->activeFormId)
+            ->where(function ($query) use ($userId): void {
+                if (\Illuminate\Support\Facades\Schema::hasColumn('custom_form_entries', 'created_by')) {
+                    $query->orWhere('created_by', $userId);
+                }
+
+                if (\Illuminate\Support\Facades\Schema::hasColumn('custom_form_entries', 'user_id')) {
+                    $query->orWhere('user_id', $userId);
+                }
+
+                if (\Illuminate\Support\Facades\Schema::hasColumn('custom_form_entries', 'created_by_id')) {
+                    $query->orWhere('created_by_id', $userId);
+                }
+            })
+            ->latest('id')
+            ->first();
     }
 
     public function updatedTableFilters(): void
@@ -38,11 +87,9 @@ class ListCustomFormEntries extends ListRecords
             if ($customForm) {
                 $name = __("filament-custom-forms::fcf.form.names.{$customForm->slug}");
 
-                if ($name === "filament-custom-forms::fcf.form.names.{$customForm->slug}") {
-                    $name = $customForm->name;
-                }
-
-                return $name;
+                return $name === "filament-custom-forms::fcf.form.names.{$customForm->slug}"
+                    ? $customForm->name
+                    : $name;
             }
         }
 
@@ -56,65 +103,9 @@ class ListCustomFormEntries extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        $customFormId = request()->input('tableFilters.custom_form_id.value')
-            ?? data_get(request()->query('tableFilters'), 'custom_form_id.value')
-            ?? request()->query('form_id')
-            ?? $this->activeFormId;
-
-        $createLabel = __('filament-custom-forms::fcf.entry.action.create', [
-            'name' => __('filament-custom-forms::fcf.entry.single'),
-        ]);
-
-        if ($customFormId) {
-            $customForm = CustomForm::find($customFormId);
-
-            if ($customForm) {
-                $name = __("filament-custom-forms::fcf.form.names.{$customForm->slug}");
-
-                if ($name === "filament-custom-forms::fcf.form.names.{$customForm->slug}") {
-                    $name = $customForm->name;
-                }
-
-                $createLabel = __('filament-custom-forms::fcf.entry.action.create', [
-                    'name' => $name,
-                ]);
-            }
-        }
-
         return [
-            \Chanthoeun\FilamentDocumentBuilder\Actions\DownloadAllPdfAction::make('export_pdf')
-                ->label(__('filament-custom-forms::fcf.entry.action.export_data'))
-                ->icon('heroicon-o-document-arrow-down')
-                ->color('success')
-                ->records(function () {
-                    $query = $this->getFilteredTableQuery();
-
-                    if ($this->activeFormId) {
-                        $query->where('custom_form_id', $this->activeFormId);
-                    }
-
-                    return $query->get();
-                })
-                ->templateType(fn () => $this->activeFormId ? 'custom_form_' . $this->activeFormId : null)
-                ->filename(function () {
-                    $formName = 'custom-entries';
-
-                    if ($this->activeFormId) {
-                        $customForm = CustomForm::find($this->activeFormId);
-
-                        if ($customForm) {
-                            $name = trim($customForm->name);
-                            $name = preg_replace('/[^A-Za-z0-9\-\_ ]/', '', $name);
-                            $formName = str_replace(' ', '-', $name);
-                        }
-                    }
-
-                    return $formName . '-' . now()->format('Y-m-d-His') . '.pdf';
-                })
-                ->visible(fn (): bool => false),
-
             Actions\CreateAction::make()
-                ->label($createLabel)
+                ->label($this->getCreateLabel())
                 ->url(fn () => CustomFormEntryResource::getUrl('create', [
                     'form_id' => $this->activeFormId,
                 ]))
@@ -122,6 +113,26 @@ class ListCustomFormEntries extends ListRecords
                     && ! $this->studentAlreadySubmittedCurrentForm()
                 ),
         ];
+    }
+
+    protected function getCreateLabel(): string
+    {
+        $name = __('filament-custom-forms::fcf.entry.single');
+
+        if ($this->activeFormId) {
+            $customForm = CustomForm::find($this->activeFormId);
+
+            if ($customForm) {
+                $translated = __("filament-custom-forms::fcf.form.names.{$customForm->slug}");
+                $name = $translated === "filament-custom-forms::fcf.form.names.{$customForm->slug}"
+                    ? $customForm->name
+                    : $translated;
+            }
+        }
+
+        return __('filament-custom-forms::fcf.entry.action.create', [
+            'name' => $name,
+        ]);
     }
 
     protected function studentAlreadySubmittedCurrentForm(): bool
