@@ -235,18 +235,24 @@ class CustomFormEntryForm
 
                     case 'select':
                     case 'select_dropdown':
-                        $component = Select::make("data.{$name}")
-                            ->options($options['choices'] ?? []);
+                    $component = Select::make("data.{$name}")
+                        ->options($options['choices'] ?? []);
+
+                    if (! $isLocked) {
+                        $component->placeholder('Select option');
+                    }
                         break;
                 }
 
                 if ($component) {
                     $component->label($label);
 
-                    $placeholder = self::resolvePlaceholder($fieldModel, $options);
+                    if (! $isLocked) {
+                        $placeholder = self::resolvePlaceholder($fieldModel, $options);
 
-                    if (filled($placeholder) && method_exists($component, 'placeholder')) {
-                        $component->placeholder($placeholder);
+                        if (filled($placeholder) && method_exists($component, 'placeholder')) {
+                            $component->placeholder($placeholder);
+                        }
                     }
 
                     if ($required) {
