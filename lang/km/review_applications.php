@@ -34,10 +34,15 @@ return [
     'accept_confirm_description' => 'តើអ្នកប្រាកដថាចង់ទទួលយកពាក្យស្នើសុំចុះឈ្មោះនេះមែនទេ?',
     'reject_title' => 'បដិសេធពាក្យស្នើសុំ',
 
+    // Added for Passed Action Modal
+    'passed_confirm_description' => 'តើអ្នកប្រាកដថាពាក្យស្នើសុំនេះបានជាប់មែនទេ?',
+
     'statuses' => [
         'pending' => 'កំពុងរង់ចាំ',
         'accepted' => 'បានទទួលយក',
         'rejected' => 'បានបដិសេធ',
+        'passed' => 'ជាប់',
+        'failed' => 'ធ្លាក់',
     ],
 
     'actions' => [
@@ -45,6 +50,10 @@ return [
         'accept' => 'ទទួលយក',
         'reject' => 'បដិសេធ',
         'close' => 'បិទ',
+
+        // Added for Passed/Failed Action Buttons
+        'passed' => 'ជាប់',
+        'failed' => 'ធ្លាក់',
     ],
 
     'notifications' => [
@@ -62,5 +71,11 @@ return [
         'admin_accept_success_body' => 'បានជូនដំណឹងទៅនិស្សិតរួចរាល់។',
         'admin_reject_success_title' => 'បានបដិសេធពាក្យស្នើសុំ',
         'admin_reject_success_body' => 'បានជូនដំណឹងទៅនិស្សិតរួចរាល់។',
+
+        // Added for Passed/Failed Notifications
+        'admin_passed_success_title' => 'ពាក្យស្នើសុំបានជាប់',
+        'admin_passed_success_body' => 'ពាក្យស្នើសុំត្រូវបានកត់សម្គាល់ថាបានជាប់។',
+        'admin_failed_success_title' => 'ពាក្យស្នើសុំបានធ្លាក់',
+        'admin_failed_success_body' => 'ពាក្យស្នើសុំត្រូវបានកត់សម្គាល់ថាបានធ្លាក់។',
     ],
 ];
