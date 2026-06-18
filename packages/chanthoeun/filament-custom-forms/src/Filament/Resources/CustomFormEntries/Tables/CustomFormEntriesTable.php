@@ -3,7 +3,6 @@
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Tables;
 
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
@@ -96,11 +95,8 @@ class CustomFormEntriesTable
                 }
             }
 
-            $columnKey = "data.{$key}";
-            $label = \Illuminate\Support\Str::headline($key);
-
-            $column = TextColumn::make($columnKey)
-                ->label($label);
+            $column = TextColumn::make("data.{$key}")
+                ->label(\Illuminate\Support\Str::headline($key));
 
             if (($fieldTypes[$key] ?? null) === 'number_input') {
                 $column->numeric();
@@ -159,16 +155,23 @@ class CustomFormEntriesTable
                 ->placeholder('-')
                 ->wrap(),
 
-            TextColumn::make('data.registration_status')
+            TextColumn::make('review_status')
                 ->label('Registration Status')
-                ->placeholder('-')
-                ->badge(),
+                ->badge()
+                ->formatStateUsing(fn (?string $state): string => match ($state) {
+                    'passed', 'accepted' => 'Accepted',
+                    'failed', 'rejected' => 'Rejected',
+                    default => 'Pending',
+                })
+                ->color(fn (?string $state): string => match ($state) {
+                    'passed', 'accepted' => 'success',
+                    'failed', 'rejected' => 'danger',
+                    default => 'warning',
+                }),
 
             TextColumn::make('data.registration_date')
                 ->label('Registration Date')
-                ->formatStateUsing(
-                    fn (mixed $state): string => self::formatProfileDate($state)
-                )
+                ->formatStateUsing(fn (mixed $state): string => self::formatProfileDate($state))
                 ->placeholder('-'),
         ];
     }
@@ -194,16 +197,12 @@ class CustomFormEntriesTable
 
             TextColumn::make('data.date_of_birth')
                 ->label('Date of Birth')
-                ->formatStateUsing(
-                    fn (mixed $state): string => self::formatProfileDate($state)
-                )
+                ->formatStateUsing(fn (mixed $state): string => self::formatProfileDate($state))
                 ->placeholder('-'),
 
             TextColumn::make('data.exam_period')
                 ->label('Exam Date')
-                ->formatStateUsing(
-                    fn (mixed $state): string => self::formatProfileDate($state)
-                )
+                ->formatStateUsing(fn (mixed $state): string => self::formatProfileDate($state))
                 ->placeholder('-'),
 
             TextColumn::make('data.exam_center')
@@ -236,83 +235,14 @@ class CustomFormEntriesTable
 
     protected static function getFilters(?string $formId): array
     {
-        $filters = [];
-
-        if ($formId) {
-            $formSchema = \Chanthoeun\FilamentCustomForms\Models\CustomForm::find($formId);
-
-            if ($formSchema) {
-                $schemaFields = $formSchema->fields()->orderBy('sort')->get();
-
-                foreach ($schemaFields as $field) {
-                    $jsonKey = $field->name;
-                    $label = $field->label ?? $field->name;
-
-                    switch ($field->type) {
-                        case 'boolean':
-                            $filters[] = TernaryFilter::make($field->name)
-                                ->label($label)
-                                ->query(
-                                    fn (Builder $query, array $data) =>
-                                    $query->when(
-                                        isset($data['value']),
-                                        fn ($q) => $q->where("data->{$jsonKey}", $data['value'] === '1' || $data['value'] === true)
-                                    )
-                                );
-                            break;
-
-                        case 'select':
-                        case 'select_dropdown':
-                            $choices = $field->options['choices'] ?? [];
-
-                            if (! empty($choices)) {
-                                $filters[] = SelectFilter::make($field->name)
-                                    ->label($label)
-                                    ->options($choices)
-                                    ->query(
-                                        fn (Builder $query, array $data) =>
-                                        $query->when(
-                                            $data['value'] ?? null,
-                                            fn ($q) => $q->where("data->{$jsonKey}", $data['value'])
-                                        )
-                                    );
-                            }
-                            break;
-
-                        case 'date_picker':
-                            $filters[] = Filter::make($field->name)
-                                ->label($label)
-                                ->form([
-                                    DatePicker::make('from')->label($label . ' From'),
-                                    DatePicker::make('until')->label($label . ' Until'),
-                                ])
-                                ->query(function (Builder $query, array $data) use ($jsonKey) {
-                                    return $query
-                                        ->when($data['from'] ?? null, fn ($q) => $q->where("data->{$jsonKey}", '>=', $data['from']))
-                                        ->when($data['until'] ?? null, fn ($q) => $q->where("data->{$jsonKey}", '<=', $data['until']));
-                                });
-                            break;
-                    }
-                }
-            }
-        }
-
-        $filters[] = SelectFilter::make('custom_form_id')
-            ->label(__('filament-custom-forms::fcf.form.single'))
-            ->options(\Chanthoeun\FilamentCustomForms\Models\CustomForm::pluck('name', 'id'))
-            ->hidden();
-
-        return $filters;
+        return [];
     }
 
     protected static function getRecordActions(): array
     {
         $actions = [
             EditAction::make()
-                ->visible(fn ($record): bool => self::canEditOrDelete($record)),
-
-            DeleteAction::make()
-                ->visible(fn ($record): bool => self::canEditOrDelete($record)),
+                ->visible(fn ($record): bool => self::canEdit($record)),
         ];
 
         if (class_exists(\Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate::class)) {
@@ -328,13 +258,15 @@ class CustomFormEntriesTable
         return $actions;
     }
 
-    protected static function canEditOrDelete($record): bool
+    protected static function canEdit($record): bool
     {
         $status = strtolower((string) ($record->review_status ?? 'pending'));
 
         return in_array($status, [
             '',
             'pending',
+            'failed',
+            'rejected',
         ], true);
     }
 
