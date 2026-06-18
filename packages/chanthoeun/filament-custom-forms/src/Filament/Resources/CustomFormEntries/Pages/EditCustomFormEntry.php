@@ -12,30 +12,38 @@ class EditCustomFormEntry extends EditRecord
 {
     protected static string $resource = CustomFormEntryResource::class;
 
-    public function mount(int|string $record): void
+    public function isLockedForEditing(): bool
     {
-        parent::mount($record);
-
         $slug = $this->record->customForm?->slug;
         $status = strtolower((string) ($this->record->review_status ?? 'pending'));
 
-        if (
-            ($slug === 'profile' && $this->studentHasAcceptedNationalExam())
-            || (
-                $slug !== 'profile'
-                && in_array($status, ['passed', 'accepted', 'approved'], true)
-            )
-        ) {
-            $this->redirect(CustomFormEntryResource::getUrl('index', [
-                'tableFilters' => [
-                    'custom_form_id' => [
-                        'value' => $this->record->custom_form_id,
-                    ],
-                ],
-            ]));
-
-            return;
+        if (in_array($status, ['passed', 'accepted', 'approved'], true)) {
+            return true;
         }
+
+        if ($slug === 'profile' && $this->studentHasAcceptedNationalExam()) {
+            return true;
+        }
+
+        return false;
+    }
+
+    protected function getFormActions(): array
+    {
+        if ($this->isLockedForEditing()) {
+            return [];
+        }
+
+        return parent::getFormActions();
+    }
+
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        if ($this->isLockedForEditing()) {
+            $this->halt();
+        }
+
+        return $data;
     }
 
     protected function studentHasAcceptedNationalExam(): bool
@@ -44,18 +52,18 @@ class EditCustomFormEntry extends EditRecord
             return false;
         }
 
-        $nationalExamFormId = CustomForm::query()
+        $formId = CustomForm::query()
             ->where('slug', 'national-examination-registration')
             ->value('id');
 
-        if (! $nationalExamFormId) {
+        if (! $formId) {
             return false;
         }
 
         $userId = auth()->id();
 
         return CustomFormEntry::query()
-            ->where('custom_form_id', $nationalExamFormId)
+            ->where('custom_form_id', $formId)
             ->whereIn('review_status', ['passed', 'accepted', 'approved'])
             ->where(function ($query) use ($userId): void {
                 if (Schema::hasColumn('custom_form_entries', 'created_by')) {
@@ -75,44 +83,12 @@ class EditCustomFormEntry extends EditRecord
 
     public function getHeading(): string|\Illuminate\Contracts\Support\Htmlable
     {
-        $customForm = $this->getRecord()->customForm;
-
-        if ($customForm) {
-            return 'Edit ' . $customForm->name;
-        }
-
-        return parent::getHeading();
+        return ($this->isLockedForEditing() ? 'View ' : 'Edit ')
+            . ($this->getRecord()->customForm?->name ?? 'Entry');
     }
 
     public function getBreadcrumbs(): array
     {
-        $breadcrumbs = [];
-        $record = $this->getRecord();
-        $customForm = $record->customForm;
-
-        $label = 'Custom Form Entries';
-        $urlParams = [];
-
-        if ($customForm) {
-            $label = $customForm->name . ' Entries';
-            $urlParams = [
-                'tableFilters' => [
-                    'custom_form_id' => [
-                        'value' => $customForm->id,
-                    ],
-                ],
-            ];
-        }
-
-        $url = CustomFormEntryResource::getUrl('index');
-
-        if (! empty($urlParams)) {
-            $url .= '?' . http_build_query($urlParams);
-        }
-
-        $breadcrumbs[$url] = $label;
-        $breadcrumbs[] = 'Edit';
-
-        return $breadcrumbs;
+        return [];
     }
 }
