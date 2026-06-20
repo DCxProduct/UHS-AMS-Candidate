@@ -46,6 +46,9 @@
          'label' => 'Label',
          'type' => 'Type',
          'is_required' => 'Is Required',
+         'form_type' => 'Form Type',
+         'select_form_type' => 'Select Form Type',
+         'dynamic_form_type_field' => 'Dynamic Selection Form Type Field',
      ],
      'builder' => [
          'blocks' => [

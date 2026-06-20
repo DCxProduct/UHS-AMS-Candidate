@@ -78,9 +78,14 @@ class NationalExaminationRegistrationSeeder extends Seeder
         }
 
         /*
-         * Do not delete existing fields.
-         * This seeder only updates configured fields and adds missing fields.
+         * Important:
+         * Rebuild National Examination Registration fields every time.
+         * This removes old/manual fields so the form shows only:
+         * Step 1 = Form Types
+         * Step 2 = Master fields after selecting Master.
          */
+        $this->deleteFormFields($customFormId);
+
         $keepNames = [];
 
         $genderOptions = [
@@ -183,7 +188,74 @@ class NationalExaminationRegistrationSeeder extends Seeder
             ['value' => 'other', 'label' => 'Other'],
         ];
 
+        $formTypeOptions = [
+            ['value' => 'master', 'label' => 'Master'],
+        ];
+
+        /*
+        |--------------------------------------------------------------------------
+        | Show/Hide rules
+        |--------------------------------------------------------------------------
+        | Only the Form Types card is visible first.
+        | All other sections appear after the student selects Master.
+        |--------------------------------------------------------------------------
+        */
+        $showWhenMaster = [
+            'visible_when' => [
+                'field' => 'form_selection',
+                'operator' => '=',
+                'value' => 'master',
+            ],
+        ];
+
         $sort = 1;
+
+
+        /*
+|--------------------------------------------------------------------------
+| Form Types
+|--------------------------------------------------------------------------
+*/
+        $formTypesSection = $this->upsertField(
+            $customFormId,
+            'form_types',
+            'Form Types',
+            'section',
+            false,
+            [
+                'columns' => 1,
+                'column_span_full' => true,
+            ],
+            null,
+            $sort++,
+        );
+
+        $keepNames[] = 'form_types';
+
+        $formTypeFields = [
+            [
+                'name' => 'form_selection',
+                'label' => 'Form Selections',
+                'type' => 'select_dropdown',
+                'required' => true,
+                'options' => [
+                    'choices' => [
+                        'master' => 'Master',
+                    ],
+                    'placeholder_en' => 'Select option',
+                    'placeholder_km' => 'ជ្រើសរើសជម្រើស',
+                    'column_span_full' => true,
+                ],
+            ],
+        ];
+
+        $this->upsertFields(
+            $customFormId,
+            $formTypesSection,
+            $formTypeFields,
+            $keepNames,
+            $sort,
+        );
 
         /*
         |--------------------------------------------------------------------------
@@ -196,7 +268,7 @@ class NationalExaminationRegistrationSeeder extends Seeder
             'I. Personal Information',
             'section',
             false,
-            ['columns' => 2, 'column_span_full' => true],
+            array_merge(['columns' => 2, 'column_span_full' => true], $showWhenMaster),
             null,
             $sort++,
         );
@@ -204,8 +276,6 @@ class NationalExaminationRegistrationSeeder extends Seeder
         $keepNames[] = 'personal_information';
 
         $personalFields = [
-            ['name' => 'personal_note', 'label' => 'Brief Resume', 'type' => 'info', 'options' => ['content' => 'Brief Resume', 'column_span_full' => true, 'is_hidden_label' => true]],
-
             ['name' => 'first_name_kh', 'label' => 'First Name (Khmer)', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter First Name', 'placeholder_km' => 'បញ្ចូលនាមខ្លួន']],
             ['name' => 'last_name_kh', 'label' => 'Last Name (Khmer)', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Last Name', 'placeholder_km' => 'បញ្ចូលនាមត្រកូល']],
             ['name' => 'first_name_en', 'label' => 'First Name (English)', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter First Name', 'placeholder_km' => 'បញ្ចូលនាមខ្លួន']],
@@ -219,13 +289,11 @@ class NationalExaminationRegistrationSeeder extends Seeder
 
             ['name' => 'date_of_birth', 'label' => 'Date of Birth', 'type' => 'date_picker', 'options' => ['placeholder_en' => 'Enter Date of Birth', 'placeholder_km' => 'ជ្រើសរើសថ្ងៃខែឆ្នាំកំណើត']],
 
-            ['name' => 'place_of_birth_heading', 'label' => 'Place of Birth', 'type' => 'info', 'options' => ['content' => 'Place of Birth', 'column_span_full' => true, 'is_hidden_label' => true]],
             ['name' => 'birth_province_city', 'label' => 'Province / City', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('province')],
             ['name' => 'birth_district_khan', 'label' => 'District / Khan', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('district', 'birth_province_city')],
             ['name' => 'birth_commune_sangkat', 'label' => 'Commune / Sangkat', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('commune', 'birth_district_khan')],
             ['name' => 'birth_village', 'label' => 'Village', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('village', 'birth_commune_sangkat')],
 
-            ['name' => 'current_address_heading', 'label' => 'Current Address', 'type' => 'info', 'options' => ['content' => 'Current Address', 'column_span_full' => true, 'is_hidden_label' => true]],
             ['name' => 'current_house_number', 'label' => 'House Number', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter House Number', 'placeholder_km' => 'បញ្ចូលលេខផ្ទះ']],
             ['name' => 'current_street_number', 'label' => 'Street Number', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Street Number', 'placeholder_km' => 'បញ្ចូលលេខផ្លូវ']],
             ['name' => 'current_capital_province', 'label' => 'Capital / Province', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('province')],
@@ -233,7 +301,6 @@ class NationalExaminationRegistrationSeeder extends Seeder
             ['name' => 'current_commune_sangkat', 'label' => 'Commune / Sangkat', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('commune', 'current_district_khan')],
             ['name' => 'current_village', 'label' => 'Village', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('village', 'current_commune_sangkat')],
 
-            ['name' => 'education_employment_information', 'label' => 'Education And Employment Information', 'type' => 'info', 'options' => ['content' => 'Education And Employment Information', 'column_span_full' => true, 'is_hidden_label' => true]],
             ['name' => 'culture_level', 'label' => 'Culture Level', 'type' => 'select_dropdown', 'options' => ['choices' => $cultureLevelOptions]],
             ['name' => 'exam_period', 'label' => 'Exam Date', 'type' => 'date_picker', 'options' => ['placeholder_en' => 'Enter Exam Date', 'placeholder_km' => 'ជ្រើសរើសថ្ងៃខែឆ្នាំដែលបានប្រឡង']],
             ['name' => 'exam_center', 'label' => 'Exam Center', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Exam Center', 'placeholder_km' => 'បញ្ចូលទីតាំងដែលប្រឡង']],
@@ -254,7 +321,7 @@ class NationalExaminationRegistrationSeeder extends Seeder
             'II. Family Information',
             'section',
             false,
-            ['columns' => 2, 'column_span_full' => true],
+            array_merge(['columns' => 2, 'column_span_full' => true], $showWhenMaster),
             null,
             $sort++,
         );
@@ -262,9 +329,6 @@ class NationalExaminationRegistrationSeeder extends Seeder
         $keepNames[] = 'family_information';
 
         $familyFields = [
-            ['name' => 'about_parents_heading', 'label' => 'A. About Parents', 'type' => 'info', 'options' => ['content' => 'A. About Parents', 'column_span_full' => true, 'is_hidden_label' => true]],
-
-            ['name' => 'father_heading', 'label' => "Father's Information", 'type' => 'info', 'options' => ['content' => "Father's Information", 'column_span_full' => true, 'is_hidden_label' => true]],
             ['name' => 'father_name', 'label' => "Father's Name", 'type' => 'text_input', 'options' => ['placeholder_en' => "Enter Father's Name", 'placeholder_km' => 'បញ្ចូលនាមឪពុក']],
             ['name' => 'father_date_of_birth', 'label' => "Father's Date of Birth", 'type' => 'date_picker', 'options' => ['placeholder_en' => "Enter Father Date of Birth", 'placeholder_km' => 'ជ្រើសរើសថ្ងៃខែឆ្នាំកំណើតឪពុក']],
             ['name' => 'father_ethnicity', 'label' => "Father's Ethnicity", 'type' => 'select_dropdown', 'options' => ['choices' => $ethnicityOptions]],
@@ -274,7 +338,6 @@ class NationalExaminationRegistrationSeeder extends Seeder
             ['name' => 'father_place_of_work', 'label' => "Father's Place of Work", 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Father Place of Work', 'placeholder_km' => 'បញ្ចូលទីតាំងធ្វើការឪពុក']],
             ['name' => 'father_phone_number', 'label' => "Father's Phone Number", 'type' => 'phone', 'options' => ['placeholder_en' => 'Enter Father Phone Number', 'placeholder_km' => 'បញ្ចូលលេខទំនាក់ទំនងឪពុក']],
 
-            ['name' => 'mother_heading', 'label' => "Mother's Information", 'type' => 'info', 'options' => ['content' => "Mother's Information", 'column_span_full' => true, 'is_hidden_label' => true]],
             ['name' => 'mother_name', 'label' => "Mother's Name", 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Mother Name', 'placeholder_km' => 'បញ្ចូលនាមម្ដាយ']],
             ['name' => 'mother_date_of_birth', 'label' => "Mother's Date of Birth", 'type' => 'date_picker', 'options' => ['placeholder_en' => 'Enter Mother Date of Birth', 'placeholder_km' => 'ជ្រើសរើសថ្ងៃខែឆ្នាំកំណើតម្ដាយ']],
             ['name' => 'mother_ethnicity', 'label' => "Mother's Ethnicity", 'type' => 'select_dropdown', 'options' => ['choices' => $ethnicityOptions]],
@@ -284,7 +347,6 @@ class NationalExaminationRegistrationSeeder extends Seeder
             ['name' => 'mother_place_of_work', 'label' => "Mother's Place of Work", 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Mother Place of Work', 'placeholder_km' => 'បញ្ចូលទីតាំងធ្វើការម្ដាយ']],
             ['name' => 'mother_phone_number', 'label' => "Mother's Phone Number", 'type' => 'phone', 'options' => ['placeholder_en' => 'Enter Mother Phone Number', 'placeholder_km' => 'បញ្ចូលលេខទំនាក់ទំនងម្ដាយ']],
 
-            ['name' => 'parents_current_address_heading', 'label' => 'Parents Current Address', 'type' => 'info', 'options' => ['content' => 'Parents Current Address', 'column_span_full' => true, 'is_hidden_label' => true]],
             ['name' => 'parents_house_number', 'label' => 'House Number', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter House Number', 'placeholder_km' => 'បញ្ចូលលេខផ្ទះ']],
             ['name' => 'parents_street_number', 'label' => 'Street Number', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Street Number', 'placeholder_km' => 'បញ្ចូលលេខផ្លូវ']],
             ['name' => 'parents_capital_province', 'label' => 'Capital / Province', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('province')],
@@ -292,7 +354,6 @@ class NationalExaminationRegistrationSeeder extends Seeder
             ['name' => 'parents_commune_sangkat', 'label' => 'Commune / Sangkat', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('commune', 'parents_district_khan')],
             ['name' => 'parents_village', 'label' => 'Village', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('village', 'parents_commune_sangkat')],
 
-            ['name' => 'guardian_heading', 'label' => 'Guardian Information', 'type' => 'info', 'options' => ['content' => 'Guardian Information', 'column_span_full' => true, 'is_hidden_label' => true]],
             ['name' => 'guardian_name', 'label' => "Guardian's Name", 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Guardian Name', 'placeholder_km' => 'បញ្ចូលឈ្មោះអាណាព្យាបាល']],
             ['name' => 'guardian_relationship', 'label' => 'Guardian Relationship', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Guardian Relationship', 'placeholder_km' => 'បញ្ចូលទំនាក់ទំនងអាណាព្យាបាល']],
             ['name' => 'guardian_phone_number', 'label' => 'Guardian Phone Number', 'type' => 'phone', 'options' => ['placeholder_en' => 'Enter Guardian Phone Number', 'placeholder_km' => 'បញ្ចូលលេខទំនាក់ទំនងអាណាព្យាបាល']],
@@ -306,7 +367,7 @@ class NationalExaminationRegistrationSeeder extends Seeder
             'B. About Siblings',
             'repeater',
             false,
-            ['columns' => 2, 'column_span_full' => true],
+            array_merge(['columns' => 2, 'column_span_full' => true], $showWhenMaster),
             $familySection,
             $sort++,
         );
@@ -323,7 +384,6 @@ class NationalExaminationRegistrationSeeder extends Seeder
         $this->upsertFields($customFormId, $siblingsRepeater, $siblingFields, $keepNames, $sort);
 
         $spouseFields = [
-            ['name' => 'spouse_children_heading', 'label' => 'C. About Spouse and Children', 'type' => 'info', 'options' => ['content' => 'C. About Spouse and Children', 'column_span_full' => true, 'is_hidden_label' => true]],
             ['name' => 'spouse_name', 'label' => 'Spouse Name', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Spouse Name', 'placeholder_km' => 'បញ្ចូលឈ្មោះប្ដី/ប្រពន្ធ(បើមាន)']],
             ['name' => 'spouse_year_of_birth', 'label' => 'Date of Birth', 'type' => 'date_picker', 'options' => ['placeholder_en' => 'Enter Spouse Date of Birth', 'placeholder_km' => 'ជ្រើសរើសថ្ងៃខែឆ្នាំកំណើតប្ដី/ប្រពន្ធ(បើមាន)']],
             ['name' => 'spouse_occupation', 'label' => 'Occupation', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Spouse Occupation', 'placeholder_km' => 'បញ្ចូលមុខរបរប្ដី/ប្រពន្ធ(បើមាន)']],
@@ -345,7 +405,7 @@ class NationalExaminationRegistrationSeeder extends Seeder
             'III. Educational Information',
             'section',
             false,
-            ['columns' => 2, 'column_span_full' => true],
+            array_merge(['columns' => 2, 'column_span_full' => true], $showWhenMaster),
             null,
             $sort++,
         );
@@ -358,7 +418,7 @@ class NationalExaminationRegistrationSeeder extends Seeder
             'Education',
             'repeater',
             false,
-            ['columns' => 2, 'column_span_full' => true],
+            array_merge(['columns' => 2, 'column_span_full' => true], $showWhenMaster),
             $educationSection,
             $sort++,
         );
@@ -387,7 +447,7 @@ class NationalExaminationRegistrationSeeder extends Seeder
             'IV. Work History',
             'section',
             false,
-            ['columns' => 2, 'column_span_full' => true],
+            array_merge(['columns' => 2, 'column_span_full' => true], $showWhenMaster),
             null,
             $sort++,
         );
@@ -400,7 +460,7 @@ class NationalExaminationRegistrationSeeder extends Seeder
             'Work History',
             'repeater',
             false,
-            ['columns' => 2, 'column_span_full' => true],
+            array_merge(['columns' => 2, 'column_span_full' => true], $showWhenMaster),
             $cvSection,
             $sort++,
         );
@@ -430,7 +490,7 @@ class NationalExaminationRegistrationSeeder extends Seeder
             'V. Student Registration Record',
             'section',
             false,
-            ['columns' => 2, 'column_span_full' => true],
+            array_merge(['columns' => 2, 'column_span_full' => true], $showWhenMaster),
             null,
             $sort++,
         );
@@ -618,11 +678,6 @@ class NationalExaminationRegistrationSeeder extends Seeder
             $sort,
         );
 
-        /*
-         * Do not delete fields that are not listed in this seeder.
-         * Existing/manual fields remain in the database.
-         */
-
         $this->createDocumentTemplate($customFormId);
         $this->migrateEntryDataKeys($customFormId);
     }
@@ -630,6 +685,11 @@ class NationalExaminationRegistrationSeeder extends Seeder
     private function upsertFields(int $customFormId, int $parentId, array $fields, array &$keepNames, int &$sort): void
     {
         foreach ($fields as $field) {
+            // Remove only info/title fields from seeder
+            if (($field['type'] ?? null) === 'info') {
+                continue;
+            }
+
             $keepNames[] = $field['name'];
 
             $this->upsertField(
@@ -810,12 +870,18 @@ class NationalExaminationRegistrationSeeder extends Seeder
 
     private function deleteFormFields(int $customFormId): void
     {
-        do {
-            $deleted = DB::table('custom_form_fields')
-                ->where('custom_form_id', $customFormId)
-                ->whereNotNull('parent_id')
-                ->delete();
-        } while ($deleted > 0);
+        if (! Schema::hasTable('custom_form_fields')) {
+            return;
+        }
+
+        if (Schema::hasColumn('custom_form_fields', 'parent_id')) {
+            do {
+                $deleted = DB::table('custom_form_fields')
+                    ->where('custom_form_id', $customFormId)
+                    ->whereNotNull('parent_id')
+                    ->delete();
+            } while ($deleted > 0);
+        }
 
         DB::table('custom_form_fields')
             ->where('custom_form_id', $customFormId)

@@ -5,6 +5,7 @@ namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Pa
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
+use Filament\Actions\Action;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Schema;
 
@@ -30,11 +31,22 @@ class EditCustomFormEntry extends EditRecord
 
     protected function getFormActions(): array
     {
-        if ($this->isLockedForEditing()) {
-            return [];
+        $actions = [];
+
+        // Only show the Submit (Save) button if the form is NOT locked
+        if (! $this->isLockedForEditing()) {
+            $actions[] = $this->getSaveFormAction()
+                ->label(__('student_profile.submit'))
+                ->color('primary');
         }
 
-        return parent::getFormActions();
+        // Always show the Back button
+        $actions[] = Action::make('back')
+            ->label(__('student_profile.back'))
+            ->color('success')
+            ->url($this->getBackUrl());
+
+        return $actions;
     }
 
     protected function mutateFormDataBeforeSave(array $data): array
@@ -81,6 +93,17 @@ class EditCustomFormEntry extends EditRecord
             ->exists();
     }
 
+    protected function getBackUrl(): string
+    {
+        return CustomFormEntryResource::getUrl('index', [
+            'tableFilters' => [
+                'custom_form_id' => [
+                    'value' => $this->record->custom_form_id,
+                ],
+            ],
+        ]);
+    }
+
     public function getHeading(): string|\Illuminate\Contracts\Support\Htmlable
     {
         return ($this->isLockedForEditing() ? 'View ' : 'Edit ')
@@ -91,4 +114,5 @@ class EditCustomFormEntry extends EditRecord
     {
         return [];
     }
+
 }

@@ -77,4 +77,6 @@ return [
         'admin_failed_success_title' => 'Application Failed',
         'admin_failed_success_body' => 'The application has been marked as failed.',
     ],
+
+    'form_type' => 'Form Type',
 ];
