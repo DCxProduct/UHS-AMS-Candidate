@@ -362,5 +362,10 @@ return [
     'form_currently_available' => 'This form is currently available.',
     'application_not_open_yet' => 'This application is not open yet.',
 
+    'login_account_not_found' => 'No account found with this username, email, or phone number.',
+    'login_wrong_password' => 'Your password is incorrect. Please try again.',
+    'register_success_title' => 'Registration successful',
+    'register_success_body' => 'Your account has been created successfully. You can now sign in.',
+
 
 ];

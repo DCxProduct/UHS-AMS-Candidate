@@ -63,7 +63,7 @@ class Login extends BaseLogin
                     ->autocomplete('username')
                     ->prefixIcon('heroicon-o-user-circle')
                     ->validationMessages([
-                        'required' => __('app.username_email_phone'),
+                        'required' => __('app.login_required'),
                     ]),
 
                 TextInput::make('password')
@@ -117,9 +117,15 @@ class Login extends BaseLogin
             })
             ->first();
 
-        if (! $user || ! Hash::check($password, $user->password)) {
+        if (! $user) {
             throw ValidationException::withMessages([
-                'data.login' => __('app.invalid_credentials'),
+                'data.login' => __('app.login_account_not_found'),
+            ]);
+        }
+
+        if (! Hash::check($password, $user->password)) {
+            throw ValidationException::withMessages([
+                'data.password' => __('app.login_wrong_password'),
             ]);
         }
 

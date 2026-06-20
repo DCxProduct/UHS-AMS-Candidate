@@ -217,7 +217,9 @@ class Register extends BaseRegister
             ? null
             : preg_replace('/[^0-9]/', '', (string) $data['phone']);
 
-        $email = Str::lower(trim((string) ($data['email'] ?? '')));
+        $email = filled($data['email'] ?? null)
+            ? Str::lower(trim((string) $data['email']))
+            : null;
 
         $dateOfBirth = Carbon::parse($data['date_of_birth'])->format('Y-m-d');
 
