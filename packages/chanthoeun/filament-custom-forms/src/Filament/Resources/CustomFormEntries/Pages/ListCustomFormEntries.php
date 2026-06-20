@@ -79,21 +79,30 @@ class ListCustomFormEntries extends ListRecords
         $this->activeFormId = data_get($this->tableFilters, 'custom_form_id.value');
     }
 
+    // ✅ FIXED: Translates the big heading at the top of the page
     public function getHeading(): string|Htmlable
     {
         if ($this->activeFormId) {
             $customForm = CustomForm::find($this->activeFormId);
 
             if ($customForm) {
-                $name = __("filament-custom-forms::fcf.form.names.{$customForm->slug}");
+                $slug = strtolower(trim((string) ($customForm->slug ?? '')));
 
-                return $name === "filament-custom-forms::fcf.form.names.{$customForm->slug}"
-                    ? $customForm->name
-                    : $name;
+                return match ($slug) {
+                    'profile' => __('navigation.forms.profile'),
+                    'national-examination-registration' => __('navigation.national_examination_registration'),
+                    default => (string) ($customForm->name ?? __('navigation.forms.untitled')),
+                };
             }
         }
 
         return __('filament-custom-forms::fcf.entry.plural');
+    }
+
+    // ✅ NEW: Translates the browser tab title so it matches the heading
+    public function getTitle(): string|Htmlable
+    {
+        return $this->getHeading();
     }
 
     public function getBreadcrumbs(): array
@@ -115,6 +124,7 @@ class ListCustomFormEntries extends ListRecords
         ];
     }
 
+    // ✅ FIXED: Translates the text inside the "Create" button
     protected function getCreateLabel(): string
     {
         $name = __('filament-custom-forms::fcf.entry.single');
@@ -123,10 +133,15 @@ class ListCustomFormEntries extends ListRecords
             $customForm = CustomForm::find($this->activeFormId);
 
             if ($customForm) {
-                $translated = __("filament-custom-forms::fcf.form.names.{$customForm->slug}");
-                $name = $translated === "filament-custom-forms::fcf.form.names.{$customForm->slug}"
-                    ? $customForm->name
-                    : $translated;
+                $slug = strtolower(trim((string) ($customForm->slug ?? '')));
+
+                $translated = match ($slug) {
+                    'profile' => __('navigation.forms.profile'),
+                    'national-examination-registration' => __('navigation.national_examination_registration'),
+                    default => (string) $customForm->name,
+                };
+
+                $name = $translated;
             }
         }
 

@@ -4,16 +4,20 @@ namespace App\Filament\Admin\Resources\ReviewApplications\Tables;
 
 use App\Models\User;
 use App\Support\NotificationLanguage;
+use Carbon\Carbon;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Filament\Tables\Filters\Filter;
+use Filament\Forms\Components\Select;
+use Filament\Tables\Enums\FiltersLayout;
+use Illuminate\Support\HtmlString;
 
 class ReviewApplicationsTable
 {
@@ -78,38 +82,96 @@ class ReviewApplicationsTable
                     ->limit(40)
                     ->toggleable(),
 
-                TextColumn::make('reviewed_at')
-                    ->label(__('review_applications.reviewed_at'))
-                    ->dateTime('d M Y H:i')
-                    ->sortable()
-                    ->toggleable(),
-
                 TextColumn::make('created_at')
                     ->label(__('review_applications.submitted_at'))
                     ->dateTime('d M Y H:i')
+                    ->color('gray')
                     ->sortable(),
+
+                TextColumn::make('reviewed_at')
+                    ->label(__('review_applications.reviewed_at'))
+                    ->dateTime('d M Y H:i')
+                    ->color('info')
+                    ->sortable()
+                    ->toggleable(),
             ])
             ->filters([
-                SelectFilter::make('form_selection')
-                    ->label('Form Type')
-                    ->options([
-                        'master' => 'Master',
-                    ])
-                    ->query(function (Builder $query, array $data): Builder {
-                        return $query->when(
-                            filled($data['value'] ?? null),
-                            fn (Builder $query): Builder => $query->where('data->form_selection', $data['value'])
-                        );
-                    }),
+                Filter::make('application_review_filters')
+                    ->label(new HtmlString('&nbsp;'))
+                    ->schema([
+                        Select::make('form_selection')
+                            ->label('Form Type')
+                            ->options(function (): array {
+                                return CustomFormEntry::query()
+                                    ->whereNotNull('data->form_selection')
+                                    ->get(['data'])
+                                    ->pluck('data.form_selection')
+                                    ->filter()
+                                    ->unique()
+                                    ->mapWithKeys(fn ($item) => [
+                                        (string) $item => ucfirst((string) $item)
+                                    ])
+                                    ->toArray();
+                            })
+                            ->native(false)
+                            ->live(),
 
-                SelectFilter::make('review_status')
-                    ->label(__('review_applications.review_status'))
-                    ->options([
-                        'pending' => self::statusLabel('pending'),
-                        'passed' => self::statusLabel('passed'),
-                        'failed' => self::statusLabel('failed'),
-                    ]),
-            ])
+                        Select::make('review_status')
+                            ->label(__('review_applications.review_status'))
+                            ->options([
+                                'pending' => self::statusLabel('pending'),
+                                'passed' => self::statusLabel('passed'),
+                                'failed' => self::statusLabel('failed'),
+                            ])
+                            ->native(false)
+                            ->live(),
+
+                        Select::make('reviewed_month')
+                            ->label(__('review_applications.reviewed_month'))
+                            ->options(function (): array {
+                                return collect(range(1, 12))
+                                    ->mapWithKeys(fn ($month) => [
+                                        (string) $month => __('review_applications.months.' . $month)
+                                    ])
+                                    ->toArray();
+                            })
+                            ->native(false)
+                            ->live(),
+
+                        Select::make('reviewed_year')
+                            ->label(__('review_applications.reviewed_year'))
+                            ->options(
+                                collect(range(2025, 2050))
+                                    ->mapWithKeys(fn ($year) => [(string) $year => (string) $year])
+                                    ->toArray()
+                            )
+                            ->native(false)
+                            ->live(),
+                    ])
+                    ->columns(4)
+                    ->columnSpanFull()
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                filled($data['form_selection'] ?? null),
+                                fn (Builder $query): Builder => $query->where('data->form_selection', $data['form_selection'])
+                            )
+                            ->when(
+                                filled($data['review_status'] ?? null),
+                                fn (Builder $query): Builder => $query->where('review_status', $data['review_status'])
+                            )
+                            ->when(
+                                filled($data['reviewed_year'] ?? null),
+                                fn (Builder $query): Builder => $query->whereYear('reviewed_at', $data['reviewed_year'])
+                            )
+                            ->when(
+                                filled($data['reviewed_month'] ?? null),
+                                fn (Builder $query): Builder => $query->whereMonth('reviewed_at', $data['reviewed_month'])
+                            );
+                    }),
+            ], layout: FiltersLayout::AboveContent)
+            ->deferFilters(false)
+            ->filtersFormColumns(4)
             ->recordActions([
                 Action::make('view_details')
                     ->label(__('review_applications.actions.view_details'))
