@@ -101,8 +101,7 @@ class FieldsRelationManager extends RelationManager
                                 ],
                             ])
                             ->default('text_input')
-                            ->native(false)
-                            ->searchable()
+                            ->native()
                             ->live(),
 
                         \Filament\Forms\Components\Toggle::make('required')
