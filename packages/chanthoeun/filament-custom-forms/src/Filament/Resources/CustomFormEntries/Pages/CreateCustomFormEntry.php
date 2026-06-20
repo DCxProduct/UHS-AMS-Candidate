@@ -4,6 +4,7 @@ namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Pa
 
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
+use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
@@ -18,6 +19,79 @@ class CreateCustomFormEntry extends CreateRecord
     public ?string $form_id = null;
 
     protected bool $isSavingDraft = false;
+
+    public function mount(): void
+    {
+        parent::mount();
+
+        $this->fillNationalExamFromProfile();
+    }
+
+    protected function fillNationalExamFromProfile(): void
+    {
+        if (! auth()->check()) {
+            return;
+        }
+
+        $currentFormId = $this->form_id ?? request()->query('form_id');
+
+        if (! $currentFormId) {
+            return;
+        }
+
+        $currentForm = CustomForm::query()->find($currentFormId);
+
+        if (! $currentForm || $currentForm->slug !== 'national-examination-registration') {
+            return;
+        }
+
+        $profileFormId = CustomForm::query()
+            ->where('slug', 'profile')
+            ->value('id');
+
+        if (! $profileFormId) {
+            return;
+        }
+
+        $profileQuery = CustomFormEntry::query()
+            ->where('custom_form_id', $profileFormId)
+            ->latest();
+
+        if (Schema::hasColumn('custom_form_entries', 'created_by')) {
+            $profileQuery->where('created_by', auth()->id());
+        } elseif (Schema::hasColumn('custom_form_entries', 'user_id')) {
+            $profileQuery->where('user_id', auth()->id());
+        } elseif (Schema::hasColumn('custom_form_entries', 'created_by_id')) {
+            $profileQuery->where('created_by_id', auth()->id());
+        }
+
+        $profileEntry = $profileQuery->first();
+
+        if (! $profileEntry) {
+            return;
+        }
+
+        $profileData = is_array($profileEntry->data)
+            ? $profileEntry->data
+            : json_decode((string) $profileEntry->data, true);
+
+        if (! is_array($profileData)) {
+            return;
+        }
+
+        $state = $this->form->getRawState();
+
+        $state['custom_form_id'] = $currentFormId;
+        $state['data'] = $state['data'] ?? [];
+
+        foreach ($profileData as $key => $value) {
+            if (filled($value) && blank(data_get($state, "data.$key"))) {
+                $state['data'][$key] = $value;
+            }
+        }
+
+        $this->form->fill($state);
+    }
 
     protected function getFormActions(): array
     {
