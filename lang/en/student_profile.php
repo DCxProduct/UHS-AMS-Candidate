@@ -15,4 +15,6 @@ return [
     'confirm_new_password' => 'Confirm New Password',
     'save_changes' => 'Save Changes',
     'updated_successfully' => 'Profile updated successfully.',
+    'submit' => 'Submit',
+    'back' => 'Back',
 ];

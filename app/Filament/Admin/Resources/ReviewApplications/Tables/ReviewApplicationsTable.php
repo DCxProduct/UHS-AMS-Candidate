@@ -11,6 +11,7 @@ use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -26,6 +27,14 @@ class ReviewApplicationsTable
 
                 TextColumn::make('creator.name')
                     ->label(__('review_applications.student'))
+                    ->searchable()
+                    ->sortable(),
+
+                TextColumn::make('data.form_selection')
+                    ->label(__('review_applications.form_type'))
+                    ->badge()
+                    ->formatStateUsing(fn (?string $state): string => self::formTypeLabel($state))
+                    ->color('info')
                     ->searchable()
                     ->sortable(),
 
@@ -81,6 +90,18 @@ class ReviewApplicationsTable
                     ->sortable(),
             ])
             ->filters([
+                SelectFilter::make('form_selection')
+                    ->label('Form Type')
+                    ->options([
+                        'master' => 'Master',
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query->when(
+                            filled($data['value'] ?? null),
+                            fn (Builder $query): Builder => $query->where('data->form_selection', $data['value'])
+                        );
+                    }),
+
                 SelectFilter::make('review_status')
                     ->label(__('review_applications.review_status'))
                     ->options([
@@ -183,6 +204,14 @@ class ReviewApplicationsTable
                             ->send();
                     }),
             ]);
+    }
+
+    protected static function formTypeLabel(?string $state): string
+    {
+        return match ($state) {
+            'master' => 'Master',
+            default => filled($state) ? ucfirst((string) $state) : '-',
+        };
     }
 
     protected static function statusLabel(?string $state): string

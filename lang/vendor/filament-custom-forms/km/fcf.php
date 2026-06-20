@@ -46,6 +46,9 @@
          'label' => 'ស្លាក (Label)',
          'type' => 'ប្រភេទ',
          'is_required' => 'តម្រូវឱ្យមាន',
+         'form_type' => 'ទម្រង់ប្រភេទ',
+         'select_form_type' => 'ជ្រើសរើសទម្រង់ប្រភេទ',
+         'dynamic_form_type_field' => 'ការកំណត់ Dynamic Field នៃប្រភេទទម្រង់នីមួយៗ',
      ],
      'builder' => [
          'blocks' => [
@@ -90,4 +93,6 @@
          'updated_at' => 'បានធ្វើបច្ចុប្បន្នភាពនៅ',
          'deleted_at' => 'បានលុបនៅ',
      ],
+
+
  ];

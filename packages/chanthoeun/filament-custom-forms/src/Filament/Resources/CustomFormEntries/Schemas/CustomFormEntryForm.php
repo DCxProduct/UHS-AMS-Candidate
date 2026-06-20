@@ -19,6 +19,7 @@ use Filament\Schemas\Components\Wizard\Step as WizardStep;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 
 class CustomFormEntryForm
 {
@@ -34,117 +35,136 @@ class CustomFormEntryForm
             ->components([
                 Select::make('custom_form_id')
                     ->label(__('filament-custom-forms::fcf.form.single'))
-                    ->options(CustomForm::where('is_active', true)->whereNotNull('name')->pluck('name', 'id'))
+                    ->options(CustomForm::query()->where('is_active', true)->whereNotNull('name')->pluck('name', 'id'))
                     ->required()
                     ->default($preselectedFormId)
-                    ->hidden(fn () => ! empty($preselectedFormId))
+                    ->hidden(fn (?Model $record): bool => ! empty($preselectedFormId) || filled($record?->custom_form_id))
+                    ->disabled(fn (): bool => method_exists($livewire, 'isLockedForEditing') && $livewire->isLockedForEditing())
                     ->live()
                     ->columnSpanFull(),
 
                 Grid::make()
                     ->columns(1)
                     ->columnSpanFull()
-                    ->schema(function (Get $get, ?Model $record) use ($preselectedFormId, $livewire) {
-                        $formId = $get('custom_form_id') ?? $record?->custom_form_id;
-
-                        if (! $formId && $preselectedFormId) {
-                            $formId = $preselectedFormId;
-                        }
+                    ->schema(function (Get $get, ?Model $record) use ($preselectedFormId, $livewire): array {
+                        $formId = $get('custom_form_id') ?? $record?->custom_form_id ?? $preselectedFormId;
 
                         if (! $formId) {
                             return [];
                         }
 
-                        $customForm = CustomForm::find($formId);
+                        $customForm = CustomForm::query()->find($formId);
 
                         if (! $customForm) {
                             return [];
                         }
 
-                        $rootFields = $customForm->fields()->roots()->get();
+                        $rootFields = $customForm->fields()->roots()->orderBy('sort')->get();
 
                         $isLocked = method_exists($livewire, 'isLockedForEditing')
                             && $livewire->isLockedForEditing();
 
-                        return self::getFields($rootFields, $isLocked);
-                    })
-                    ->columns(2),
+                        if ((string) $customForm->slug === 'national-examination-registration') {
+                            return self::getNationalExamWizard($rootFields, $isLocked);
+                        }
+
+                        $hiddenFieldNames = (string) $customForm->slug === 'profile'
+                            ? ['personal_note']
+                            : [];
+
+                        return self::getFields($rootFields, $isLocked, $hiddenFieldNames);
+                    }),
             ]);
     }
 
-    protected static function getFields($fields, bool $isLocked = false): array
+    protected static function getNationalExamWizard(Collection $rootFields, bool $isLocked = false): array
+    {
+        $formTypes = $rootFields
+            ->filter(fn ($field): bool => (string) $field->name === 'form_types')
+            ->values();
+
+        $otherFields = $rootFields
+            ->reject(fn ($field): bool => (string) $field->name === 'form_types')
+            ->values();
+
+        return [
+            Wizard::make([
+                WizardStep::make('Form Type')
+                    ->schema(self::getFields($formTypes, $isLocked))
+                    ->columns(1),
+
+                WizardStep::make('Application Form')
+                    ->schema(self::getFields($otherFields, $isLocked))
+                    ->columns(1),
+            ])
+                ->columnSpanFull()
+                ->skippable(false),
+        ];
+    }
+
+    protected static function getFields($fields, bool $isLocked = false, array $hiddenFieldNames = []): array
     {
         $components = [];
 
         foreach ($fields as $fieldModel) {
-            $type = $fieldModel->type;
-            $options = $fieldModel->options ?? [];
-            $isHiddenLabel = $options['is_hidden_label'] ?? false;
+            $name = (string) $fieldModel->name;
+            $type = (string) $fieldModel->type;
+
+            if ($type === 'info') {
+                continue;
+            }
+
+            if (in_array($name, $hiddenFieldNames, true)) {
+                continue;
+            }
+
+            $options = self::normalizeOptions($fieldModel->options ?? []);
+            $isHiddenLabel = (bool) ($options['is_hidden_label'] ?? false);
             $component = null;
 
             if ($type === 'section') {
                 $component = Section::make($isHiddenLabel ? null : $fieldModel->label)
-                    ->schema(self::getFields($fieldModel->children, $isLocked))
+                    ->schema(self::getFields($fieldModel->children()->orderBy('sort')->get(), $isLocked, $hiddenFieldNames))
                     ->columns($options['columns'] ?? 2);
             } elseif ($type === 'grid') {
                 $component = Grid::make($options['columns'] ?? 2)
-                    ->schema(self::getFields($fieldModel->children, $isLocked));
+                    ->schema(self::getFields($fieldModel->children()->orderBy('sort')->get(), $isLocked, $hiddenFieldNames));
             } elseif ($type === 'fieldset') {
                 $component = Fieldset::make($isHiddenLabel ? null : $fieldModel->label)
-                    ->schema(self::getFields($fieldModel->children, $isLocked))
+                    ->schema(self::getFields($fieldModel->children()->orderBy('sort')->get(), $isLocked, $hiddenFieldNames))
                     ->columns($options['columns'] ?? 2);
             } elseif ($type === 'wizard') {
                 $steps = [];
 
-                $hasContainers = $fieldModel->children->contains(function ($child) {
-                    return in_array($child->type, ['section', 'fieldset', 'grid'], true);
-                });
+                foreach ($fieldModel->children()->orderBy('sort')->get() as $child) {
+                    $stepFields = self::getFields(collect([$child]), $isLocked, $hiddenFieldNames);
 
-                if ($hasContainers) {
-                    foreach ($fieldModel->children as $child) {
-                        $steps[] = WizardStep::make($child->label)
-                            ->schema(self::getFields(collect([$child]), $isLocked));
-                    }
-                } else {
-                    $step = WizardStep::make($fieldModel->label)
-                        ->schema(self::getFields($fieldModel->children, $isLocked));
-
-                    $wizardOpts = $fieldModel->options ?? [];
-
-                    if (! empty($wizardOpts['columns'])) {
-                        $step->columns($wizardOpts['columns']);
+                    if (empty($stepFields)) {
+                        continue;
                     }
 
-                    $steps[] = $step;
+                    $steps[] = WizardStep::make($child->label)
+                        ->schema($stepFields);
                 }
 
-                $component = Wizard::make()->schema($steps);
+                if (empty($steps)) {
+                    continue;
+                }
+
+                $component = Wizard::make($steps);
             } elseif ($type === 'repeater') {
-                $component = \Filament\Forms\Components\Repeater::make("data.{$fieldModel->name}")
-                    ->label($fieldModel->label);
+                $children = self::getFields($fieldModel->children()->orderBy('sort')->get(), $isLocked, $hiddenFieldNames);
 
-                if (! empty($options['is_table'])) {
-                    $headers = [];
-
-                    foreach ($fieldModel->children as $child) {
-                        $headers[] = \Filament\Forms\Components\Repeater\TableColumn::make($child->label ?? $child->name);
-                    }
-
-                    $component->table($headers);
-
-                    $fields = self::getFields($fieldModel->children, $isLocked);
-
-                    foreach ($fields as $field) {
-                        $field->hiddenLabel();
-                    }
-
-                    $component->schema($fields);
-                } else {
-                    $component->schema(self::getFields($fieldModel->children, $isLocked))
-                        ->columns($options['columns'] ?? 1);
+                if (empty($children)) {
+                    continue;
                 }
 
-                if (! empty($options['is_compact'])) {
+                $component = \Filament\Forms\Components\Repeater::make("data.{$fieldModel->name}")
+                    ->label($fieldModel->label)
+                    ->schema($children)
+                    ->columns($options['columns'] ?? 1);
+
+                if (! empty($options['is_compact']) && method_exists($component, 'compact')) {
                     $component->compact();
                 }
 
@@ -152,13 +172,10 @@ class CustomFormEntryForm
                     $component->required();
                 }
 
-                if ($isLocked && method_exists($component, 'disabled')) {
-                    $component->disabled();
-                }
+                self::lockComponent($component, $isLocked);
             } else {
-                $name = $fieldModel->name;
-                $label = $fieldModel->label;
-                $required = $fieldModel->required;
+                $label = (string) $fieldModel->label;
+                $required = (bool) ($fieldModel->required ?? false);
 
                 switch ($type) {
                     case 'text':
@@ -173,6 +190,7 @@ class CustomFormEntryForm
                     case 'number':
                     case 'number_input':
                         $isDecimal = $options['is_decimal'] ?? true;
+
                         $component = TextInput::make("data.{$name}")
                             ->numeric()
                             ->inputMode($isDecimal ? 'decimal' : 'numeric');
@@ -202,19 +220,22 @@ class CustomFormEntryForm
                         break;
 
                     case 'email':
-                        $component = TextInput::make("data.{$name}")->email();
+                        $component = TextInput::make("data.{$name}")
+                            ->email();
                         break;
 
                     case 'phone':
                         if (class_exists(\Ysfkaya\FilamentPhoneInput\Forms\PhoneInput::class)) {
                             $component = \Ysfkaya\FilamentPhoneInput\Forms\PhoneInput::make("data.{$name}");
                         } else {
-                            $component = TextInput::make("data.{$name}")->tel();
+                            $component = TextInput::make("data.{$name}")
+                                ->tel();
                         }
                         break;
 
                     case 'password':
-                        $component = TextInput::make("data.{$name}")->password();
+                        $component = TextInput::make("data.{$name}")
+                            ->password();
                         break;
 
                     case 'boolean':
@@ -226,6 +247,7 @@ class CustomFormEntryForm
                         break;
 
                     case 'image':
+                    case 'image_upload':
                     case 'file_upload':
                         $component = FileUpload::make("data.{$name}")
                             ->disk(CustomFormPlugin::get()->getUploadDisk())
@@ -235,19 +257,21 @@ class CustomFormEntryForm
 
                     case 'select':
                     case 'select_dropdown':
-                    $component = Select::make("data.{$name}")
-                        ->options($options['choices'] ?? []);
+                        $component = Select::make("data.{$name}")
+                            ->options($options['choices'] ?? [])
+                            ->live();
 
-                    if (! $isLocked) {
-                        $component->placeholder('Select option');
-                    }
+                        if (! $isLocked) {
+                            $component->placeholder($options['placeholder_en'] ?? 'Select option');
+                        }
+
                         break;
                 }
 
                 if ($component) {
                     $component->label($label);
 
-                    if (! $isLocked) {
+                    if (! $isLocked && ! in_array($type, ['select', 'select_dropdown'], true)) {
                         $placeholder = self::resolvePlaceholder($fieldModel, $options);
 
                         if (filled($placeholder) && method_exists($component, 'placeholder')) {
@@ -257,10 +281,6 @@ class CustomFormEntryForm
 
                     if ($required) {
                         $component->required();
-                    }
-
-                    if ($isLocked && method_exists($component, 'disabled')) {
-                        $component->disabled();
                     }
 
                     if ($isHiddenLabel) {
@@ -282,10 +302,14 @@ class CustomFormEntryForm
                     if (! empty($options['is_copyable']) && method_exists($component, 'copyable')) {
                         $component->copyable();
                     }
+
+                    self::lockComponent($component, $isLocked);
                 }
             }
 
             if ($component) {
+                self::applyVisibilityRule($component, $options);
+
                 if ($options['column_span_full'] ?? false) {
                     $component->columnSpanFull();
                 } elseif (! empty($options['column_span'])) {
@@ -297,6 +321,49 @@ class CustomFormEntryForm
         }
 
         return $components;
+    }
+
+    protected static function lockComponent(object $component, bool $isLocked): void
+    {
+        if (! $isLocked) {
+            return;
+        }
+
+        if (method_exists($component, 'disabled')) {
+            $component->disabled(true);
+        }
+
+        if (method_exists($component, 'dehydrated')) {
+            $component->dehydrated(false);
+        }
+    }
+
+    protected static function applyVisibilityRule(object $component, array $options): void
+    {
+        $rule = $options['visible_when'] ?? null;
+
+        if (! is_array($rule) || ! method_exists($component, 'visible')) {
+            return;
+        }
+
+        $field = (string) ($rule['field'] ?? '');
+        $operator = (string) ($rule['operator'] ?? '=');
+        $expected = $rule['value'] ?? null;
+
+        if ($field === '') {
+            return;
+        }
+
+        $component->visible(function (Get $get) use ($field, $operator, $expected): bool {
+            $actual = $get("data.{$field}") ?? data_get($get('data'), $field);
+
+            return match ($operator) {
+                '!=', '<>' => (string) $actual !== (string) $expected,
+                'in' => in_array($actual, (array) $expected, true),
+                'not_in' => ! in_array($actual, (array) $expected, true),
+                default => (string) $actual === (string) $expected,
+            };
+        });
     }
 
     protected static function resolvePlaceholder(object $fieldModel, array $options): ?string
@@ -314,5 +381,24 @@ class CustomFormEntryForm
         $placeholder = trim($placeholder);
 
         return $placeholder !== '' ? $placeholder : null;
+    }
+
+    protected static function normalizeOptions(mixed $options): array
+    {
+        if (is_array($options)) {
+            return $options;
+        }
+
+        if (is_string($options) && $options !== '') {
+            $decoded = json_decode($options, true);
+
+            return is_array($decoded) ? $decoded : [];
+        }
+
+        if (is_object($options)) {
+            return json_decode(json_encode($options), true) ?: [];
+        }
+
+        return [];
     }
 }

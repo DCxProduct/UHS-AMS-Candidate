@@ -78,4 +78,6 @@ return [
         'admin_failed_success_title' => 'ពាក្យស្នើសុំបានធ្លាក់',
         'admin_failed_success_body' => 'ពាក្យស្នើសុំត្រូវបានកត់សម្គាល់ថាបានធ្លាក់។',
     ],
+
+    'form_type' => 'ទម្រង់ប្រភេទ',
 ];
