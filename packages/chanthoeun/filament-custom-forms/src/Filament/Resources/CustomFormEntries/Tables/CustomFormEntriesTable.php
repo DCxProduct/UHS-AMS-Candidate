@@ -5,13 +5,13 @@ namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Ta
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\Filter;
-use Filament\Tables\Filters\SelectFilter;
-use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Filament\Tables\Filters\Filter;
+use Filament\Forms\Components\Select;
+use Filament\Tables\Enums\FiltersLayout;
+use Illuminate\Support\HtmlString;
 
 class CustomFormEntriesTable
 {
@@ -21,7 +21,9 @@ class CustomFormEntriesTable
 
         return $table
             ->columns(self::getColumns($formId))
-            ->filters([])
+            ->filters(self::getFilters($formId), layout: FiltersLayout::AboveContent)
+            ->deferFilters(false)
+            ->filtersFormColumns(4)
             ->recordActions(self::getRecordActions())
             ->toolbarActions([
                 BulkActionGroup::make([
@@ -45,7 +47,7 @@ class CustomFormEntriesTable
 
     protected static function getColumns(?string $formId): array
     {
-        if ($formId && self::isNationalExaminationForm($formId)) {
+        if (empty($formId) || self::isNationalExaminationForm($formId)) {
             return self::getNationalExaminationColumns();
         }
 
@@ -136,32 +138,38 @@ class CustomFormEntriesTable
     {
         return [
             TextColumn::make('data.student_id')
-                ->label('Student ID')
+                ->label(__('review_applications.student_id'))
                 ->placeholder('-')
                 ->wrap(),
 
+            TextColumn::make('data.form_selection')
+                ->label(__('review_applications.form_type'))
+                ->badge()
+                ->formatStateUsing(fn (?string $state): string => ucfirst((string) $state))
+                ->color('info'),
+
             TextColumn::make('data.national_registration_number')
-                ->label('National Registration Number')
+                ->label(__('review_applications.national_registration_number'))
                 ->placeholder('-')
                 ->wrap(),
 
             TextColumn::make('data.first_name_kh')
-                ->label('First Name (Khmer)')
+                ->label(__('review_applications.first_name_kh'))
                 ->placeholder('-')
                 ->wrap(),
 
             TextColumn::make('data.last_name_kh')
-                ->label('Last Name (Khmer)')
+                ->label(__('review_applications.last_name_kh'))
                 ->placeholder('-')
                 ->wrap(),
 
             TextColumn::make('review_status')
-                ->label('Registration Status')
+                ->label(__('review_applications.review_status'))
                 ->badge()
                 ->formatStateUsing(fn (?string $state): string => match ($state) {
-                    'passed', 'accepted' => 'Accepted',
-                    'failed', 'rejected' => 'Rejected',
-                    default => 'Pending',
+                    'passed', 'accepted' => __('review_applications.statuses.accepted'),
+                    'failed', 'rejected' => __('review_applications.statuses.rejected'),
+                    default => __('review_applications.statuses.pending'),
                 })
                 ->color(fn (?string $state): string => match ($state) {
                     'passed', 'accepted' => 'success',
@@ -169,10 +177,11 @@ class CustomFormEntriesTable
                     default => 'warning',
                 }),
 
-            TextColumn::make('data.registration_date')
-                ->label('Registration Date')
-                ->formatStateUsing(fn (mixed $state): string => self::formatProfileDate($state))
-                ->placeholder('-'),
+            TextColumn::make('reviewed_at')
+                ->label(__('review_applications.reviewed_at'))
+                ->dateTime('d M Y H:i')
+                ->placeholder(__('review_applications.not_reviewed_yet'))
+                ->color('info')
         ];
     }
 
@@ -235,7 +244,108 @@ class CustomFormEntriesTable
 
     protected static function getFilters(?string $formId): array
     {
-        return [];
+        if (auth()->user()?->registration_type === 'student') {
+            return [];
+        }
+
+        if ($formId && ! self::isNationalExaminationForm($formId)) {
+            return [];
+        }
+
+        return [
+            Filter::make('application_review_filters')
+                ->label(new HtmlString('&nbsp;'))
+                ->schema([
+                    Select::make('form_selection')
+                        ->label(__('review_applications.form_type'))
+                        ->options(function () use ($formId): array {
+                            return \Chanthoeun\FilamentCustomForms\Models\CustomFormEntry::query()
+                                ->when($formId, fn ($query) => $query->where('custom_form_id', $formId))
+                                ->whereNotNull('data->form_selection')
+                                ->get(['data'])
+                                ->pluck('data.form_selection')
+                                ->filter()
+                                ->unique()
+                                ->mapWithKeys(fn ($item) => [
+                                    (string) $item => ucfirst((string) $item)
+                                ])
+                                ->toArray();
+                        })
+                        ->native(false)
+                        ->live(),
+
+                    Select::make('review_status')
+                        ->label(__('review_applications.review_status'))
+                        ->options([
+                            'pending' => __('review_applications.statuses.pending'),
+                            'accepted' => __('review_applications.statuses.accepted'),
+                            'rejected' => __('review_applications.statuses.rejected'),
+                        ])
+                        ->native(false)
+                        ->live(),
+
+                    Select::make('reviewed_month')
+                        ->label(__('review_applications.reviewed_month'))
+                        ->options(function (): array {
+                            return collect(range(1, 12))
+                                ->mapWithKeys(fn ($month) => [
+                                    (string) $month => __('review_applications.months.' . $month)
+                                ])
+                                ->toArray();
+                        })
+                        ->native(false)
+                        ->live(),
+
+                    Select::make('reviewed_year')
+                        ->label(__('review_applications.reviewed_year'))
+                        ->options(
+                            collect(range(2025, 2050))
+                                ->mapWithKeys(fn ($year) => [(string) $year => (string) $year])
+                                ->toArray()
+                        )
+                        ->native(false)
+                        ->live(),
+
+                ])
+                ->columns(4)
+                ->columnSpanFull()
+                ->query(function (Builder $query, array $data): Builder {
+                    return $query
+                        ->when(
+                            filled($data['form_selection'] ?? null),
+                            fn (Builder $query): Builder => $query->where('data->form_selection', $data['form_selection'])
+                        )
+                        ->when(
+                            filled($data['review_status'] ?? null),
+                            function (Builder $query) use ($data): Builder {
+                                $status = $data['review_status'];
+
+                                if ($status === 'accepted') {
+                                    return $query->whereIn('review_status', ['accepted', 'passed']);
+                                }
+
+                                if ($status === 'rejected') {
+                                    return $query->whereIn('review_status', ['rejected', 'failed']);
+                                }
+
+                                // For pending, we check 'pending', null, or empty string
+                                return $query->where(function($q) {
+                                    $q->where('review_status', 'pending')
+                                        ->orWhereNull('review_status')
+                                        ->orWhere('review_status', '');
+                                });
+                            }
+                        )
+                        ->when(
+                            filled($data['reviewed_year'] ?? null),
+                            fn (Builder $query): Builder => $query->whereYear('reviewed_at', $data['reviewed_year'])
+                        )
+                        ->when(
+                            filled($data['reviewed_month'] ?? null),
+                            fn (Builder $query): Builder => $query->whereMonth('reviewed_at', $data['reviewed_month'])
+                        );
+                }),
+        ];
     }
 
     protected static function getRecordActions(): array
@@ -247,7 +357,7 @@ class CustomFormEntriesTable
 
         if (class_exists(\Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate::class)) {
             $actions[] = \Chanthoeun\FilamentDocumentBuilder\Tables\Actions\DownloadPdfAction::make('download_pdf')
-                ->label('Download PDF')
+                ->label(__('review_applications.download_pdf'))
                 ->icon('heroicon-o-document-arrow-down')
                 ->color('success')
                 ->templateType(fn ($record) => 'custom_form_' . $record->custom_form_id)
@@ -329,10 +439,21 @@ class CustomFormEntriesTable
 
     protected static function applyQueryConstraints(Builder $query, ?string $formId): Builder
     {
-        $query
-            ->with(['creator', 'customForm'])
-            ->when($formId, fn ($q, $id) => $q->where('custom_form_id', $id));
+        $query->with(['creator', 'customForm']);
 
+        if ($formId) {
+            $query->where('custom_form_id', $formId);
+        } else {
+            $nationalExamFormId = \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
+                ->where('slug', 'national-examination-registration')
+                ->value('id');
+
+            if ($nationalExamFormId) {
+                $query->where('custom_form_id', $nationalExamFormId);
+            }
+        }
+
+        // Student panel safety checks
         if (
             \Filament\Facades\Filament::getCurrentPanel()
             && \Filament\Facades\Filament::getCurrentPanel()->getId() === 'student'
