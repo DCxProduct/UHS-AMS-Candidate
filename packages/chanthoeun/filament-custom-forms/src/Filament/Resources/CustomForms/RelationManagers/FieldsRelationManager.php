@@ -116,10 +116,26 @@ class FieldsRelationManager extends RelationManager
                                 \Filament\Forms\Components\Select::make('options.visible_when.value')
                                     ->label(__('filament-custom-forms::fcf.field.form_type'))
                                     ->placeholder(__('filament-custom-forms::fcf.field.select_form_type'))
-                                    ->options([
-                                        'master' => 'Master',
-                                        'bachelor' => 'Bachelor',
-                                    ])
+                                    ->options(function ($livewire): array {
+                                        $customForm = $livewire->getOwnerRecord();
+
+                                        if (! $customForm) {
+                                            return [];
+                                        }
+
+                                        $selectionField = \Chanthoeun\FilamentCustomForms\Models\CustomFormField::query()
+                                            ->where('custom_form_id', $customForm->id)
+                                            ->where('name', 'form_selection')
+                                            ->first();
+
+                                        if (! $selectionField) {
+                                            return [];
+                                        }
+
+                                        $choices = data_get($selectionField->options, 'choices') ?? [];
+
+                                        return is_array($choices) ? $choices : [];
+                                    })
                                     ->native(false)
                                     ->live()
                                     ->afterStateUpdated(function ($state, $set): void {
