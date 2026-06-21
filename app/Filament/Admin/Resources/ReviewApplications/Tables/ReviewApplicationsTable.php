@@ -100,7 +100,7 @@ class ReviewApplicationsTable
                     ->label(new HtmlString('&nbsp;'))
                     ->schema([
                         Select::make('form_selection')
-                            ->label('Form Type')
+                            ->label(__('review_applications.form_type'))
                             ->options(function (): array {
                                 return CustomFormEntry::query()
                                     ->whereNotNull('data->form_selection')
