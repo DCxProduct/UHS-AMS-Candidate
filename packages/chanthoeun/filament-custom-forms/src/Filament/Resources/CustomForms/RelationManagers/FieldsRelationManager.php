@@ -357,6 +357,18 @@ class FieldsRelationManager extends RelationManager
                         default => 'gray',
                     }),
 
+                TextColumn::make('options.visible_when.value')
+                    ->label('Form Type')
+                    ->badge()
+                    ->formatStateUsing(fn ($state) => $state ? ucfirst($state) : 'All')
+                    ->color(fn ($state): string => match ($state) {
+                        'associate' => 'gray',
+                        'bachelor' => 'info',
+                        'master' => 'warning',
+                        'phd' => 'success',
+                        default => 'gray',
+                    }),
+
                 TextColumn::make('parent.name')
                     ->label(__('filament-custom-forms::fcf.admin.parent_container'))
                     ->badge(),
