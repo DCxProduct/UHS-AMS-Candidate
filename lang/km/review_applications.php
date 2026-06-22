@@ -39,7 +39,7 @@ return [
 
     'statuses' => [
         'pending' => 'កំពុងរង់ចាំ',
-        'accepted' => 'បានទទួលយក',
+        'accepted' => 'បានអនុម័ត',
         'rejected' => 'បានបដិសេធ',
         'passed' => 'ជាប់',
         'failed' => 'ធ្លាក់',
