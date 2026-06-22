@@ -39,7 +39,7 @@ return [
 
     'statuses' => [
         'pending' => 'Pending',
-        'accepted' => 'Accepted',
+        'accepted' => 'Approved',
         'rejected' => 'Rejected',
         'passed' => 'Passed',
         'failed' => 'Failed',
