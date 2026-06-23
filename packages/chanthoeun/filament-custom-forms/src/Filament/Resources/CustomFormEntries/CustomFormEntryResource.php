@@ -200,6 +200,16 @@ class CustomFormEntryResource extends Resource
                 $query->where('active', true);
             }
 
+            // IMPORTANT:
+            // Only sidebar forms should be registered as navigation items.
+            // Forms with menu_placement = sub_item will not show in the left sidebar.
+            if (DatabaseSchema::hasColumn('custom_forms', 'menu_placement')) {
+                $query->where(function ($query): void {
+                    $query->where('menu_placement', 'sidebar')
+                        ->orWhereNull('menu_placement');
+                });
+            }
+
             $forms = $query->get()
                 ->filter(fn (CustomForm $form): bool => static::canCurrentUserAccessForm($form))
                 ->filter(fn (CustomForm $form): bool => static::formShouldShowFeature((int) $form->id))

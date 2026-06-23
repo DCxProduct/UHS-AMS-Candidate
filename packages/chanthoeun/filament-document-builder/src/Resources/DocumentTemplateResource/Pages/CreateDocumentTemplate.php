@@ -13,6 +13,15 @@ class CreateDocumentTemplate extends CreateRecord
 {
     protected static string $resource = DocumentTemplateResource::class;
 
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        if (isset($data['custom_form_id'])) {
+            $data['custom_form_id'] = $data['custom_form_id'] ? (int) $data['custom_form_id'] : null;
+        }
+
+        return $data;
+    }
+
     protected function getHeaderActions(): array
     {
         return [
@@ -32,7 +41,6 @@ class CreateDocumentTemplate extends CreateRecord
                 ])
                 ->action(function (array $data) {
                     $html = LayoutTemplates::getTemplate($data['layout']);
-
                     $this->data['content'] = $html;
 
                     if ($data['layout'] === 'certificate') {

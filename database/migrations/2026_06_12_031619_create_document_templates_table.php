@@ -12,6 +12,12 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('type')->nullable(); // e.g. invoice, certificate
+
+            $table->foreignId('custom_form_id')
+                ->nullable()
+                ->constrained('custom_forms')
+                ->nullOnDelete();
+
             $table->string('model_class')->nullable(); // Database model reference
             $table->longText('content')->nullable(); // Stores the HTML
             $table->json('page_settings')->nullable(); // Paper size, orientation, margins

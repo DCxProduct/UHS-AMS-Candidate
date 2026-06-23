@@ -360,7 +360,23 @@ class CustomFormEntriesTable
                 ->label(__('review_applications.download_pdf'))
                 ->icon('heroicon-o-document-arrow-down')
                 ->color('success')
-                ->templateType(fn ($record) => 'custom_form_' . $record->custom_form_id)
+                ->templateType(function ($record) {
+                    $formSelection = strtolower((string) data_get($record->data, 'form_selection'));
+
+                    if (filled($formSelection)) {
+                        $subForm = \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
+                            ->where('custom_form_id', $record->custom_form_id)
+                            ->where('menu_placement', 'sub_item')
+                            ->where('sub_item_type', $formSelection)
+                            ->first();
+
+                        if ($subForm) {
+                            return 'custom_form_' . $subForm->id;
+                        }
+                    }
+
+                    return 'custom_form_' . $record->custom_form_id;
+                })
                 ->filename(fn ($record) => 'document-' . $record->id . '.pdf')
                 ->visible(fn ($record): bool => self::canDownloadPdf($record));
         }

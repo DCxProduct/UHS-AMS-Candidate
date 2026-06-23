@@ -9,6 +9,7 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Wizard;
 use Filament\Schemas\Components\Wizard\Step;
 use Filament\Schemas\Schema;
+use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 
 class DocumentTemplateForm
 {
@@ -18,7 +19,7 @@ class DocumentTemplateForm
             ->schema([
                 Wizard::make([
                     Step::make(__('filament-document-builder::document-builder.labels.template_details'))->schema([
-                        Grid::make(3)->schema([
+                        Grid::make(4)->schema([
                             Forms\Components\TextInput::make('name')
                                 ->label(__('filament-document-builder::document-builder.labels.template_name'))
                                 ->required()
@@ -27,6 +28,22 @@ class DocumentTemplateForm
                                 ->label(__('filament-document-builder::document-builder.labels.template_type'))
                                 ->placeholder(__('filament-document-builder::document-builder.labels.type_placeholder'))
                                 ->maxLength(255),
+                            Forms\Components\Select::make('custom_form_id')
+                                ->label('Form Type Field')
+                                ->options(function () {
+                                    if (!class_exists(\Chanthoeun\FilamentCustomForms\Models\CustomForm::class)) {
+                                        return [];
+                                    }
+                                    return \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
+                                        ->pluck('name', 'id')
+                                        ->toArray();
+                                })
+                                ->placeholder('Please Select Form Type')
+                                ->searchable()
+                                ->live()  // keep this
+                                ->afterStateUpdated(function ($state, callable $set) {
+                                    // just triggers reactivity
+                                }),
                             Forms\Components\Select::make('model_class')
                                 ->label(__('filament-document-builder::document-builder.labels.database_model'))
                                 ->options(function () {
@@ -119,26 +136,43 @@ class DocumentTemplateForm
                             ->fileAttachmentsDisk('public')
                             ->fileAttachmentsDirectory('document-templates')
                             ->profile('full')
-                            ->key(fn (Get $get) => 'tinymce-'.md5(json_encode($get('extra_data_sources')).$get('model_class').$get('type').json_encode($get('page_settings'))))
+//                            ->key(fn (Get $get) => 'tinymce-'.md5(json_encode($get('extra_data_sources')).$get('model_class').$get('type').json_encode($get('page_settings'))))
+                            ->key(fn (Get $get) => 'tinymce-'.md5(
+                                    json_encode($get('extra_data_sources')) .
+                                    $get('model_class') .
+                                    $get('custom_form_id') .
+                                    json_encode($get('page_settings'))
+                                ))
                             ->setCustomConfigs(function (Get $get) {
                                 $vars = [];
                                 $modelClass = $get('model_class');
+
                                 if ($modelClass && class_exists($modelClass)) {
                                     $model = new $modelClass;
                                     $vars = array_merge(['id', 'created_at', 'updated_at'], $model->getFillable());
 
-                                    $type = $get('type');
-                                    /** @phpstan-ignore-next-line */
-                                    if ($modelClass === 'Chanthoeun\FilamentCustomForms\Models\CustomFormEntry' && $type && str_starts_with($type, 'custom_form_')) {
-                                        $formId = str_replace('custom_form_', '', $type);
-                                        $customFormClass = 'Chanthoeun\FilamentCustomForms\Models\CustomForm';
-                                        $customForm = class_exists($customFormClass) ? $customFormClass::find($formId) : null;
+                                    $customFormId = $get('custom_form_id');
+
+                                    if (
+                                        $modelClass === 'Chanthoeun\FilamentCustomForms\Models\CustomFormEntry'
+                                        && $customFormId
+                                    ) {
+                                        $customFormClass = \Chanthoeun\FilamentCustomForms\Models\CustomForm::class;
+
+                                        $customForm = class_exists($customFormClass)
+                                            ? $customFormClass::find($customFormId)
+                                            : null;
+
                                         if ($customForm) {
                                             $customFields = [];
-                                            if ($customForm->fields()->count() > 0) {
+
+                                            if (method_exists($customForm, 'fields') && $customForm->fields()->count() > 0) {
                                                 foreach ($customForm->fields as $field) {
-                                                    if (! in_array($field->type, ['section', 'grid', 'fieldset', 'wizard']) && ! empty($field->name)) {
-                                                        $customFields[] = 'data.'.$field->name;
+                                                    if (
+                                                        ! in_array($field->type, ['section', 'grid', 'fieldset', 'wizard'])
+                                                        && ! empty($field->name)
+                                                    ) {
+                                                        $customFields[] = 'data.' . $field->name;
                                                     }
                                                 }
                                             } elseif (is_array($customForm->schema)) {
@@ -146,17 +180,20 @@ class DocumentTemplateForm
                                                     foreach ($schema as $block) {
                                                         $bType = $block['type'] ?? null;
                                                         $data = $block['data'] ?? [];
+
                                                         if (in_array($bType, ['section', 'grid', 'fieldset', 'repeater'])) {
                                                             if (! empty($data['schema'])) {
                                                                 $extractFields($data['schema']);
                                                             }
                                                         } elseif (! empty($data['name'])) {
-                                                            $customFields[] = 'data.'.$data['name'];
+                                                            $customFields[] = 'data.' . $data['name'];
                                                         }
                                                     }
                                                 };
+
                                                 $extractFields($customForm->schema);
                                             }
+
                                             $vars = array_merge($vars, $customFields);
                                         }
                                     }
