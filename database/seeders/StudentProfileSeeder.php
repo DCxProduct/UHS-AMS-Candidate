@@ -17,6 +17,7 @@ class StudentProfileSeeder extends Seeder
     {
         return __('navigation.groups.form_entry');
     }
+
     public function run(): void
     {
         if (! Schema::hasTable('custom_forms')) {
@@ -44,6 +45,18 @@ class StudentProfileSeeder extends Seeder
             'updated_at' => $now,
         ];
 
+        if (Schema::hasColumn('custom_forms', 'menu_placement')) {
+            $formData['menu_placement'] = 'sidebar';
+        }
+
+        if (Schema::hasColumn('custom_forms', 'parent_sidebar')) {
+            $formData['parent_sidebar'] = null;
+        }
+
+        if (Schema::hasColumn('custom_forms', 'sub_item_type')) {
+            $formData['sub_item_type'] = null;
+        }
+
         if (Schema::hasColumn('custom_forms', 'icon')) {
             $formData['icon'] = 'heroicon-o-user-circle';
         }
@@ -56,10 +69,9 @@ class StudentProfileSeeder extends Seeder
             $formData['schema'] = null;
         }
 
-        $formData['allowed_roles'] = json_encode([
-            'student',
-            'admin',
-        ], JSON_UNESCAPED_UNICODE);
+        if (Schema::hasColumn('custom_forms', 'allowed_roles')) {
+            $formData['allowed_roles'] = json_encode(['student', 'admin'], JSON_UNESCAPED_UNICODE);
+        }
 
         if ($form) {
             DB::table('custom_forms')
@@ -70,6 +82,15 @@ class StudentProfileSeeder extends Seeder
         } else {
             $formData['created_at'] = $now;
             $customFormId = (int) DB::table('custom_forms')->insertGetId($formData);
+        }
+
+        if (Schema::hasColumn('custom_forms', 'custom_form_id')) {
+            DB::table('custom_forms')
+                ->where('id', $customFormId)
+                ->update([
+                    'custom_form_id' => $customFormId,
+                    'updated_at' => $now,
+                ]);
         }
 
         $this->deleteFormFields($customFormId);
@@ -137,11 +158,6 @@ class StudentProfileSeeder extends Seeder
 
         $sort = 1;
 
-        /*
-        |--------------------------------------------------------------------------
-        | I. Personal Information
-        |--------------------------------------------------------------------------
-        */
         $personalSection = $this->upsertField(
             $customFormId,
             'personal_information',
@@ -195,11 +211,6 @@ class StudentProfileSeeder extends Seeder
 
         $this->upsertFields($customFormId, $personalSection, $personalFields, $keepNames, $sort);
 
-        /*
-        |--------------------------------------------------------------------------
-        | II. Family Information
-        |--------------------------------------------------------------------------
-        */
         $familySection = $this->upsertField(
             $customFormId,
             'family_information',
@@ -286,11 +297,6 @@ class StudentProfileSeeder extends Seeder
 
         $this->upsertFields($customFormId, $familySection, $spouseFields, $keepNames, $sort);
 
-        /*
-        |--------------------------------------------------------------------------
-        | III. Educational Information
-        |--------------------------------------------------------------------------
-        */
         $educationSection = $this->upsertField(
             $customFormId,
             'educational_information',
@@ -328,11 +334,6 @@ class StudentProfileSeeder extends Seeder
 
         $this->upsertFields($customFormId, $educationRepeater, $educationFields, $keepNames, $sort);
 
-        /*
-        |--------------------------------------------------------------------------
-        | IV. Work History
-        |--------------------------------------------------------------------------
-        */
         $cvSection = $this->upsertField(
             $customFormId,
             'curriculum_vitae',
@@ -374,6 +375,7 @@ class StudentProfileSeeder extends Seeder
             ->whereNotIn('name', $keepNames)
             ->delete();
 
+        $this->createDocumentTemplate($customFormId);
         $this->migrateEntryDataKeys($customFormId);
     }
 
@@ -509,12 +511,14 @@ class StudentProfileSeeder extends Seeder
 
     private function deleteFormFields(int $customFormId): void
     {
-        do {
-            $deleted = DB::table('custom_form_fields')
-                ->where('custom_form_id', $customFormId)
-                ->whereNotNull('parent_id')
-                ->delete();
-        } while ($deleted > 0);
+        if (Schema::hasColumn('custom_form_fields', 'parent_id')) {
+            do {
+                $deleted = DB::table('custom_form_fields')
+                    ->where('custom_form_id', $customFormId)
+                    ->whereNotNull('parent_id')
+                    ->delete();
+            } while ($deleted > 0);
+        }
 
         DB::table('custom_form_fields')
             ->where('custom_form_id', $customFormId)
@@ -546,8 +550,89 @@ class StudentProfileSeeder extends Seeder
         ]);
     }
 
+    private function createDocumentTemplate(int $customFormId): void
+    {
+        if (! Schema::hasTable('document_templates')) {
+            return;
+        }
+
+        $now = now();
+        $documentType = 'custom_form_' . $customFormId;
+
+        $typeColumn = collect(['document_type', 'template_type', 'type'])->first(
+            fn (string $column): bool => Schema::hasColumn('document_templates', $column)
+        );
+
+        if (! $typeColumn) {
+            return;
+        }
+
+        DB::table('document_templates')
+            ->where($typeColumn, $documentType)
+            ->delete();
+
+        $data = [
+            $typeColumn => $documentType,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ];
+
+        if (Schema::hasColumn('document_templates', 'name')) {
+            $data['name'] = 'Profile Template';
+        }
+
+        if (Schema::hasColumn('document_templates', 'template_name')) {
+            $data['template_name'] = 'Profile Template';
+        }
+
+        if (Schema::hasColumn('document_templates', 'custom_form_id')) {
+            $data['custom_form_id'] = $customFormId;
+        }
+
+        if (Schema::hasColumn('document_templates', 'is_active')) {
+            $data['is_active'] = true;
+        }
+
+        if (Schema::hasColumn('document_templates', 'model_class')) {
+            $data['model_class'] = \Chanthoeun\FilamentCustomForms\Models\CustomFormEntry::class;
+        }
+
+        if (Schema::hasColumn('document_templates', 'page_settings')) {
+            $data['page_settings'] = json_encode([
+                'format' => 'a4',
+                'orientation' => 'portrait',
+                'margin_left' => 15,
+                'margin_right' => 15,
+                'margin_top' => 15,
+                'margin_bottom' => 15,
+            ], JSON_UNESCAPED_UNICODE);
+        }
+
+        $html = '<div style="font-family: sans-serif; max-width: 900px; margin: 0 auto;">';
+        $html .= '<h1 style="text-align:center;">Profile</h1>';
+        $html .= '<p><strong>First Name Khmer:</strong> {{ first_name_kh }}</p>';
+        $html .= '<p><strong>Last Name Khmer:</strong> {{ last_name_kh }}</p>';
+        $html .= '<p><strong>First Name English:</strong> {{ first_name_en }}</p>';
+        $html .= '<p><strong>Last Name English:</strong> {{ last_name_en }}</p>';
+        $html .= '<p><strong>Date of Birth:</strong> {{ date_of_birth }}</p>';
+        $html .= '<p><strong>Gender:</strong> {{ gender }}</p>';
+        $html .= '</div>';
+
+        foreach (['content', 'html', 'body', 'template', 'template_content'] as $column) {
+            if (Schema::hasColumn('document_templates', $column)) {
+                $data[$column] = $html;
+            }
+        }
+
+        DB::table('document_templates')->insert($data);
+    }
+
     private function migrateEntryDataKeys(int $customFormId): void
     {
+        if (! Schema::hasTable('custom_form_entries')) {
+            return;
+        }
+
         $aliases = [
             'first_name_kh' => ['first_name_khmer'],
             'last_name_kh' => ['last_name_khmer'],

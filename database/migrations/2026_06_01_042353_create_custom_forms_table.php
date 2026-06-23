@@ -19,6 +19,14 @@ return new class extends Migration {
                 $table->boolean('is_active')->default(true);
                 $table->json('allowed_roles')->nullable();
 
+                $table->foreignId('custom_form_id')
+                    ->nullable()
+                    ->constrained('custom_forms')
+                    ->nullOnDelete();
+                $table->string('menu_placement')->default('sidebar')->after('form_type_field');
+                $table->string('parent_sidebar')->nullable()->after('menu_placement');
+                $table->string('sub_item_type')->nullable()->after('parent_sidebar');
+
                 $table->timestamps();
                 $table->softDeletes();
             });

@@ -16,9 +16,13 @@ class CustomForm extends Model
     protected $fillable = [
         'name',
         'slug',
+        'custom_form_id',
         'schema',
         'is_active',
         'allowed_roles',
+        'menu_placement',
+        'parent_sidebar',
+        'sub_item_type',
     ];
 
     protected $casts = [
@@ -27,7 +31,10 @@ class CustomForm extends Model
         'allowed_roles' => 'array',
     ];
 
-
+    public function parentForm()
+    {
+        return $this->belongsTo(self::class, 'custom_form_id');
+    }
 
     public function entries(): HasMany
     {
@@ -38,4 +45,5 @@ class CustomForm extends Model
     {
         return $this->hasMany(CustomFormField::class)->orderBy('sort');
     }
+
 }

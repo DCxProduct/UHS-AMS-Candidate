@@ -17,6 +17,14 @@ class EditDocumentTemplate extends EditRecord
 {
     protected static string $resource = DocumentTemplateResource::class;
 
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        if (isset($data['custom_form_id'])) {
+            $data['custom_form_id'] = $data['custom_form_id'] ? (int) $data['custom_form_id'] : null;
+        }
+
+        return $data;
+    }
     protected function getHeaderActions(): array
     {
         return [

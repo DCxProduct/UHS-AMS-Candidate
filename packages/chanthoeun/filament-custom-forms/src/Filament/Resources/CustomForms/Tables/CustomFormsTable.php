@@ -27,6 +27,39 @@ class CustomFormsTable
                 TextColumn::make('slug')
                     ->label(__('filament-custom-forms::fcf.form.slug'))
                     ->searchable(),
+                TextColumn::make('menu_placement')
+                    ->label('Placement')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'sidebar' => 'success',
+                        'sub_item' => 'warning',
+                        default => 'gray',
+                    })
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'sidebar' => 'Sidebar',
+                        'sub_item' => 'Sub Item',
+                        default => $state,
+                    }),
+                TextColumn::make('parent_sidebar')
+                    ->label('Parent Sidebar')
+                    ->default('—')
+                    ->searchable()
+                    ->badge()
+                    ->alignCenter()
+                    ->color('info'),
+                TextColumn::make('sub_item_type')
+                    ->label('Sub Item Type')
+                    ->default('—')
+                    ->searchable()
+                    ->badge()
+                    ->alignCenter()
+                    ->color('warning'),
+                TextColumn::make('parentForm.name')
+                    ->label('Form Type Field')
+                    ->default('—')
+                    ->badge()
+                    ->alignCenter()
+                    ->color('primary'),
                 IconColumn::make('is_active')
                     ->label(__('filament-custom-forms::fcf.form.is_active'))
                     ->boolean()

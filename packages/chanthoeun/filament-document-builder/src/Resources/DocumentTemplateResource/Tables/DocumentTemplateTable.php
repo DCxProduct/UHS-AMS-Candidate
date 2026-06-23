@@ -21,6 +21,14 @@ class DocumentTemplateTable
                     ->sortable()
                     ->weight('bold'),
 
+                Tables\Columns\TextColumn::make('customForm.name')
+                    ->label('Form Type Field')
+                    ->default('—')
+                    ->badge()
+                    ->color('primary')
+                    ->alignCenter()
+                    ->sortable(),
+
                 Tables\Columns\TextColumn::make('model_class')
                     ->label(__('filament-document-builder::document-builder.labels.database_model'))
                     ->searchable()
