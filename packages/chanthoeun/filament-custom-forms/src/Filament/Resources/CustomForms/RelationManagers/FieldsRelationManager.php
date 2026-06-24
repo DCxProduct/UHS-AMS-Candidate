@@ -112,6 +112,9 @@ class FieldsRelationManager extends RelationManager
                         \Filament\Schemas\Components\Section::make(__('filament-custom-forms::fcf.field.dynamic_form_type_field'))
                             ->columnSpanFull()
                             ->columns(1)
+                            ->visible(function ($livewire): bool {
+                                return $livewire->getOwnerRecord()?->menu_placement === 'sidebar';
+                            })
                             ->components([
                                 \Filament\Forms\Components\Select::make('options.visible_when.value')
                                     ->label(__('filament-custom-forms::fcf.field.form_type'))
@@ -376,10 +379,21 @@ class FieldsRelationManager extends RelationManager
             ->reorderable('sort')
             ->defaultSort('sort', 'asc')
             ->headerActions([
-                CreateAction::make(),
+                CreateAction::make()
+                    ->using(function (array $data) {
+                        return \Chanthoeun\FilamentCustomForms\Models\CustomFormField::create(
+                            $this->prepareFieldData($data)
+                        );
+                    }),
             ])
             ->actions([
-                EditAction::make(),
+                EditAction::make()
+                    ->using(function ($record, array $data) {
+                        $record->update($this->prepareFieldData($data));
+
+                        return $record;
+                    }),
+
                 DeleteAction::make(),
             ])
             ->bulkActions([
@@ -387,5 +401,46 @@ class FieldsRelationManager extends RelationManager
                     DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    private function prepareFieldData(array $data): array
+    {
+        $ownerForm = $this->getOwnerRecord();
+
+        $selectedType = data_get($data, 'options.visible_when.value');
+
+        if (blank($selectedType) && filled($ownerForm->sub_item_type)) {
+            $selectedType = $ownerForm->sub_item_type;
+
+            data_set($data, 'options.visible_when.field', 'form_selection');
+            data_set($data, 'options.visible_when.operator', '=');
+            data_set($data, 'options.visible_when.value', $selectedType);
+        }
+
+        $targetFormId = $ownerForm->id;
+
+        if (filled($selectedType)) {
+            $rootFormId = $ownerForm->id;
+
+            if ($ownerForm->menu_placement === 'sub_item' && filled($ownerForm->custom_form_id)) {
+                $rootFormId = $ownerForm->custom_form_id;
+            }
+
+            $targetForm = \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
+                ->where('custom_form_id', $rootFormId)
+                ->whereRaw('LOWER(sub_item_type) = ?', [
+                    strtolower(trim((string) $selectedType)),
+                ])
+                ->first();
+
+            if ($targetForm) {
+                $targetFormId = $targetForm->id;
+                $data['parent_id'] = null;
+            }
+        }
+
+        $data['custom_form_id'] = $targetFormId;
+
+        return $data;
     }
 }

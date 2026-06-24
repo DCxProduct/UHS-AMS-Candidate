@@ -20,7 +20,7 @@ use Illuminate\Support\Str;
 
 class StudentDynamicFormSchema
 {
-    public function build(CustomForm $form, ?int $sectionId = null): array
+    public function build(CustomForm $form, ?int $sectionId = null, array $state = []): array
     {
         if (! Schema::hasTable('custom_form_fields')) {
             return [];
@@ -28,10 +28,7 @@ class StudentDynamicFormSchema
 
         $columns = Schema::getColumnListing('custom_form_fields');
 
-        $formColumn = $this->firstExistingColumn($columns, [
-            'custom_form_id',
-            'form_id',
-        ]);
+        $formColumn = $this->firstExistingColumn($columns, ['custom_form_id', 'form_id']);
 
         if (! $formColumn) {
             return [];
@@ -50,13 +47,45 @@ class StudentDynamicFormSchema
             'order_column',
         ]);
 
+        $formIds = [$form->id];
+
+        $selectedType = strtolower((string) data_get($state, 'form_selection'));
+
+        if (filled($selectedType) && Schema::hasTable('custom_forms')) {
+            $customFormColumns = Schema::getColumnListing('custom_forms');
+
+            $subFormQuery = DB::table('custom_forms');
+
+            if (in_array('menu_placement', $customFormColumns, true)) {
+                $subFormQuery->where('menu_placement', 'sub_item');
+            }
+
+            if (in_array('parent_sidebar', $customFormColumns, true)) {
+                $subFormQuery->where('parent_sidebar', $form->name);
+            }
+
+            if (in_array('sub_item_type', $customFormColumns, true)) {
+                $subFormQuery->whereRaw('LOWER(sub_item_type) = ?', [$selectedType]);
+            }
+
+            if (in_array('is_active', $customFormColumns, true)) {
+                $subFormQuery->where('is_active', true);
+            }
+
+            $subFormId = $subFormQuery->value('id');
+
+            if ($subFormId) {
+                $formIds[] = (int) $subFormId;
+            }
+        }
+
         $query = DB::table('custom_form_fields')
-            ->where($formColumn, $form->id);
+            ->whereIn($formColumn, $formIds);
 
         if ($sortColumn) {
-            $query->orderBy($sortColumn);
+            $query->orderBy($formColumn)->orderBy($sortColumn);
         } else {
-            $query->orderBy('id');
+            $query->orderBy($formColumn)->orderBy('id');
         }
 
         $allFields = $query->get();
@@ -91,31 +120,21 @@ class StudentDynamicFormSchema
         $name = (string) ($field->name ?? $field->field_name ?? '');
 
         $config = $this->getConfig($field);
-
         $label = $this->getTranslatedFieldLabel($field, $config);
 
-        /*
-        |--------------------------------------------------------------------------
-        | Section fields
-        |--------------------------------------------------------------------------
-        | Top-level section fields are workflow tabs.
-        | They are loaded in StudentDynamicFormPage, not rendered here as inputs.
-        */
         if (in_array($type, ['section', 'fieldset', 'container', 'group'], true)) {
             return null;
         }
 
         if ($type === 'info') {
-            $infoName = filled($name)
-                ? $name
-                : 'info_' . ($field->id ?? Str::random(6));
+            $infoName = filled($name) ? $name : 'info_' . ($field->id ?? Str::random(6));
 
-            $content = $this->getTranslatedInfoContent($field, $config, $label);
-
-            $component = Placeholder::make($infoName)
-                ->content($content);
-
-            return $this->applyCommonConfig($component, $field, $config, true);
+            return $this->applyCommonConfig(
+                Placeholder::make($infoName)->content($this->getTranslatedInfoContent($field, $config, $label)),
+                $field,
+                $config,
+                true
+            );
         }
 
         if ($type === 'repeater') {
@@ -142,50 +161,27 @@ class StudentDynamicFormSchema
         }
 
         $component = match ($type) {
-            'text',
-            'text_input',
-            'input' => TextInput::make($name),
-
+            'text', 'text_input', 'input' => TextInput::make($name),
             'email' => TextInput::make($name)->email(),
-
-            'phone' => TextInput::make($name)
-                ->tel()
-                ->extraInputAttributes([
-                    'inputmode' => 'numeric',
-                    'oninput' => "this.value = this.value.replace(/[^0-9]/g, '')",
-                ]),
-
-            'number',
-            'number_input' => TextInput::make($name)->numeric(),
-
-            'textarea',
-            'text_area' => Textarea::make($name),
-
-            'select',
-            'select_dropdown' => Select::make($name)
+            'phone' => TextInput::make($name)->tel()->extraInputAttributes([
+                'inputmode' => 'numeric',
+                'oninput' => "this.value = this.value.replace(/[^0-9]/g, '')",
+            ]),
+            'number', 'number_input' => TextInput::make($name)->numeric(),
+            'textarea', 'text_area' => Textarea::make($name),
+            'select', 'select_dropdown' => Select::make($name)
                 ->options(fn ($get): array => $this->getSelectOptions($field, $config, $get))
                 ->searchable()
                 ->native(false),
-
-            'radio' => Radio::make($name)
-                ->options($this->getSelectOptions($field, $config, null)),
-
+            'radio' => Radio::make($name)->options($this->getSelectOptions($field, $config, null)),
             'checkbox' => Checkbox::make($name),
-
             'toggle' => Toggle::make($name),
-
-            'date',
-            'date_picker',
-            'datepicker' => DatePicker::make($name)
+            'date', 'date_picker', 'datepicker' => DatePicker::make($name)
                 ->native(false)
                 ->displayFormat('d/m/Y'),
-
-            'file',
-            'file_upload',
-            'fileupload' => FileUpload::make($name)
+            'file', 'file_upload', 'fileupload' => FileUpload::make($name)
                 ->disk('public')
                 ->directory('student-custom-form-uploads'),
-
             default => TextInput::make($name),
         };
 
@@ -194,10 +190,8 @@ class StudentDynamicFormSchema
 
     protected function applyCommonConfig($component, $field, array $config, bool $forceFullWidth = false)
     {
-        $label = $this->getTranslatedFieldLabel($field, $config);
-
         if (method_exists($component, 'label')) {
-            $component->label($label);
+            $component->label($this->getTranslatedFieldLabel($field, $config));
         }
 
         if (method_exists($component, 'required')) {
@@ -275,37 +269,6 @@ class StudentDynamicFormSchema
             return $span === 'full' ? 'full' : ((int) $span ?: 6);
         }
 
-        if (is_array($span)) {
-            $responsive = [];
-
-            if (array_is_list($span)) {
-                foreach ($span as $row) {
-                    if (! is_array($row)) {
-                        continue;
-                    }
-
-                    $breakpoint = $row['breakpoint'] ?? $row['key'] ?? 'default';
-                    $columns = $row['columns'] ?? $row['value'] ?? null;
-
-                    if (blank($columns)) {
-                        continue;
-                    }
-
-                    $responsive[(string) $breakpoint] = $columns === 'full'
-                        ? 'full'
-                        : (int) $columns;
-                }
-            } else {
-                foreach ($span as $breakpoint => $columns) {
-                    $responsive[(string) $breakpoint] = $columns === 'full'
-                        ? 'full'
-                        : (int) $columns;
-                }
-            }
-
-            return filled($responsive) ? $responsive : 6;
-        }
-
         return 6;
     }
 
@@ -333,11 +296,7 @@ class StudentDynamicFormSchema
 
     protected function dataSourceOptions($field, string $dataSource): array
     {
-        $source = Str::of($dataSource)
-            ->lower()
-            ->replace('-', '_')
-            ->snake()
-            ->toString();
+        $source = Str::of($dataSource)->lower()->replace('-', '_')->snake()->toString();
 
         $tableMap = [
             'academic_level' => 'academic_levels',
@@ -356,24 +315,14 @@ class StudentDynamicFormSchema
 
         $table = $tableMap[$source] ?? $source;
 
-        if (! preg_match('/^[a-zA-Z0-9_]+$/', $table)) {
-            return [];
-        }
-
-        if (! Schema::hasTable($table)) {
+        if (! preg_match('/^[a-zA-Z0-9_]+$/', $table) || ! Schema::hasTable($table)) {
             return [];
         }
 
         $columns = Schema::getColumnListing($table);
 
         $labelColumn = $this->localizedLabelColumn($columns);
-
-        $valueColumn = $this->firstExistingColumn($columns, [
-            'id',
-            'code',
-            'value',
-            'slug',
-        ]);
+        $valueColumn = $this->firstExistingColumn($columns, ['id', 'code', 'value', 'slug']);
 
         if (! $labelColumn || ! $valueColumn) {
             return [];
@@ -383,15 +332,9 @@ class StudentDynamicFormSchema
             ->orderBy($labelColumn)
             ->limit(1000)
             ->pluck($labelColumn, $valueColumn)
-            ->mapWithKeys(function ($label, $value) use ($field): array {
-                return [
-                    (string) $value => $this->getTranslatedOptionLabel(
-                        $field,
-                        (string) $value,
-                        (string) $label
-                    ),
-                ];
-            })
+            ->mapWithKeys(fn ($label, $value): array => [
+                (string) $value => $this->getTranslatedOptionLabel($field, (string) $value, (string) $label),
+            ])
             ->all();
     }
 
@@ -403,20 +346,9 @@ class StudentDynamicFormSchema
 
         $columns = Schema::getColumnListing('geo_locations');
 
-        $typeColumn = $this->firstExistingColumn($columns, [
-            'type',
-            'location_type',
-            'level',
-        ]);
-
+        $typeColumn = $this->firstExistingColumn($columns, ['type', 'location_type', 'level']);
         $labelColumn = $this->localizedLabelColumn($columns);
-
-        $valueColumn = $this->firstExistingColumn($columns, [
-            'id',
-            'code',
-            'value',
-            'name',
-        ]);
+        $valueColumn = $this->firstExistingColumn($columns, ['id', 'code', 'value', 'name']);
 
         if (! $labelColumn || ! $valueColumn) {
             return [];
@@ -432,15 +364,9 @@ class StudentDynamicFormSchema
             ->orderBy($labelColumn)
             ->limit(1000)
             ->pluck($labelColumn, $valueColumn)
-            ->mapWithKeys(function ($label, $value) use ($field): array {
-                return [
-                    (string) $value => $this->getTranslatedOptionLabel(
-                        $field,
-                        (string) $value,
-                        (string) $label
-                    ),
-                ];
-            })
+            ->mapWithKeys(fn ($label, $value): array => [
+                (string) $value => $this->getTranslatedOptionLabel($field, (string) $value, (string) $label),
+            ])
             ->all();
     }
 
@@ -479,10 +405,7 @@ class StudentDynamicFormSchema
 
     protected function normalizeOptions($field, array $config): array
     {
-        $options = $config['choices']
-            ?? $config['options']
-            ?? $config['items']
-            ?? [];
+        $options = $config['choices'] ?? $config['options'] ?? $config['items'] ?? [];
 
         if (! is_array($options)) {
             return [];
@@ -492,26 +415,20 @@ class StudentDynamicFormSchema
 
         foreach ($options as $key => $value) {
             if (is_array($value)) {
-                $optionValue = $value['value']
-                    ?? $value['id']
-                    ?? $value['key']
-                    ?? $key;
-
+                $optionValue = $value['value'] ?? $value['id'] ?? $value['key'] ?? $key;
                 $optionLabel = $this->localizedOptionLabel($value, (string) $optionValue);
             } else {
                 $optionValue = is_string($key) ? $key : $value;
                 $optionLabel = (string) $value;
             }
 
-            if (is_array($optionValue) || is_array($optionLabel)) {
-                continue;
+            if (! is_array($optionValue) && ! is_array($optionLabel)) {
+                $normalized[(string) $optionValue] = $this->getTranslatedOptionLabel(
+                    $field,
+                    (string) $optionValue,
+                    (string) $optionLabel
+                );
             }
-
-            $normalized[(string) $optionValue] = $this->getTranslatedOptionLabel(
-                $field,
-                (string) $optionValue,
-                (string) $optionLabel
-            );
         }
 
         return $normalized;
@@ -528,11 +445,9 @@ class StudentDynamicFormSchema
             ?? Str::headline($name)
         );
 
-        if (filled($name)) {
-            return $this->translateOrFallback('app.form_fields.' . $name, $fallback);
-        }
-
-        return $fallback;
+        return filled($name)
+            ? $this->translateOrFallback('app.form_fields.' . $name, $fallback)
+            : $fallback;
     }
 
     protected function getTranslatedInfoContent($field, array $config, string $fallback): string
@@ -545,11 +460,9 @@ class StudentDynamicFormSchema
             ?? $fallback
         );
 
-        if (filled($name)) {
-            return $this->translateOrFallback('app.form_fields.' . $name, $content);
-        }
-
-        return $content;
+        return filled($name)
+            ? $this->translateOrFallback('app.form_fields.' . $name, $content)
+            : $content;
     }
 
     protected function getTranslatedPlaceholder($field, array $config): ?string
@@ -598,25 +511,18 @@ class StudentDynamicFormSchema
 
         $optionKey = $this->translationKeyPart($value);
 
-        if (blank($optionKey)) {
-            return $fallback;
-        }
-
-        return $this->translateOrFallback(
-            'app.form_options.' . $name . '.' . $optionKey,
-            $fallback
-        );
+        return blank($optionKey)
+            ? $fallback
+            : $this->translateOrFallback('app.form_options.' . $name . '.' . $optionKey, $fallback);
     }
 
     protected function getRepeaterAddActionLabel(array $config, string $label): string
     {
         $fallback = $this->localizedConfigValue($config, 'add_action_label');
 
-        if (is_string($fallback) && filled($fallback)) {
-            return $fallback;
-        }
-
-        return __('app.add') . ' ' . $label;
+        return is_string($fallback) && filled($fallback)
+            ? $fallback
+            : __('app.add') . ' ' . $label;
     }
 
     protected function localizedConfigValue(array $config, string $key): mixed
@@ -634,9 +540,7 @@ class StudentDynamicFormSchema
     {
         $locale = app()->getLocale();
 
-        $localizedColumn = $key . '_' . $locale;
-
-        return $field->{$localizedColumn}
+        return $field->{$key . '_' . $locale}
             ?? $field->{$key . '_en'} ?? null
             ?? null;
     }
@@ -662,7 +566,7 @@ class StudentDynamicFormSchema
     {
         $locale = app()->getLocale();
 
-        $preferred = [
+        return $this->firstExistingColumn($columns, [
             'name_' . $locale,
             'label_' . $locale,
             'title_' . $locale,
@@ -672,9 +576,7 @@ class StudentDynamicFormSchema
             'label',
             'title',
             'khmer_name',
-        ];
-
-        return $this->firstExistingColumn($columns, $preferred);
+        ]);
     }
 
     protected function translationKeyPart(string $value): string
@@ -692,11 +594,7 @@ class StudentDynamicFormSchema
     {
         $translated = __($key);
 
-        if ($translated !== $key) {
-            return $translated;
-        }
-
-        return $fallback ?? '';
+        return $translated !== $key ? $translated : ($fallback ?? '');
     }
 
     protected function firstExistingColumn(array $columns, array $names): ?string

@@ -31,70 +31,142 @@ class CustomFormEntryForm
             ? $livewire->form_id
             : (request()->query('form_id') ?? request()->input('tableFilters.custom_form_id.value'));
 
-        return $schema
-            ->components([
-                Select::make('custom_form_id')
-                    ->label(__('filament-custom-forms::fcf.form.single'))
-                    ->options(CustomForm::query()->where('is_active', true)->whereNotNull('name')->pluck('name', 'id'))
-                    ->required()
-                    ->default($preselectedFormId)
-                    ->hidden(fn (?Model $record): bool => ! empty($preselectedFormId) || filled($record?->custom_form_id))
-                    ->disabled(fn (): bool => method_exists($livewire, 'isLockedForEditing') && $livewire->isLockedForEditing())
-                    ->live()
-                    ->columnSpanFull(),
+        return $schema->components([
+            Select::make('custom_form_id')
+                ->label(__('filament-custom-forms::fcf.form.single'))
+                ->options(CustomForm::query()->where('is_active', true)->whereNotNull('name')->pluck('name', 'id'))
+                ->required()
+                ->default($preselectedFormId)
+                ->hidden(fn (?Model $record): bool => ! empty($preselectedFormId) || filled($record?->custom_form_id))
+                ->disabled(fn (): bool => method_exists($livewire, 'isLockedForEditing') && $livewire->isLockedForEditing())
+                ->live()
+                ->columnSpanFull(),
 
-                Grid::make()
-                    ->columns(1)
-                    ->columnSpanFull()
-                    ->schema(function (Get $get, ?Model $record) use ($preselectedFormId, $livewire): array {
-                        $formId = $get('custom_form_id') ?? $record?->custom_form_id ?? $preselectedFormId;
+            Grid::make()
+                ->columns(1)
+                ->columnSpanFull()
+                ->schema(function (Get $get, ?Model $record) use ($preselectedFormId, $livewire): array {
+                    $formId = $get('custom_form_id') ?? $record?->custom_form_id ?? $preselectedFormId;
 
-                        if (! $formId) {
-                            return [];
-                        }
+                    if (! $formId) {
+                        return [];
+                    }
 
-                        $customForm = CustomForm::query()->find($formId);
+                    $customForm = CustomForm::query()->find($formId);
 
-                        if (! $customForm) {
-                            return [];
-                        }
+                    if (! $customForm) {
+                        return [];
+                    }
 
-                        $rootFields = $customForm->fields()->roots()->orderBy('sort')->get();
+                    $rootFields = $customForm->fields()->roots()->orderBy('sort')->get();
 
-                        $isLocked = method_exists($livewire, 'isLockedForEditing')
-                            && $livewire->isLockedForEditing();
+                    $isLocked = method_exists($livewire, 'isLockedForEditing')
+                        && $livewire->isLockedForEditing();
 
-                        if ((string) $customForm->slug === 'national-examination-registration') {
-                            return self::getNationalExamWizard($rootFields, $isLocked);
-                        }
+                    $formTypesField = self::findFieldByName($rootFields, 'form_types');
+                    $formSelectionField = self::findFieldByName($rootFields, 'form_selection');
 
-                        $hiddenFieldNames = (string) $customForm->slug === 'profile'
-                            ? ['personal_note']
-                            : [];
+                    if ($formTypesField && $formSelectionField) {
+                        return self::getNationalExamWizard($customForm, $rootFields, $isLocked);
+                    }
 
-                        return self::getFields($rootFields, $isLocked, $hiddenFieldNames);
-                    }),
-            ]);
+                    $hiddenFieldNames = (string) $customForm->slug === 'profile'
+                        ? ['personal_note']
+                        : [];
+
+                    return self::getFields($rootFields, $isLocked, $hiddenFieldNames);
+                }),
+        ]);
     }
 
-    protected static function getNationalExamWizard(Collection $rootFields, bool $isLocked = false): array
+    protected static function findFieldByName(Collection $fields, string $name): ?object
     {
-        $formTypes = $rootFields
-            ->filter(fn ($field): bool => (string) $field->name === 'form_types')
-            ->values();
+        foreach ($fields as $field) {
+            if ((string) $field->name === $name) {
+                return $field;
+            }
 
-        $otherFields = $rootFields
-            ->reject(fn ($field): bool => (string) $field->name === 'form_types')
-            ->values();
+            $child = self::findFieldByName(
+                $field->children()->orderBy('sort')->get(),
+                $name
+            );
+
+            if ($child) {
+                return $child;
+            }
+        }
+
+        return null;
+    }
+
+    protected static function getNationalExamWizard(CustomForm $customForm, Collection $rootFields, bool $isLocked = false): array
+    {
+        $formTypesSection = self::findFieldByName($rootFields, 'form_types');
+        $formSelectionField = self::findFieldByName($rootFields, 'form_selection');
+
+        if (! $formTypesSection || ! $formSelectionField) {
+            return self::getFields($rootFields, $isLocked);
+        }
+
+        $formSelectionFields = $formTypesSection->children()->orderBy('sort')->get();
+
+        if ($formSelectionFields->isEmpty()) {
+            $formSelectionFields = collect([$formSelectionField]);
+        }
+
+        $formTypeStepSchema = [
+            Section::make($formTypesSection->label ?: 'Form Types')
+                ->schema([
+                    Select::make('data.form_selection')
+                        ->label($formSelectionField->label ?: 'Form Selections')
+                        ->options(self::normalizeOptions($formSelectionField->options ?? [])['choices'] ?? [])
+                        ->placeholder('Select option')
+                        ->dehydrated(true)
+                        ->live(false),
+                ])
+                ->columns(1),
+        ];
+
+        $applicationSchema = [];
+
+        $childForms = CustomForm::query()
+            ->where('custom_form_id', $customForm->id)
+            ->where('menu_placement', 'sub_item')
+            ->whereNotNull('sub_item_type')
+            ->where('is_active', true)
+            ->orderBy('id')
+            ->get();
+
+        foreach ($childForms as $childForm) {
+            $childRootFields = $childForm->fields()->roots()->orderBy('sort')->get();
+
+            if ($childRootFields->isEmpty()) {
+                continue;
+            }
+
+            $childSchema = self::getFields($childRootFields, $isLocked);
+
+            if (empty($childSchema)) {
+                continue;
+            }
+
+            $applicationSchema[] = Section::make($childForm->name)
+                ->schema($childSchema)
+                ->columns(2)
+                ->visible(function (Get $get) use ($childForm): bool {
+                    return strtolower((string) ($get('data.form_selection') ?? ''))
+                        === strtolower((string) $childForm->sub_item_type);
+                });
+        }
 
         return [
             Wizard::make([
                 WizardStep::make('Form Type')
-                    ->schema(self::getFields($formTypes, $isLocked))
+                    ->schema($formTypeStepSchema)
                     ->columns(1),
 
                 WizardStep::make('Application Form')
-                    ->schema(self::getFields($otherFields, $isLocked))
+                    ->schema($applicationSchema)
                     ->columns(1),
             ])
                 ->columnSpanFull()
@@ -143,8 +215,7 @@ class CustomFormEntryForm
                         continue;
                     }
 
-                    $steps[] = WizardStep::make($child->label)
-                        ->schema($stepFields);
+                    $steps[] = WizardStep::make($child->label)->schema($stepFields);
                 }
 
                 if (empty($steps)) {
@@ -189,16 +260,13 @@ class CustomFormEntryForm
 
                     case 'number':
                     case 'number_input':
-                        $isDecimal = $options['is_decimal'] ?? true;
-
                         $component = TextInput::make("data.{$name}")
                             ->numeric()
-                            ->inputMode($isDecimal ? 'decimal' : 'numeric');
+                            ->inputMode(($options['is_decimal'] ?? true) ? 'decimal' : 'numeric');
                         break;
 
                     case 'money':
-                        $currency = $options['currency'] ?? 'usd';
-                        $symbol = match ($currency) {
+                        $symbol = match ($options['currency'] ?? 'usd') {
                             'khr' => '៛',
                             'usd' => '$',
                             default => '$',
@@ -215,27 +283,21 @@ class CustomFormEntryForm
                         break;
 
                     case 'time_picker':
-                        $component = TimePicker::make("data.{$name}")
-                            ->seconds(false);
+                        $component = TimePicker::make("data.{$name}")->seconds(false);
                         break;
 
                     case 'email':
-                        $component = TextInput::make("data.{$name}")
-                            ->email();
+                        $component = TextInput::make("data.{$name}")->email();
                         break;
 
                     case 'phone':
-                        if (class_exists(\Ysfkaya\FilamentPhoneInput\Forms\PhoneInput::class)) {
-                            $component = \Ysfkaya\FilamentPhoneInput\Forms\PhoneInput::make("data.{$name}");
-                        } else {
-                            $component = TextInput::make("data.{$name}")
-                                ->tel();
-                        }
+                        $component = class_exists(\Ysfkaya\FilamentPhoneInput\Forms\PhoneInput::class)
+                            ? \Ysfkaya\FilamentPhoneInput\Forms\PhoneInput::make("data.{$name}")
+                            : TextInput::make("data.{$name}")->tel();
                         break;
 
                     case 'password':
-                        $component = TextInput::make("data.{$name}")
-                            ->password();
+                        $component = TextInput::make("data.{$name}")->password();
                         break;
 
                     case 'boolean':
@@ -259,7 +321,11 @@ class CustomFormEntryForm
                     case 'select_dropdown':
                         $component = Select::make("data.{$name}")
                             ->options($options['choices'] ?? [])
-                            ->live();
+                            ->dehydrated(true);
+
+                        if ((string) $name !== 'form_selection') {
+                            $component->live();
+                        }
 
                         if (! $isLocked) {
                             $component->placeholder($options['placeholder_en'] ?? 'Select option');
@@ -361,7 +427,7 @@ class CustomFormEntryForm
                 '!=', '<>' => (string) $actual !== (string) $expected,
                 'in' => in_array($actual, (array) $expected, true),
                 'not_in' => ! in_array($actual, (array) $expected, true),
-                default => (string) $actual === (string) $expected,
+                default => strtolower((string) $actual) === strtolower((string) $expected),
             };
         });
     }
@@ -371,8 +437,8 @@ class CustomFormEntryForm
         $locale = strtolower((string) app()->getLocale());
 
         $placeholder = in_array($locale, ['km', 'kh'], true)
-            ? ($options['placeholder_km'] ?? $options['placeholder'] ?? $fieldModel->placeholder ?? null)
-            : ($options['placeholder_en'] ?? $options['placeholder'] ?? $fieldModel->placeholder ?? null);
+            ? ($options['placeholder_km'] ?? $options['placeholder'] ?? null)
+            : ($options['placeholder_en'] ?? $options['placeholder'] ?? null);
 
         if (! is_string($placeholder)) {
             return null;

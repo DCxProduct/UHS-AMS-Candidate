@@ -157,42 +157,37 @@ class DocumentTemplateForm
                                         $modelClass === 'Chanthoeun\FilamentCustomForms\Models\CustomFormEntry'
                                         && $customFormId
                                     ) {
-                                        $customFormClass = \Chanthoeun\FilamentCustomForms\Models\CustomForm::class;
-
-                                        $customForm = class_exists($customFormClass)
-                                            ? $customFormClass::find($customFormId)
-                                            : null;
+                                        $customForm = \Chanthoeun\FilamentCustomForms\Models\CustomForm::find($customFormId);
 
                                         if ($customForm) {
                                             $customFields = [];
 
-                                            if (method_exists($customForm, 'fields') && $customForm->fields()->count() > 0) {
-                                                foreach ($customForm->fields as $field) {
+                                            $addFieldsFromForm = function ($form) use (&$customFields): void {
+                                                foreach ($form->fields()->orderBy('sort')->get() as $field) {
                                                     if (
-                                                        ! in_array($field->type, ['section', 'grid', 'fieldset', 'wizard'])
+                                                        ! in_array($field->type, ['section', 'grid', 'fieldset', 'wizard', 'repeater', 'step'], true)
                                                         && ! empty($field->name)
                                                     ) {
                                                         $customFields[] = 'data.' . $field->name;
                                                     }
                                                 }
-                                            } elseif (is_array($customForm->schema)) {
-                                                $extractFields = function ($schema) use (&$extractFields, &$customFields) {
-                                                    foreach ($schema as $block) {
-                                                        $bType = $block['type'] ?? null;
-                                                        $data = $block['data'] ?? [];
+                                            };
 
-                                                        if (in_array($bType, ['section', 'grid', 'fieldset', 'repeater'])) {
-                                                            if (! empty($data['schema'])) {
-                                                                $extractFields($data['schema']);
-                                                            }
-                                                        } elseif (! empty($data['name'])) {
-                                                            $customFields[] = 'data.' . $data['name'];
-                                                        }
-                                                    }
-                                                };
+                                            // parent fields
+                                            $addFieldsFromForm($customForm);
 
-                                                $extractFields($customForm->schema);
+                                            // child sub item fields: Associate, Bachelor, Master, PhD, Exam...
+                                            $childForms = \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
+                                                ->where('custom_form_id', $customForm->id)
+                                                ->where('menu_placement', 'sub_item')
+                                                ->where('is_active', true)
+                                                ->get();
+
+                                            foreach ($childForms as $childForm) {
+                                                $addFieldsFromForm($childForm);
                                             }
+
+                                            $customFields = array_values(array_unique($customFields));
 
                                             $vars = array_merge($vars, $customFields);
                                         }
@@ -200,6 +195,7 @@ class DocumentTemplateForm
                                 }
 
                                 $extraSources = $get('extra_data_sources') ?? [];
+
                                 foreach ($extraSources as $source) {
                                     if (! empty($source['variable_name'])) {
                                         $vars[] = $source['variable_name'];
@@ -207,8 +203,9 @@ class DocumentTemplateForm
                                         if (! empty($source['model_class']) && class_exists($source['model_class'])) {
                                             $extraModel = new $source['model_class'];
                                             $fields = array_merge(['id', 'created_at', 'updated_at'], $extraModel->getFillable());
+
                                             foreach ($fields as $field) {
-                                                $vars[] = $source['variable_name'].'.'.$field;
+                                                $vars[] = $source['variable_name'] . '.' . $field;
                                             }
                                         }
                                     }
