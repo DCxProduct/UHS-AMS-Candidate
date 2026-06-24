@@ -79,8 +79,7 @@ return [
     ],
 
     'form_type' => 'Form Type',
-    'reviewed_month' => 'Review Month',
-    'reviewed_year' => 'Reviewed Year',
+    'reviewed_year' => 'Current Year',
     'national_registration_number' => 'National Registration Number',
     'not_reviewed_yet' => 'Not reviewed yet',
     'download_pdf' => 'Download PDF',
