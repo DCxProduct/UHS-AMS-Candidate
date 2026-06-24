@@ -61,11 +61,12 @@ class ReviewApplicationResource extends Resource
                 'customForm',
             ])
             ->whereHas('customForm', function (Builder $query): void {
-                $query->where('slug', 'national-examination-registration');
+                $query->where('menu_placement', 'sidebar')
+                    ->where('is_active', true)
+                    ->where('slug', '!=', 'profile');
             })
             ->latest('id');
     }
-
     public static function form(Schema $schema): Schema
     {
         return $schema->components([]);
