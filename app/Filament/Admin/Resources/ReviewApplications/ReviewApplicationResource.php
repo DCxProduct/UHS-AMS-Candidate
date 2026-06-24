@@ -22,7 +22,7 @@ class ReviewApplicationResource extends Resource
         return CustomFormEntry::class;
     }
 
-    protected static ?string $slug = 'review-applications';
+    protected static ?string $slug = 'candidate-lists';
 
     protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-clipboard-document-check';
 

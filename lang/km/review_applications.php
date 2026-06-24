@@ -5,12 +5,12 @@ return [
     'navigation_group' => 'ពិនិត្យឯកសារ',
 
     'model_label' => 'ពិនិត្យពាក្យស្នើសុំ',
-    'plural_model_label' => 'ពិនិត្យពាក្យស្នើសុំ',
+    'plural_model_label' => 'បញ្ជីបេក្ខជន',
 
     'all_fields' => 'ព័ត៌មានទាំងអស់',
     'fields_count' => 'ចំណុច',
 
-    'list_title' => 'ពិនិត្យពាក្យស្នើសុំ',
+    'list_title' => 'បញ្ជីបេក្ខជន',
     'breadcrumb_list' => 'បញ្ជី',
 
     'id' => 'លេខសម្គាល់',
