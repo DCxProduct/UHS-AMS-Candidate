@@ -35,19 +35,6 @@ class CustomFormForm
                             ->maxLength(255)
                             ->unique(ignoreRecord: true),
 
-                        Forms\Components\Select::make('custom_form_id')
-                            ->label('Form Type Field')
-                            ->placeholder('Select Form Type')
-                            ->searchable()
-                            ->preload()
-                            ->live()
-                            ->afterStateUpdated(fn ($set) => $set('sub_item_type', null))
-                            ->options(fn () => CustomForm::query()
-                                ->orderBy('name')
-                                ->pluck('name', 'id')
-                                ->toArray()
-                            ),
-
                         Forms\Components\Select::make('menu_placement')
                             ->label('Menu Placement / ទីតាំងបង្ហាញ')
                             ->options([
@@ -61,6 +48,21 @@ class CustomFormForm
                             })
                             ->required()
                             ->native(false),
+
+                        Forms\Components\Select::make('custom_form_id')
+                            ->label('Form Type Field')
+                            ->placeholder('Select Form Type')
+                            ->searchable()
+                            ->preload()
+                            ->live()
+                            ->afterStateUpdated(fn ($set) => $set('sub_item_type', null))
+                            ->options(fn () => CustomForm::query()
+                                ->orderBy('name')
+                                ->pluck('name', 'id')
+                                ->toArray()
+                            )
+                            ->visible(fn (Get $get): bool => $get('menu_placement') === 'sub_item')
+                            ->required(fn (Get $get): bool => $get('menu_placement') === 'sub_item'),
 
                         Forms\Components\Select::make('parent_sidebar')
                             ->label('Select Dynamic Sidebar')
