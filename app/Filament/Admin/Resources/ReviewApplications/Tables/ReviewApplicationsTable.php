@@ -126,18 +126,6 @@ class ReviewApplicationsTable
                             ->native(false)
                             ->live(),
 
-                        Select::make('reviewed_month')
-                            ->label(__('review_applications.reviewed_month'))
-                            ->options(function (): array {
-                                return collect(range(1, 12))
-                                    ->mapWithKeys(fn ($month) => [
-                                        (string) $month => __('review_applications.months.' . $month)
-                                    ])
-                                    ->toArray();
-                            })
-                            ->native(false)
-                            ->live(),
-
                         Select::make('reviewed_year')
                             ->label(__('review_applications.reviewed_year'))
                             ->options(
@@ -148,7 +136,7 @@ class ReviewApplicationsTable
                             ->native(false)
                             ->live(),
                     ])
-                    ->columns(4)
+                    ->columns(3)
                     ->columnSpanFull()
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
