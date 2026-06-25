@@ -61,10 +61,10 @@ return [
         'enrollment_submitted_body' => ':student បានដាក់ពាក្យចុះឈ្មោះ។ សូមពិនិត្យឯកសារ។',
         'unknown_student' => 'មិនស្គាល់និស្សិត',
 
-        'student_accepted_title' => 'ពាក្យចុះឈ្មោះត្រូវបានអនុម័ត',
-        'student_accepted_body' => 'សួស្តី :student, ពាក្យចុះឈ្មោះរបស់អ្នកត្រូវបានអនុម័ត។',
-        'student_rejected_title' => 'ពាក្យចុះឈ្មោះត្រូវបានបដិសេធ',
-        'student_rejected_body' => 'សួស្តី :student, ពាក្យចុះឈ្មោះរបស់អ្នកត្រូវបានបដិសេធ។ មូលហេតុ៖ :note',
+        'student_accepted_title' => 'លទ្ធផលប្រឡង៖ ជាប់',
+        'student_accepted_body' => 'សួស្តី :student, លទ្ធផលប្រឡងរបស់អ្នកគឺ ជាប់។',
+        'student_rejected_title' => 'លទ្ធផលប្រឡង៖ ធ្លាក់',
+        'student_rejected_body' => 'សួស្តី :student, លទ្ធផលប្រឡងរបស់អ្នកគឺ ធ្លាក់។ មូលហេតុ៖ :note',
         'no_reject_note' => 'មិនបានបញ្ជាក់មូលហេតុ',
 
         'admin_accept_success_title' => 'បានអនុម័តពាក្យស្នើសុំ',
@@ -77,6 +77,11 @@ return [
         'admin_passed_success_body' => 'ពាក្យស្នើសុំត្រូវបានកត់សម្គាល់ថាបានជាប់។',
         'admin_failed_success_title' => 'ពាក្យស្នើសុំបានធ្លាក់',
         'admin_failed_success_body' => 'ពាក្យស្នើសុំត្រូវបានកត់សម្គាល់ថាបានធ្លាក់។',
+
+        'national_exam_approved_title' => 'ការចុះឈ្មោះប្រឡងជាតិ',
+        'national_exam_approved_body' => 'ការចុះឈ្មោះប្រឡងជាតិរបស់អ្នកត្រូវបានអនុម័ត។',
+        'national_exam_rejected_title' => 'ការចុះឈ្មោះប្រឡងជាតិ',
+        'national_exam_rejected_body' => 'ការចុះឈ្មោះប្រឡងជាតិរបស់អ្នកត្រូវបានបដិសេធ។ មូលហេតុ៖ :note',
     ],
 
     'form_type' => 'ទម្រង់ប្រភេទ',
@@ -99,4 +104,8 @@ return [
         '11' => 'វិច្ឆិកា',
         '12' => 'ធ្នូ',
     ],
+
+    'request_at' => 'ស្នើសុំនៅ',
+    'approve_at' => 'អនុម័តនៅ',
+    'review_status_result' => 'លទ្ធផលប្រលង'
 ];
