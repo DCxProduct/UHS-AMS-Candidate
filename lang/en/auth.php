@@ -24,4 +24,6 @@ return [
         'or' => 'or',
         'sign_up_new_account' => 'Create new account',
     ],
+
+    'account_disabled' => 'Your account has been disabled. Please contact admin.',
 ];

@@ -48,14 +48,13 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
         ];
     }
 
-    public function canAccessPanel(\Filament\Panel $panel): bool
+    public function canAccessPanel(Panel $panel): bool
     {
         if ($panel->getId() !== 'app') {
             return false;
         }
 
-        return $this->is_active === true
-            && in_array($this->registration_type, ['admin', 'student'], true);
+        return in_array($this->registration_type, ['admin', 'student'], true);
     }
 
     public function getFilamentAvatarUrl(): ?string
