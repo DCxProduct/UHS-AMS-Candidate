@@ -51,7 +51,7 @@ class FieldsRelationManager extends RelationManager
                                     ->orderBy('sort')
                                     ->get()
                                     ->mapWithKeys(fn ($field) => [
-                                        $field->id => self::transText($field->label ?? $field->name),
+                                        $field->id => self::englishText($field->label ?? $field->name),
                                     ]);
                             })
                             ->searchable()
@@ -66,25 +66,6 @@ class FieldsRelationManager extends RelationManager
                                 modifyRuleUsing: fn (\Illuminate\Validation\Rules\Unique $rule, $livewire) => $rule->where('custom_form_id', $livewire->getOwnerRecord()->id)
                             )
                             ->helperText(__('filament-custom-forms::fcf.builder.fields.name_help')),
-
-                        \Filament\Schemas\Components\Section::make('Field Label / ស្លាកវាល')
-                            ->columns(2)
-                            ->columnSpanFull()
-                            ->schema([
-                                \Filament\Forms\Components\TextInput::make('label_en')
-                                    ->label('English Label')
-                                    ->dehydrated(false)
-                                    ->afterStateHydrated(function ($component, $record): void {
-                                        $component->state(self::getLangValue($record?->label, 'en'));
-                                    }),
-
-                                \Filament\Forms\Components\TextInput::make('label_km')
-                                    ->label('ស្លាកខ្មែរ')
-                                    ->dehydrated(false)
-                                    ->afterStateHydrated(function ($component, $record): void {
-                                        $component->state(self::getLangValue($record?->label, 'km'));
-                                    }),
-                            ]),
 
                         \Filament\Forms\Components\Select::make('type')
                             ->label(__('filament-custom-forms::fcf.field.type'))
@@ -127,7 +108,24 @@ class FieldsRelationManager extends RelationManager
                             ->default(false)
                             ->visible(fn ($get): bool => ! in_array((string) $get('type'), self::CONTAINER_TYPES, true)),
 
-                        \Filament\Schemas\Components\Section::make(__('filament-custom-forms::fcf.field.dynamic_form_type_field'))
+                        \Filament\Schemas\Components\Section::make('Field Label')
+                            ->columns(2)
+                            ->columnSpanFull()
+                            ->schema([
+                                \Filament\Forms\Components\TextInput::make('label_en')
+                                    ->label('English Label')
+                                    ->afterStateHydrated(function ($component, $record): void {
+                                        $component->state(self::getLangValue($record?->label, 'en'));
+                                    }),
+
+                                \Filament\Forms\Components\TextInput::make('label_km')
+                                    ->label('Khmer Label')
+                                    ->afterStateHydrated(function ($component, $record): void {
+                                        $component->state(self::getLangValue($record?->label, 'km'));
+                                    }),
+                            ]),
+
+                        \Filament\Schemas\Components\Section::make('Dynamic Form Type Field')
                             ->columnSpanFull()
                             ->columns(1)
                             ->visible(function ($livewire): bool {
@@ -155,7 +153,7 @@ class FieldsRelationManager extends RelationManager
 
                                         $choices = data_get($selectionField->options, 'choices') ?? [];
 
-                                        return self::transOptions(is_array($choices) ? $choices : []);
+                                        return self::englishOptions(is_array($choices) ? $choices : []);
                                     })
                                     ->native(false)
                                     ->live()
@@ -209,7 +207,7 @@ class FieldsRelationManager extends RelationManager
                                             ->required(),
 
                                         \Filament\Forms\Components\TextInput::make('label_km')
-                                            ->label('ខ្មែរ')
+                                            ->label('Khmer')
                                             ->required(),
                                     ])
                                     ->afterStateHydrated(function ($component, $state, $record): void {
@@ -320,8 +318,8 @@ class FieldsRelationManager extends RelationManager
                                     }),
 
                                 \Filament\Forms\Components\KeyValue::make('options.column_span')
-                                    ->label('Column Span (Responsive)')
-                                    ->helperText('Key: Breakpoint (default, sm, md, lg, xl, 2xl). Value: Columns (1-12, full).')
+                                    ->label('Column Span Responsive')
+                                    ->helperText('Key: Breakpoint default, sm, md, lg, xl, 2xl. Value: Columns 1-12 or full.')
                                     ->keyLabel('Breakpoint')
                                     ->valueLabel('Columns')
                                     ->formatStateUsing(fn ($state) => is_array($state) ? $state : (empty($state) ? [] : ['default' => $state])),
@@ -356,7 +354,7 @@ class FieldsRelationManager extends RelationManager
                                     ->default(false),
 
                                 \Filament\Forms\Components\Toggle::make('options.is_table')
-                                    ->label('Use Table Layout (Simple)')
+                                    ->label('Use Table Layout')
                                     ->visible(fn ($get): bool => $get('type') === 'repeater')
                                     ->default(false),
 
@@ -379,10 +377,16 @@ class FieldsRelationManager extends RelationManager
                     ->label(__('filament-custom-forms::fcf.field.name'))
                     ->searchable(),
 
-                TextColumn::make('label')
-                    ->label(__('filament-custom-forms::fcf.field.label'))
-                    ->formatStateUsing(fn ($state): string => self::transText($state))
+                TextColumn::make('label_en')
+                    ->label('Label (EN)')
+                    ->state(fn ($record): string => self::getLangValue($record->label, 'en'))
                     ->searchable(),
+
+                TextColumn::make('label_km')
+                    ->label('Label (KM)')
+                    ->state(fn ($record): string => self::getLangValue($record->label, 'km'))
+                    ->searchable(),
+
 
                 ToggleColumn::make('required')
                     ->label(__('filament-custom-forms::fcf.field.is_required'))
@@ -416,12 +420,14 @@ class FieldsRelationManager extends RelationManager
 
                 TextColumn::make('parent.name')
                     ->label(__('filament-custom-forms::fcf.admin.parent_container'))
-                    ->badge(),
+                    ->badge()
+                    ->formatStateUsing(fn ($state): string => self::englishText($state)),
             ])
             ->reorderable('sort')
             ->defaultSort('sort', 'asc')
             ->headerActions([
                 CreateAction::make()
+                    ->modalHeading('Create Custom Form Field')
                     ->using(function (array $data) {
                         return \Chanthoeun\FilamentCustomForms\Models\CustomFormField::create(
                             $this->prepareFieldData($data)
@@ -430,6 +436,7 @@ class FieldsRelationManager extends RelationManager
             ])
             ->actions([
                 EditAction::make()
+                    ->modalHeading('Edit Custom Form Field')
                     ->using(function ($record, array $data) {
                         $record->update($this->prepareFieldData($data));
 
@@ -557,9 +564,9 @@ class FieldsRelationManager extends RelationManager
         if (is_array($value)) {
             return (string) (
                 $value[$locale]
+                ?? $value['en']
                 ?? $value['km']
                 ?? $value['kh']
-                ?? $value['en']
                 ?? collect($value)->first()
                 ?? ''
             );
@@ -568,25 +575,23 @@ class FieldsRelationManager extends RelationManager
         return (string) $value;
     }
 
-    private static function transText(mixed $value): string
+    private static function englishText(mixed $value): string
     {
-        $locale = strtolower((string) app()->getLocale());
-
-        return self::getLangValue($value, $locale);
+        return self::getLangValue($value, 'en');
     }
 
-    private static function transOptions(array $choices): array
+    private static function englishOptions(array $choices): array
     {
         return collect($choices)
             ->mapWithKeys(function ($label, $key): array {
                 if (is_array($label) && array_key_exists('value', $label)) {
                     return [
-                        (string) $label['value'] => self::transText($label['label'] ?? $label['value']),
+                        (string) $label['value'] => self::englishText($label['label'] ?? $label['value']),
                     ];
                 }
 
                 return [
-                    (string) $key => self::transText($label),
+                    (string) $key => self::englishText($label),
                 ];
             })
             ->toArray();

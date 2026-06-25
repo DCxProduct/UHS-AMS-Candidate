@@ -27,6 +27,27 @@ class CustomFormForm
                             ->required()
                             ->live(onBlur: true)
                             ->afterStateUpdated(fn ($set, $state) => $set('slug', \Illuminate\Support\Str::slug($state)))
+                            ->formatStateUsing(function ($state) {
+                                if (is_string($state) && str_starts_with(trim($state), '{')) {
+                                    $decoded = json_decode($state, true);
+
+                                    if (is_array($decoded)) {
+                                        return $decoded['en'] ?? $decoded['km'] ?? '';
+                                    }
+                                }
+
+                                return $state;
+                            })
+                            ->dehydrateStateUsing(function ($state) {
+                                if (is_string($state) && str_starts_with(trim($state), '{')) {
+                                    return $state;
+                                }
+
+                                return json_encode([
+                                    'en' => $state,
+                                    'km' => $state,
+                                ], JSON_UNESCAPED_UNICODE);
+                            })
                             ->maxLength(255),
 
                         TextInput::make('slug')
@@ -58,7 +79,10 @@ class CustomFormForm
                             ->afterStateUpdated(fn ($set) => $set('sub_item_type', null))
                             ->options(fn () => CustomForm::query()
                                 ->orderBy('name')
-                                ->pluck('name', 'id')
+                                ->get()
+                                ->mapWithKeys(fn (CustomForm $form): array => [
+                                    $form->id => self::englishText($form->name),
+                                ])
                                 ->toArray()
                             )
                             ->visible(fn (Get $get): bool => $get('menu_placement') === 'sub_item')
@@ -69,7 +93,10 @@ class CustomFormForm
                             ->options(fn () => CustomForm::query()
                                 ->where('menu_placement', 'sidebar')
                                 ->orderBy('name')
-                                ->pluck('name', 'name')
+                                ->get()
+                                ->mapWithKeys(fn (CustomForm $form): array => [
+                                    self::englishText($form->name) => self::englishText($form->name),
+                                ])
                                 ->toArray()
                             )
                             ->searchable()
@@ -90,7 +117,11 @@ class CustomFormForm
                                 }
 
                                 $parentForm = CustomForm::query()
-                                    ->where('name', $parentSidebarName)
+                                    ->where(function ($query) use ($parentSidebarName): void {
+                                        $query->where('name', $parentSidebarName)
+                                            ->orWhere('name', 'like', '%"en":"' . $parentSidebarName . '"%')
+                                            ->orWhere('name', 'like', '%"km":"' . $parentSidebarName . '"%');
+                                    })
                                     ->first();
 
                                 if (! $parentForm) {
@@ -121,11 +152,7 @@ class CustomFormForm
                                     return [];
                                 }
 
-                                return collect($choices)
-                                    ->mapWithKeys(fn ($label, $value) => [
-                                        $value => $label,
-                                    ])
-                                    ->toArray();
+                                return self::englishOptions($choices);
                             })
                             ->searchable()
                             ->preload()
@@ -326,5 +353,43 @@ class CustomFormForm
         }
 
         return $blocks;
+    }
+
+    private static function englishText(mixed $value): string
+    {
+        if (is_string($value) && str_starts_with(trim($value), '{')) {
+            $decoded = json_decode($value, true);
+
+            if (is_array($decoded)) {
+                $value = $decoded;
+            }
+        }
+
+        if (is_object($value)) {
+            $value = json_decode(json_encode($value), true);
+        }
+
+        if (is_array($value)) {
+            return (string) ($value['en'] ?? $value['km'] ?? collect($value)->first() ?? '');
+        }
+
+        return (string) $value;
+    }
+
+    private static function englishOptions(array $choices): array
+    {
+        return collect($choices)
+            ->mapWithKeys(function ($label, $value): array {
+                if (is_array($label) && array_key_exists('value', $label)) {
+                    return [
+                        (string) $label['value'] => self::englishText($label['label'] ?? $label['value']),
+                    ];
+                }
+
+                return [
+                    (string) $value => self::englishText($label),
+                ];
+            })
+            ->toArray();
     }
 }
