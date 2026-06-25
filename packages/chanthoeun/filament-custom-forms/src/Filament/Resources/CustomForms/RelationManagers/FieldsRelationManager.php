@@ -132,9 +132,8 @@ class FieldsRelationManager extends RelationManager
                                 return $livewire->getOwnerRecord()?->menu_placement === 'sidebar';
                             })
                             ->components([
-                                \Filament\Forms\Components\Select::make('options.visible_when.value')
+                                \Filament\Forms\Components\CheckboxList::make('options.visible_when.values')
                                     ->label(__('filament-custom-forms::fcf.field.form_type'))
-                                    ->placeholder(__('filament-custom-forms::fcf.field.select_form_type'))
                                     ->options(function ($livewire): array {
                                         $customForm = $livewire->getOwnerRecord();
 
@@ -155,7 +154,19 @@ class FieldsRelationManager extends RelationManager
 
                                         return self::englishOptions(is_array($choices) ? $choices : []);
                                     })
-                                    ->native(false)
+                                    ->columns(2)
+                                    ->bulkToggleable()
+                                    ->afterStateHydrated(function ($component, $state, $record): void {
+                                        if (filled($state)) {
+                                            return;
+                                        }
+
+                                        $oldValue = data_get($record?->options, 'visible_when.value');
+
+                                        if (filled($oldValue)) {
+                                            $component->state([$oldValue]);
+                                        }
+                                    })
                                     ->live()
                                     ->afterStateUpdated(function ($state, $set): void {
                                         if (filled($state)) {
@@ -429,9 +440,17 @@ class FieldsRelationManager extends RelationManager
                 CreateAction::make()
                     ->modalHeading('Create Custom Form Field')
                     ->using(function (array $data) {
-                        return \Chanthoeun\FilamentCustomForms\Models\CustomFormField::create(
-                            $this->prepareFieldData($data)
-                        );
+                        $createdRecord = null;
+
+                        foreach ($this->prepareFieldDataList($data) as $fieldData) {
+                            $record = \Chanthoeun\FilamentCustomForms\Models\CustomFormField::create($fieldData);
+
+                            if (! $createdRecord) {
+                                $createdRecord = $record;
+                            }
+                        }
+
+                        return $createdRecord;
                     }),
             ])
             ->actions([
@@ -620,5 +639,37 @@ class FieldsRelationManager extends RelationManager
         }
 
         return $rows;
+    }
+
+    private function prepareFieldDataList(array $data): array
+    {
+        $selectedTypes = data_get($data, 'options.visible_when.values', []);
+
+        if (! is_array($selectedTypes)) {
+            $selectedTypes = filled($selectedTypes) ? [$selectedTypes] : [];
+        }
+
+        $selectedTypes = array_values(array_filter($selectedTypes, fn ($value): bool => filled($value)));
+
+        if (empty($selectedTypes)) {
+            return [
+                $this->prepareFieldData($data),
+            ];
+        }
+
+        $items = [];
+
+        foreach ($selectedTypes as $selectedType) {
+            $copy = $data;
+
+            data_set($copy, 'options.visible_when.field', 'form_selection');
+            data_set($copy, 'options.visible_when.operator', '=');
+            data_set($copy, 'options.visible_when.value', $selectedType);
+            data_forget($copy, 'options.visible_when.values');
+
+            $items[] = $this->prepareFieldData($copy);
+        }
+
+        return $items;
     }
 }
