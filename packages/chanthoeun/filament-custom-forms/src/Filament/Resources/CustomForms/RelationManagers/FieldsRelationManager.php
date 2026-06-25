@@ -44,7 +44,7 @@ class FieldsRelationManager extends RelationManager
                     ->columnSpanFull()
                     ->components([
                         \Filament\Forms\Components\Select::make('parent_id')
-                            ->label('Parent Container')
+                            ->label(__('filament-custom-forms::fcf.admin.parent_container'))
                             ->options(function ($livewire) {
                                 return $livewire->getOwnerRecord()->fields()
                                     ->whereIn('type', self::CONTAINER_TYPES)
@@ -104,7 +104,7 @@ class FieldsRelationManager extends RelationManager
                             ->live(),
 
                         \Filament\Forms\Components\Toggle::make('required')
-                            ->label('Required')
+                            ->label(__('filament-custom-forms::fcf.field.is_required'))
                             ->default(false)
                             ->visible(fn ($get): bool => ! in_array((string) $get('type'), self::CONTAINER_TYPES, true)),
 
@@ -133,8 +133,8 @@ class FieldsRelationManager extends RelationManager
                             })
                             ->components([
                                 \Filament\Forms\Components\Select::make('options.visible_when.value')
-                                    ->label('Form Type')
-                                    ->placeholder('Select form type')
+                                    ->label(__('filament-custom-forms::fcf.field.form_type'))
+                                    ->placeholder(__('filament-custom-forms::fcf.field.select_form_type'))
                                     ->options(function ($livewire): array {
                                         $customForm = $livewire->getOwnerRecord();
 
@@ -174,23 +174,23 @@ class FieldsRelationManager extends RelationManager
                                     ->default('='),
                             ]),
 
-                        \Filament\Schemas\Components\Section::make('Configuration')
+                        \Filament\Schemas\Components\Section::make(__('filament-custom-forms::fcf.admin.configuration'))
                             ->columnSpanFull()
                             ->components([
                                 \Filament\Forms\Components\Select::make('options.columns')
-                                    ->label('Columns')
+                                    ->label(__('filament-custom-forms::fcf.admin.columns'))
                                     ->visible(fn ($get): bool => in_array((string) $get('type'), self::CONTAINER_TYPES, true))
                                     ->options([
-                                        '1' => '1 column',
-                                        '2' => '2 columns',
-                                        '3' => '3 columns',
-                                        '4' => '4 columns',
+                                        '1' => trans_choice('filament-custom-forms::fcf.builder.fields.columns_help', 1),
+                                        '2' => trans_choice('filament-custom-forms::fcf.builder.fields.columns_help', 2),
+                                        '3' => trans_choice('filament-custom-forms::fcf.builder.fields.columns_help', 3),
+                                        '4' => trans_choice('filament-custom-forms::fcf.builder.fields.columns_help', 4),
                                     ])
                                     ->default('2')
                                     ->native(false),
 
                                 \Filament\Forms\Components\Repeater::make('options.choice_rows')
-                                    ->label('Select Options')
+                                    ->label(__('filament-custom-forms::fcf.admin.select_options'))
                                     ->visible(function ($get): bool {
                                         return in_array((string) $get('type'), self::CHOICE_TYPES, true)
                                             && blank($get('options.geo_location_type'))
@@ -325,19 +325,19 @@ class FieldsRelationManager extends RelationManager
                                     ->formatStateUsing(fn ($state) => is_array($state) ? $state : (empty($state) ? [] : ['default' => $state])),
 
                                 \Filament\Forms\Components\Toggle::make('options.column_span_full')
-                                    ->label('Full Width')
+                                    ->label(__('filament-custom-forms::fcf.admin.full_width'))
                                     ->default(false),
 
                                 \Filament\Forms\Components\Toggle::make('options.image_editor')
-                                    ->label('Enable Image Editor')
+                                    ->label(__('filament-custom-forms::fcf.admin.enable_image_editor'))
                                     ->visible(fn ($get): bool => $get('type') === 'image'),
 
                                 \Filament\Forms\Components\Toggle::make('options.is_revealable')
-                                    ->label('Allow Password Reveal')
+                                    ->label(__('filament-custom-forms::fcf.admin.allow_password_reveal'))
                                     ->visible(fn ($get): bool => $get('type') === 'password'),
 
                                 \Filament\Forms\Components\Toggle::make('options.is_copyable')
-                                    ->label('Allow Copy')
+                                    ->label(__('filament-custom-forms::fcf.admin.allow_copy'))
                                     ->visible(fn ($get): bool => in_array((string) $get('type'), ['text_input', 'email', 'number_input', 'phone'], true)),
 
                                 \Filament\Forms\Components\Toggle::make('options.is_decimal')
@@ -350,7 +350,7 @@ class FieldsRelationManager extends RelationManager
                                     ->default(false),
 
                                 \Filament\Forms\Components\Toggle::make('options.is_hidden_on_view')
-                                    ->label('Hide In View')
+                                    ->label(__('filament-custom-forms::fcf.admin.hide_in_view'))
                                     ->default(false),
 
                                 \Filament\Forms\Components\Toggle::make('options.is_table')
@@ -374,7 +374,7 @@ class FieldsRelationManager extends RelationManager
             ->defaultSort('sort')
             ->columns([
                 TextColumn::make('name')
-                    ->label('Name')
+                    ->label(__('filament-custom-forms::fcf.field.name'))
                     ->searchable(),
 
                 TextColumn::make('label_en')
@@ -389,7 +389,7 @@ class FieldsRelationManager extends RelationManager
 
 
                 ToggleColumn::make('required')
-                    ->label('Required')
+                    ->label(__('filament-custom-forms::fcf.field.is_required'))
                     ->onColor('success')
                     ->offColor('gray')
                     ->disabled(fn ($record) => in_array(
@@ -399,7 +399,7 @@ class FieldsRelationManager extends RelationManager
                     )),
 
                 TextColumn::make('type')
-                    ->label('Type')
+                    ->label(__('filament-custom-forms::fcf.field.type'))
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'step', 'section', 'grid', 'fieldset', 'repeater', 'wizard' => 'info',
@@ -419,7 +419,7 @@ class FieldsRelationManager extends RelationManager
                     }),
 
                 TextColumn::make('parent.name')
-                    ->label('Parent Container')
+                    ->label(__('filament-custom-forms::fcf.admin.parent_container'))
                     ->badge()
                     ->formatStateUsing(fn ($state): string => self::englishText($state)),
             ])
