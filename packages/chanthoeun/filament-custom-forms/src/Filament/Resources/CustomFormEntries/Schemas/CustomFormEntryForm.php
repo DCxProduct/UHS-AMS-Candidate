@@ -34,7 +34,16 @@ class CustomFormEntryForm
         return $schema->components([
             Select::make('custom_form_id')
                 ->label(__('filament-custom-forms::fcf.form.single'))
-                ->options(CustomForm::query()->where('is_active', true)->whereNotNull('name')->pluck('name', 'id'))
+                ->options(
+                    CustomForm::query()
+                        ->where('is_active', true)
+                        ->whereNotNull('name')
+                        ->get()
+                        ->mapWithKeys(fn (CustomForm $form): array => [
+                            $form->id => self::transText($form->name),
+                        ])
+                        ->toArray()
+                )
                 ->required()
                 ->default($preselectedFormId)
                 ->hidden(fn (?Model $record): bool => ! empty($preselectedFormId) || filled($record?->custom_form_id))
@@ -114,13 +123,15 @@ class CustomFormEntryForm
             $formSelectionFields = collect([$formSelectionField]);
         }
 
+        $selectionOptions = self::normalizeOptions($formSelectionField->options ?? []);
+
         $formTypeStepSchema = [
-            Section::make($formTypesSection->label ?: 'Form Types')
+            Section::make(self::transText($formTypesSection->label ?: 'Form Types'))
                 ->schema([
                     Select::make('data.form_selection')
-                        ->label($formSelectionField->label ?: 'Form Selections')
-                        ->options(self::normalizeOptions($formSelectionField->options ?? [])['choices'] ?? [])
-                        ->placeholder('Select option')
+                        ->label(self::transText($formSelectionField->label ?: 'Form Selections'))
+                        ->options(self::transOptions($selectionOptions['choices'] ?? []))
+                        ->placeholder(self::selectPlaceholder())
                         ->dehydrated(true)
                         ->live(false),
                 ])
@@ -150,7 +161,7 @@ class CustomFormEntryForm
                 continue;
             }
 
-            $applicationSchema[] = Section::make($childForm->name)
+            $applicationSchema[] = Section::make(self::transText($childForm->name))
                 ->schema($childSchema)
                 ->columns(2)
                 ->visible(function (Get $get) use ($childForm): bool {
@@ -161,11 +172,11 @@ class CustomFormEntryForm
 
         return [
             Wizard::make([
-                WizardStep::make('Form Type')
+                WizardStep::make(app()->getLocale() === 'km' ? 'ប្រភេទទម្រង់' : 'Form Type')
                     ->schema($formTypeStepSchema)
                     ->columns(1),
 
-                WizardStep::make('Application Form')
+                WizardStep::make(app()->getLocale() === 'km' ? 'ទម្រង់ពាក្យស្នើសុំ' : 'Application Form')
                     ->schema($applicationSchema)
                     ->columns(1),
             ])
@@ -192,17 +203,18 @@ class CustomFormEntryForm
 
             $options = self::normalizeOptions($fieldModel->options ?? []);
             $isHiddenLabel = (bool) ($options['is_hidden_label'] ?? false);
+            $label = self::transText($fieldModel->label);
             $component = null;
 
             if ($type === 'section') {
-                $component = Section::make($isHiddenLabel ? null : $fieldModel->label)
+                $component = Section::make($isHiddenLabel ? null : $label)
                     ->schema(self::getFields($fieldModel->children()->orderBy('sort')->get(), $isLocked, $hiddenFieldNames))
                     ->columns($options['columns'] ?? 2);
             } elseif ($type === 'grid') {
                 $component = Grid::make($options['columns'] ?? 2)
                     ->schema(self::getFields($fieldModel->children()->orderBy('sort')->get(), $isLocked, $hiddenFieldNames));
             } elseif ($type === 'fieldset') {
-                $component = Fieldset::make($isHiddenLabel ? null : $fieldModel->label)
+                $component = Fieldset::make($isHiddenLabel ? null : $label)
                     ->schema(self::getFields($fieldModel->children()->orderBy('sort')->get(), $isLocked, $hiddenFieldNames))
                     ->columns($options['columns'] ?? 2);
             } elseif ($type === 'wizard') {
@@ -215,7 +227,7 @@ class CustomFormEntryForm
                         continue;
                     }
 
-                    $steps[] = WizardStep::make($child->label)->schema($stepFields);
+                    $steps[] = WizardStep::make(self::transText($child->label))->schema($stepFields);
                 }
 
                 if (empty($steps)) {
@@ -231,7 +243,7 @@ class CustomFormEntryForm
                 }
 
                 $component = \Filament\Forms\Components\Repeater::make("data.{$fieldModel->name}")
-                    ->label($fieldModel->label)
+                    ->label($label)
                     ->schema($children)
                     ->columns($options['columns'] ?? 1);
 
@@ -245,7 +257,6 @@ class CustomFormEntryForm
 
                 self::lockComponent($component, $isLocked);
             } else {
-                $label = (string) $fieldModel->label;
                 $required = (bool) ($fieldModel->required ?? false);
 
                 switch ($type) {
@@ -279,7 +290,12 @@ class CustomFormEntryForm
                         break;
 
                     case 'date_picker':
-                        $component = DatePicker::make("data.{$name}");
+                        $component = DatePicker::make("data.{$name}")
+                            ->native(false)
+                            ->displayFormat('d/m/Y')
+                            ->format('Y-m-d')
+                            ->placeholder('ថ្ងៃ/ខែ/ឆ្នាំ')
+                            ->suffixIcon('heroicon-o-calendar-days');
                         break;
 
                     case 'time_picker':
@@ -320,7 +336,7 @@ class CustomFormEntryForm
                     case 'select':
                     case 'select_dropdown':
                         $component = Select::make("data.{$name}")
-                            ->options($options['choices'] ?? [])
+                            ->options(self::transOptions($options['choices'] ?? []))
                             ->dehydrated(true);
 
                         if ((string) $name !== 'form_selection') {
@@ -328,7 +344,7 @@ class CustomFormEntryForm
                         }
 
                         if (! $isLocked) {
-                            $component->placeholder($options['placeholder_en'] ?? 'Select option');
+                            $component->placeholder(self::resolveSelectPlaceholder($options));
                         }
 
                         break;
@@ -440,6 +456,10 @@ class CustomFormEntryForm
             ? ($options['placeholder_km'] ?? $options['placeholder'] ?? null)
             : ($options['placeholder_en'] ?? $options['placeholder'] ?? null);
 
+        if (is_array($placeholder)) {
+            $placeholder = self::transText($placeholder);
+        }
+
         if (! is_string($placeholder)) {
             return null;
         }
@@ -447,6 +467,32 @@ class CustomFormEntryForm
         $placeholder = trim($placeholder);
 
         return $placeholder !== '' ? $placeholder : null;
+    }
+
+    protected static function resolveSelectPlaceholder(array $options): string
+    {
+        $locale = strtolower((string) app()->getLocale());
+
+        $placeholder = in_array($locale, ['km', 'kh'], true)
+            ? ($options['placeholder_km'] ?? $options['placeholder'] ?? null)
+            : ($options['placeholder_en'] ?? $options['placeholder'] ?? null);
+
+        if (is_array($placeholder)) {
+            $placeholder = self::transText($placeholder);
+        }
+
+        if (is_string($placeholder) && trim($placeholder) !== '') {
+            return trim($placeholder);
+        }
+
+        return self::selectPlaceholder();
+    }
+
+    protected static function selectPlaceholder(): string
+    {
+        return in_array(strtolower((string) app()->getLocale()), ['km', 'kh'], true)
+            ? 'ជ្រើសរើស'
+            : 'Select option';
     }
 
     protected static function normalizeOptions(mixed $options): array
@@ -466,5 +512,52 @@ class CustomFormEntryForm
         }
 
         return [];
+    }
+
+    protected static function transText(mixed $value): string
+    {
+        $locale = strtolower((string) app()->getLocale());
+
+        if (is_string($value) && str_starts_with(trim($value), '{')) {
+            $decoded = json_decode($value, true);
+
+            if (is_array($decoded)) {
+                $value = $decoded;
+            }
+        }
+
+        if (is_object($value)) {
+            $value = json_decode(json_encode($value), true);
+        }
+
+        if (is_array($value)) {
+            return (string) (
+                $value[$locale]
+                ?? $value['km']
+                ?? $value['kh']
+                ?? $value['en']
+                ?? collect($value)->first()
+                ?? ''
+            );
+        }
+
+        return (string) $value;
+    }
+
+    protected static function transOptions(array $choices): array
+    {
+        return collect($choices)
+            ->mapWithKeys(function ($label, $key): array {
+                if (is_array($label) && array_key_exists('value', $label)) {
+                    return [
+                        (string) $label['value'] => self::transText($label['label'] ?? $label['value']),
+                    ];
+                }
+
+                return [
+                    (string) $key => self::transText($label),
+                ];
+            })
+            ->toArray();
     }
 }

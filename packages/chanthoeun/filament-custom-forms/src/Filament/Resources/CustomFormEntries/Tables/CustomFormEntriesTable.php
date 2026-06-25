@@ -230,8 +230,7 @@ class CustomFormEntriesTable
             TextColumn::make('created_at')
                 ->label(__('review_applications.request_at'))
                 ->dateTime('d M Y H:i')
-                ->color('gray')
-                ->sortable(),
+                ->color('gray'),
 
             TextColumn::make('reviewed_at')
                 ->label(__('review_applications.reviewed_at'))
@@ -350,7 +349,7 @@ class CustomFormEntriesTable
                         ->native(false)
                         ->live(),
                 ])
-                ->columns(3)
+                ->columns(4)
                 ->columnSpanFull()
                 ->query(function (Builder $query, array $data): Builder {
                     return $query

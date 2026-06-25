@@ -50,7 +50,9 @@ class FieldsRelationManager extends RelationManager
                                     ->whereIn('type', self::CONTAINER_TYPES)
                                     ->orderBy('sort')
                                     ->get()
-                                    ->mapWithKeys(fn ($field) => [$field->id => $field->label ?? $field->name]);
+                                    ->mapWithKeys(fn ($field) => [
+                                        $field->id => self::transText($field->label ?? $field->name),
+                                    ]);
                             })
                             ->searchable()
                             ->preload()
@@ -65,8 +67,24 @@ class FieldsRelationManager extends RelationManager
                             )
                             ->helperText(__('filament-custom-forms::fcf.builder.fields.name_help')),
 
-                        \Filament\Forms\Components\TextInput::make('label')
-                            ->label(__('filament-custom-forms::fcf.field.label')),
+                        \Filament\Schemas\Components\Section::make('Field Label / ស្លាកវាល')
+                            ->columns(2)
+                            ->columnSpanFull()
+                            ->schema([
+                                \Filament\Forms\Components\TextInput::make('label_en')
+                                    ->label('English Label')
+                                    ->dehydrated(false)
+                                    ->afterStateHydrated(function ($component, $record): void {
+                                        $component->state(self::getLangValue($record?->label, 'en'));
+                                    }),
+
+                                \Filament\Forms\Components\TextInput::make('label_km')
+                                    ->label('ស្លាកខ្មែរ')
+                                    ->dehydrated(false)
+                                    ->afterStateHydrated(function ($component, $record): void {
+                                        $component->state(self::getLangValue($record?->label, 'km'));
+                                    }),
+                            ]),
 
                         \Filament\Forms\Components\Select::make('type')
                             ->label(__('filament-custom-forms::fcf.field.type'))
@@ -137,7 +155,7 @@ class FieldsRelationManager extends RelationManager
 
                                         $choices = data_get($selectionField->options, 'choices') ?? [];
 
-                                        return is_array($choices) ? $choices : [];
+                                        return self::transOptions(is_array($choices) ? $choices : []);
                                     })
                                     ->native(false)
                                     ->live()
@@ -173,16 +191,39 @@ class FieldsRelationManager extends RelationManager
                                     ->default('2')
                                     ->native(false),
 
-                                \Filament\Forms\Components\KeyValue::make('options.choices')
+                                \Filament\Forms\Components\Repeater::make('options.choice_rows')
                                     ->label(__('filament-custom-forms::fcf.admin.select_options'))
                                     ->visible(function ($get): bool {
                                         return in_array((string) $get('type'), self::CHOICE_TYPES, true)
                                             && blank($get('options.geo_location_type'))
                                             && blank($get('options.data_source_table'));
                                     })
-                                    ->keyLabel('Key')
-                                    ->valueLabel('Value')
-                                    ->helperText('Key corresponds to value, Label is displayed text.'),
+                                    ->columns(3)
+                                    ->schema([
+                                        \Filament\Forms\Components\TextInput::make('value')
+                                            ->label('Value')
+                                            ->required(),
+
+                                        \Filament\Forms\Components\TextInput::make('label_en')
+                                            ->label('English')
+                                            ->required(),
+
+                                        \Filament\Forms\Components\TextInput::make('label_km')
+                                            ->label('ខ្មែរ')
+                                            ->required(),
+                                    ])
+                                    ->afterStateHydrated(function ($component, $state, $record): void {
+                                        if (filled($state)) {
+                                            return;
+                                        }
+
+                                        $options = self::normalizeOptions($record?->options ?? []);
+                                        $choices = $options['choices'] ?? [];
+
+                                        $component->state(self::choicesToRows(is_array($choices) ? $choices : []));
+                                    })
+                                    ->dehydrated(true)
+                                    ->helperText('Value is saved to database. English and Khmer are display labels.'),
 
                                 \Filament\Forms\Components\Hidden::make('options.geo_location_type')
                                     ->default(''),
@@ -340,6 +381,7 @@ class FieldsRelationManager extends RelationManager
 
                 TextColumn::make('label')
                     ->label(__('filament-custom-forms::fcf.field.label'))
+                    ->formatStateUsing(fn ($state): string => self::transText($state))
                     ->searchable(),
 
                 ToggleColumn::make('required')
@@ -363,7 +405,7 @@ class FieldsRelationManager extends RelationManager
                 TextColumn::make('options.visible_when.value')
                     ->label('Form Type')
                     ->badge()
-                    ->formatStateUsing(fn ($state) => $state ? ucfirst($state) : 'All')
+                    ->formatStateUsing(fn ($state) => $state ? ucfirst((string) $state) : 'All')
                     ->color(fn ($state): string => match ($state) {
                         'associate' => 'gray',
                         'bachelor' => 'info',
@@ -407,6 +449,41 @@ class FieldsRelationManager extends RelationManager
     {
         $ownerForm = $this->getOwnerRecord();
 
+        $labelEn = trim((string) ($data['label_en'] ?? ''));
+        $labelKm = trim((string) ($data['label_km'] ?? ''));
+
+        $data['label'] = json_encode([
+            'en' => $labelEn !== '' ? $labelEn : $labelKm,
+            'km' => $labelKm !== '' ? $labelKm : $labelEn,
+        ], JSON_UNESCAPED_UNICODE);
+
+        unset($data['label_en'], $data['label_km']);
+
+        $choiceRows = data_get($data, 'options.choice_rows');
+
+        if (is_array($choiceRows)) {
+            $choices = [];
+
+            foreach ($choiceRows as $row) {
+                $value = trim((string) ($row['value'] ?? ''));
+
+                if ($value === '') {
+                    continue;
+                }
+
+                $en = trim((string) ($row['label_en'] ?? ''));
+                $km = trim((string) ($row['label_km'] ?? ''));
+
+                $choices[$value] = [
+                    'en' => $en !== '' ? $en : $km,
+                    'km' => $km !== '' ? $km : $en,
+                ];
+            }
+
+            data_set($data, 'options.choices', $choices);
+            data_forget($data, 'options.choice_rows');
+        }
+
         $selectedType = data_get($data, 'options.visible_when.value');
 
         if (blank($selectedType) && filled($ownerForm->sub_item_type)) {
@@ -442,5 +519,101 @@ class FieldsRelationManager extends RelationManager
         $data['custom_form_id'] = $targetFormId;
 
         return $data;
+    }
+
+    private static function normalizeOptions(mixed $options): array
+    {
+        if (is_array($options)) {
+            return $options;
+        }
+
+        if (is_string($options) && $options !== '') {
+            $decoded = json_decode($options, true);
+
+            return is_array($decoded) ? $decoded : [];
+        }
+
+        if (is_object($options)) {
+            return json_decode(json_encode($options), true) ?: [];
+        }
+
+        return [];
+    }
+
+    private static function getLangValue(mixed $value, string $locale): string
+    {
+        if (is_string($value) && str_starts_with(trim($value), '{')) {
+            $decoded = json_decode($value, true);
+
+            if (is_array($decoded)) {
+                $value = $decoded;
+            }
+        }
+
+        if (is_object($value)) {
+            $value = json_decode(json_encode($value), true);
+        }
+
+        if (is_array($value)) {
+            return (string) (
+                $value[$locale]
+                ?? $value['km']
+                ?? $value['kh']
+                ?? $value['en']
+                ?? collect($value)->first()
+                ?? ''
+            );
+        }
+
+        return (string) $value;
+    }
+
+    private static function transText(mixed $value): string
+    {
+        $locale = strtolower((string) app()->getLocale());
+
+        return self::getLangValue($value, $locale);
+    }
+
+    private static function transOptions(array $choices): array
+    {
+        return collect($choices)
+            ->mapWithKeys(function ($label, $key): array {
+                if (is_array($label) && array_key_exists('value', $label)) {
+                    return [
+                        (string) $label['value'] => self::transText($label['label'] ?? $label['value']),
+                    ];
+                }
+
+                return [
+                    (string) $key => self::transText($label),
+                ];
+            })
+            ->toArray();
+    }
+
+    private static function choicesToRows(array $choices): array
+    {
+        $rows = [];
+
+        foreach ($choices as $value => $label) {
+            if (is_array($label) && array_key_exists('value', $label)) {
+                $rows[] = [
+                    'value' => (string) $label['value'],
+                    'label_en' => self::getLangValue($label['label'] ?? '', 'en'),
+                    'label_km' => self::getLangValue($label['label'] ?? '', 'km'),
+                ];
+
+                continue;
+            }
+
+            $rows[] = [
+                'value' => (string) $value,
+                'label_en' => self::getLangValue($label, 'en'),
+                'label_km' => self::getLangValue($label, 'km'),
+            ];
+        }
+
+        return $rows;
     }
 }

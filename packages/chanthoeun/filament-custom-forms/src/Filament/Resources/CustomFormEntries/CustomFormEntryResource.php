@@ -19,6 +19,13 @@ use Illuminate\Support\Facades\Schema as DatabaseSchema;
 
 class CustomFormEntryResource extends Resource
 {
+    public function getTitle(): string
+    {
+        return app()->getLocale() === 'km'
+            ? 'បង្កើត ' . static::getResource()::getModelLabel()
+            : 'Create ' . static::getResource()::getModelLabel();
+    }
+
     public static function getModel(): string
     {
         return CustomFormPlugin::get()->getEntryModel();
@@ -129,7 +136,7 @@ class CustomFormEntryResource extends Resource
 
             if ($form) {
                 return __('filament-custom-forms::fcf.entry.entry', [
-                    'form' => static::getTranslatedFormName($form),
+                    'form' => static::getFormTitle($form),
                 ]);
             }
         }
@@ -147,7 +154,7 @@ class CustomFormEntryResource extends Resource
 
             if ($form) {
                 return __('filament-custom-forms::fcf.entry.entries', [
-                    'form' => static::getTranslatedFormName($form),
+                    'form' => static::getFormTitle($form),
                 ]);
             }
         }
@@ -166,13 +173,26 @@ class CustomFormEntryResource extends Resource
         return static::$formCache[$id];
     }
 
-    protected static function getTranslatedFormName(CustomForm $form): string
+    protected static function getFormTitle(CustomForm $form): string
     {
         $slug = strtolower(trim((string) ($form->slug ?? '')));
 
         return match ($slug) {
             'profile' => __('navigation.forms.profile'),
             'national-examination-registration' => __('navigation.national_examination_registration'),
+            default => (string) ($form->name ?? __('navigation.forms.untitled')),
+        };
+    }
+
+    protected static function getNavigationTitle(CustomForm $form): string
+    {
+        $slug = strtolower(trim((string) ($form->slug ?? '')));
+
+        return match ($slug) {
+            'profile' => __('navigation.forms.profile'),
+
+            'national-examination-registration' => __('navigation.registration'),
+
             default => (string) ($form->name ?? __('navigation.forms.untitled')),
         };
     }
@@ -232,7 +252,7 @@ class CustomFormEntryResource extends Resource
                     ]);
 
                 $items[] = NavigationItem::make('custom-form-entry-' . $formId)
-                    ->label(static::getTranslatedFormName($form))
+                    ->label(static::getNavigationTitle($form))
                     ->group(__('navigation.groups.form_entry'))
                     ->icon(static::getDynamicFormIcon($form))
                     ->sort(static::getFormSortNumber($form))

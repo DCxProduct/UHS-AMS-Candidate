@@ -8,35 +8,17 @@ use Illuminate\Support\Facades\Schema;
 
 class StudentProfileSeeder extends Seeder
 {
-    public static function getNavigationLabel(): string
-    {
-        return __('navigation.profile');
-    }
-
-    public static function getNavigationGroup(): ?string
-    {
-        return __('navigation.groups.form_entry');
-    }
-
     public function run(): void
     {
-        if (! Schema::hasTable('custom_forms')) {
-            $this->command?->error('Table custom_forms does not exist.');
-            return;
-        }
-
-        if (! Schema::hasTable('custom_form_fields')) {
-            $this->command?->error('Table custom_form_fields does not exist.');
+        if (! Schema::hasTable('custom_forms') || ! Schema::hasTable('custom_form_fields')) {
             return;
         }
 
         $now = now();
-        $formName = 'Profile';
+        $formName = json_encode($this->t('Profile', 'ប្រវត្តិរូប'), JSON_UNESCAPED_UNICODE);
         $formSlug = 'profile';
 
-        $form = DB::table('custom_forms')
-            ->where('slug', $formSlug)
-            ->first();
+        $form = DB::table('custom_forms')->where('slug', $formSlug)->first();
 
         $formData = [
             'name' => $formName,
@@ -74,10 +56,7 @@ class StudentProfileSeeder extends Seeder
         }
 
         if ($form) {
-            DB::table('custom_forms')
-                ->where('id', $form->id)
-                ->update($formData);
-
+            DB::table('custom_forms')->where('id', $form->id)->update($formData);
             $customFormId = (int) $form->id;
         } else {
             $formData['created_at'] = $now;
@@ -85,12 +64,10 @@ class StudentProfileSeeder extends Seeder
         }
 
         if (Schema::hasColumn('custom_forms', 'custom_form_id')) {
-            DB::table('custom_forms')
-                ->where('id', $customFormId)
-                ->update([
-                    'custom_form_id' => $customFormId,
-                    'updated_at' => $now,
-                ]);
+            DB::table('custom_forms')->where('id', $customFormId)->update([
+                'custom_form_id' => $customFormId,
+                'updated_at' => $now,
+            ]);
         }
 
         $this->deleteFormFields($customFormId);
@@ -98,57 +75,57 @@ class StudentProfileSeeder extends Seeder
         $keepNames = [];
 
         $genderOptions = [
-            ['value' => 'male', 'label' => 'Male'],
-            ['value' => 'female', 'label' => 'Female'],
+            $this->opt('male', 'Male', 'ប្រុស'),
+            $this->opt('female', 'Female', 'ស្រី'),
         ];
 
         $marriedStatusOptions = [
-            ['value' => 'single', 'label' => 'Single'],
-            ['value' => 'married', 'label' => 'Married'],
+            $this->opt('single', 'Single', 'នៅលីវ'),
+            $this->opt('married', 'Married', 'រៀបការ'),
         ];
 
         $parentStatusOptions = [
-            ['value' => 'alive', 'label' => 'Alive'],
-            ['value' => 'deceased', 'label' => 'Deceased'],
+            $this->opt('alive', 'Alive', 'នៅរស់'),
+            $this->opt('deceased', 'Deceased', 'ទទួលមរណភាព'),
         ];
 
         $ethnicityOptions = [
-            ['value' => 'khmer', 'label' => 'Khmer'],
-            ['value' => 'other', 'label' => 'Other'],
+            $this->opt('khmer', 'Khmer', 'ខ្មែរ'),
+            $this->opt('other', 'Other', 'ផ្សេងៗ'),
         ];
 
         $nationalityOptions = [
-            ['value' => 'khmer', 'label' => 'Khmer'],
+            $this->opt('khmer', 'Khmer', 'ខ្មែរ'),
         ];
 
         $cultureLevelOptions = [
-            ['value' => 'grade_9', 'label' => 'Grade 9'],
-            ['value' => 'grade_12', 'label' => 'Grade 12'],
-            ['value' => 'associate', 'label' => 'Associate'],
-            ['value' => 'bachelor', 'label' => 'Bachelor'],
-            ['value' => 'master', 'label' => 'Master'],
-            ['value' => 'doctor', 'label' => 'Doctor'],
+            $this->opt('grade_9', 'Grade 9', 'ថ្នាក់ទី៩'),
+            $this->opt('grade_12', 'Grade 12', 'ថ្នាក់ទី១២'),
+            $this->opt('associate', 'Associate', 'បរិញ្ញាបត្ររង'),
+            $this->opt('bachelor', 'Bachelor', 'បរិញ្ញាបត្រ'),
+            $this->opt('master', 'Master', 'អនុបណ្ឌិត'),
+            $this->opt('doctor', 'Doctor', 'បណ្ឌិត'),
         ];
 
         $religionOptions = [
-            'buddhism' => 'Buddhism',
-            'islam' => 'Islam',
-            'christianity' => 'Christianity',
-            'other' => 'Other',
+            'buddhism' => $this->t('Buddhism', 'ព្រះពុទ្ធសាសនា'),
+            'islam' => $this->t('Islam', 'សាសនាអ៊ីស្លាម'),
+            'christianity' => $this->t('Christianity', 'សាសនាគ្រិស្ត'),
+            'other' => $this->t('Other', 'ផ្សេងៗ'),
         ];
 
         $degreeOptions = [
-            ['value' => 'lower_secondary_education_diploma', 'label' => 'Lower Secondary Education Diploma'],
-            ['value' => 'high_school_diploma', 'label' => 'High School Diploma'],
-            ['value' => 'associate', 'label' => 'Associate'],
-            ['value' => 'bachelor', 'label' => 'Bachelor'],
-            ['value' => 'master', 'label' => 'Master'],
-            ['value' => 'doctor', 'label' => 'Doctor'],
+            $this->opt('lower_secondary_education_diploma', 'Lower Secondary Education Diploma', 'សញ្ញាបត្រមធ្យមសិក្សាបឋមភូមិ'),
+            $this->opt('high_school_diploma', 'High School Diploma', 'សញ្ញាបត្រមធ្យមសិក្សាទុតិយភូមិ'),
+            $this->opt('associate', 'Associate', 'បរិញ្ញាបត្ររង'),
+            $this->opt('bachelor', 'Bachelor', 'បរិញ្ញាបត្រ'),
+            $this->opt('master', 'Master', 'អនុបណ្ឌិត'),
+            $this->opt('doctor', 'Doctor', 'បណ្ឌិត'),
         ];
 
         $countryOptions = [
-            ['value' => 'cambodia', 'label' => 'Cambodia'],
-            ['value' => 'other', 'label' => 'Other'],
+            $this->opt('cambodia', 'Cambodia', 'កម្ពុជា'),
+            $this->opt('other', 'Other', 'ផ្សេងៗ'),
         ];
 
         $yearOptions = collect(range((int) date('Y'), 1970))
@@ -161,7 +138,7 @@ class StudentProfileSeeder extends Seeder
         $personalSection = $this->upsertField(
             $customFormId,
             'personal_information',
-            'I. Personal Information',
+            $this->t('I. Personal Information', '១. ព័ត៌មានផ្ទាល់ខ្លួន'),
             'section',
             false,
             ['columns' => 2, 'column_span_full' => true],
@@ -172,41 +149,41 @@ class StudentProfileSeeder extends Seeder
         $keepNames[] = 'personal_information';
 
         $personalFields = [
-            ['name' => 'personal_note', 'label' => 'Brief Resume', 'type' => 'info', 'options' => ['content' => 'Brief Resume', 'column_span_full' => true, 'is_hidden_label' => true]],
+            ['name' => 'personal_note', 'label' => $this->t('Brief Resume', 'ប្រវត្តិរូបសង្ខេប'), 'type' => 'info', 'options' => ['content' => $this->t('Brief Resume', 'ប្រវត្តិរូបសង្ខេប'), 'column_span_full' => true, 'is_hidden_label' => true]],
 
-            ['name' => 'first_name_kh', 'label' => 'First Name (Khmer)', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter First Name', 'placeholder_km' => 'បញ្ចូលនាមខ្លួន']],
-            ['name' => 'last_name_kh', 'label' => 'Last Name (Khmer)', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Last Name', 'placeholder_km' => 'បញ្ចូលនាមត្រកូល']],
-            ['name' => 'first_name_en', 'label' => 'First Name (English)', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter First Name', 'placeholder_km' => 'បញ្ចូលនាមខ្លួន']],
-            ['name' => 'last_name_en', 'label' => 'Last Name (English)', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Last Name', 'placeholder_km' => 'បញ្ចូលនាមត្រកូល']],
+            ['name' => 'first_name_kh', 'label' => $this->t('First Name (Khmer)', 'នាមខ្លួន (ខ្មែរ)'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter First Name', 'placeholder_km' => 'បញ្ចូលនាមខ្លួន']],
+            ['name' => 'last_name_kh', 'label' => $this->t('Last Name (Khmer)', 'នាមត្រកូល (ខ្មែរ)'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Last Name', 'placeholder_km' => 'បញ្ចូលនាមត្រកូល']],
+            ['name' => 'first_name_en', 'label' => $this->t('First Name (English)', 'នាមខ្លួន (អង់គ្លេស)'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter First Name', 'placeholder_km' => 'បញ្ចូលនាមខ្លួនជាអង់គ្លេស']],
+            ['name' => 'last_name_en', 'label' => $this->t('Last Name (English)', 'នាមត្រកូល (អង់គ្លេស)'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Last Name', 'placeholder_km' => 'បញ្ចូលនាមត្រកូលជាអង់គ្លេស']],
 
-            ['name' => 'gender', 'label' => 'Gender', 'type' => 'select_dropdown', 'options' => ['choices' => $genderOptions]],
-            ['name' => 'nationality', 'label' => 'Nationality', 'type' => 'select_dropdown', 'options' => ['choices' => $nationalityOptions]],
-            ['name' => 'ethnicity', 'label' => 'Ethnicity', 'type' => 'select_dropdown', 'options' => ['choices' => $ethnicityOptions]],
-            ['name' => 'religion', 'label' => 'Religion', 'type' => 'select_dropdown', 'options' => ['choices' => $religionOptions]],
-            ['name' => 'married_status', 'label' => 'Marital Status', 'type' => 'select_dropdown', 'options' => ['choices' => $marriedStatusOptions]],
+            ['name' => 'gender', 'label' => $this->t('Gender', 'ភេទ'), 'type' => 'select_dropdown', 'options' => ['choices' => $genderOptions]],
+            ['name' => 'nationality', 'label' => $this->t('Nationality', 'សញ្ជាតិ'), 'type' => 'select_dropdown', 'options' => ['choices' => $nationalityOptions]],
+            ['name' => 'ethnicity', 'label' => $this->t('Ethnicity', 'ជនជាតិ'), 'type' => 'select_dropdown', 'options' => ['choices' => $ethnicityOptions]],
+            ['name' => 'religion', 'label' => $this->t('Religion', 'សាសនា'), 'type' => 'select_dropdown', 'options' => ['choices' => $religionOptions]],
+            ['name' => 'married_status', 'label' => $this->t('Marital Status', 'ស្ថានភាពអាពាហ៍ពិពាហ៍'), 'type' => 'select_dropdown', 'options' => ['choices' => $marriedStatusOptions]],
 
-            ['name' => 'date_of_birth', 'label' => 'Date of Birth', 'type' => 'date_picker', 'options' => ['placeholder_en' => 'Enter Date of Birth', 'placeholder_km' => 'ជ្រើសរើសថ្ងៃខែឆ្នាំកំណើត']],
+            ['name' => 'date_of_birth', 'label' => $this->t('Date of Birth', 'ថ្ងៃខែឆ្នាំកំណើត'), 'type' => 'date_picker', 'options' => ['placeholder_en' => 'Enter Date of Birth', 'placeholder_km' => 'ជ្រើសរើសថ្ងៃខែឆ្នាំកំណើត']],
 
-            ['name' => 'place_of_birth_heading', 'label' => 'Place of Birth', 'type' => 'info', 'options' => ['content' => 'Place of Birth', 'column_span_full' => true, 'is_hidden_label' => true]],
-            ['name' => 'birth_province_city', 'label' => 'Province / City', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('province')],
-            ['name' => 'birth_district_khan', 'label' => 'District / Khan', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('district', 'birth_province_city')],
-            ['name' => 'birth_commune_sangkat', 'label' => 'Commune / Sangkat', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('commune', 'birth_district_khan')],
-            ['name' => 'birth_village', 'label' => 'Village', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('village', 'birth_commune_sangkat')],
+            ['name' => 'place_of_birth_heading', 'label' => $this->t('Place of Birth', 'ទីកន្លែងកំណើត'), 'type' => 'info', 'options' => ['content' => $this->t('Place of Birth', 'ទីកន្លែងកំណើត'), 'column_span_full' => true, 'is_hidden_label' => true]],
+            ['name' => 'birth_province_city', 'label' => $this->t('Province / City', 'រាជធានី / ខេត្ត'), 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('province')],
+            ['name' => 'birth_district_khan', 'label' => $this->t('District / Khan', 'ស្រុក / ខណ្ឌ'), 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('district', 'birth_province_city')],
+            ['name' => 'birth_commune_sangkat', 'label' => $this->t('Commune / Sangkat', 'ឃុំ / សង្កាត់'), 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('commune', 'birth_district_khan')],
+            ['name' => 'birth_village', 'label' => $this->t('Village', 'ភូមិ'), 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('village', 'birth_commune_sangkat')],
 
-            ['name' => 'current_address_heading', 'label' => 'Current Address', 'type' => 'info', 'options' => ['content' => 'Current Address', 'column_span_full' => true, 'is_hidden_label' => true]],
-            ['name' => 'current_house_number', 'label' => 'House Number', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter House Number', 'placeholder_km' => 'បញ្ចូលលេខផ្ទះ']],
-            ['name' => 'current_street_number', 'label' => 'Street Number', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Street Number', 'placeholder_km' => 'បញ្ចូលលេខផ្លូវ']],
-            ['name' => 'current_capital_province', 'label' => 'Capital / Province', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('province')],
-            ['name' => 'current_district_khan', 'label' => 'District / Khan', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('district', 'current_capital_province')],
-            ['name' => 'current_commune_sangkat', 'label' => 'Commune / Sangkat', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('commune', 'current_district_khan')],
-            ['name' => 'current_village', 'label' => 'Village', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('village', 'current_commune_sangkat')],
+            ['name' => 'current_address_heading', 'label' => $this->t('Current Address', 'អាសយដ្ឋានបច្ចុប្បន្ន'), 'type' => 'info', 'options' => ['content' => $this->t('Current Address', 'អាសយដ្ឋានបច្ចុប្បន្ន'), 'column_span_full' => true, 'is_hidden_label' => true]],
+            ['name' => 'current_house_number', 'label' => $this->t('House Number', 'លេខផ្ទះ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter House Number', 'placeholder_km' => 'បញ្ចូលលេខផ្ទះ']],
+            ['name' => 'current_street_number', 'label' => $this->t('Street Number', 'លេខផ្លូវ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Street Number', 'placeholder_km' => 'បញ្ចូលលេខផ្លូវ']],
+            ['name' => 'current_capital_province', 'label' => $this->t('Province / City', 'រាជធានី / ខេត្ត'), 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('province')],
+            ['name' => 'current_district_khan', 'label' => $this->t('District / Khan', 'ស្រុក / ខណ្ឌ'), 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('district', 'current_capital_province')],
+            ['name' => 'current_commune_sangkat', 'label' => $this->t('Commune / Sangkat', 'ឃុំ / សង្កាត់'), 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('commune', 'current_district_khan')],
+            ['name' => 'current_village', 'label' => $this->t('Village', 'ភូមិ'), 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('village', 'current_commune_sangkat')],
 
-            ['name' => 'education_employment_information', 'label' => 'Education And Employment Information', 'type' => 'info', 'options' => ['content' => 'Education And Employment Information', 'column_span_full' => true, 'is_hidden_label' => true]],
-            ['name' => 'culture_level', 'label' => 'Culture Level', 'type' => 'select_dropdown', 'options' => ['choices' => $cultureLevelOptions]],
-            ['name' => 'exam_period', 'label' => 'Exam Date', 'type' => 'date_picker', 'options' => ['placeholder_en' => 'Enter Exam Date', 'placeholder_km' => 'ជ្រើសរើសថ្ងៃខែឆ្នាំដែលបានប្រឡង']],
-            ['name' => 'exam_center', 'label' => 'Exam Center', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Exam Center', 'placeholder_km' => 'បញ្ចូលទីតាំងដែលប្រឡង']],
-            ['name' => 'current_occupation', 'label' => 'Current Occupation', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Current Occupation', 'placeholder_km' => 'បញ្ចូលមុខរបរបច្ចុប្បន្ន']],
-            ['name' => 'place_of_work', 'label' => 'Place of Work / Organization', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Place of Work', 'placeholder_km' => 'បញ្ចូលទីតាំងធ្វើការ / ស្ថាប័ន']],
+            ['name' => 'education_employment_information', 'label' => $this->t('Education And Employment Information', 'ព័ត៌មានអប់រំ និងការងារ'), 'type' => 'info', 'options' => ['content' => $this->t('Education And Employment Information', 'ព័ត៌មានអប់រំ និងការងារ'), 'column_span_full' => true, 'is_hidden_label' => true]],
+            ['name' => 'culture_level', 'label' => $this->t('Culture Level', 'កម្រិតវប្បធម៌'), 'type' => 'select_dropdown', 'options' => ['choices' => $cultureLevelOptions]],
+            ['name' => 'exam_period', 'label' => $this->t('Exam Date', 'ថ្ងៃប្រឡង'), 'type' => 'date_picker', 'options' => ['placeholder_en' => 'Enter Exam Date', 'placeholder_km' => 'ជ្រើសរើសថ្ងៃប្រឡង']],
+            ['name' => 'exam_center', 'label' => $this->t('Exam Center', 'មណ្ឌលប្រឡង'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Exam Center', 'placeholder_km' => 'បញ្ចូលមណ្ឌលប្រឡង']],
+            ['name' => 'current_occupation', 'label' => $this->t('Current Occupation', 'មុខរបរបច្ចុប្បន្ន'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Current Occupation', 'placeholder_km' => 'បញ្ចូលមុខរបរបច្ចុប្បន្ន']],
+            ['name' => 'place_of_work', 'label' => $this->t('Place of Work / Organization', 'ទីកន្លែងធ្វើការ / អង្គភាព'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Place of Work', 'placeholder_km' => 'បញ្ចូលទីកន្លែងធ្វើការ / អង្គភាព']],
         ];
 
         $this->upsertFields($customFormId, $personalSection, $personalFields, $keepNames, $sort);
@@ -214,7 +191,7 @@ class StudentProfileSeeder extends Seeder
         $familySection = $this->upsertField(
             $customFormId,
             'family_information',
-            'II. Family Information',
+            $this->t('II. Family Information', '២. ព័ត៌មានគ្រួសារ'),
             'section',
             false,
             ['columns' => 2, 'column_span_full' => true],
@@ -225,40 +202,40 @@ class StudentProfileSeeder extends Seeder
         $keepNames[] = 'family_information';
 
         $familyFields = [
-            ['name' => 'about_parents_heading', 'label' => 'A. About Parents', 'type' => 'info', 'options' => ['content' => 'A. About Parents', 'column_span_full' => true, 'is_hidden_label' => true]],
+            ['name' => 'about_parents_heading', 'label' => $this->t('A. About Parents', 'ក. ព័ត៌មានអំពីឪពុកម្ដាយ'), 'type' => 'info', 'options' => ['content' => $this->t('A. About Parents', 'ក. ព័ត៌មានអំពីឪពុកម្ដាយ'), 'column_span_full' => true, 'is_hidden_label' => true]],
 
-            ['name' => 'father_heading', 'label' => "Father's Information", 'type' => 'info', 'options' => ['content' => "Father's Information", 'column_span_full' => true, 'is_hidden_label' => true]],
-            ['name' => 'father_name', 'label' => "Father's Name", 'type' => 'text_input', 'options' => ['placeholder_en' => "Enter Father's Name", 'placeholder_km' => 'បញ្ចូលនាមឪពុក']],
-            ['name' => 'father_date_of_birth', 'label' => "Father's Date of Birth", 'type' => 'date_picker', 'options' => ['placeholder_en' => "Enter Father Date of Birth", 'placeholder_km' => 'ជ្រើសរើសថ្ងៃខែឆ្នាំកំណើតឪពុក']],
-            ['name' => 'father_ethnicity', 'label' => "Father's Ethnicity", 'type' => 'select_dropdown', 'options' => ['choices' => $ethnicityOptions]],
-            ['name' => 'father_nationality', 'label' => "Father's Nationality", 'type' => 'select_dropdown', 'options' => ['choices' => $nationalityOptions]],
-            ['name' => 'father_status', 'label' => "Father's Status", 'type' => 'select_dropdown', 'options' => ['choices' => $parentStatusOptions]],
-            ['name' => 'father_occupation', 'label' => "Father's Occupation", 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Father Occupation', 'placeholder_km' => 'បញ្ចូលមុខរបរឪពុក']],
-            ['name' => 'father_place_of_work', 'label' => "Father's Place of Work", 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Father Place of Work', 'placeholder_km' => 'បញ្ចូលទីតាំងធ្វើការឪពុក']],
-            ['name' => 'father_phone_number', 'label' => "Father's Phone Number", 'type' => 'phone', 'options' => ['placeholder_en' => 'Enter Father Phone Number', 'placeholder_km' => 'បញ្ចូលលេខទំនាក់ទំនងឪពុក']],
+            ['name' => 'father_heading', 'label' => $this->t("Father's Information", 'ព័ត៌មានឪពុក'), 'type' => 'info', 'options' => ['content' => $this->t("Father's Information", 'ព័ត៌មានឪពុក'), 'column_span_full' => true, 'is_hidden_label' => true]],
+            ['name' => 'father_name', 'label' => $this->t("Father's Name", 'ឈ្មោះឪពុក'), 'type' => 'text_input', 'options' => ['placeholder_en' => "Enter Father's Name", 'placeholder_km' => 'បញ្ចូលឈ្មោះឪពុក']],
+            ['name' => 'father_date_of_birth', 'label' => $this->t("Father's Date of Birth", 'ថ្ងៃខែឆ្នាំកំណើតឪពុក'), 'type' => 'date_picker', 'options' => ['placeholder_en' => "Enter Father Date of Birth", 'placeholder_km' => 'ជ្រើសរើសថ្ងៃខែឆ្នាំកំណើតឪពុក']],
+            ['name' => 'father_ethnicity', 'label' => $this->t("Father's Ethnicity", 'ជនជាតិឪពុក'), 'type' => 'select_dropdown', 'options' => ['choices' => $ethnicityOptions]],
+            ['name' => 'father_nationality', 'label' => $this->t("Father's Nationality", 'សញ្ជាតិឪពុក'), 'type' => 'select_dropdown', 'options' => ['choices' => $nationalityOptions]],
+            ['name' => 'father_status', 'label' => $this->t("Father's Status", 'ស្ថានភាពឪពុក'), 'type' => 'select_dropdown', 'options' => ['choices' => $parentStatusOptions]],
+            ['name' => 'father_occupation', 'label' => $this->t("Father's Occupation", 'មុខរបរឪពុក'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Father Occupation', 'placeholder_km' => 'បញ្ចូលមុខរបរឪពុក']],
+            ['name' => 'father_place_of_work', 'label' => $this->t("Father's Place of Work", 'ទីកន្លែងធ្វើការឪពុក'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Father Place of Work', 'placeholder_km' => 'បញ្ចូលទីកន្លែងធ្វើការឪពុក']],
+            ['name' => 'father_phone_number', 'label' => $this->t("Father's Phone Number", 'លេខទូរស័ព្ទឪពុក'), 'type' => 'phone', 'options' => ['placeholder_en' => 'Enter Father Phone Number', 'placeholder_km' => 'បញ្ចូលលេខទូរស័ព្ទឪពុក']],
 
-            ['name' => 'mother_heading', 'label' => "Mother's Information", 'type' => 'info', 'options' => ['content' => "Mother's Information", 'column_span_full' => true, 'is_hidden_label' => true]],
-            ['name' => 'mother_name', 'label' => "Mother's Name", 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Mother Name', 'placeholder_km' => 'បញ្ចូលនាមម្ដាយ']],
-            ['name' => 'mother_date_of_birth', 'label' => "Mother's Date of Birth", 'type' => 'date_picker', 'options' => ['placeholder_en' => 'Enter Mother Date of Birth', 'placeholder_km' => 'ជ្រើសរើសថ្ងៃខែឆ្នាំកំណើតម្ដាយ']],
-            ['name' => 'mother_ethnicity', 'label' => "Mother's Ethnicity", 'type' => 'select_dropdown', 'options' => ['choices' => $ethnicityOptions]],
-            ['name' => 'mother_nationality', 'label' => "Mother's Nationality", 'type' => 'select_dropdown', 'options' => ['choices' => $nationalityOptions]],
-            ['name' => 'mother_status', 'label' => "Mother's Status", 'type' => 'select_dropdown', 'options' => ['choices' => $parentStatusOptions]],
-            ['name' => 'mother_occupation', 'label' => "Mother's Occupation", 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Mother Occupation', 'placeholder_km' => 'បញ្ចូលមុខរបរម្ដាយ']],
-            ['name' => 'mother_place_of_work', 'label' => "Mother's Place of Work", 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Mother Place of Work', 'placeholder_km' => 'បញ្ចូលទីតាំងធ្វើការម្ដាយ']],
-            ['name' => 'mother_phone_number', 'label' => "Mother's Phone Number", 'type' => 'phone', 'options' => ['placeholder_en' => 'Enter Mother Phone Number', 'placeholder_km' => 'បញ្ចូលលេខទំនាក់ទំនងម្ដាយ']],
+            ['name' => 'mother_heading', 'label' => $this->t("Mother's Information", 'ព័ត៌មានម្ដាយ'), 'type' => 'info', 'options' => ['content' => $this->t("Mother's Information", 'ព័ត៌មានម្ដាយ'), 'column_span_full' => true, 'is_hidden_label' => true]],
+            ['name' => 'mother_name', 'label' => $this->t("Mother's Name", 'ឈ្មោះម្ដាយ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Mother Name', 'placeholder_km' => 'បញ្ចូលឈ្មោះម្ដាយ']],
+            ['name' => 'mother_date_of_birth', 'label' => $this->t("Mother's Date of Birth", 'ថ្ងៃខែឆ្នាំកំណើតម្ដាយ'), 'type' => 'date_picker', 'options' => ['placeholder_en' => 'Enter Mother Date of Birth', 'placeholder_km' => 'ជ្រើសរើសថ្ងៃខែឆ្នាំកំណើតម្ដាយ']],
+            ['name' => 'mother_ethnicity', 'label' => $this->t("Mother's Ethnicity", 'ជនជាតិម្ដាយ'), 'type' => 'select_dropdown', 'options' => ['choices' => $ethnicityOptions]],
+            ['name' => 'mother_nationality', 'label' => $this->t("Mother's Nationality", 'សញ្ជាតិម្ដាយ'), 'type' => 'select_dropdown', 'options' => ['choices' => $nationalityOptions]],
+            ['name' => 'mother_status', 'label' => $this->t("Mother's Status", 'ស្ថានភាពម្ដាយ'), 'type' => 'select_dropdown', 'options' => ['choices' => $parentStatusOptions]],
+            ['name' => 'mother_occupation', 'label' => $this->t("Mother's Occupation", 'មុខរបរម្ដាយ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Mother Occupation', 'placeholder_km' => 'បញ្ចូលមុខរបរម្ដាយ']],
+            ['name' => 'mother_place_of_work', 'label' => $this->t("Mother's Place of Work", 'ទីកន្លែងធ្វើការម្ដាយ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Mother Place of Work', 'placeholder_km' => 'បញ្ចូលទីកន្លែងធ្វើការម្ដាយ']],
+            ['name' => 'mother_phone_number', 'label' => $this->t("Mother's Phone Number", 'លេខទូរស័ព្ទម្ដាយ'), 'type' => 'phone', 'options' => ['placeholder_en' => 'Enter Mother Phone Number', 'placeholder_km' => 'បញ្ចូលលេខទូរស័ព្ទម្ដាយ']],
 
-            ['name' => 'parents_current_address_heading', 'label' => 'Parents Current Address', 'type' => 'info', 'options' => ['content' => 'Parents Current Address', 'column_span_full' => true, 'is_hidden_label' => true]],
-            ['name' => 'parents_house_number', 'label' => 'House Number', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter House Number', 'placeholder_km' => 'បញ្ចូលលេខផ្ទះ']],
-            ['name' => 'parents_street_number', 'label' => 'Street Number', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Street Number', 'placeholder_km' => 'បញ្ចូលលេខផ្លូវ']],
-            ['name' => 'parents_capital_province', 'label' => 'Capital / Province', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('province')],
-            ['name' => 'parents_district_khan', 'label' => 'District / Khan', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('district', 'parents_capital_province')],
-            ['name' => 'parents_commune_sangkat', 'label' => 'Commune / Sangkat', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('commune', 'parents_district_khan')],
-            ['name' => 'parents_village', 'label' => 'Village', 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('village', 'parents_commune_sangkat')],
+            ['name' => 'parents_current_address_heading', 'label' => $this->t('Parents Current Address', 'អាសយដ្ឋានបច្ចុប្បន្នរបស់ឪពុកម្ដាយ'), 'type' => 'info', 'options' => ['content' => $this->t('Parents Current Address', 'អាសយដ្ឋានបច្ចុប្បន្នរបស់ឪពុកម្ដាយ'), 'column_span_full' => true, 'is_hidden_label' => true]],
+            ['name' => 'parents_house_number', 'label' => $this->t('House Number', 'លេខផ្ទះ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter House Number', 'placeholder_km' => 'បញ្ចូលលេខផ្ទះ']],
+            ['name' => 'parents_street_number', 'label' => $this->t('Street Number', 'លេខផ្លូវ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Street Number', 'placeholder_km' => 'បញ្ចូលលេខផ្លូវ']],
+            ['name' => 'parents_capital_province', 'label' => $this->t('Province / City', 'រាជធានី / ខេត្ត'), 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('province')],
+            ['name' => 'parents_district_khan', 'label' => $this->t('District / Khan', 'ស្រុក / ខណ្ឌ'), 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('district', 'parents_capital_province')],
+            ['name' => 'parents_commune_sangkat', 'label' => $this->t('Commune / Sangkat', 'ឃុំ / សង្កាត់'), 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('commune', 'parents_district_khan')],
+            ['name' => 'parents_village', 'label' => $this->t('Village', 'ភូមិ'), 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('village', 'parents_commune_sangkat')],
 
-            ['name' => 'guardian_heading', 'label' => 'Guardian Information', 'type' => 'info', 'options' => ['content' => 'Guardian Information', 'column_span_full' => true, 'is_hidden_label' => true]],
-            ['name' => 'guardian_name', 'label' => "Guardian's Name", 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Guardian Name', 'placeholder_km' => 'បញ្ចូលឈ្មោះអាណាព្យាបាល']],
-            ['name' => 'guardian_relationship', 'label' => 'Guardian Relationship', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Guardian Relationship', 'placeholder_km' => 'បញ្ចូលទំនាក់ទំនងអាណាព្យាបាល']],
-            ['name' => 'guardian_phone_number', 'label' => 'Guardian Phone Number', 'type' => 'phone', 'options' => ['placeholder_en' => 'Enter Guardian Phone Number', 'placeholder_km' => 'បញ្ចូលលេខទំនាក់ទំនងអាណាព្យាបាល']],
+            ['name' => 'guardian_heading', 'label' => $this->t('Guardian Information', 'ព័ត៌មានអាណាព្យាបាល'), 'type' => 'info', 'options' => ['content' => $this->t('Guardian Information', 'ព័ត៌មានអាណាព្យាបាល'), 'column_span_full' => true, 'is_hidden_label' => true]],
+            ['name' => 'guardian_name', 'label' => $this->t("Guardian's Name", 'ឈ្មោះអាណាព្យាបាល'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Guardian Name', 'placeholder_km' => 'បញ្ចូលឈ្មោះអាណាព្យាបាល']],
+            ['name' => 'guardian_relationship', 'label' => $this->t('Guardian Relationship', 'ទំនាក់ទំនងជាមួយអាណាព្យាបាល'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Guardian Relationship', 'placeholder_km' => 'បញ្ចូលទំនាក់ទំនងជាមួយអាណាព្យាបាល']],
+            ['name' => 'guardian_phone_number', 'label' => $this->t('Guardian Phone Number', 'លេខទូរស័ព្ទអាណាព្យាបាល'), 'type' => 'phone', 'options' => ['placeholder_en' => 'Enter Guardian Phone Number', 'placeholder_km' => 'បញ្ចូលលេខទូរស័ព្ទអាណាព្យាបាល']],
         ];
 
         $this->upsertFields($customFormId, $familySection, $familyFields, $keepNames, $sort);
@@ -266,7 +243,7 @@ class StudentProfileSeeder extends Seeder
         $siblingsRepeater = $this->upsertField(
             $customFormId,
             'siblings',
-            'B. About Siblings',
+            $this->t('B. About Siblings', 'ខ. ព័ត៌មានអំពីបងប្អូន'),
             'repeater',
             false,
             ['columns' => 2, 'column_span_full' => true],
@@ -277,22 +254,22 @@ class StudentProfileSeeder extends Seeder
         $keepNames[] = 'siblings';
 
         $siblingFields = [
-            ['name' => 'sibling_name', 'label' => 'Name', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Sibling Name', 'placeholder_km' => 'បញ្ចូលឈ្មោះបងប្អូន']],
-            ['name' => 'sibling_gender', 'label' => 'Gender', 'type' => 'select_dropdown', 'options' => ['choices' => $genderOptions]],
-            ['name' => 'sibling_year_of_birth', 'label' => 'Date of Birth', 'type' => 'date_picker', 'options' => ['placeholder_en' => 'Enter Sibling Date of Birth', 'placeholder_km' => 'ជ្រើសរើសថ្ងៃខែឆ្នាំកំណើតបងប្អូន']],
-            ['name' => 'sibling_occupation', 'label' => 'Occupation', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Sibling Occupation', 'placeholder_km' => 'បញ្ចូលមុខរបរបងប្អូន']],
+            ['name' => 'sibling_name', 'label' => $this->t('Name', 'ឈ្មោះ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Sibling Name', 'placeholder_km' => 'បញ្ចូលឈ្មោះបងប្អូន']],
+            ['name' => 'sibling_gender', 'label' => $this->t('Gender', 'ភេទ'), 'type' => 'select_dropdown', 'options' => ['choices' => $genderOptions]],
+            ['name' => 'sibling_year_of_birth', 'label' => $this->t('Date of Birth', 'ថ្ងៃខែឆ្នាំកំណើត'), 'type' => 'date_picker', 'options' => ['placeholder_en' => 'Enter Sibling Date of Birth', 'placeholder_km' => 'ជ្រើសរើសថ្ងៃខែឆ្នាំកំណើតបងប្អូន']],
+            ['name' => 'sibling_occupation', 'label' => $this->t('Occupation', 'មុខរបរ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Sibling Occupation', 'placeholder_km' => 'បញ្ចូលមុខរបរបងប្អូន']],
         ];
 
         $this->upsertFields($customFormId, $siblingsRepeater, $siblingFields, $keepNames, $sort);
 
         $spouseFields = [
-            ['name' => 'spouse_children_heading', 'label' => 'C. About Spouse and Children', 'type' => 'info', 'options' => ['content' => 'C. About Spouse and Children', 'column_span_full' => true, 'is_hidden_label' => true]],
-            ['name' => 'spouse_name', 'label' => 'Spouse Name', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Spouse Name', 'placeholder_km' => 'បញ្ចូលឈ្មោះប្ដី/ប្រពន្ធ(បើមាន)']],
-            ['name' => 'spouse_year_of_birth', 'label' => 'Date of Birth', 'type' => 'date_picker', 'options' => ['placeholder_en' => 'Enter Spouse Date of Birth', 'placeholder_km' => 'ជ្រើសរើសថ្ងៃខែឆ្នាំកំណើតប្ដី/ប្រពន្ធ(បើមាន)']],
-            ['name' => 'spouse_occupation', 'label' => 'Occupation', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Spouse Occupation', 'placeholder_km' => 'បញ្ចូលមុខរបរប្ដី/ប្រពន្ធ(បើមាន)']],
-            ['name' => 'number_of_children', 'label' => 'Number of Children', 'type' => 'number_input', 'options' => ['placeholder_en' => 'Enter Number of Children', 'placeholder_km' => 'បញ្ចូលចំនួនកូនសរុប(បើមាន)']],
-            ['name' => 'number_of_sons', 'label' => 'Number of Sons', 'type' => 'number_input', 'options' => ['placeholder_en' => 'Enter Number of Sons', 'placeholder_km' => 'បញ្ចូលចំនួនកូនប្រុស']],
-            ['name' => 'number_of_daughters', 'label' => 'Number of Daughters', 'type' => 'number_input', 'options' => ['placeholder_en' => 'Enter Number of Daughters', 'placeholder_km' => 'បញ្ចូលចំនួនកូនស្រី']],
+            ['name' => 'spouse_children_heading', 'label' => $this->t('C. About Spouse and Children', 'គ. ព័ត៌មានអំពីប្ដី/ប្រពន្ធ និងកូន'), 'type' => 'info', 'options' => ['content' => $this->t('C. About Spouse and Children', 'គ. ព័ត៌មានអំពីប្ដី/ប្រពន្ធ និងកូន'), 'column_span_full' => true, 'is_hidden_label' => true]],
+            ['name' => 'spouse_name', 'label' => $this->t('Spouse Name', 'ឈ្មោះប្ដី/ប្រពន្ធ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Spouse Name', 'placeholder_km' => 'បញ្ចូលឈ្មោះប្ដី/ប្រពន្ធ']],
+            ['name' => 'spouse_year_of_birth', 'label' => $this->t('Date of Birth', 'ថ្ងៃខែឆ្នាំកំណើត'), 'type' => 'date_picker', 'options' => ['placeholder_en' => 'Enter Spouse Date of Birth', 'placeholder_km' => 'ជ្រើសរើសថ្ងៃខែឆ្នាំកំណើតប្ដី/ប្រពន្ធ']],
+            ['name' => 'spouse_occupation', 'label' => $this->t('Occupation', 'មុខរបរ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Spouse Occupation', 'placeholder_km' => 'បញ្ចូលមុខរបរប្ដី/ប្រពន្ធ']],
+            ['name' => 'number_of_children', 'label' => $this->t('Number of Children', 'ចំនួនកូនសរុប'), 'type' => 'number_input', 'options' => ['placeholder_en' => 'Enter Number of Children', 'placeholder_km' => 'បញ្ចូលចំនួនកូនសរុប']],
+            ['name' => 'number_of_sons', 'label' => $this->t('Number of Sons', 'ចំនួនកូនប្រុស'), 'type' => 'number_input', 'options' => ['placeholder_en' => 'Enter Number of Sons', 'placeholder_km' => 'បញ្ចូលចំនួនកូនប្រុស']],
+            ['name' => 'number_of_daughters', 'label' => $this->t('Number of Daughters', 'ចំនួនកូនស្រី'), 'type' => 'number_input', 'options' => ['placeholder_en' => 'Enter Number of Daughters', 'placeholder_km' => 'បញ្ចូលចំនួនកូនស្រី']],
         ];
 
         $this->upsertFields($customFormId, $familySection, $spouseFields, $keepNames, $sort);
@@ -300,7 +277,7 @@ class StudentProfileSeeder extends Seeder
         $educationSection = $this->upsertField(
             $customFormId,
             'educational_information',
-            'III. Educational Information',
+            $this->t('III. Educational Information', '៣. ព័ត៌មានអប់រំ'),
             'section',
             false,
             ['columns' => 2, 'column_span_full' => true],
@@ -313,7 +290,7 @@ class StudentProfileSeeder extends Seeder
         $educationRepeater = $this->upsertField(
             $customFormId,
             'educations',
-            'Education',
+            $this->t('Education', 'ការអប់រំ'),
             'repeater',
             false,
             ['columns' => 2, 'column_span_full' => true],
@@ -324,12 +301,12 @@ class StudentProfileSeeder extends Seeder
         $keepNames[] = 'educations';
 
         $educationFields = [
-            ['name' => 'educational_institution', 'label' => 'Educational Institution', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Educational Institution', 'placeholder_km' => 'បញ្ចូលស្ថាប័នអប់រំ', 'column_span_full' => true]],
-            ['name' => 'degree_level_major', 'label' => 'Degree Level / Major', 'type' => 'select_dropdown', 'options' => ['choices' => $degreeOptions]],
-            ['name' => 'country', 'label' => 'Country', 'type' => 'select_dropdown', 'options' => ['choices' => $countryOptions]],
-            ['name' => 'from_year', 'label' => 'From Year', 'type' => 'select_dropdown', 'options' => ['choices' => $yearOptions]],
-            ['name' => 'to_year', 'label' => 'To Year', 'type' => 'select_dropdown', 'options' => ['choices' => $yearOptions]],
-            ['name' => 'graduation_year', 'label' => 'Graduation Year', 'type' => 'select_dropdown', 'options' => ['choices' => $yearOptions, 'column_span_full' => true]],
+            ['name' => 'educational_institution', 'label' => $this->t('Educational Institution', 'គ្រឹះស្ថានអប់រំ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Educational Institution', 'placeholder_km' => 'បញ្ចូលគ្រឹះស្ថានអប់រំ', 'column_span_full' => true]],
+            ['name' => 'degree_level_major', 'label' => $this->t('Degree Level / Major', 'កម្រិតសញ្ញាបត្រ / ជំនាញ'), 'type' => 'select_dropdown', 'options' => ['choices' => $degreeOptions]],
+            ['name' => 'country', 'label' => $this->t('Country', 'ប្រទេស'), 'type' => 'select_dropdown', 'options' => ['choices' => $countryOptions]],
+            ['name' => 'from_year', 'label' => $this->t('From Year', 'ចាប់ពីឆ្នាំ'), 'type' => 'select_dropdown', 'options' => ['choices' => $yearOptions]],
+            ['name' => 'to_year', 'label' => $this->t('To Year', 'ដល់ឆ្នាំ'), 'type' => 'select_dropdown', 'options' => ['choices' => $yearOptions]],
+            ['name' => 'graduation_year', 'label' => $this->t('Graduation Year', 'ឆ្នាំបញ្ចប់ការសិក្សា'), 'type' => 'select_dropdown', 'options' => ['choices' => $yearOptions, 'column_span_full' => true]],
         ];
 
         $this->upsertFields($customFormId, $educationRepeater, $educationFields, $keepNames, $sort);
@@ -337,7 +314,7 @@ class StudentProfileSeeder extends Seeder
         $cvSection = $this->upsertField(
             $customFormId,
             'curriculum_vitae',
-            'IV. Work History',
+            $this->t('IV. Work History', '៤. ប្រវត្តិការងារ'),
             'section',
             false,
             ['columns' => 2, 'column_span_full' => true],
@@ -350,7 +327,7 @@ class StudentProfileSeeder extends Seeder
         $workRepeater = $this->upsertField(
             $customFormId,
             'cv_work_history',
-            'Work History',
+            $this->t('Work History', 'ប្រវត្តិការងារ'),
             'repeater',
             false,
             ['columns' => 2, 'column_span_full' => true],
@@ -361,11 +338,11 @@ class StudentProfileSeeder extends Seeder
         $keepNames[] = 'cv_work_history';
 
         $workFields = [
-            ['name' => 'cv_start_year', 'label' => 'Start Year', 'type' => 'date_picker', 'options' => ['placeholder_en' => 'Enter Start Year', 'placeholder_km' => 'ជ្រើសរើសថ្ងៃខែឆ្នាំដែលបានចាប់ផ្តើមធ្វើការ']],
-            ['name' => 'cv_end_year', 'label' => 'End Year', 'type' => 'date_picker', 'options' => ['placeholder_en' => 'Enter End Year', 'placeholder_km' => 'ជ្រើសរើសថ្ងៃខែឆ្នាំដែលបានបញ្ចប់']],
-            ['name' => 'cv_organization', 'label' => 'Organization', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Organization', 'placeholder_km' => 'បញ្ចូលស្ថាបនអង្គការ']],
-            ['name' => 'cv_ministry', 'label' => 'Ministry', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Ministry', 'placeholder_km' => 'បញ្ចូលស្ថាបនមន្ទីរ']],
-            ['name' => 'cv_position', 'label' => 'Position', 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Position', 'placeholder_km' => 'បញ្ចូលតំណែង']],
+            ['name' => 'cv_start_year', 'label' => $this->t('Start Year', 'ឆ្នាំចាប់ផ្ដើម'), 'type' => 'date_picker', 'options' => ['placeholder_en' => 'Enter Start Year', 'placeholder_km' => 'ជ្រើសរើសថ្ងៃខែឆ្នាំចាប់ផ្ដើម']],
+            ['name' => 'cv_end_year', 'label' => $this->t('End Year', 'ឆ្នាំបញ្ចប់'), 'type' => 'date_picker', 'options' => ['placeholder_en' => 'Enter End Year', 'placeholder_km' => 'ជ្រើសរើសថ្ងៃខែឆ្នាំបញ្ចប់']],
+            ['name' => 'cv_organization', 'label' => $this->t('Organization', 'អង្គការ / ស្ថាប័ន'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Organization', 'placeholder_km' => 'បញ្ចូលអង្គការ / ស្ថាប័ន']],
+            ['name' => 'cv_ministry', 'label' => $this->t('Ministry', 'ក្រសួង'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Ministry', 'placeholder_km' => 'បញ្ចូលក្រសួង']],
+            ['name' => 'cv_position', 'label' => $this->t('Position', 'មុខតំណែង'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Position', 'placeholder_km' => 'បញ្ចូលមុខតំណែង']],
         ];
 
         $this->upsertFields($customFormId, $workRepeater, $workFields, $keepNames, $sort);
@@ -400,7 +377,7 @@ class StudentProfileSeeder extends Seeder
     private function upsertField(
         int $customFormId,
         string $name,
-        string $label,
+        mixed $label,
         string $type,
         bool $required,
         ?array $options,
@@ -412,7 +389,7 @@ class StudentProfileSeeder extends Seeder
         $data = [
             'custom_form_id' => $customFormId,
             'name' => $name,
-            'label' => $label,
+            'label' => $this->prepareTranslatableText($label),
             'type' => $type,
             'options' => $this->prepareOptions($options),
             'sort' => $sort,
@@ -432,7 +409,7 @@ class StudentProfileSeeder extends Seeder
         }
 
         if (Schema::hasColumn('custom_form_fields', 'placeholder')) {
-            $data['placeholder'] = $label;
+            $data['placeholder'] = $this->getKhmerText($label);
         }
 
         if (Schema::hasColumn('custom_form_fields', 'default_value')) {
@@ -484,9 +461,7 @@ class StudentProfileSeeder extends Seeder
             ->first();
 
         if ($existing) {
-            DB::table('custom_form_fields')
-                ->where('id', $existing->id)
-                ->update($data);
+            DB::table('custom_form_fields')->where('id', $existing->id)->update($data);
 
             return (int) $existing->id;
         }
@@ -494,6 +469,40 @@ class StudentProfileSeeder extends Seeder
         $data['created_at'] = $now;
 
         return (int) DB::table('custom_form_fields')->insertGetId($data);
+    }
+
+    private function t(string $en, string $km): array
+    {
+        return [
+            'en' => $en,
+            'km' => $km,
+        ];
+    }
+
+    private function opt(string $value, string $en, string $km): array
+    {
+        return [
+            'value' => $value,
+            'label' => $this->t($en, $km),
+        ];
+    }
+
+    private function prepareTranslatableText(mixed $value): string
+    {
+        if (is_array($value)) {
+            return json_encode($value, JSON_UNESCAPED_UNICODE);
+        }
+
+        return (string) $value;
+    }
+
+    private function getKhmerText(mixed $value): string
+    {
+        if (is_array($value)) {
+            return (string) ($value['km'] ?? $value['kh'] ?? $value['en'] ?? collect($value)->first() ?? '');
+        }
+
+        return (string) $value;
     }
 
     private function prepareOptions(?array $options): ?string
@@ -520,9 +529,7 @@ class StudentProfileSeeder extends Seeder
             } while ($deleted > 0);
         }
 
-        DB::table('custom_form_fields')
-            ->where('custom_form_id', $customFormId)
-            ->delete();
+        DB::table('custom_form_fields')->where('custom_form_id', $customFormId)->delete();
     }
 
     private function normalizeChoices(array $choices): array
@@ -534,10 +541,12 @@ class StudentProfileSeeder extends Seeder
         return collect($choices)
             ->mapWithKeys(function (mixed $choice, int $index): array {
                 if (is_array($choice) && array_key_exists('value', $choice)) {
-                    return [(string) $choice['value'] => (string) ($choice['label'] ?? $choice['value'])];
+                    return [
+                        (string) $choice['value'] => $choice['label'] ?? $choice['value'],
+                    ];
                 }
 
-                return [(string) $index => (string) $choice];
+                return [(string) $index => $choice];
             })
             ->toArray();
     }
@@ -567,9 +576,7 @@ class StudentProfileSeeder extends Seeder
             return;
         }
 
-        DB::table('document_templates')
-            ->where($typeColumn, $documentType)
-            ->delete();
+        DB::table('document_templates')->where($typeColumn, $documentType)->delete();
 
         $data = [
             $typeColumn => $documentType,
@@ -578,11 +585,11 @@ class StudentProfileSeeder extends Seeder
         ];
 
         if (Schema::hasColumn('document_templates', 'name')) {
-            $data['name'] = 'Profile Template';
+            $data['name'] = 'គំរូឯកសារប្រវត្តិរូប';
         }
 
         if (Schema::hasColumn('document_templates', 'template_name')) {
-            $data['template_name'] = 'Profile Template';
+            $data['template_name'] = 'គំរូឯកសារប្រវត្តិរូប';
         }
 
         if (Schema::hasColumn('document_templates', 'custom_form_id')) {
@@ -609,13 +616,13 @@ class StudentProfileSeeder extends Seeder
         }
 
         $html = '<div style="font-family: sans-serif; max-width: 900px; margin: 0 auto;">';
-        $html .= '<h1 style="text-align:center;">Profile</h1>';
-        $html .= '<p><strong>First Name Khmer:</strong> {{ first_name_kh }}</p>';
-        $html .= '<p><strong>Last Name Khmer:</strong> {{ last_name_kh }}</p>';
-        $html .= '<p><strong>First Name English:</strong> {{ first_name_en }}</p>';
-        $html .= '<p><strong>Last Name English:</strong> {{ last_name_en }}</p>';
-        $html .= '<p><strong>Date of Birth:</strong> {{ date_of_birth }}</p>';
-        $html .= '<p><strong>Gender:</strong> {{ gender }}</p>';
+        $html .= '<h1 style="text-align:center;">ប្រវត្តិរូប</h1>';
+        $html .= '<p><strong>នាមខ្លួន (ខ្មែរ)៖</strong> {{ first_name_kh }}</p>';
+        $html .= '<p><strong>នាមត្រកូល (ខ្មែរ)៖</strong> {{ last_name_kh }}</p>';
+        $html .= '<p><strong>នាមខ្លួន (អង់គ្លេស)៖</strong> {{ first_name_en }}</p>';
+        $html .= '<p><strong>នាមត្រកូល (អង់គ្លេស)៖</strong> {{ last_name_en }}</p>';
+        $html .= '<p><strong>ថ្ងៃខែឆ្នាំកំណើត៖</strong> {{ date_of_birth }}</p>';
+        $html .= '<p><strong>ភេទ៖</strong> {{ gender }}</p>';
         $html .= '</div>';
 
         foreach (['content', 'html', 'body', 'template', 'template_content'] as $column) {

@@ -23,6 +23,7 @@ class CustomFormsTable
             ->columns([
                 TextColumn::make('name')
                     ->label(__('filament-custom-forms::fcf.form.name'))
+                    ->formatStateUsing(fn ($state): string => self::englishText($state))
                     ->searchable(),
                 TextColumn::make('slug')
                     ->label(__('filament-custom-forms::fcf.form.slug'))
@@ -59,7 +60,8 @@ class CustomFormsTable
                     ->default('—')
                     ->badge()
                     ->alignCenter()
-                    ->color('primary'),
+                    ->formatStateUsing(fn ($state): string => self::englishText($state))
+                    ->color('info'),
                 IconColumn::make('is_active')
                     ->label(__('filament-custom-forms::fcf.form.is_active'))
                     ->boolean()
@@ -130,5 +132,22 @@ class CustomFormsTable
                     ForceDeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    private static function englishText(mixed $value): string
+    {
+        if (is_string($value) && str_starts_with(trim($value), '{')) {
+            $decoded = json_decode($value, true);
+
+            if (is_array($decoded)) {
+                $value = $decoded;
+            }
+        }
+
+        if (is_array($value)) {
+            return (string) ($value['en'] ?? $value['km'] ?? '');
+        }
+
+        return (string) $value;
     }
 }
