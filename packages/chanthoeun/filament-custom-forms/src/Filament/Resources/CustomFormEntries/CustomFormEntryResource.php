@@ -19,6 +19,13 @@ use Illuminate\Support\Facades\Schema as DatabaseSchema;
 
 class CustomFormEntryResource extends Resource
 {
+    public function getTitle(): string
+    {
+        return app()->getLocale() === 'km'
+            ? 'បង្កើត ' . static::getResource()::getModelLabel()
+            : 'Create ' . static::getResource()::getModelLabel();
+    }
+
     public static function getModel(): string
     {
         return CustomFormPlugin::get()->getEntryModel();

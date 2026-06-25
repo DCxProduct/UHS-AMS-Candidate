@@ -181,15 +181,43 @@ class CreateCustomFormEntry extends CreateRecord
             $customForm = CustomForm::find($this->form_id);
 
             if ($customForm) {
-                return 'Create ' . $customForm->name;
+                if (app()->getLocale() === 'km') {
+                    return 'បង្កើត ' . $this->transText($customForm->name);
+                }
+
+                return 'Create ' . $this->transText($customForm->name);
             }
         }
 
-        return parent::getHeading();
+        return app()->getLocale() === 'km'
+            ? 'បង្កើត'
+            : 'Create';
     }
 
-    public function getBreadcrumbs(): array
+    public function getTitle(): string|Htmlable
     {
-        return [];
+        return $this->getHeading();
+    }
+
+    public function getBreadcrumb(): string
+    {
+        return app()->getLocale() === 'km'
+            ? 'បង្កើត'
+            : 'Create';
+    }
+
+    private function transText(mixed $value): string
+    {
+        $locale = app()->getLocale();
+
+        if (is_string($value) && str_starts_with(trim($value), '{')) {
+            $value = json_decode($value, true);
+        }
+
+        if (is_array($value)) {
+            return $value[$locale] ?? $value['km'] ?? $value['en'] ?? '';
+        }
+
+        return (string) $value;
     }
 }
