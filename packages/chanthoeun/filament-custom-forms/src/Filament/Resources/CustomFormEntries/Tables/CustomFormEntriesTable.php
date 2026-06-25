@@ -350,7 +350,7 @@ class CustomFormEntriesTable
                         ->native(false)
                         ->live(),
                 ])
-                ->columns(3)
+                ->columns(4)
                 ->columnSpanFull()
                 ->query(function (Builder $query, array $data): Builder {
                     return $query

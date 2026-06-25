@@ -22,4 +22,6 @@ return [
         'profile' => 'ប្រវត្តិរូប',
         'national_examination_registration' => 'ការចុះឈ្មោះប្រឡងថ្នាក់ជាតិ',
     ],
+
+    'registration' => 'ការចុះឈ្មោះប្រឡងថ្នាក់ជាតិ',
 ];

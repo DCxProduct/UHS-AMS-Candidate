@@ -22,4 +22,6 @@ return [
         'profile' => 'Profile',
         'national_examination_registration' => 'National Examination Registration',
     ],
+
+    'registration' => 'Registration',
 ];
