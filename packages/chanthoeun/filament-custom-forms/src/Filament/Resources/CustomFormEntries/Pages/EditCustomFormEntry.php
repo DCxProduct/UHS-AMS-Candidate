@@ -106,8 +106,40 @@ class EditCustomFormEntry extends EditRecord
 
     public function getHeading(): string|\Illuminate\Contracts\Support\Htmlable
     {
-        return ($this->isLockedForEditing() ? 'View ' : 'Edit ')
-            . ($this->getRecord()->customForm?->name ?? 'Entry');
+        $prefix = $this->isLockedForEditing()
+            ? (app()->getLocale() === 'km' ? 'មើល ' : 'View ')
+            : (app()->getLocale() === 'km' ? 'កែប្រែ ' : 'Edit ');
+
+        return $prefix . $this->transText(
+                $this->getRecord()->customForm?->name ?? 'Entry'
+            );
+    }
+
+    public function getTitle(): string|\Illuminate\Contracts\Support\Htmlable
+    {
+        return $this->getHeading();
+    }
+
+    private function transText(mixed $value): string
+    {
+        $locale = app()->getLocale();
+
+        if (is_string($value) && str_starts_with(trim($value), '{')) {
+            $decoded = json_decode($value, true);
+
+            if (is_array($decoded)) {
+                $value = $decoded;
+            }
+        }
+
+        if (is_array($value)) {
+            return $value[$locale]
+                ?? $value['km']
+                ?? $value['en']
+                ?? '';
+        }
+
+        return (string) $value;
     }
 
     public function getBreadcrumbs(): array
