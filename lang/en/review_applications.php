@@ -60,10 +60,10 @@ return [
         'enrollment_submitted_body' => ':student submitted an enrollment application. Please review the document.',
         'unknown_student' => 'Unknown student',
 
-        'student_accepted_title' => 'Enrollment Approved',
-        'student_accepted_body' => 'Dear :student, your enrollment application has been approved.',
-        'student_rejected_title' => 'Enrollment Rejected',
-        'student_rejected_body' => 'Dear :student, your enrollment application has been rejected. Reason: :note',
+        'student_accepted_title' => 'Exam Result: Passed',
+        'student_accepted_body' => 'Hello :student, your exam result is Passed.',
+        'student_rejected_title' => 'Exam Result: Failed',
+        'student_rejected_body' => 'Hello :student, your exam result is Failed. Reason: :note',
         'no_reject_note' => 'No reason provided',
 
         'admin_accept_success_title' => 'Application approved',
@@ -76,6 +76,11 @@ return [
         'admin_passed_success_body' => 'The application has been marked as passed.',
         'admin_failed_success_title' => 'Application Failed',
         'admin_failed_success_body' => 'The application has been marked as failed.',
+
+        'national_exam_approved_title' => 'National Examination Approved',
+        'national_exam_approved_body' => 'Your National Examination Registration has been approved.',
+        'national_exam_rejected_title' => 'National Examination Rejected',
+        'national_exam_rejected_body' => 'Your National Examination Registration has been rejected. Reason: :note',
     ],
 
     'form_type' => 'Form Type',
@@ -98,4 +103,8 @@ return [
         '11' => 'November',
         '12' => 'December',
     ],
+
+    'request_at' => 'Request At',
+    'approve_at' => 'Approved At',
+    'review_status_result' => 'Status Result',
 ];

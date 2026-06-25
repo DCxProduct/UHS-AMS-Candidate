@@ -2,16 +2,24 @@
 
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Tables;
 
+use App\Support\NotificationLanguage;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Textarea;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Tables\Filters\Filter;
 use Filament\Forms\Components\Select;
 use Filament\Tables\Enums\FiltersLayout;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\HtmlString;
+use App\Models\User;
+use Illuminate\Support\Facades\Schema;
+
 
 class CustomFormEntriesTable
 {
@@ -20,6 +28,18 @@ class CustomFormEntriesTable
         $formId = self::getFormId($table);
 
         return $table
+            ->recordAction(null)
+            ->recordUrl(function ($record): ?string {
+                $status = strtolower((string) ($record->review_status ?? 'pending'));
+
+                if ($status === 'pending' || $status === '') {
+                    return \Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource::getUrl('edit', [
+                        'record' => $record,
+                    ]);
+                }
+
+                return null;
+            })
             ->columns(self::getColumns($formId))
             ->filters(self::getFilters($formId), layout: FiltersLayout::AboveContent)
             ->deferFilters(false)
@@ -207,6 +227,12 @@ class CustomFormEntriesTable
 
             self::reviewStatusColumn(),
 
+            TextColumn::make('created_at')
+                ->label(__('review_applications.request_at'))
+                ->dateTime('d M Y H:i')
+                ->color('gray')
+                ->sortable(),
+
             TextColumn::make('reviewed_at')
                 ->label(__('review_applications.reviewed_at'))
                 ->dateTime('d M Y H:i')
@@ -377,6 +403,85 @@ class CustomFormEntriesTable
                 }),
         ];
 
+        if (self::currentPanelIsAdmin()) {
+            $actions[] = Action::make('accepted')
+                ->label(__('review_applications.statuses.accepted'))
+                ->icon('heroicon-o-check-circle')
+                ->color('success')
+                ->requiresConfirmation()
+                ->visible(fn ($record): bool =>
+                    self::recordIsNationalExam($record)
+                    && ! in_array(strtolower((string) $record->review_status), ['passed', 'accepted', 'approved'], true)
+                )
+                ->action(function ($record): void {
+                    $data = is_array($record->data) ? $record->data : [];
+                    $data['candidate_status'] = 'pending';
+
+                    DB::table('custom_form_entries')
+                        ->where('id', $record->id)
+                        ->update([
+                            'review_status' => 'approved',
+                            'review_note' => null,
+                            'reviewed_by' => auth()->id(),
+                            'reviewed_at' => now(),
+                            'updated_at' => now(),
+                            'data' => json_encode($data),
+                        ]);
+
+                    $record->refresh();
+
+                    self::notifyStudentNationalExamResult(
+                        record: $record,
+                        status: 'approved',
+                        note: null,
+                    );
+
+                    Notification::make()
+                        ->title('Application approved')
+                        ->success()
+                        ->send();
+                });
+
+            $actions[] = Action::make('rejected')
+                ->label(__('review_applications.statuses.rejected'))
+                ->icon('heroicon-o-x-circle')
+                ->color('danger')
+                ->visible(fn ($record): bool =>
+                    self::recordIsNationalExam($record)
+                    && ! in_array(strtolower((string) $record->review_status), ['approved', 'accepted', 'passed', 'failed', 'rejected'], true)
+                )
+                ->form([
+                    Textarea::make('review_note')
+                        ->label(__('review_applications.review_note'))
+                        ->required()
+                        ->rows(4),
+                ])
+                ->action(function ($record, array $data): void {
+                    DB::table('custom_form_entries')
+                        ->where('id', $record->id)
+                        ->update([
+                            'review_status' => 'rejected',
+                            'review_note' => $data['review_note'] ?? null,
+                            'reviewed_by' => auth()->id(),
+                            'reviewed_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+
+                    $record->refresh();
+
+                    self::notifyStudentNationalExamResult(
+                        record: $record,
+                        status: 'rejected',
+                        note: $data['review_note'] ?? null,
+                    );
+
+                    Notification::make()
+                        ->title('Application rejected')
+                        ->danger()
+                        ->send();
+                });
+        }
+
         if (class_exists(\Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate::class)) {
             $actions[] = \Chanthoeun\FilamentDocumentBuilder\Tables\Actions\DownloadPdfAction::make('download_pdf')
                 ->label(__('review_applications.download_pdf'))
@@ -471,8 +576,11 @@ class CustomFormEntriesTable
 
     protected static function currentPanelIsAdmin(): bool
     {
-        return \Filament\Facades\Filament::getCurrentPanel()
-            && \Filament\Facades\Filament::getCurrentPanel()->getId() === 'admin';
+        return auth()->user()?->registration_type === 'admin'
+            || (
+                \Filament\Facades\Filament::getCurrentPanel()
+                && \Filament\Facades\Filament::getCurrentPanel()->getId() === 'admin'
+            );
     }
 
     protected static function applyQueryConstraints(Builder $query, ?string $formId): Builder
@@ -517,5 +625,69 @@ class CustomFormEntriesTable
         }
 
         return $query;
+    }
+
+    protected static function recordIsNationalExam($record): bool
+    {
+        return $record->customForm?->slug === 'national-examination-registration'
+            || (int) $record->custom_form_id === (int) \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
+                ->where('slug', 'national-examination-registration')
+                ->value('id');
+    }
+
+    protected static function notifyStudentNationalExamResult($record, string $status, ?string $note = null): void
+    {
+        $student = self::getOwnerStudent($record);
+
+        if (! $student) {
+            return;
+        }
+
+        if ($status === 'approved') {
+            Notification::make()
+                ->title(NotificationLanguage::transForUser($student, 'review_applications.notifications.national_exam_approved_title'))
+                ->body(NotificationLanguage::transForUser($student, 'review_applications.notifications.national_exam_approved_body'))
+                ->icon('heroicon-o-check-circle')
+                ->iconColor('success')
+                ->success()
+                ->sendToDatabase($student);
+
+            return;
+        }
+
+        Notification::make()
+            ->title(NotificationLanguage::transForUser($student, 'review_applications.notifications.national_exam_rejected_title'))
+            ->body(NotificationLanguage::transForUser($student, 'review_applications.notifications.national_exam_rejected_body', [
+                'note' => filled($note) ? $note : NotificationLanguage::transForUser($student, 'review_applications.notifications.no_reject_note'),
+            ]))
+            ->icon('heroicon-o-x-circle')
+            ->iconColor('danger')
+            ->danger()
+            ->sendToDatabase($student);
+    }
+
+    protected static function getOwnerStudent($record): ?User
+    {
+        if (! Schema::hasTable('users')) {
+            return null;
+        }
+
+        $studentId = null;
+
+        foreach (['created_by', 'user_id', 'created_by_id'] as $column) {
+            if (Schema::hasColumn('custom_form_entries', $column) && filled($record->{$column})) {
+                $studentId = $record->{$column};
+                break;
+            }
+        }
+
+        if (! $studentId) {
+            return null;
+        }
+
+        return User::query()
+            ->where('id', $studentId)
+            ->where('registration_type', 'student')
+            ->first();
     }
 }

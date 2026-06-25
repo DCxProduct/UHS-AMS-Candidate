@@ -65,6 +65,11 @@ class ReviewApplicationResource extends Resource
                     ->where('is_active', true)
                     ->where('slug', '!=', 'profile');
             })
+            ->whereIn('review_status', [
+                'passed',
+                'accepted',
+                'approved',
+            ])
             ->latest('id');
     }
     public static function form(Schema $schema): Schema

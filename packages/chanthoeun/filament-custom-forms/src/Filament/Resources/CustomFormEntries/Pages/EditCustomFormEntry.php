@@ -115,4 +115,19 @@ class EditCustomFormEntry extends EditRecord
         return [];
     }
 
+    public function mount(int|string $record): void
+    {
+        parent::mount($record);
+
+        $status = strtolower((string) ($this->record->review_status ?? 'pending'));
+
+        if (auth()->user()?->registration_type === 'admin') {
+            $this->form->disabled();
+        }
+
+        if (in_array($status, ['approved', 'accepted', 'rejected', 'passed', 'failed'], true)) {
+            $this->redirect(static::getResource()::getUrl('index'));
+        }
+    }
+
 }

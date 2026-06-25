@@ -66,34 +66,39 @@ class ReviewApplicationsTable
                     ->searchable()
                     ->toggleable(),
 
-                TextColumn::make('review_status')
-                    ->label(__('review_applications.review_status'))
-                    ->badge()
-                    ->formatStateUsing(fn (?string $state): string => $state ? __('review_applications.statuses.' . $state) : '-')
-                    ->color(fn (?string $state): string => match ($state) {
-                        'passed', 'accepted' => 'success',
-                        'failed', 'rejected' => 'danger',
-                        default => 'warning',
-                    })
-                    ->sortable(),
-
                 TextColumn::make('review_note')
                     ->label(__('review_applications.review_note'))
                     ->limit(40)
                     ->toggleable(),
 
-                TextColumn::make('created_at')
-                    ->label(__('review_applications.submitted_at'))
-                    ->dateTime('d M Y H:i')
-                    ->color('gray')
-                    ->sortable(),
-
                 TextColumn::make('reviewed_at')
-                    ->label(__('review_applications.reviewed_at'))
+                    ->label(__('review_applications.approve_at'))
                     ->dateTime('d M Y H:i')
+                    ->color('gray'),
+
+                TextColumn::make('data.candidate_status')
+                    ->label(__('review_applications.review_status_result'))
+                    ->badge()
+                    ->getStateUsing(fn ($record) => data_get($record->data, 'candidate_status', 'pending'))
+                    ->formatStateUsing(fn (?string $state) => match ($state) {
+                        'passed' => __('review_applications.statuses.passed'),
+                        'failed' => __('review_applications.statuses.failed'),
+                        default => __('review_applications.statuses.pending'),
+                    })
+                    ->color(fn (?string $state) => match ($state) {
+                        'passed' => 'success',
+                        'failed' => 'danger',
+                        default => 'warning',
+                    }),
+
+
+                TextColumn::make('data.candidate_reviewed_at')
+                    ->label(__('review_applications.reviewed_at'))
+                    ->formatStateUsing(fn ($state) => filled($state)
+                        ? Carbon::parse($state)->format('d M Y H:i')
+                        : '-')
                     ->color('info')
-                    ->sortable()
-                    ->toggleable(),
+                    ->sortable(false),
             ])
             ->filters([
                 Filter::make('application_review_filters')
@@ -185,15 +190,18 @@ class ReviewApplicationsTable
                     ->modalHeading(__('review_applications.actions.passed'))
                     ->modalDescription(__('review_applications.passed_confirm_description'))
                     ->modalSubmitActionLabel(__('review_applications.actions.passed'))
-                    ->visible(fn (CustomFormEntry $record): bool => ! in_array($record->review_status, ['passed', 'accepted'], true))
+                    ->visible(fn (CustomFormEntry $record): bool =>
+                        strtolower((string) data_get($record->data, 'candidate_status', 'pending')) === 'pending'
+                    )
                     ->action(function (CustomFormEntry $record): void {
+                        $dataJson = self::normalizeData($record->data);
+                        $dataJson['candidate_status'] = 'passed';
+                        $dataJson['candidate_reviewed_at'] = now()->toDateTimeString();
+
                         DB::table('custom_form_entries')
                             ->where('id', $record->id)
                             ->update([
-                                'review_status' => 'passed',
-                                'review_note' => null,
-                                'reviewed_by' => auth()->id(),
-                                'reviewed_at' => now(),
+                                'data' => json_encode($dataJson),
                                 'updated_at' => now(),
                             ]);
 
@@ -216,26 +224,22 @@ class ReviewApplicationsTable
                     ->label(__('review_applications.statuses.failed'))
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
+                    ->requiresConfirmation()
                     ->modalHeading(__('review_applications.actions.failed'))
                     ->modalSubmitActionLabel(__('review_applications.actions.failed'))
-                    ->visible(fn (CustomFormEntry $record): bool => ! in_array($record->review_status, ['failed', 'rejected'], true))
-                    ->form([
-                        Textarea::make('review_note')
-                            ->label(__('review_applications.review_note'))
-                            ->placeholder(__('review_applications.review_note_placeholder'))
-                            ->required()
-                            ->rows(4),
-                    ])
-                    ->action(function (CustomFormEntry $record, array $data): void {
-                        $note = $data['review_note'] ?? null;
+                    ->visible(fn (CustomFormEntry $record): bool =>
+                        strtolower((string) data_get($record->data, 'candidate_status', 'pending')) === 'pending'
+                    )
+                    ->action(function (CustomFormEntry $record): void {
+                        $dataJson = self::normalizeData($record->data);
+                        $dataJson['candidate_status'] = 'failed';
+                        $dataJson['candidate_reviewed_at'] = now()->toDateTimeString();
 
                         DB::table('custom_form_entries')
                             ->where('id', $record->id)
                             ->update([
-                                'review_status' => 'failed',
-                                'review_note' => $note,
-                                'reviewed_by' => auth()->id(),
-                                'reviewed_at' => now(),
+                                'data' => json_encode($dataJson),
+                                'review_note' => null,
                                 'updated_at' => now(),
                             ]);
 
@@ -244,7 +248,7 @@ class ReviewApplicationsTable
                         self::notifyStudentReviewResult(
                             record: $record,
                             status: 'failed',
-                            note: $note,
+                            note: null,
                         );
 
                         Notification::make()
