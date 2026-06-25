@@ -46,7 +46,7 @@ class AppPanelProvider extends PanelProvider
             ->id('app')
             ->path('')
 
-            ->defaultThemeMode(ThemeMode::Dark)
+            ->defaultThemeMode(ThemeMode::Light)
             ->homeUrl('/dashboard')
 
             ->login(Login::class)
