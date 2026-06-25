@@ -17,6 +17,7 @@ class DocumentTemplateTable
             ->columns([
                 Tables\Columns\TextColumn::make('name')
                     ->label(__('filament-document-builder::document-builder.labels.template_name'))
+                    ->formatStateUsing(fn ($state): string => self::englishText($state))
                     ->searchable()
                     ->sortable()
                     ->weight('bold'),
@@ -25,6 +26,7 @@ class DocumentTemplateTable
                     ->label('Form Type Field')
                     ->default('—')
                     ->badge()
+                    ->formatStateUsing(fn ($state): string => self::englishText($state))
                     ->color('primary')
                     ->alignCenter()
                     ->sortable(),
@@ -109,5 +111,24 @@ class DocumentTemplateTable
                     Actions\DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    private static function englishText(mixed $value): string
+    {
+        if (is_array($value)) {
+            return (string) ($value['en'] ?? $value['km'] ?? '');
+        }
+
+        $text = (string) $value;
+
+        if (preg_match('/^(\{.*?\})(.*)$/u', $text, $matches)) {
+            $decoded = json_decode($matches[1], true);
+
+            if (is_array($decoded)) {
+                return trim(($decoded['en'] ?? $decoded['km'] ?? '') . ($matches[2] ?? ''));
+            }
+        }
+
+        return $text;
     }
 }
