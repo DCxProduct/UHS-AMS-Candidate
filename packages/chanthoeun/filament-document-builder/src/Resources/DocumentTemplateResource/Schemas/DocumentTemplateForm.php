@@ -22,6 +22,7 @@ class DocumentTemplateForm
                         Grid::make(4)->schema([
                             Forms\Components\TextInput::make('name')
                                 ->label(__('filament-document-builder::document-builder.labels.template_name'))
+                                ->formatStateUsing(fn ($state): string => self::englishText($state))
                                 ->required()
                                 ->maxLength(255),
                             Forms\Components\TextInput::make('type')
@@ -35,7 +36,10 @@ class DocumentTemplateForm
                                         return [];
                                     }
                                     return \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
-                                        ->pluck('name', 'id')
+                                        ->get()
+                                        ->mapWithKeys(fn ($form): array => [
+                                            $form->id => self::englishText($form->name),
+                                        ])
                                         ->toArray();
                                 })
                                 ->placeholder('Please Select Form Type')
@@ -346,5 +350,24 @@ class DocumentTemplateForm
                 ])->columnSpanFull()->skippable(),
             ])
             ->columns(1);
+    }
+
+    private static function englishText(mixed $value): string
+    {
+        if (is_array($value)) {
+            return (string) ($value['en'] ?? $value['km'] ?? '');
+        }
+
+        $text = (string) $value;
+
+        if (preg_match('/^(\{.*?\})(.*)$/u', $text, $matches)) {
+            $decoded = json_decode($matches[1], true);
+
+            if (is_array($decoded)) {
+                return trim(($decoded['en'] ?? $decoded['km'] ?? '') . ($matches[2] ?? ''));
+            }
+        }
+
+        return $text;
     }
 }
