@@ -20,4 +20,6 @@ return [
 
     'save_as_draft' => 'Save as Draft',
     'draft_saved' => 'Draft saved',
+
+    'form_type_required' => 'Please select a form type first.',
 ];

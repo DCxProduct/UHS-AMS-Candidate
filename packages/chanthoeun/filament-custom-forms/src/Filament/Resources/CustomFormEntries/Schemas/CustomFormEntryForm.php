@@ -132,6 +132,10 @@ class CustomFormEntryForm
                         ->label(self::transText($formSelectionField->label ?: 'Form Selections'))
                         ->options(self::transOptions($selectionOptions['choices'] ?? []))
                         ->placeholder(self::selectPlaceholder())
+                        ->required((bool) ($formSelectionField->required ?? false))
+                        ->validationMessages([
+                            'required' => __('student_profile.form_type_required'),
+                        ])
                         ->dehydrated(true)
                         ->live(false),
                 ])

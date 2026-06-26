@@ -149,8 +149,7 @@ class CreateCustomFormEntry extends CreateRecord
                     ) {
                         Notification::make()
                             ->danger()
-                            ->title('Please select a form type')
-                            ->body('សូមជ្រើសរើសប្រភេទទម្រង់ជាមុនសិន')
+                            ->title(__('student_forms.section.title'))
                             ->send();
 
                         return;
