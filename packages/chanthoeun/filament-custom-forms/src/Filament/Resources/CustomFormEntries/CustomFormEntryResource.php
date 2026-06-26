@@ -393,6 +393,13 @@ class CustomFormEntryResource extends Resource
                     $query->orWhere($ownerColumn, auth()->id());
                 }
             })
+            ->where(function ($query): void {
+                if (DatabaseSchema::hasColumn('custom_form_entries', 'review_status')) {
+                    $query->where('review_status', '!=', 'draft');
+                }
+
+                $query->where('data->registration_status', '!=', 'draft');
+            })
             ->exists();
     }
 

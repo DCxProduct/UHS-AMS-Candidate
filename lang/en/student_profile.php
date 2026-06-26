@@ -17,4 +17,7 @@ return [
     'updated_successfully' => 'Profile updated successfully.',
     'submit' => 'Submit',
     'back' => 'Back',
+
+    'save_as_draft' => 'Save as Draft',
+    'draft_saved' => 'Draft saved',
 ];
