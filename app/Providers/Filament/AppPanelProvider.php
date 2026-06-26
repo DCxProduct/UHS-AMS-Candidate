@@ -138,7 +138,15 @@ class AppPanelProvider extends PanelProvider
                     ->collapsible(),
             ])
 
-            ->navigationItems([])
+            ->navigationItems([
+                NavigationItem::make('Sync')
+                    ->label('Sync')
+                    ->icon('heroicon-o-arrow-path')
+                    ->group('ការកំណត់')
+                    ->url('/sync')
+                    ->sort(90)
+                    ->visible(fn (): bool => $this->isAdmin()),
+            ])
 
             ->middleware([
                 EncryptCookies::class,
