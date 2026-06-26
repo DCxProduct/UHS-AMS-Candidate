@@ -198,46 +198,64 @@ class CustomFormEntriesTable
 
     protected static function getNationalExaminationColumns(): array
     {
-        return [
-            TextColumn::make('data.student_id')
-                ->label(__('review_applications.student_id'))
-                ->placeholder('-')
-                ->wrap(),
-
+        $columns = [
             TextColumn::make('data.form_selection')
                 ->label(__('review_applications.form_type'))
                 ->badge()
+                ->sortable()
                 ->formatStateUsing(fn (?string $state): string => ucfirst((string) $state))
                 ->color('info'),
-
-            TextColumn::make('data.national_registration_number')
-                ->label(__('review_applications.national_registration_number'))
-                ->placeholder('-')
-                ->wrap(),
-
-            TextColumn::make('data.first_name_kh')
-                ->label(__('review_applications.first_name_kh'))
-                ->placeholder('-')
-                ->wrap(),
-
-            TextColumn::make('data.last_name_kh')
-                ->label(__('review_applications.last_name_kh'))
-                ->placeholder('-')
-                ->wrap(),
-
-            self::reviewStatusColumn(),
-
-            TextColumn::make('created_at')
-                ->label(__('review_applications.request_at'))
-                ->dateTime('d M Y H:i')
-                ->color('gray'),
-
-            TextColumn::make('reviewed_at')
-                ->label(__('review_applications.reviewed_at'))
-                ->dateTime('d M Y H:i')
-                ->placeholder(__('review_applications.not_reviewed_yet'))
-                ->color('info'),
         ];
+
+        $nationalExamFormId = \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
+            ->where('slug', 'national-examination-registration')
+            ->value('id');
+
+        if ($nationalExamFormId) {
+            $childForms = \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
+                ->where('custom_form_id', $nationalExamFormId)
+                ->where('menu_placement', 'sub_item')
+                ->whereNotNull('sub_item_type')
+                ->where('is_active', true)
+                ->get();
+
+            foreach ($childForms as $childForm) {
+                $fields = \Chanthoeun\FilamentCustomForms\Models\CustomFormField::query()
+                    ->where('custom_form_id', $childForm->id)
+                    ->whereNotIn('type', ['section', 'grid', 'fieldset', 'repeater', 'wizard', 'info'])
+                    ->orderBy('sort')
+                    ->get();
+
+                foreach ($fields as $field) {
+                    $key = (string) $field->name;
+
+                    if (blank($key)) {
+                        continue;
+                    }
+
+                    $columns[] = TextColumn::make("data.{$key}")
+                        ->label(self::transText($field->label ?: $key))
+                        ->placeholder('-')
+                        ->toggleable()
+                        ->wrap();
+                }
+            }
+        }
+
+        $columns[] = self::reviewStatusColumn();
+
+        $columns[] = TextColumn::make('created_at')
+            ->label(__('review_applications.request_at'))
+            ->dateTime('d M Y H:i')
+            ->color('gray');
+
+        $columns[] = TextColumn::make('reviewed_at')
+            ->label(__('review_applications.reviewed_at'))
+            ->dateTime('d M Y H:i')
+            ->placeholder(__('review_applications.not_reviewed_yet'))
+            ->color('info');
+
+        return $columns;
     }
 
     protected static function isProfileForm(string $formId): bool
@@ -688,5 +706,34 @@ class CustomFormEntriesTable
             ->where('id', $studentId)
             ->where('registration_type', 'student')
             ->first();
+    }
+    protected static function transText(mixed $value): string
+    {
+        $locale = strtolower((string) app()->getLocale());
+
+        if (is_string($value) && str_starts_with(trim($value), '{')) {
+            $decoded = json_decode($value, true);
+
+            if (is_array($decoded)) {
+                $value = $decoded;
+            }
+        }
+
+        if (is_object($value)) {
+            $value = json_decode(json_encode($value), true);
+        }
+
+        if (is_array($value)) {
+            return (string) (
+                $value[$locale]
+                ?? $value['km']
+                ?? $value['kh']
+                ?? $value['en']
+                ?? collect($value)->first()
+                ?? ''
+            );
+        }
+
+        return (string) $value;
     }
 }
