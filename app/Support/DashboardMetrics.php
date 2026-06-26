@@ -555,46 +555,13 @@ class DashboardMetrics
             ->map(function ($form): array {
                 return [
                     'id' => (int) $form->id,
-                    'name' => (string) $form->name,
+                    'name' => self::transText($form->name),
                     'slug' => (string) ($form->slug ?? ''),
                 ];
             })
             ->values()
             ->all();
     }
-
-    public static function studentQuickActions(int $userId): array
-    {
-        return collect(static::studentAvailableForms($userId))
-            ->map(function (array $form) use ($userId): array {
-                $completed = static::studentHasEntryForForm(
-                    $userId,
-                    $form['id']
-                );
-
-                $workflow = static::formWorkflow($form['id']);
-
-                $showContact = (bool) (
-                    $workflow['show_contact'] ?? false
-                );
-
-                return [
-                    'id' => $form['id'],
-                    'name' => $form['name'],
-                    'slug' => $form['slug'],
-                    'completed' => $completed,
-                    'expired' => $showContact,
-                    'icon' => static::formIcon($form['slug']),
-
-                    'url' => $showContact
-                        ? url('/contact-us?form_id=' . $form['id'])
-                        : static::customFormEntryUrl($form['id']),
-                ];
-            })
-            ->values()
-            ->all();
-    }
-
     public static function formIdBySlug(string $slug): ?int
     {
         if (
@@ -874,5 +841,28 @@ class DashboardMetrics
         }
 
         return $month->format('M Y');
+    }
+
+    protected static function transText(mixed $value): string
+    {
+        $locale = app()->getLocale();
+
+        if (is_string($value) && str_starts_with(trim($value), '{')) {
+            $decoded = json_decode($value, true);
+
+            if (is_array($decoded)) {
+                $value = $decoded;
+            }
+        }
+
+        if (is_array($value)) {
+            return $value[$locale]
+                ?? $value['km']
+                ?? $value['en']
+                ?? collect($value)->first()
+                ?? '';
+        }
+
+        return (string) $value;
     }
 }
