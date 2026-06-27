@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\PasswordResetController;
+use App\Http\Controllers\DbSyncController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AdminEntryPdfReviewController;
 
@@ -37,6 +38,9 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::post('/admin/custom-form-entries/{entry}/reject', [AdminEntryPdfReviewController::class, 'reject'])
         ->name('admin.custom-form-entries.reject');
 });
+Route::post('/sync/run', [DbSyncController::class, 'sync'])
+    ->name('sync.run')
+    ->middleware('auth');
 
 /*
 |--------------------------------------------------------------------------

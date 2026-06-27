@@ -4,14 +4,18 @@ namespace App\Providers\Filament;
 
 use App\Filament\Pages\Auth\Login;
 use App\Filament\Pages\Auth\Register;
+use App\Filament\Pages\Dashboard as AppDashboard;
+use App\Filament\Pages\Sync as SyncPage;
 use App\Filament\Student\Pages\ContactUs;
 use App\Filament\Student\Pages\MyProfile;
+use App\Http\Middleware\CheckUserActive;
 use App\Support\ClosingDateWorkflow;
 use BezhanSalleh\LanguageSwitch\Http\Middleware\SwitchLanguageLocale;
 use Chanthoeun\FilamentCustomForms\CustomFormPlugin;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource as PackageCustomFormEntryResource;
 use Chanthoeun\FilamentDocumentBuilder\DocumentBuilderPlugin;
 use Filament\Enums\ThemeMode;
+use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
@@ -33,8 +37,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Throwable;
-use App\Filament\Pages\Dashboard as AppDashboard;
-use App\Http\Middleware\CheckUserActive;
+
 class AppPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
@@ -100,6 +103,7 @@ class AppPanelProvider extends PanelProvider
                 AppDashboard::class,
                 ContactUs::class,
                 MyProfile::class,
+                SyncPage::class,
             ])
 
             ->discoverWidgets(
@@ -138,7 +142,15 @@ class AppPanelProvider extends PanelProvider
                     ->collapsible(),
             ])
 
-            ->navigationItems([])
+            ->navigationItems([
+                NavigationItem::make('Sync')
+                    ->label('Sync')
+                    ->icon('heroicon-o-arrow-path')
+                    ->group('ការកំណត់')
+                    ->url(fn (): string => SyncPage::getUrl(['run' => 1]))
+                    ->sort(90)
+                    ->visible(fn (): bool => $this->isAdmin()),
+            ])
 
             ->middleware([
                 EncryptCookies::class,
@@ -155,7 +167,7 @@ class AppPanelProvider extends PanelProvider
             ])
 
             ->authMiddleware([
-                \Filament\Http\Middleware\Authenticate::class,
+                Authenticate::class,
             ]);
     }
 
@@ -200,12 +212,12 @@ class AppPanelProvider extends PanelProvider
                             ->orWhereRaw("allowed_roles::text = ''")
                             ->orWhereRaw("allowed_roles::text = '[]'")
                             ->orWhereRaw("allowed_roles::text = 'null'")
-                            ->orWhereRaw("allowed_roles::text ILIKE ?", ['%student%']);
+                            ->orWhereRaw('allowed_roles::text ILIKE ?', ['%student%']);
                     } else {
                         $query
                             ->orWhereRaw("CAST(allowed_roles AS CHAR) = ''")
                             ->orWhereRaw("CAST(allowed_roles AS CHAR) = '[]'")
-                            ->orWhereRaw("CAST(allowed_roles AS CHAR) LIKE ?", ['%student%']);
+                            ->orWhereRaw('CAST(allowed_roles AS CHAR) LIKE ?', ['%student%']);
                     }
                 });
             }
@@ -237,7 +249,7 @@ class AppPanelProvider extends PanelProvider
                     |--------------------------------------------------------------------------
                     */
                     $url = ClosingDateWorkflow::shouldShowContact($formId)
-                        ? url('/contact-us?form_id=' . $formId)
+                        ? url('/contact-us?form_id='.$formId)
                         : PackageCustomFormEntryResource::getUrl('index', [
                             'tableFilters' => [
                                 'custom_form_id' => [
@@ -246,7 +258,7 @@ class AppPanelProvider extends PanelProvider
                             ],
                         ]);
 
-                    return NavigationItem::make('student-form-' . $formId)
+                    return NavigationItem::make('student-form-'.$formId)
                         ->label(fn (): string => $this->getDynamicFormNavigationLabel($slug, $name))
                         ->group('Form Entry')
                         ->icon($this->getDynamicFormIcon($slug))
@@ -258,9 +270,9 @@ class AppPanelProvider extends PanelProvider
                             && $this->canShowStudentForm($slug))
                         ->isActiveWhen(
                             fn (): bool => (
-                                    request()->is('custom-form-entries*')
-                                    && (int) data_get(request()->query('tableFilters'), 'custom_form_id.value') === $formId
-                                )
+                                request()->is('custom-form-entries*')
+                                && (int) data_get(request()->query('tableFilters'), 'custom_form_id.value') === $formId
+                            )
                                 || (
                                     request()->is('contact-us*')
                                     && (int) request()->query('form_id') === $formId
@@ -423,7 +435,7 @@ class AppPanelProvider extends PanelProvider
 
     protected function getDynamicFormNavigationLabel(string $slug, string $fallbackName): string
     {
-        $key = 'app.forms_nav.' . $slug;
+        $key = 'app.forms_nav.'.$slug;
 
         $translated = __($key);
 
@@ -463,13 +475,13 @@ class AppPanelProvider extends PanelProvider
         }
 
         foreach ([
-                     'display_order',
-                     'sort',
-                     'sort_order',
-                     'order_column',
-                     'ordering',
-                     'position',
-                 ] as $column) {
+            'display_order',
+            'sort',
+            'sort_order',
+            'order_column',
+            'ordering',
+            'position',
+        ] as $column) {
             if (isset($form->{$column}) && is_numeric($form->{$column})) {
                 return (int) $form->{$column};
             }
