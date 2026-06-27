@@ -7,16 +7,19 @@ use App\Support\NotificationLanguage;
 use Carbon\Carbon;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Actions\Action;
+use Filament\Actions\BulkAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\FiltersLayout;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Filament\Tables\Filters\Filter;
-use Filament\Forms\Components\Select;
-use Filament\Tables\Enums\FiltersLayout;
 use Illuminate\Support\HtmlString;
 
 class ReviewApplicationsTable
@@ -24,6 +27,9 @@ class ReviewApplicationsTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->checkIfRecordIsSelectableUsing(function (CustomFormEntry $record): bool {
+                return strtolower((string) data_get($record->data, 'candidate_status', 'pending')) === 'pending';
+            })
             ->columns([
                 TextColumn::make('id')
                     ->label(__('review_applications.id'))
@@ -89,7 +95,6 @@ class ReviewApplicationsTable
                         default => 'warning',
                     }),
 
-
                 TextColumn::make('data.candidate_reviewed_at')
                     ->label(__('review_applications.reviewed_at'))
                     ->formatStateUsing(fn ($state) => filled($state)
@@ -112,7 +117,7 @@ class ReviewApplicationsTable
                                     ->filter()
                                     ->unique()
                                     ->mapWithKeys(fn ($item) => [
-                                        (string) $item => ucfirst((string) $item)
+                                        (string) $item => ucfirst((string) $item),
                                     ])
                                     ->toArray();
                             })
@@ -149,9 +154,7 @@ class ReviewApplicationsTable
                             ->when(
                                 filled($data['review_status'] ?? null),
                                 function (Builder $query) use ($data): Builder {
-
                                     return match ($data['review_status']) {
-
                                         'passed' => $query->where('data->candidate_status', 'passed'),
 
                                         'pending' => $query->where(function (Builder $query): void {
@@ -178,22 +181,6 @@ class ReviewApplicationsTable
             ->deferFilters(false)
             ->filtersFormColumns(4)
             ->recordActions([
-                Action::make('view_details')
-                    ->label(__('review_applications.actions.view_details'))
-                    ->icon('heroicon-o-eye')
-                    ->color('gray')
-                    ->modalWidth('6xl')
-                    ->modalHeading(__('review_applications.details_title'))
-                    ->modalSubmitAction(false)
-                    ->modalCancelActionLabel(__('review_applications.actions.close'))
-                    ->modalContent(fn (CustomFormEntry $record) => view(
-                        'filament.admin.resources.review-applications.view-entry',
-                        [
-                            'record' => $record,
-                            'data' => self::normalizeData($record->data),
-                        ],
-                    )),
-
                 Action::make('passed')
                     ->label(__('review_applications.statuses.passed'))
                     ->icon('heroicon-o-check-circle')
@@ -206,24 +193,7 @@ class ReviewApplicationsTable
                         strtolower((string) data_get($record->data, 'candidate_status', 'pending')) === 'pending'
                     )
                     ->action(function (CustomFormEntry $record): void {
-                        $dataJson = self::normalizeData($record->data);
-                        $dataJson['candidate_status'] = 'passed';
-                        $dataJson['candidate_reviewed_at'] = now()->toDateTimeString();
-
-                        DB::table('custom_form_entries')
-                            ->where('id', $record->id)
-                            ->update([
-                                'data' => json_encode($dataJson),
-                                'updated_at' => now(),
-                            ]);
-
-                        $record->refresh();
-
-                        self::notifyStudentReviewResult(
-                            record: $record,
-                            status: 'passed',
-                            note: null,
-                        );
+                        self::markPassed($record);
 
                         Notification::make()
                             ->title(__('review_applications.notifications.admin_passed_success_title'))
@@ -231,7 +201,58 @@ class ReviewApplicationsTable
                             ->success()
                             ->send();
                     }),
+            ])
+            ->toolbarActions([
+                BulkAction::make('bulk_passed')
+                    ->label(__('review_applications.statuses.passed'))
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->button()
+                    ->requiresConfirmation()
+                    ->modalHeading(__('review_applications.actions.passed'))
+                    ->modalDescription(__('review_applications.passed_confirm_description'))
+                    ->modalSubmitActionLabel(__('review_applications.actions.passed'))
+                    ->deselectRecordsAfterCompletion()
+                    ->action(function (Collection $records): void {
+                        $passedCount = 0;
+
+                        $records->each(function (CustomFormEntry $record) use (&$passedCount): void {
+                            if (strtolower((string) data_get($record->data, 'candidate_status', 'pending')) !== 'pending') {
+                                return;
+                            }
+
+                            self::markPassed($record);
+                            $passedCount++;
+                        });
+
+                        Notification::make()
+                            ->title($passedCount . ' candidates passed')
+                            ->success()
+                            ->send();
+                    }),
             ]);
+    }
+
+    protected static function markPassed(CustomFormEntry $record): void
+    {
+        $dataJson = self::normalizeData($record->data);
+        $dataJson['candidate_status'] = 'passed';
+        $dataJson['candidate_reviewed_at'] = now()->toDateTimeString();
+
+        DB::table('custom_form_entries')
+            ->where('id', $record->id)
+            ->update([
+                'data' => json_encode($dataJson),
+                'updated_at' => now(),
+            ]);
+
+        $record->refresh();
+
+        self::notifyStudentReviewResult(
+            record: $record,
+            status: 'passed',
+            note: null,
+        );
     }
 
     protected static function formTypeLabel(?string $state): string
@@ -249,6 +270,7 @@ class ReviewApplicationsTable
             default => 'Pending',
         };
     }
+
     protected static function actionLabel(string $action): string
     {
         return match ($action) {
@@ -285,6 +307,8 @@ class ReviewApplicationsTable
                 ->iconColor('success')
                 ->success()
                 ->sendToDatabase($student);
+
+            return;
         }
 
         Notification::make()
