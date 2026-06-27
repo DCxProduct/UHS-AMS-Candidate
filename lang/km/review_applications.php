@@ -107,5 +107,7 @@ return [
 
     'request_at' => 'ស្នើសុំនៅ',
     'approve_at' => 'អនុម័តនៅ',
-    'review_status_result' => 'លទ្ធផលប្រលង'
+    'review_status_result' => 'លទ្ធផលប្រលង',
+
+    'view_pdf' => 'មើលលម្អិត PDF',
 ];

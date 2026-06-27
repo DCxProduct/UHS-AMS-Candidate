@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\PasswordResetController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AdminEntryPdfReviewController;
 
 Route::get('/', function () {
     return redirect('/login');
@@ -20,6 +21,22 @@ Route::get('/language/toggle', function () {
 
     return back();
 })->name('language.toggle');
+
+
+
+Route::middleware(['web', 'auth'])->group(function () {
+    Route::get('/admin/custom-form-entries/{entry}/pdf-review', [AdminEntryPdfReviewController::class, 'show'])
+        ->name('admin.custom-form-entries.pdf-review');
+
+    Route::get('/admin/custom-form-entries/{entry}/pdf-inline', [AdminEntryPdfReviewController::class, 'pdf'])
+        ->name('admin.custom-form-entries.pdf-inline');
+
+    Route::post('/admin/custom-form-entries/{entry}/approve', [AdminEntryPdfReviewController::class, 'approve'])
+        ->name('admin.custom-form-entries.approve');
+
+    Route::post('/admin/custom-form-entries/{entry}/reject', [AdminEntryPdfReviewController::class, 'reject'])
+        ->name('admin.custom-form-entries.reject');
+});
 
 /*
 |--------------------------------------------------------------------------

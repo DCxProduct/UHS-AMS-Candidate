@@ -107,4 +107,6 @@ return [
     'request_at' => 'Request At',
     'approve_at' => 'Approved At',
     'review_status_result' => 'Status Result',
+
+    'view_pdf' => 'View PDF',
 ];
