@@ -588,7 +588,6 @@ class CustomFormEntriesTable
                         ->label(__('review_applications.statuses.accepted'))
                         ->icon('heroicon-o-check-circle')
                         ->color('success')
-                        ->requiresConfirmation()
                         ->visible(fn (): bool => self::entryStatus($record) === 'pending')
                         ->action(function () use ($record): void {
                             $data = is_array($record->data) ? $record->data : [];
@@ -614,6 +613,8 @@ class CustomFormEntriesTable
                                 ->title('Application approved')
                                 ->success()
                                 ->send();
+
+                            redirect(request()->header('Referer') ?: request()->fullUrl());
                         }),
 
                     Action::make('reject_from_view')
@@ -650,6 +651,8 @@ class CustomFormEntriesTable
                                 ->title('Application rejected')
                                 ->danger()
                                 ->send();
+
+                            redirect(request()->header('Referer') ?: request()->fullUrl());
                         }),
                 ])
                 ->visible(fn ($record): bool =>
