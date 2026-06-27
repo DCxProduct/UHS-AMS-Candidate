@@ -20,6 +20,7 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
+use App\Models\GeoLocation;
 
 class CustomFormEntryForm
 {
@@ -339,9 +340,13 @@ class CustomFormEntryForm
 
                     case 'select':
                     case 'select_dropdown':
-                        $component = Select::make("data.{$name}")
-                            ->options(self::transOptions($options['choices'] ?? []))
-                            ->dehydrated(true);
+                        if (self::isGeoField($name, $label)) {
+                            $component = self::geoSelectComponent($name, $label);
+                        } else {
+                            $component = Select::make("data.{$name}")
+                                ->options(self::transOptions($options['choices'] ?? []))
+                                ->dehydrated(true);
+                        }
 
                         if ((string) $name !== 'form_selection') {
                             $component->live();
@@ -588,5 +593,103 @@ class CustomFormEntryForm
         }
 
         $component->columnSpan((int) $columnSpan);
+    }
+
+    protected static function isGeoField(string $name, string $label): bool
+    {
+        $text = strtolower($name . ' ' . $label);
+
+        return str_contains($text, 'province')
+            || str_contains($text, 'city')
+            || str_contains($text, 'district')
+            || str_contains($text, 'khan')
+            || str_contains($text, 'commune')
+            || str_contains($text, 'sangkat')
+            || str_contains($text, 'village');
+    }
+
+    protected static function geoType(string $name, string $label): ?string
+    {
+        $text = strtolower($name . ' ' . $label);
+
+        if (str_contains($text, 'province') || str_contains($text, 'city')) {
+            return 'province';
+        }
+
+        if (str_contains($text, 'district') || str_contains($text, 'khan')) {
+            return 'district';
+        }
+
+        if (str_contains($text, 'commune') || str_contains($text, 'sangkat')) {
+            return 'commune';
+        }
+
+        if (str_contains($text, 'village')) {
+            return 'village';
+        }
+
+        return null;
+    }
+
+    protected static function geoSelectComponent(string $name, string $label): Select
+    {
+        $type = self::geoType($name, $label);
+
+        return Select::make("data.{$name}")
+            ->label($label)
+            ->placeholder(self::selectPlaceholder())
+            ->searchable()
+            ->preload()
+            ->live()
+            ->options(function (Get $get) use ($type, $name): array {
+                $query = GeoLocation::query()
+                    ->where('is_active', true)
+                    ->where('type', $type)
+                    ->orderBy('code');
+
+                if ($type !== 'province') {
+                    $parentId = self::geoParentValue($get, $type, $name);
+
+                    if (! $parentId) {
+                        return [];
+                    }
+
+                    $query->where('parent_id', $parentId);
+                }
+
+                return $query
+                    ->get()
+                    ->mapWithKeys(fn (GeoLocation $location): array => [
+                        $location->id => app()->getLocale() === 'km'
+                            ? ($location->name_kh ?: $location->name_en)
+                            : ($location->name_en ?: $location->name_kh),
+                    ])
+                    ->toArray();
+            })
+            ->dehydrated(true);
+    }
+
+    protected static function geoParentValue(Get $get, ?string $type, string $currentName): mixed
+    {
+        $data = $get('data') ?? [];
+
+        $parentKeywords = match ($type) {
+            'district' => ['province', 'city'],
+            'commune' => ['district', 'khan'],
+            'village' => ['commune', 'sangkat'],
+            default => [],
+        };
+
+        foreach ($data as $key => $value) {
+            $keyLower = strtolower((string) $key);
+
+            foreach ($parentKeywords as $keyword) {
+                if (str_contains($keyLower, $keyword) && $key !== $currentName && filled($value)) {
+                    return $value;
+                }
+            }
+        }
+
+        return null;
     }
 }
