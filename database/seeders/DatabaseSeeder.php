@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             AdminUserSeeder::class,
             StudentProfileSeeder::class,
             StudentUsersSeeder::class,
+            GeoLocationsSeeder::class,
             CustomFormDocumentTemplateSeeder::class,
             NationalExaminationRegistrationSeeder::class,
         ]);
