@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\PasswordResetController;
+use App\Http\Controllers\DbSyncController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -20,6 +21,10 @@ Route::get('/language/toggle', function () {
 
     return back();
 })->name('language.toggle');
+
+Route::post('/sync/run', [DbSyncController::class, 'sync'])
+    ->name('sync.run')
+    ->middleware('auth');
 
 /*
 |--------------------------------------------------------------------------

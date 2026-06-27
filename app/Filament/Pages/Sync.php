@@ -25,4 +25,14 @@ class Sync extends Page
     {
         return 'Sync';
     }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
+
+    public static function getNavigationUrl(): string
+    {
+        return static::getUrl(['run' => 1]);
+    }
 }
