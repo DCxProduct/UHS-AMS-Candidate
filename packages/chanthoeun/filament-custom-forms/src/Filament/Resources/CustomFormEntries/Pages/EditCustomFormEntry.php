@@ -13,6 +13,8 @@ class EditCustomFormEntry extends EditRecord
 {
     protected static string $resource = CustomFormEntryResource::class;
 
+    protected bool $shouldResetToPendingAfterSave = false;
+
     public function isLockedForEditing(): bool
     {
         $slug = $this->record->customForm?->slug;
@@ -33,14 +35,12 @@ class EditCustomFormEntry extends EditRecord
     {
         $actions = [];
 
-        // Only show the Submit (Save) button if the form is NOT locked
         if (! $this->isLockedForEditing()) {
             $actions[] = $this->getSaveFormAction()
                 ->label(__('student_profile.submit'))
                 ->color('primary');
         }
 
-        // Always show the Back button
         $actions[] = Action::make('back')
             ->label(__('student_profile.back'))
             ->color('success')
@@ -55,7 +55,80 @@ class EditCustomFormEntry extends EditRecord
             $this->halt();
         }
 
+        $oldStatus = strtolower((string) ($this->record->review_status ?? ''));
+
+        if (in_array($oldStatus, ['rejected', 'failed'], true)) {
+            $this->shouldResetToPendingAfterSave = true;
+
+            if (Schema::hasColumn('custom_form_entries', 'review_status')) {
+                $data['review_status'] = 'pending';
+            }
+
+            if (Schema::hasColumn('custom_form_entries', 'status')) {
+                $data['status'] = 'pending';
+            }
+
+            $data['data'] = $data['data'] ?? [];
+            $data['data']['registration_status'] = 'pending';
+
+            if (Schema::hasColumn('custom_form_entries', 'review_note')) {
+                $data['review_note'] = null;
+            }
+
+            if (Schema::hasColumn('custom_form_entries', 'reviewed_by')) {
+                $data['reviewed_by'] = null;
+            }
+
+            if (Schema::hasColumn('custom_form_entries', 'reviewed_at')) {
+                $data['reviewed_at'] = null;
+            }
+        }
+
         return $data;
+    }
+
+    protected function afterSave(): void
+    {
+        if (! $this->shouldResetToPendingAfterSave) {
+            return;
+        }
+
+        $data = is_array($this->record->data)
+            ? $this->record->data
+            : json_decode((string) $this->record->data, true);
+
+        $data = is_array($data) ? $data : [];
+        $data['registration_status'] = 'pending';
+
+        $update = [
+            'data' => $data,
+        ];
+
+        if (Schema::hasColumn('custom_form_entries', 'review_status')) {
+            $update['review_status'] = 'pending';
+        }
+
+        if (Schema::hasColumn('custom_form_entries', 'status')) {
+            $update['status'] = 'pending';
+        }
+
+        if (Schema::hasColumn('custom_form_entries', 'review_note')) {
+            $update['review_note'] = null;
+        }
+
+        if (Schema::hasColumn('custom_form_entries', 'reviewed_by')) {
+            $update['reviewed_by'] = null;
+        }
+
+        if (Schema::hasColumn('custom_form_entries', 'reviewed_at')) {
+            $update['reviewed_at'] = null;
+        }
+
+        CustomFormEntry::query()
+            ->whereKey($this->record->getKey())
+            ->update($update);
+
+        $this->record->refresh();
     }
 
     protected function studentHasAcceptedNationalExam(): bool
@@ -157,9 +230,8 @@ class EditCustomFormEntry extends EditRecord
             $this->form->disabled();
         }
 
-        if (in_array($status, ['approved', 'accepted', 'rejected', 'passed', 'failed'], true)) {
+        if (in_array($status, ['approved', 'accepted', 'passed'], true)) {
             $this->redirect(static::getResource()::getUrl('index'));
         }
     }
-
 }

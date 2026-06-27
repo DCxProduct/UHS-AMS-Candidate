@@ -61,9 +61,6 @@ return [
     'completed_forms' => 'Completed Forms',
     'remaining_forms' => 'Remaining Forms',
 
-    'quick_actions' => 'Application Forms',
-    'quick_actions_description' => 'Open and complete your available application forms.',
-    'open_form' => 'Open form',
     'expired_contact' => 'Expired — contact us',
     'no_available_forms' => 'There are currently no forms available.',
 
@@ -74,8 +71,6 @@ return [
         'not_submitted' => 'Not Submitted',
     ],
 
-    'form_completed_description' => 'You have completed this application form. You can open it to review your information.',
     'form_expired_description' => 'This form is no longer available for submission. Open it to view contact information.',
-    'form_open_description' => 'This application form is available. Open it and complete the required information.',
     'no_available_forms_description' => 'New application forms will appear here when they become available.',
 ];

@@ -132,6 +132,10 @@ class CustomFormEntryForm
                         ->label(self::transText($formSelectionField->label ?: 'Form Selections'))
                         ->options(self::transOptions($selectionOptions['choices'] ?? []))
                         ->placeholder(self::selectPlaceholder())
+                        ->required((bool) ($formSelectionField->required ?? false))
+                        ->validationMessages([
+                            'required' => __('student_profile.form_type_required'),
+                        ])
                         ->dehydrated(true)
                         ->live(false),
                 ])
@@ -392,11 +396,7 @@ class CustomFormEntryForm
             if ($component) {
                 self::applyVisibilityRule($component, $options);
 
-                if ($options['column_span_full'] ?? false) {
-                    $component->columnSpanFull();
-                } elseif (! empty($options['column_span'])) {
-                    $component->columnSpan($options['column_span']);
-                }
+                self::applyColumnLayout($component, $options);
 
                 $components[] = $component;
             }
@@ -559,5 +559,34 @@ class CustomFormEntryForm
                 ];
             })
             ->toArray();
+    }
+
+    protected static function applyColumnLayout(object $component, array $options): void
+    {
+        if ($options['column_span_full'] ?? false) {
+            if (method_exists($component, 'columnSpanFull')) {
+                $component->columnSpanFull();
+            }
+
+            return;
+        }
+
+        $columnSpan = $options['column_span'] ?? null;
+
+        if (blank($columnSpan) || ! method_exists($component, 'columnSpan')) {
+            return;
+        }
+
+        if (is_string($columnSpan)) {
+            $decoded = json_decode($columnSpan, true);
+            $columnSpan = is_array($decoded) ? $decoded : $columnSpan;
+        }
+
+        if (is_array($columnSpan)) {
+            $component->columnSpan($columnSpan);
+            return;
+        }
+
+        $component->columnSpan((int) $columnSpan);
     }
 }

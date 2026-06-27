@@ -82,12 +82,10 @@ class ReviewApplicationsTable
                     ->getStateUsing(fn ($record) => data_get($record->data, 'candidate_status', 'pending'))
                     ->formatStateUsing(fn (?string $state) => match ($state) {
                         'passed' => __('review_applications.statuses.passed'),
-                        'failed' => __('review_applications.statuses.failed'),
                         default => __('review_applications.statuses.pending'),
                     })
                     ->color(fn (?string $state) => match ($state) {
                         'passed' => 'success',
-                        'failed' => 'danger',
                         default => 'warning',
                     }),
 
@@ -126,7 +124,6 @@ class ReviewApplicationsTable
                             ->options([
                                 'pending' => self::statusLabel('pending'),
                                 'passed' => self::statusLabel('passed'),
-                                'failed' => self::statusLabel('failed'),
                             ])
                             ->native(false)
                             ->live(),
@@ -151,7 +148,22 @@ class ReviewApplicationsTable
                             )
                             ->when(
                                 filled($data['review_status'] ?? null),
-                                fn (Builder $query): Builder => $query->where('review_status', $data['review_status'])
+                                function (Builder $query) use ($data): Builder {
+
+                                    return match ($data['review_status']) {
+
+                                        'passed' => $query->where('data->candidate_status', 'passed'),
+
+                                        'pending' => $query->where(function (Builder $query): void {
+                                            $query
+                                                ->whereNull('data->candidate_status')
+                                                ->orWhere('data->candidate_status', '')
+                                                ->orWhere('data->candidate_status', 'pending');
+                                        }),
+
+                                        default => $query,
+                                    };
+                                }
                             )
                             ->when(
                                 filled($data['reviewed_year'] ?? null),
@@ -219,44 +231,6 @@ class ReviewApplicationsTable
                             ->success()
                             ->send();
                     }),
-
-                Action::make('failed')
-                    ->label(__('review_applications.statuses.failed'))
-                    ->icon('heroicon-o-x-circle')
-                    ->color('danger')
-                    ->requiresConfirmation()
-                    ->modalHeading(__('review_applications.actions.failed'))
-                    ->modalSubmitActionLabel(__('review_applications.actions.failed'))
-                    ->visible(fn (CustomFormEntry $record): bool =>
-                        strtolower((string) data_get($record->data, 'candidate_status', 'pending')) === 'pending'
-                    )
-                    ->action(function (CustomFormEntry $record): void {
-                        $dataJson = self::normalizeData($record->data);
-                        $dataJson['candidate_status'] = 'failed';
-                        $dataJson['candidate_reviewed_at'] = now()->toDateTimeString();
-
-                        DB::table('custom_form_entries')
-                            ->where('id', $record->id)
-                            ->update([
-                                'data' => json_encode($dataJson),
-                                'review_note' => null,
-                                'updated_at' => now(),
-                            ]);
-
-                        $record->refresh();
-
-                        self::notifyStudentReviewResult(
-                            record: $record,
-                            status: 'failed',
-                            note: null,
-                        );
-
-                        Notification::make()
-                            ->title(__('review_applications.notifications.admin_failed_success_title'))
-                            ->body(__('review_applications.notifications.admin_failed_success_body'))
-                            ->success()
-                            ->send();
-                    }),
             ]);
     }
 
@@ -272,16 +246,13 @@ class ReviewApplicationsTable
     {
         return match ($state) {
             'passed', 'accepted' => 'Passed',
-            'failed', 'rejected' => 'Failed',
             default => 'Pending',
         };
     }
-
     protected static function actionLabel(string $action): string
     {
         return match ($action) {
             'passed' => 'Passed',
-            'failed' => 'Failed',
             default => 'Pending',
         };
     }
@@ -297,7 +268,7 @@ class ReviewApplicationsTable
         $data = self::normalizeData($record->data);
         $studentName = self::getStudentName($data, $student->name);
 
-        if (in_array($status, ['passed', 'accepted'], true)) {
+        if ($status === 'passed') {
             Notification::make()
                 ->title(NotificationLanguage::transForUser(
                     $student,
@@ -314,8 +285,6 @@ class ReviewApplicationsTable
                 ->iconColor('success')
                 ->success()
                 ->sendToDatabase($student);
-
-            return;
         }
 
         Notification::make()

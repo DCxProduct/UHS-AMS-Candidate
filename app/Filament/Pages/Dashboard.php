@@ -80,7 +80,6 @@ class Dashboard extends BaseDashboard
             StudentProgressChart::class,
             StudentSubmissionTrendChart::class,
             StudentCompletionDoughnutChart::class,
-            StudentQuickActions::class,
         ];
     }
 }

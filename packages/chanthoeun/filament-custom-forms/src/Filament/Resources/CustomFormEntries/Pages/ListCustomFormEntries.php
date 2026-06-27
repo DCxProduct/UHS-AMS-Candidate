@@ -25,12 +25,20 @@ class ListCustomFormEntries extends ListRecords
             ?? request()->query('form_id');
 
         if (auth()->user()?->registration_type === 'student' && $this->activeFormId) {
-            $customForm = \Chanthoeun\FilamentCustomForms\Models\CustomForm::find($this->activeFormId);
+            $customForm = CustomForm::find($this->activeFormId);
 
             if ($customForm?->slug === 'profile') {
                 $entry = $this->studentCurrentFormEntry();
 
                 if ($entry) {
+                    if ($this->isDraftEntry($entry)) {
+                        $this->redirect(CustomFormEntryResource::getUrl('create', [
+                            'form_id' => $this->activeFormId,
+                        ]));
+
+                        return;
+                    }
+
                     $this->redirect(CustomFormEntryResource::getUrl('edit', [
                         'record' => $entry->id,
                     ]));
@@ -47,7 +55,7 @@ class ListCustomFormEntries extends ListRecords
         }
     }
 
-    protected function studentCurrentFormEntry(): ?\Chanthoeun\FilamentCustomForms\Models\CustomFormEntry
+    protected function studentCurrentFormEntry(): ?CustomFormEntry
     {
         if (! $this->activeFormId || ! auth()->check()) {
             return null;
@@ -55,18 +63,18 @@ class ListCustomFormEntries extends ListRecords
 
         $userId = auth()->id();
 
-        return \Chanthoeun\FilamentCustomForms\Models\CustomFormEntry::query()
+        return CustomFormEntry::query()
             ->where('custom_form_id', $this->activeFormId)
             ->where(function ($query) use ($userId): void {
-                if (\Illuminate\Support\Facades\Schema::hasColumn('custom_form_entries', 'created_by')) {
+                if (Schema::hasColumn('custom_form_entries', 'created_by')) {
                     $query->orWhere('created_by', $userId);
                 }
 
-                if (\Illuminate\Support\Facades\Schema::hasColumn('custom_form_entries', 'user_id')) {
+                if (Schema::hasColumn('custom_form_entries', 'user_id')) {
                     $query->orWhere('user_id', $userId);
                 }
 
-                if (\Illuminate\Support\Facades\Schema::hasColumn('custom_form_entries', 'created_by_id')) {
+                if (Schema::hasColumn('custom_form_entries', 'created_by_id')) {
                     $query->orWhere('created_by_id', $userId);
                 }
             })
@@ -79,7 +87,6 @@ class ListCustomFormEntries extends ListRecords
         $this->activeFormId = data_get($this->tableFilters, 'custom_form_id.value');
     }
 
-    // ✅ FIXED: Translates the big heading at the top of the page
     public function getHeading(): string|Htmlable
     {
         if ($this->activeFormId) {
@@ -99,7 +106,6 @@ class ListCustomFormEntries extends ListRecords
         return __('filament-custom-forms::fcf.entry.plural');
     }
 
-    // ✅ NEW: Translates the browser tab title so it matches the heading
     public function getTitle(): string|Htmlable
     {
         return $this->getHeading();
@@ -124,7 +130,6 @@ class ListCustomFormEntries extends ListRecords
         ];
     }
 
-    // ✅ FIXED: Translates the text inside the "Create" button
     protected function getCreateLabel(): string
     {
         $name = __('filament-custom-forms::fcf.entry.single');
@@ -177,6 +182,19 @@ class ListCustomFormEntries extends ListRecords
                     $query->orWhere('created_by_id', $userId);
                 }
             })
-            ->exists();
+            ->get()
+            ->contains(fn (CustomFormEntry $entry): bool => ! $this->isDraftEntry($entry));
+    }
+
+    protected function isDraftEntry(CustomFormEntry $entry): bool
+    {
+        $data = is_array($entry->data)
+            ? $entry->data
+            : json_decode((string) $entry->data, true);
+
+        $dataStatus = strtolower((string) data_get($data, 'registration_status'));
+        $reviewStatus = strtolower((string) ($entry->review_status ?? ''));
+
+        return $dataStatus === 'draft' || $reviewStatus === 'draft';
     }
 }
