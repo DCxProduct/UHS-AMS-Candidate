@@ -17,8 +17,13 @@ class CreateCustomFormEntry extends CreateRecord
 
     public ?int $draftEntryId = null;
 
+    protected bool $isSavingDraft = false;
+
     #[\Livewire\Attributes\Url]
     public ?string $form_id = null;
+
+    #[\Livewire\Attributes\Url]
+    public ?string $draft_id = null;
 
     public function mount(): void
     {
@@ -43,6 +48,14 @@ class CreateCustomFormEntry extends CreateRecord
                     $data = $this->form->getState();
                     $data = $this->mutateFormDataBeforeCreate($data);
 
+                    $data['review_status'] = 'draft';
+                    $data['data'] = $data['data'] ?? [];
+                    $data['data']['registration_status'] = 'draft';
+
+                    if (Schema::hasColumn('custom_form_entries', 'status')) {
+                        $data['status'] = 'draft';
+                    }
+
                     if ($this->draftEntryId) {
                         CustomFormEntry::query()
                             ->where('id', $this->draftEntryId)
@@ -56,6 +69,8 @@ class CreateCustomFormEntry extends CreateRecord
                         ->title(__('student_profile.draft_saved'))
                         ->success()
                         ->send();
+
+                    $this->redirect($this->getBackUrl());
                 }),
         ];
     }
@@ -182,24 +197,6 @@ class CreateCustomFormEntry extends CreateRecord
                         return;
                     }
 
-                    if ($this->draftEntryId) {
-                        $data = $this->form->getState();
-
-                        $data['custom_form_id'] = $this->form_id;
-                        $data['review_status'] = 'pending';
-                        $data['data']['registration_status'] = 'pending';
-
-                        CustomFormEntry::query()
-                            ->where('id', $this->draftEntryId)
-                            ->update($data);
-
-                        $this->record = CustomFormEntry::find($this->draftEntryId);
-
-                        $this->redirect($this->getRedirectUrl());
-
-                        return;
-                    }
-
                     $this->create(false);
                 }),
 
@@ -234,12 +231,6 @@ class CreateCustomFormEntry extends CreateRecord
 
     protected function getRedirectUrl(): string
     {
-        if ($this->isSavingDraft) {
-            return CustomFormEntryResource::getUrl('create', [
-                'form_id' => $this->form_id,
-            ]);
-        }
-
         return CustomFormEntryResource::getUrl('edit', [
             'record' => $this->getRecord()->id,
         ]);
@@ -314,9 +305,15 @@ class CreateCustomFormEntry extends CreateRecord
             return;
         }
 
+        $userId = auth()->id();
+
         $query = CustomFormEntry::query()
-            ->where('custom_form_id', $currentFormId)
-            ->where(function ($query): void {
+            ->where('custom_form_id', $currentFormId);
+
+        if ($this->draft_id) {
+            $query->whereKey($this->draft_id);
+        } else {
+            $query->where(function ($query): void {
                 if (Schema::hasColumn('custom_form_entries', 'review_status')) {
                     $query->orWhere('review_status', 'draft');
                 }
@@ -326,10 +323,8 @@ class CreateCustomFormEntry extends CreateRecord
                 }
 
                 $query->orWhere('data->registration_status', 'draft');
-            })
-            ->latest();
-
-        $userId = auth()->id();
+            });
+        }
 
         $query->where(function ($query) use ($userId): void {
             if (Schema::hasColumn('custom_form_entries', 'created_by')) {
@@ -345,7 +340,7 @@ class CreateCustomFormEntry extends CreateRecord
             }
         });
 
-        $draft = $query->first();
+        $draft = $query->latest()->first();
 
         if (! $draft) {
             return;

@@ -125,7 +125,7 @@ class ListCustomFormEntries extends ListRecords
                     'form_id' => $this->activeFormId,
                 ]))
                 ->visible(fn (): bool => auth()->user()?->registration_type === 'student'
-                    && ! $this->studentAlreadySubmittedCurrentForm()
+                    && ! $this->studentHasAnyCurrentFormEntry()
                 ),
         ];
     }
@@ -184,6 +184,36 @@ class ListCustomFormEntries extends ListRecords
             })
             ->get()
             ->contains(fn (CustomFormEntry $entry): bool => ! $this->isDraftEntry($entry));
+    }
+
+    protected function studentHasAnyCurrentFormEntry(): bool
+    {
+        if (! $this->activeFormId || ! auth()->check()) {
+            return false;
+        }
+
+        if (! Schema::hasTable('custom_form_entries')) {
+            return false;
+        }
+
+        $userId = auth()->id();
+
+        return CustomFormEntry::query()
+            ->where('custom_form_id', $this->activeFormId)
+            ->where(function ($query) use ($userId): void {
+                if (Schema::hasColumn('custom_form_entries', 'created_by')) {
+                    $query->orWhere('created_by', $userId);
+                }
+
+                if (Schema::hasColumn('custom_form_entries', 'user_id')) {
+                    $query->orWhere('user_id', $userId);
+                }
+
+                if (Schema::hasColumn('custom_form_entries', 'created_by_id')) {
+                    $query->orWhere('created_by_id', $userId);
+                }
+            })
+            ->exists();
     }
 
     protected function isDraftEntry(CustomFormEntry $entry): bool
