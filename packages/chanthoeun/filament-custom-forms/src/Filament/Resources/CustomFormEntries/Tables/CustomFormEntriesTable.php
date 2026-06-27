@@ -160,6 +160,7 @@ class CustomFormEntriesTable
                 return match (self::entryStatus($record)) {
                     'passed', 'accepted', 'approved' => __('review_applications.statuses.accepted'),
                     'failed', 'rejected' => __('review_applications.statuses.rejected'),
+                    'draft' => __('student_profile.save_as_draft'),
                     default => __('review_applications.statuses.pending'),
                 };
             })
@@ -167,6 +168,7 @@ class CustomFormEntriesTable
                 return match (self::entryStatus($record)) {
                     'passed', 'accepted', 'approved' => 'success',
                     'failed', 'rejected' => 'danger',
+                    'draft' => 'gray',
                     default => 'warning',
                 };
             });
@@ -175,12 +177,17 @@ class CustomFormEntriesTable
     protected static function entryStatus($record): string
     {
         $dataStatus = strtolower((string) data_get($record->data, 'registration_status'));
+        $reviewStatus = strtolower((string) ($record->review_status ?? 'pending'));
 
-        if ($dataStatus === 'pending') {
+        if ($dataStatus === 'draft' || $reviewStatus === 'draft') {
+            return 'draft';
+        }
+
+        if ($dataStatus === 'pending' || $reviewStatus === 'pending') {
             return 'pending';
         }
 
-        return strtolower((string) ($record->review_status ?? 'pending'));
+        return $reviewStatus ?: $dataStatus ?: 'pending';
     }
 
     protected static function isNationalExaminationForm(string $formId): bool
@@ -564,8 +571,40 @@ class CustomFormEntriesTable
                         return false;
                     }
 
-                    return self::canEdit($record);
+                    return self::entryStatus($record) === 'rejected';
                 }),
+
+            Action::make('save_draft')
+                ->label(__('student_profile.save_as_draft'))
+                ->icon('heroicon-o-document-text')
+                ->color('warning')
+                ->link()
+                ->action(function ($record): void {
+                    $data = is_array($record->data)
+                        ? $record->data
+                        : json_decode((string) $record->data, true);
+
+                    $data = is_array($data) ? $data : [];
+                    $data['registration_status'] = 'draft';
+
+                    DB::table('custom_form_entries')
+                        ->where('id', $record->id)
+                        ->update([
+                            'review_status' => 'draft',
+                            'data' => json_encode($data),
+                            'updated_at' => now(),
+                        ]);
+
+                    redirect(CustomFormEntryResource::getUrl('create', [
+                        'form_id' => $record->custom_form_id,
+                        'draft_id' => $record->id,
+                    ]));
+                })
+                ->visible(fn ($record): bool =>
+                    auth()->user()?->registration_type === 'student'
+                    && self::recordIsNationalExam($record)
+                    && in_array(self::entryStatus($record), ['draft', 'pending'], true)
+                ),
         ];
 
         if (self::currentPanelIsAdmin()) {
@@ -871,6 +910,19 @@ class CustomFormEntriesTable
             }
 
             return $query->whereRaw('1 = 0');
+        }
+
+        if (self::currentPanelIsAdmin()) {
+            $query->where(function (Builder $query): void {
+                $query
+                    ->whereNull('review_status')
+                    ->orWhere('review_status', '!=', 'draft');
+            })
+                ->where(function (Builder $query): void {
+                    $query
+                        ->whereNull('data->registration_status')
+                        ->orWhere('data->registration_status', '!=', 'draft');
+                });
         }
 
         return $query;
