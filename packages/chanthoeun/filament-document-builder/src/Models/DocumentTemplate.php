@@ -18,7 +18,6 @@ class DocumentTemplate extends Model
     ];
 
     protected $casts = [
-        'content' => 'array',
         'page_settings' => 'array',
         'extra_data_sources' => 'array',
     ];
