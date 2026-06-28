@@ -21,6 +21,8 @@ class DatabaseSeeder extends Seeder
             GeoLocationsSeeder::class,
             CustomFormDocumentTemplateSeeder::class,
             NationalExaminationRegistrationSeeder::class,
+            RestoreNationalExamSubFormFieldsSeeder::class,
+            RestoreDocumentTemplatesSeeder::class,
         ]);
     }
 }
