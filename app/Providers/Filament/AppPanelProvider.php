@@ -147,7 +147,7 @@ class AppPanelProvider extends PanelProvider
                     ->label('Sync')
                     ->icon('heroicon-o-arrow-path')
                     ->group('ការកំណត់')
-                    ->url(fn (): string => SyncPage::getUrl(['run' => 1]))
+                    ->url(fn (): string => SyncPage::getUrl())
                     ->sort(90)
                     ->visible(fn (): bool => $this->isAdmin()),
             ])
