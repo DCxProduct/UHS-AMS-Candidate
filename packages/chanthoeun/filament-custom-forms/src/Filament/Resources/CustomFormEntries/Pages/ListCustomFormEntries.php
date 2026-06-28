@@ -124,7 +124,9 @@ class ListCustomFormEntries extends ListRecords
                 ->url(fn () => CustomFormEntryResource::getUrl('create', [
                     'form_id' => $this->activeFormId,
                 ]))
-                ->visible(fn (): bool => auth()->user()?->registration_type === 'student'
+                ->visible(fn (): bool =>
+                    auth()->user()?->registration_type === 'student'
+                    && $this->activeFormId
                     && ! $this->studentHasAnyCurrentFormEntry()
                 ),
         ];
@@ -188,7 +190,7 @@ class ListCustomFormEntries extends ListRecords
 
     protected function studentHasAnyCurrentFormEntry(): bool
     {
-        if (! $this->activeFormId || ! auth()->check()) {
+        if (! auth()->check()) {
             return false;
         }
 
@@ -196,10 +198,16 @@ class ListCustomFormEntries extends ListRecords
             return false;
         }
 
+        $formId = $this->activeFormId;
+
+        if (! $formId) {
+            return false;
+        }
+
         $userId = auth()->id();
 
         return CustomFormEntry::query()
-            ->where('custom_form_id', $this->activeFormId)
+            ->where('custom_form_id', $formId)
             ->where(function ($query) use ($userId): void {
                 if (Schema::hasColumn('custom_form_entries', 'created_by')) {
                     $query->orWhere('created_by', $userId);
@@ -213,6 +221,15 @@ class ListCustomFormEntries extends ListRecords
                     $query->orWhere('created_by_id', $userId);
                 }
             })
+            ->whereIn('review_status', [
+                'draft',
+                'pending',
+                'approved',
+                'accepted',
+                'passed',
+                'rejected',
+                'failed',
+            ])
             ->exists();
     }
 
