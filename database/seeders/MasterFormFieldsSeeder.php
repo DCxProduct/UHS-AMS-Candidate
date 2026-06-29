@@ -32,7 +32,6 @@ class MasterFormFieldsSeeder extends Seeder
         $sort = 1;
 
         $fields = [
-            ['application_for_admission_as_senior_candidate', 'Application for Admission as Senior Candidate', 'ពាក្យសុំជ្រើសរើសជាបេក្ខជន_បរិ_ជាន់ខ្ពស់', 'text_input', false],
             ['academic_year', 'Academic Year', 'ឆ្នាំសិក្សា', 'text_input', true],
             ['full_name', 'Full Name', 'នាមត្រកូល និង នាមខ្លួន', 'text_input', true],
             ['family_name', 'Family Name', 'Family name', 'text_input', false],
