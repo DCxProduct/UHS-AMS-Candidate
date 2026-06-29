@@ -102,29 +102,29 @@ class BachelorTransferFormFieldsSeeder extends Seeder
 
             ['primary_school_years', 'Primary School Years', 'រៀននៅបឋមសិក្សាពីឆ្នាំណាដល់ឆ្នាំណា', 'text_input', false],
             ['primary_school_grade', 'Primary School Grade', 'រៀននៅបឋមសិក្សាពីថ្នាក់ទីប៉ុន្មានដល់ទីប៉ុន្មាន', 'text_input', false],
-            ['primary_school_province-capital', 'Primary School Province / Capital', 'រៀននៅបឋមសិក្សានៅខេត្ត-រាជធានី', 'text_input', false],
+            ['primary_school_province-capital', 'Primary School Province / Capital', 'រៀននៅបឋមសិក្សានៅខេត្ត/រាជធានី', 'text_input', false],
             ['primary_school_graduated', 'Primary School Graduated Year', 'រៀននៅបឋមសិក្សាទទួលបានសញ្ញាបត្រនៅឆ្នាំ', 'text_input', false],
 
             ['secondary_school_years', 'Secondary School Years', 'រៀននៅអនុវិទ្យាល័យពីឆ្នាំណាដល់ឆ្នាំណា', 'text_input', false],
             ['secondary_school_grade', 'Secondary School Grade', 'រៀននៅអនុវិទ្យាល័យថ្នាក់ទីប៉ុន្មានដល់ទីប៉ុន្មាន', 'text_input', false],
-            ['secondary_schools _province_capital', 'Secondary School Province / Capital', 'រៀននៅអនុវិទ្យាល័យនៅខេត្ត-រាជធានី', 'text_input', false],
+            ['secondary_schools _province_capital', 'Secondary School Province / Capital', 'រៀននៅអនុវិទ្យាល័យនៅខេត្ត/រាជធានី', 'text_input', false],
             ['secondary_school_graduated_in_year', 'Secondary School Graduated Year', 'រៀននៅអនុវិទ្យាល័យទទួលបានសញ្ញាបត្រនៅឆ្នាំ', 'text_input', false],
 
             ['high_school_years', 'High School Years', 'រៀននៅវិទ្យាល័យពីឆ្នាំណាដល់ឆ្នាំ', 'text_input', false],
             ['high_school_grade', 'High School Grade', 'រៀននៅវិទ្យាល័យថ្នាក់ទីប៉ុន្មានដល់ទីប៉ុន្មាន', 'text_input', false],
-            ['high_school_province_or_capital', 'High School Province / Capital', 'រៀននៅវិទ្យាល័យនៅខេត្ត-រាជធានី', 'text_input', false],
+            ['high_school_province_or_capital', 'High School Province / Capital', 'រៀននៅវិទ្យាល័យនៅខេត្ត/រាជធានី', 'text_input', false],
             ['high_school_graduate', 'High School Graduate Year', 'រៀននៅវិទ្យាល័យទទួលបានសញ្ញាបត្រនៅឆ្នាំណា', 'text_input', false],
 
             ['University_degree_year', 'University Degree Year', 'មហាវិ.សកលវិទ្យាល័យពីឆ្នាំណាដល់ឆ្នាំណា', 'text_input', false],
             ['university_education_hight_level', 'University Education Level', 'មហាវិ.សកលវិទ្យាល័យថ្នាក់ទីប៉ុន្មានដល់ទីប៉ុន្មាន', 'text_input', false],
-            ['Universities_provinces_and_capitals', 'University Province / Capital', 'មហាវិ.សកលវិទ្យាល័យនៅខេត្ត-រាជធានី', 'text_input', false],
+            ['Universities_provinces_and_capitals', 'University Province / Capital', 'មហាវិ.សកលវិទ្យាល័យនៅខេត្ត/រាជធានី', 'text_input', false],
             ['university_graduate_receive_his_degree', 'University Graduate Receive Degree', 'មហាវិ.សកលវិទ្យាល័យទទួលបានសញ្ញាបត្រនៅឆ្នាំណា', 'text_input', false],
 
             ['married_status', 'Married Status', 'ស្ថានភាពគ្រួសារ', 'select', false],
             ['birth_village', 'Birth Village', 'ភូមិកំណើត', 'text_input', false],
-            ['birth_commune_sangkat', 'Birth Commune / Sangkat', 'ឃុំ-សង្កាត់ កំណើត', 'text_input', false],
+            ['birth_commune_sangkat', 'Birth Commune / Sangkat', 'ឃុំ/សង្កាត់ កំណើត', 'text_input', false],
             ['birth_district_khan', 'Birth District / Khan', 'ស្រុកកំណើត', 'text_input', false],
-            ['birth_province_city', 'Birth Province / City', 'ខេត្ត-ក្រុង កំណើត', 'text_input', false],
+            ['birth_province_city', 'Birth Province / City', 'ខេត្ត/ក្រុង កំណើត', 'text_input', false],
             ['current_house_number', 'Current House Number', 'លេខផ្ទះបច្ចុប្បន្ន', 'text_input', false],
 
             ['Husband_or_wife_name', 'Husband or Wife Name', 'ឈ្មោះប្ដី ឬ ប្រពន្ធ', 'text_input', false],
