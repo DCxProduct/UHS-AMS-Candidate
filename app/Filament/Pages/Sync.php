@@ -39,6 +39,6 @@ class Sync extends Page
 
     public static function getNavigationUrl(): string
     {
-        return static::getUrl(['run' => 1]);
+        return static::getUrl();
     }
 }
