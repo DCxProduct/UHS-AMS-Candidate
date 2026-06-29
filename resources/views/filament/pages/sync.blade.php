@@ -63,7 +63,6 @@
             font-weight: 600;
             cursor: pointer;
             box-shadow: 0 8px 20px rgba(37, 99, 235, 0.25);
-            transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
         }
 
         .sync-button:hover:not(:disabled) {
@@ -132,6 +131,13 @@
         data-auto-run="{{ request()->boolean('run') ? 'true' : 'false' }}"
         data-sync-url="{{ route('sync.run') }}"
         data-csrf-token="{{ csrf_token() }}"
+        data-label-ready="{{ __('sync.button') }}"
+        data-label-loading="{{ __('sync.syncing') }}"
+        data-success-title="{{ __('sync.success_title') }}"
+        data-success-message="{{ __('sync.success_message') }}"
+        data-error-title="{{ __('sync.failed') }}"
+        data-error-message="{{ __('sync.error_message') }}"
+        data-error-connect="{{ __('sync.connection_error') }}"
     >
         <div class="sync-card">
             <div class="sync-icon" aria-hidden="true">
@@ -140,14 +146,15 @@
                 </svg>
             </div>
 
-            <h2 class="sync-title">Synchronize data</h2>
-            <p class="sync-text">Update the local database with the latest server data.</p>
+            <h2 class="sync-title">{{ __('sync.heading') }}</h2>
+            <p class="sync-text">{{ __('sync.description') }}</p>
 
             <button type="button" class="sync-button" data-sync-button>
                 <svg class="sync-button-icon" data-sync-button-icon xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.9" stroke="currentColor" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992M2.985 19.644v-4.992m0 0h4.992m-4.992 0 3.181-3.183a8.25 8.25 0 0 1 13.803 3.183m0 0a8.25 8.25 0 0 1-13.803 3.183" />
                 </svg>
-                <span data-sync-button-label>Sync Now</span>
+
+                <span data-sync-button-label>{{ __('sync.button') }}</span>
             </button>
 
             <div class="sync-alert" data-sync-alert role="status" aria-live="polite">
@@ -178,7 +185,7 @@
                 isSyncing = loading;
                 button.disabled = loading;
                 icon.classList.toggle('is-spinning', loading);
-                label.textContent = loading ? 'Syncing...' : 'Sync Now';
+                label.textContent = loading ? page.dataset.labelLoading : page.dataset.labelReady;
             };
 
             const showMessage = (type, title, message) => {
@@ -222,13 +229,26 @@
                     const result = await readResponse(response);
 
                     if (response.ok && result.success) {
-                        showMessage('success', 'Sync complete', result.message || 'Your data is now up to date.');
+                        showMessage(
+                            'success',
+                            page.dataset.successTitle,
+                            result.message || page.dataset.successMessage
+                        );
+
                         return;
                     }
 
-                    showMessage('error', 'Sync did not finish', result.message || 'We could not sync the data. Please try again.');
+                    showMessage(
+                        'error',
+                        page.dataset.errorTitle,
+                        page.dataset.errorMessage
+                    );
                 } catch (error) {
-                    showMessage('error', 'Sync did not finish', 'We could not connect to the sync service. Please check your internet connection and try again.');
+                    showMessage(
+                        'error',
+                        page.dataset.errorTitle,
+                        page.dataset.errorConnect
+                    );
                 } finally {
                     setLoading(false);
                 }
