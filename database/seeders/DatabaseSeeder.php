@@ -19,10 +19,8 @@ class DatabaseSeeder extends Seeder
             StudentProfileSeeder::class,
             StudentUsersSeeder::class,
             GeoLocationsSeeder::class,
-            CustomFormDocumentTemplateSeeder::class,
             NationalExaminationRegistrationSeeder::class,
-            RestoreNationalExamSubFormFieldsSeeder::class,
-            RestoreDocumentTemplatesSeeder::class,
+            BachelorTransferFormFieldsSeeder::class,
         ]);
     }
 }

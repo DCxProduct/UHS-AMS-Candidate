@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 return [
+    'bachelor_transfer_applications' => 'ពាក្យសុំផ្ទេរចូលឆ្នាំទី២ ថ្នាក់បរិញ្ញាបត្រ',
     'navigation_label' => 'ប្រភេទតម្រង់បញ្ជី',
     'title' => 'ប្រភេទតម្រង់បញ្ជី',
     'heading' => 'ប្រភេទតម្រង់បញ្ជី',

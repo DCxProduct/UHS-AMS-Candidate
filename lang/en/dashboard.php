@@ -68,4 +68,7 @@ return [
     'submissions_trend' => 'Submission Trend',
     'last_six_months' => 'Submission activity during the last six months',
     'submissions' => 'Submissions',
+
+    "my_submission_trend" => 'My Submission Trend',
+    "my_submission_trend_description" => 'A view of your submission history over time.',
 ];
