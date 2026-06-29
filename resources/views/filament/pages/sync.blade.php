@@ -404,22 +404,23 @@
                     <div class="sync-heading">
                         <div class="sync-icon" aria-hidden="true">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" width="32" height="32">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992M2.985 19.644v-4.992m0 0h4.992m-4.992 0 3.181-3.183a8.25 8.25 0 0 1 13.803 3.183m0 0a8.25 8.25 0 0 1-13.803 3.183" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992M2.985 19.644v-4.992m0 0h4.992m-4.992 0 3.181-3.183a8.25 8.25 0 0 1 13.803 3.183m0 0a8.25 8.25 0 0 1-13.803 3.181M7.5 15.5l2.25 2.25M7.5 15.5l-2.25 2.25" stroke-linecap="round" />
+                                <circle cx="12" cy="12" r="10.5" stroke-width="1.5" stroke-dasharray="6 4" stroke-linecap="round" opacity="0.25" />
                             </svg>
                         </div>
 
                         <div>
-                            <h2 class="sync-title">Synchronize data</h2>
-                            <p class="sync-text">Update the local database with the latest server data and review every synced table.</p>
+                            <h2 class="sync-title">ធ្វើសមកាលកម្មទិន្នន័យ</h2>
+                            <p class="sync-text">ធ្វើបច្ចុប្បន្នភាពមូលដ្ឋានទិន្នន័យក្នុងស្រុកជាមួយទិន្នន័យម៉ាស៊ីនមេចុងក្រោយ និងពិនិត្យតារាងនីមួយៗដែលបានធ្វើសមកាលកម្ម។</p>
                         </div>
                     </div>
 
                     <div class="sync-actions">
                         <button type="button" class="sync-button" data-sync-button>
                             <svg class="sync-button-icon" data-sync-button-icon xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.9" stroke="currentColor" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992M2.985 19.644v-4.992m0 0h4.992m-4.992 0 3.181-3.183a8.25 8.25 0 0 1 13.803 3.183m0 0a8.25 8.25 0 0 1-13.803 3.183" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992M2.985 19.644v-4.992m0 0h4.992m-4.992 0 3.181-3.183a8.25 8.25 0 0 1 13.803 3.183m0 0a8.25 8.25 0 0 1-13.803 3.181" />
                             </svg>
-                            <span data-sync-button-label>Sync Now</span>
+                            <span data-sync-button-label>ធ្វើសមកាលកម្មឥឡូវនេះ</span>
                         </button>
                     </div>
                 </div>
@@ -434,15 +435,15 @@
 
                     <div class="sync-stats">
                         <div class="sync-stat">
-                            <span class="sync-stat-label">Tables</span>
+                            <span class="sync-stat-label">តារាង</span>
                             <span class="sync-stat-value" data-sync-total-tables>0</span>
                         </div>
                         <div class="sync-stat">
-                            <span class="sync-stat-label">Fetched</span>
+                            <span class="sync-stat-label">ទាញយក</span>
                             <span class="sync-stat-value" data-sync-total-fetched>0</span>
                         </div>
                         <div class="sync-stat">
-                            <span class="sync-stat-label">Synced</span>
+                            <span class="sync-stat-label">សមកាលកម្ម</span>
                             <span class="sync-stat-value" data-sync-total-synced>0</span>
                         </div>
                     </div>
@@ -451,11 +452,11 @@
                         <table class="sync-table">
                             <thead>
                                 <tr>
-                                    <th>Table</th>
-                                    <th>Fetched</th>
-                                    <th>Synced</th>
-                                    <th>Errors</th>
-                                    <th>Status</th>
+                                    <th>តារាង</th>
+                                    <th>ទាញយក</th>
+                                    <th>សមកាលកម្ម</th>
+                                    <th>កំហុស</th>
+                                    <th>ស្ថានភាព</th>
                                 </tr>
                             </thead>
                             <tbody data-sync-table-body></tbody>
@@ -463,7 +464,7 @@
                     </div>
 
                     <div class="sync-errors" data-sync-errors hidden>
-                        <p class="sync-errors-title">Sync errors</p>
+                        <p class="sync-errors-title">កំហុសសមកាលកម្ម</p>
                         <ul class="sync-errors-list" data-sync-errors-list></ul>
                     </div>
                 </div>
@@ -500,7 +501,7 @@
                 isSyncing = loading;
                 button.disabled = loading;
                 icon.classList.toggle('is-spinning', loading);
-                label.textContent = loading ? 'Syncing...' : 'Sync Now';
+                label.textContent = loading ? 'កំពុងធ្វើសមកាលកម្ម...' : 'ធ្វើសមកាលកម្មឥឡូវនេះ';
             };
 
             const showMessage = (type, title, message) => {
@@ -546,7 +547,7 @@
                     return error.message || error.detail || JSON.stringify(error);
                 }
 
-                return 'Unknown sync error.';
+                return 'កំហុសសមកាលកម្មមិនស្គាល់។';
             };
 
             const resetResults = () => {
@@ -593,9 +594,9 @@
                 tableBody.replaceChildren();
                 meta.replaceChildren();
 
-                addPill(data.mode ? `Mode: ${formatLabel(data.mode)}` : null);
-                addPill(data.full_resync ? 'Full resync' : 'Incremental');
-                addPill(data.auto_full_resync ? 'Auto full resync' : null, 'is-auto');
+                addPill(data.mode ? `របៀប៖ ${formatLabel(data.mode)}` : null);
+                addPill(data.full_resync ? 'ធ្វើសមកាលកម្មឡើងវិញពេញលេញ' : 'បន្ថែម');
+                addPill(data.auto_full_resync ? 'ធ្វើសមកាលកម្មឡើងវិញដោយស្វ័យប្រវត្តិ' : null, 'is-auto');
 
                 const totals = rows.reduce((carry, row) => {
                     carry.fetched += Number(row?.fetched) || 0;
@@ -609,7 +610,7 @@
                     const errors = normalizeErrors(row?.errors);
                     const tr = document.createElement('tr');
                     const statusClass = errors.length > 0 ? 'is-warning' : 'is-ok';
-                    const statusLabel = errors.length > 0 ? 'Needs review' : 'Complete';
+                    const statusLabel = errors.length > 0 ? 'ត្រូវការពិនិត្យ' : 'បានបញ្ចប់';
 
                     tr.innerHTML = `
                         <td class="sync-table-name"></td>
@@ -619,11 +620,11 @@
                         <td><span class="sync-status ${statusClass}">${statusLabel}</span></td>
                     `;
 
-                    tr.querySelector('.sync-table-name').textContent = row?.table || 'Unknown table';
+                    tr.querySelector('.sync-table-name').textContent = row?.table || 'តារាងមិនស្គាល់';
                     tableBody.appendChild(tr);
 
                     errors.forEach((error) => {
-                        tableErrors.push(`${row?.table || 'Unknown table'}: ${errorMessage(error)}`);
+                        tableErrors.push(`${row?.table || 'តារាងមិនស្គាល់'}: ${errorMessage(error)}`);
                     });
                 });
 
@@ -671,15 +672,15 @@
                     const result = await readResponse(response);
 
                     if (response.ok && result.success) {
-                        showMessage('success', 'Sync complete', result.message || 'Your data is now up to date.');
+                        showMessage('success', 'សមកាលកម្មបានបញ្ចប់', result.message || 'ទិន្នន័យរបស់អ្នកគឺទាន់សម័យហើយ។');
                         renderResults(result);
                         return;
                     }
 
-                    showMessage('error', 'Sync did not finish', result.message || 'We could not sync the data. Please try again.');
+                    showMessage('error', 'សមកាលកម្មមិនទាន់បានបញ្ចប់', result.message || 'យើងមិនអាចធ្វើសមកាលកម្មទិន្នន័យបានទេ។ សូមព្យាយាមម្តងទៀត។');
                     renderResults(result);
                 } catch (error) {
-                    showMessage('error', 'Sync did not finish', 'We could not connect to the sync service. Please check your internet connection and try again.');
+                    showMessage('error', 'សមកាលកម្មមិនទាន់បានបញ្ចប់', 'យើងមិនអាចភ្ជាប់ទៅសេវាសមកាលកម្មបានទេ។ សូមពិនិត្យការតភ្ជាប់អ៊ីនធឺណិតរបស់អ្នក ហើយព្យាយាមម្តងទៀត។');
                 } finally {
                     setLoading(false);
                 }
