@@ -68,4 +68,7 @@ return [
     'submissions_trend' => 'និន្នាការការដាក់ស្នើ',
     'last_six_months' => 'សកម្មភាពដាក់ស្នើក្នុងរយៈពេល ៦ ខែចុងក្រោយ',
     'submissions' => 'ការដាក់ស្នើ',
+
+    'my_submission_trend' => 'និន្នាការការដាក់ស្នើ',
+    'my_submission_trend_description' => 'ចំនួនការដាក់ស្នើក្នុងមួយខែ',
 ];
