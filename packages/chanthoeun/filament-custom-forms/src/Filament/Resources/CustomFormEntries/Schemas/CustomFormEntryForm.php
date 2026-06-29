@@ -345,6 +345,7 @@ class CustomFormEntryForm
                         } else {
                             $component = Select::make("data.{$name}")
                                 ->options(self::transOptions($options['choices'] ?? []))
+                                ->native(false)
                                 ->dehydrated(true);
                         }
 
