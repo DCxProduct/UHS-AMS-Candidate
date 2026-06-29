@@ -11,19 +11,25 @@ class Sync extends Page
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-arrow-path';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'ការកំណត់';
-
     protected static ?int $navigationSort = 90;
-
-    protected static ?string $navigationLabel = 'ធ្វើបច្ចុប្បន្នភាពទិន្នន័យ';
 
     protected static ?string $slug = 'sync';
 
     protected string $view = 'filament.pages.sync';
 
+    public static function getNavigationGroup(): ?string
+    {
+        return __('sync.navigation_group');
+    }
+
+    public static function getNavigationLabel(): string
+    {
+        return __('sync.title');
+    }
+
     public function getTitle(): string
     {
-        return 'ធ្វើបច្ចុប្បន្នភាពទិន្នន័យ';
+        return __('sync.title');
     }
 
     public static function shouldRegisterNavigation(): bool

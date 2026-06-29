@@ -143,11 +143,11 @@ class AppPanelProvider extends PanelProvider
             ])
 
             ->navigationItems([
-                NavigationItem::make('Sync')
-                    ->label('Sync')
+                NavigationItem::make('sync')
+                    ->label(fn (): string => __('sync.title'))
                     ->icon('heroicon-o-arrow-path')
-                    ->group('ការកំណត់')
-                    ->url(fn (): string => SyncPage::getUrl())
+                    ->group(fn (): string => __('sync.navigation_group'))
+                    ->url(fn (): string => SyncPage::getUrl(['run' => 1]))
                     ->sort(90)
                     ->visible(fn (): bool => $this->isAdmin()),
             ])

@@ -111,8 +111,7 @@
             font-size: 15px;
             font-weight: 600;
             cursor: pointer;
-            box-shadow: 0 8px 20px var(--sync-button-shadow);
-            transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.25);
         }
 
         .sync-button:hover:not(:disabled) {
@@ -397,77 +396,35 @@
         data-auto-run="{{ request()->boolean('run') ? 'true' : 'false' }}"
         data-sync-url="{{ route('sync.run') }}"
         data-csrf-token="{{ csrf_token() }}"
+        data-label-ready="{{ __('sync.button') }}"
+        data-label-loading="{{ __('sync.syncing') }}"
+        data-success-title="{{ __('sync.success_title') }}"
+        data-success-message="{{ __('sync.success_message') }}"
+        data-error-title="{{ __('sync.failed') }}"
+        data-error-message="{{ __('sync.error_message') }}"
+        data-error-connect="{{ __('sync.connection_error') }}"
     >
-        <div class="sync-shell">
-            <div class="sync-card">
-                <div class="sync-header">
-                    <div class="sync-heading">
-                        <div class="sync-icon" aria-hidden="true">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" width="32" height="32">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992M2.985 19.644v-4.992m0 0h4.992m-4.992 0 3.181-3.183a8.25 8.25 0 0 1 13.803 3.183m0 0a8.25 8.25 0 0 1-13.803 3.181M7.5 15.5l2.25 2.25M7.5 15.5l-2.25 2.25" stroke-linecap="round" />
-                                <circle cx="12" cy="12" r="10.5" stroke-width="1.5" stroke-dasharray="6 4" stroke-linecap="round" opacity="0.25" />
-                            </svg>
-                        </div>
+        <div class="sync-card">
+            <div class="sync-icon" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" width="32" height="32">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992M2.985 19.644v-4.992m0 0h4.992m-4.992 0 3.181-3.183a8.25 8.25 0 0 1 13.803 3.183m0 0a8.25 8.25 0 0 1-13.803 3.183" />
+                </svg>
+            </div>
 
-                        <div>
-                            <h2 class="sync-title">ការផ្លាស់ប្តូរទិន្នន័យ</h2>
-                            <p class="sync-text">ការធ្វើបច្ចុប្បន្នភាពមូលដ្ឋានទិន្នន័យក្នុងប្រព័ន្ធ បេក្ខជន ជាមួយទិន្នន័យក្នុងប្រព័ន្ធ សិស្សចុងក្រោយ និងពិនិត្យព័ត៌មានដែលបានធ្វើបច្ចុប្បន្នភាព។</p>
-                        </div>
-                    </div>
+            <h2 class="sync-title">{{ __('sync.heading') }}</h2>
+            <p class="sync-text">{{ __('sync.description') }}</p>
 
-                    <div class="sync-actions">
-                        <button type="button" class="sync-button" data-sync-button>
-                            <svg class="sync-button-icon" data-sync-button-icon xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.9" stroke="currentColor" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992M2.985 19.644v-4.992m0 0h4.992m-4.992 0 3.181-3.183a8.25 8.25 0 0 1 13.803 3.183m0 0a8.25 8.25 0 0 1-13.803 3.181" />
-                            </svg>
-                            <span data-sync-button-label>ធ្វើសកម្មភាពឥឡូវនេះ</span>
-                        </button>
-                    </div>
-                </div>
+            <button type="button" class="sync-button" data-sync-button>
+                <svg class="sync-button-icon" data-sync-button-icon xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.9" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992M2.985 19.644v-4.992m0 0h4.992m-4.992 0 3.181-3.183a8.25 8.25 0 0 1 13.803 3.183m0 0a8.25 8.25 0 0 1-13.803 3.183" />
+                </svg>
 
-                <div class="sync-alert" data-sync-alert role="status" aria-live="polite">
-                    <strong class="sync-alert-title" data-sync-alert-title></strong>
-                    <span data-sync-alert-message></span>
-                </div>
+                <span data-sync-button-label>{{ __('sync.button') }}</span>
+            </button>
 
-                <div class="sync-results" data-sync-results>
-                    <div class="sync-meta" data-sync-meta></div>
-
-                    <div class="sync-stats">
-                        <div class="sync-stat">
-                            <span class="sync-stat-label">តារាង</span>
-                            <span class="sync-stat-value" data-sync-total-tables>0</span>
-                        </div>
-                        <div class="sync-stat">
-                            <span class="sync-stat-label">ទាញយក</span>
-                            <span class="sync-stat-value" data-sync-total-fetched>0</span>
-                        </div>
-                        <div class="sync-stat">
-                            <span class="sync-stat-label">សមកាលកម្ម</span>
-                            <span class="sync-stat-value" data-sync-total-synced>0</span>
-                        </div>
-                    </div>
-
-                    <div class="sync-table-wrap">
-                        <table class="sync-table">
-                            <thead>
-                                <tr>
-                                    <th>តារាង</th>
-                                    <th>ទាញយក</th>
-                                    <th>សមកាលកម្ម</th>
-                                    <th>កំហុស</th>
-                                    <th>ស្ថានភាព</th>
-                                </tr>
-                            </thead>
-                            <tbody data-sync-table-body></tbody>
-                        </table>
-                    </div>
-
-                    <div class="sync-errors" data-sync-errors hidden>
-                        <p class="sync-errors-title">កំហុសសមកាលកម្ម</p>
-                        <ul class="sync-errors-list" data-sync-errors-list></ul>
-                    </div>
-                </div>
+            <div class="sync-alert" data-sync-alert role="status" aria-live="polite">
+                <strong class="sync-alert-title" data-sync-alert-title></strong>
+                <span data-sync-alert-message></span>
             </div>
         </div>
     </div>
@@ -501,7 +458,7 @@
                 isSyncing = loading;
                 button.disabled = loading;
                 icon.classList.toggle('is-spinning', loading);
-                label.textContent = loading ? 'កំពុងធ្វើសមកាលកម្ម...' : 'ធ្វើសមកាលកម្មឥឡូវនេះ';
+                label.textContent = loading ? page.dataset.labelLoading : page.dataset.labelReady;
             };
 
             const showMessage = (type, title, message) => {
@@ -672,15 +629,26 @@
                     const result = await readResponse(response);
 
                     if (response.ok && result.success) {
-                        showMessage('success', 'សមកាលកម្មបានបញ្ចប់', result.message || 'ទិន្នន័យរបស់អ្នកគឺទាន់សម័យហើយ។');
-                        renderResults(result);
+                        showMessage(
+                            'success',
+                            page.dataset.successTitle,
+                            result.message || page.dataset.successMessage
+                        );
+
                         return;
                     }
 
-                    showMessage('error', 'សមកាលកម្មមិនទាន់បានបញ្ចប់', result.message || 'យើងមិនអាចធ្វើសមកាលកម្មទិន្នន័យបានទេ។ សូមព្យាយាមម្តងទៀត។');
-                    renderResults(result);
+                    showMessage(
+                        'error',
+                        page.dataset.errorTitle,
+                        page.dataset.errorMessage
+                    );
                 } catch (error) {
-                    showMessage('error', 'សមកាលកម្មមិនទាន់បានបញ្ចប់', 'យើងមិនអាចភ្ជាប់ទៅសេវាសមកាលកម្មបានទេ។ សូមពិនិត្យការតភ្ជាប់អ៊ីនធឺណិតរបស់អ្នក ហើយព្យាយាមម្តងទៀត។');
+                    showMessage(
+                        'error',
+                        page.dataset.errorTitle,
+                        page.dataset.errorConnect
+                    );
                 } finally {
                     setLoading(false);
                 }
