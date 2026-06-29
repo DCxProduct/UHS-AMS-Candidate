@@ -21,6 +21,8 @@ class DatabaseSeeder extends Seeder
             GeoLocationsSeeder::class,
             NationalExaminationRegistrationSeeder::class,
             BachelorTransferFormFieldsSeeder::class,
+            MasterFormFieldsSeeder::class,
+            PhdFormFieldsSeeder::class,
         ]);
     }
 }
