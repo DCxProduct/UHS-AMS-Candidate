@@ -15,7 +15,7 @@ class Sync extends Page
 
     protected static ?int $navigationSort = 90;
 
-    protected static ?string $navigationLabel = 'សមកាលកម្មទិន្នន័យ';
+    protected static ?string $navigationLabel = 'ធ្វើបច្ចុប្បន្នភាពទិន្នន័យ';
 
     protected static ?string $slug = 'sync';
 
@@ -23,7 +23,7 @@ class Sync extends Page
 
     public function getTitle(): string
     {
-        return 'សមកាលកម្មទិន្នន័យ';
+        return 'ធ្វើបច្ចុប្បន្នភាពទិន្នន័យ';
     }
 
     public static function shouldRegisterNavigation(): bool

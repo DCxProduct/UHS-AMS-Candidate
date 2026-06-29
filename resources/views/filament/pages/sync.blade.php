@@ -410,8 +410,8 @@
                         </div>
 
                         <div>
-                            <h2 class="sync-title">ធ្វើសមកាលកម្មទិន្នន័យ</h2>
-                            <p class="sync-text">ធ្វើបច្ចុប្បន្នភាពមូលដ្ឋានទិន្នន័យក្នុងស្រុកជាមួយទិន្នន័យម៉ាស៊ីនមេចុងក្រោយ និងពិនិត្យតារាងនីមួយៗដែលបានធ្វើសមកាលកម្ម។</p>
+                            <h2 class="sync-title">ការផ្លាស់ប្តូរទិន្នន័យ</h2>
+                            <p class="sync-text">ការធ្វើបច្ចុប្បន្នភាពមូលដ្ឋានទិន្នន័យក្នុងប្រព័ន្ធ បេក្ខជន ជាមួយទិន្នន័យក្នុងប្រព័ន្ធ សិស្សចុងក្រោយ និងពិនិត្យព័ត៌មានដែលបានធ្វើបច្ចុប្បន្នភាព។</p>
                         </div>
                     </div>
 
@@ -420,7 +420,7 @@
                             <svg class="sync-button-icon" data-sync-button-icon xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.9" stroke="currentColor" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992M2.985 19.644v-4.992m0 0h4.992m-4.992 0 3.181-3.183a8.25 8.25 0 0 1 13.803 3.183m0 0a8.25 8.25 0 0 1-13.803 3.181" />
                             </svg>
-                            <span data-sync-button-label>ធ្វើសមកាលកម្មឥឡូវនេះ</span>
+                            <span data-sync-button-label>ធ្វើសកម្មភាពឥឡូវនេះ</span>
                         </button>
                     </div>
                 </div>
