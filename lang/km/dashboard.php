@@ -3,74 +3,69 @@
 return [
     'navigation_label' => 'ផ្ទាំងគ្រប់គ្រង',
     'title' => 'ផ្ទាំងគ្រប់គ្រង',
-    'user' => 'អ្នកប្រើប្រាស់',
-
     'welcome' => 'សូមស្វាគមន៍, :name',
 
     'admin_subheading' => 'តាមដានគណនីនិស្សិត ការដាក់ស្នើ និងការពិនិត្យពាក្យ។',
     'student_subheading' => 'តាមដានទម្រង់ ការដាក់ស្នើ និងវឌ្ឍនភាពរបស់អ្នក។',
 
     'total_students' => 'និស្សិតសរុប',
-    'students_registered' => 'គណនីនិស្សិតដែលបានចុះឈ្មោះ',
-
     'active_students' => 'និស្សិតសកម្ម',
-    'active_accounts' => 'គណនីដែលកំពុងដំណើរការ',
-
-    'total_submissions' => 'ការដាក់ស្នើសរុប',
-    'forms_submitted' => 'ទម្រង់ដែលនិស្សិតបានដាក់ស្នើ',
-
+    'national_examination_requests' => 'សំណើប្រឡងថ្នាក់ជាតិ',
     'pending_reviews' => 'រង់ចាំការពិនិត្យ',
-    'waiting_for_review' => 'ពាក្យដែលកំពុងរង់ចាំការពិនិត្យ',
 
-    'submissions' => 'ការដាក់ស្នើ',
+    'submission_trend' => 'និន្នាការការដាក់ស្នើ',
+    'submission_trend_description' => 'សកម្មភាពដាក់ស្នើក្នុងរយៈពេល ៦ ខែចុងក្រោយ',
 
-    'submissions_trend' => 'និន្នាការការដាក់ស្នើ',
-    'last_six_months' => 'សកម្មភាពដាក់ស្នើក្នុងរយៈពេល ៦ ខែចុងក្រោយ',
-
-    'submissions_by_form' => 'ការដាក់ស្នើតាមទម្រង់',
-    'submissions_by_form_description' => 'ចំនួនការដាក់ស្នើសម្រាប់ទម្រង់សកម្មនីមួយៗ',
+    'national_examination_submissions' => 'ការដាក់ស្នើប្រឡងថ្នាក់ជាតិ',
+    'national_examination_submissions_description' => 'ចំនួនពាក្យដែលបានដាក់តាមប្រភេទទម្រង់',
 
     'review_status' => 'ស្ថានភាពការពិនិត្យ',
-    'application_review_summary' => 'ពាក្យរង់ចាំ អនុម័ត និងបដិសេធ',
+    'review_status_description' => 'ពាក្យរង់ចាំ អនុម័ត បដិសេធ និងជាប់',
 
     'profile' => 'ប្រវត្តិរូប',
-    'profile_description' => 'ព័ត៌មានប្រវត្តិរូបនិស្សិតរបស់អ្នក',
-
-    'enrollment' => 'ការចុះឈ្មោះ',
-    'enrollment_description' => 'ពាក្យស្នើសុំចុះឈ្មោះរបស់អ្នក',
-
-    'completed' => 'បានបញ្ចប់',
-    'incomplete' => 'មិនទាន់បញ្ចប់',
-
-    'application_status' => 'ស្ថានភាពពាក្យ',
-    'application_status_description' => 'លទ្ធផលពិនិត្យពាក្យចុងក្រោយ',
-
+    'national_examination' => 'ការប្រឡងថ្នាក់ជាតិ',
+    'exam_result' => 'លទ្ធផលប្រឡង',
     'overall_progress' => 'វឌ្ឍនភាពសរុប',
-    'progress_description' => 'ការបំពេញទម្រង់ដែលមានសម្រាប់អ្នក',
 
-    'student_progress' => 'ដ្យាក្រាមការបំពេញទម្រង់',
-    'student_progress_description' => 'ភាគរយបំពេញសម្រាប់ទម្រង់ដែលមាននីមួយៗ',
-    'progress_percentage' => 'វឌ្ឍនភាព',
+    'profile_description' => 'ព័ត៌មានប្រវត្តិរូបនិស្សិតរបស់អ្នក',
+    'national_examination_description' => 'សំណើប្រឡងថ្នាក់ជាតិរបស់អ្នក',
+    'exam_result_description' => 'លទ្ធផលផ្ទៀងផ្ទាត់ចុងក្រោយ',
+    'workflow_progress_description' => 'វឌ្ឍនភាពតាមលំហូរការងាររបស់អ្នក',
 
-    'my_submission_trend' => 'និន្នាការការដាក់ស្នើរបស់ខ្ញុំ',
-    'my_submission_trend_description' => 'សកម្មភាពដាក់ស្នើរបស់អ្នកក្នុងរយៈពេល ៦ ខែចុងក្រោយ',
-    'my_submissions' => 'ការដាក់ស្នើរបស់ខ្ញុំ',
+    'workflow_progress' => 'វឌ្ឍនភាពលំហូរការងារ',
+    'workflow_progress_chart_description' => 'វឌ្ឍនភាពផ្អែកលើលំហូរការងារពិតរបស់អ្នក',
 
     'completion_overview' => 'សង្ខេបការបំពេញ',
-    'completion_summary' => 'បានបំពេញ :completed ក្នុងចំណោម :total ទម្រង់',
-    'completed_forms' => 'ទម្រង់ដែលបានបំពេញ',
-    'remaining_forms' => 'ទម្រង់ដែលនៅសល់',
-
-    'expired_contact' => 'ផុតកំណត់ — ទាក់ទងមកយើង',
-    'no_available_forms' => 'បច្ចុប្បន្នមិនមានទម្រង់សម្រាប់បំពេញទេ។',
+    'workflow_completion_summary' => 'បានបំពេញ :completed ក្នុងចំណោម ៣ ជំហាន',
+    'completed_steps' => 'ជំហានដែលបានបញ្ចប់',
+    'remaining_steps' => 'ជំហានដែលនៅសល់',
 
     'statuses' => [
+        'completed' => 'បានបញ្ចប់',
+        'not_completed' => 'មិនទាន់បញ្ចប់',
+        'not_submitted' => 'មិនទាន់ដាក់ស្នើ',
+        'draft' => 'រក្សាទុកជាព្រាង',
         'pending' => 'កំពុងរង់ចាំ',
         'accepted' => 'បានអនុម័ត',
         'rejected' => 'បានបដិសេធ',
-        'not_submitted' => 'មិនទាន់ដាក់ស្នើ',
+        'passed' => 'ជាប់',
+        'failed' => 'ធ្លាក់',
+        'not_ready' => 'មិនទាន់រួចរាល់',
     ],
 
-    'form_expired_description' => 'ទម្រង់នេះផុតកំណត់សម្រាប់ការដាក់ស្នើហើយ។ សូមបើកដើម្បីមើលព័ត៌មានទំនាក់ទំនង។',
-    'no_available_forms_description' => 'ទម្រង់ពាក្យថ្មីនឹងបង្ហាញនៅទីនេះ នៅពេលមានការបើកឱ្យបំពេញ។',
+    'form_types' => [
+        'associate' => 'បរិញ្ញាបត្ររង',
+        'bachelor' => 'បរិញ្ញាបត្រ',
+        'master' => 'បរិញ្ញាបត្រជាន់ខ្ពស់',
+        'phd' => 'បណ្ឌិត',
+    ],
+
+    'progress' => 'វឌ្ឍនភាព',
+    'national_examination_review_status' => 'ស្ថានភាពពិនិត្យការប្រឡងថ្នាក់ជាតិ',
+    'national_examination_approved' => 'ការប្រឡងថ្នាក់ជាតិបានអនុម័ត',
+    'exam_passed' => 'បានជាប់ប្រឡង',
+
+    'submissions_trend' => 'និន្នាការការដាក់ស្នើ',
+    'last_six_months' => 'សកម្មភាពដាក់ស្នើក្នុងរយៈពេល ៦ ខែចុងក្រោយ',
+    'submissions' => 'ការដាក់ស្នើ',
 ];

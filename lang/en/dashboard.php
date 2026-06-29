@@ -3,74 +3,69 @@
 return [
     'navigation_label' => 'Dashboard',
     'title' => 'Dashboard',
-    'user' => 'User',
-
     'welcome' => 'Welcome, :name',
 
     'admin_subheading' => 'Monitor student accounts, submissions, and application reviews.',
     'student_subheading' => 'Track your application forms, submissions, and progress.',
 
     'total_students' => 'Total Students',
-    'students_registered' => 'Registered student accounts',
-
     'active_students' => 'Active Students',
-    'active_accounts' => 'Accounts currently active',
-
-    'total_submissions' => 'Total Submissions',
-    'forms_submitted' => 'Forms submitted by students',
-
+    'national_examination_requests' => 'National Examination Requests',
     'pending_reviews' => 'Pending Reviews',
-    'waiting_for_review' => 'Applications waiting for review',
 
-    'submissions' => 'Submissions',
+    'submission_trend' => 'Submission Trend',
+    'submission_trend_description' => 'Submission activity during the last six months',
 
-    'submissions_trend' => 'Submission Trend',
-    'last_six_months' => 'Submission activity during the last six months',
-
-    'submissions_by_form' => 'Submissions by Form',
-    'submissions_by_form_description' => 'Number of submissions received for each active form',
+    'national_examination_submissions' => 'National Examination Submissions',
+    'national_examination_submissions_description' => 'Submitted applications by selected form type',
 
     'review_status' => 'Review Status',
-    'application_review_summary' => 'Pending, accepted, and rejected applications',
+    'review_status_description' => 'Pending, accepted, rejected, and passed applications',
 
     'profile' => 'Profile',
-    'profile_description' => 'Your student profile information',
-
-    'enrollment' => 'Enrollment',
-    'enrollment_description' => 'Your enrollment application',
-
-    'completed' => 'Completed',
-    'incomplete' => 'Not Completed',
-
-    'application_status' => 'Application Status',
-    'application_status_description' => 'Latest application review result',
-
+    'national_examination' => 'National Examination',
+    'exam_result' => 'Exam Result',
     'overall_progress' => 'Overall Progress',
-    'progress_description' => 'Completion of your available forms',
 
-    'student_progress' => 'Form Completion Diagram',
-    'student_progress_description' => 'Completion percentage for every available form',
-    'progress_percentage' => 'Progress',
+    'profile_description' => 'Your student profile information',
+    'national_examination_description' => 'Your national examination request',
+    'exam_result_description' => 'Final exam verification result',
+    'workflow_progress_description' => 'Your workflow completion',
 
-    'my_submission_trend' => 'My Submission Trend',
-    'my_submission_trend_description' => 'Your submission activity during the last six months',
-    'my_submissions' => 'My Submissions',
+    'workflow_progress' => 'Workflow Progress',
+    'workflow_progress_chart_description' => 'Progress based on your real application workflow',
 
     'completion_overview' => 'Completion Overview',
-    'completion_summary' => ':completed of :total forms completed',
-    'completed_forms' => 'Completed Forms',
-    'remaining_forms' => 'Remaining Forms',
-
-    'expired_contact' => 'Expired — contact us',
-    'no_available_forms' => 'There are currently no forms available.',
+    'workflow_completion_summary' => ':completed of 3 workflow steps completed',
+    'completed_steps' => 'Completed Steps',
+    'remaining_steps' => 'Remaining Steps',
 
     'statuses' => [
+        'completed' => 'Completed',
+        'not_completed' => 'Not Completed',
+        'not_submitted' => 'Not Submitted',
+        'draft' => 'Save as Draft',
         'pending' => 'Pending',
         'accepted' => 'Accepted',
         'rejected' => 'Rejected',
-        'not_submitted' => 'Not Submitted',
+        'passed' => 'Passed',
+        'failed' => 'Failed',
+        'not_ready' => 'Not Ready',
     ],
 
-    'form_expired_description' => 'This form is no longer available for submission. Open it to view contact information.',
-    'no_available_forms_description' => 'New application forms will appear here when they become available.',
+    'form_types' => [
+        'associate' => 'Associate',
+        'bachelor' => 'Bachelor',
+        'master' => 'Master',
+        'phd' => 'PhD',
+    ],
+
+    'progress' => 'Progress',
+    'national_examination_review_status' => 'National Examination Review Status',
+    'national_examination_approved' => 'National Examination Approved',
+    'exam_passed' => 'Exam Passed',
+
+    'submissions_trend' => 'Submission Trend',
+    'last_six_months' => 'Submission activity during the last six months',
+    'submissions' => 'Submissions',
 ];
