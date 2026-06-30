@@ -209,16 +209,16 @@ class FieldsRelationManager extends RelationManager
                                     })
                                     ->columns(3)
                                     ->schema([
-                                        \Filament\Forms\Components\TextInput::make('value')
-                                            ->label('Value')
+                                        \Filament\Forms\Components\TextInput::make('key')
+                                            ->label('Key')
                                             ->required(),
 
                                         \Filament\Forms\Components\TextInput::make('label_en')
-                                            ->label('English')
+                                            ->label('Label English')
                                             ->required(),
 
                                         \Filament\Forms\Components\TextInput::make('label_km')
-                                            ->label('Khmer')
+                                            ->label('Label Khmer')
                                             ->required(),
                                     ])
                                     ->afterStateHydrated(function ($component, $state, $record): void {
@@ -232,7 +232,7 @@ class FieldsRelationManager extends RelationManager
                                         $component->state(self::choicesToRows(is_array($choices) ? $choices : []));
                                     })
                                     ->dehydrated(true)
-                                    ->helperText('Value is saved to database. English and Khmer are display labels.'),
+                                    ->helperText('Key is saved to database. English and Khmer are display labels.'),
 
                                 \Filament\Forms\Components\Hidden::make('options.geo_location_type')
                                     ->default(''),
@@ -491,7 +491,7 @@ class FieldsRelationManager extends RelationManager
             $choices = [];
 
             foreach ($choiceRows as $row) {
-                $value = trim((string) ($row['value'] ?? ''));
+                $value = trim((string) ($row['key'] ?? ''));
 
                 if ($value === '') {
                     continue;
@@ -623,7 +623,7 @@ class FieldsRelationManager extends RelationManager
         foreach ($choices as $value => $label) {
             if (is_array($label) && array_key_exists('value', $label)) {
                 $rows[] = [
-                    'value' => (string) $label['value'],
+                    'key' => (string) $label['value'],
                     'label_en' => self::getLangValue($label['label'] ?? '', 'en'),
                     'label_km' => self::getLangValue($label['label'] ?? '', 'km'),
                 ];
@@ -632,7 +632,7 @@ class FieldsRelationManager extends RelationManager
             }
 
             $rows[] = [
-                'value' => (string) $value,
+                'key' => (string) $value,
                 'label_en' => self::getLangValue($label, 'en'),
                 'label_km' => self::getLangValue($label, 'km'),
             ];
