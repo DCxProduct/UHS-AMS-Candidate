@@ -147,7 +147,7 @@ class AppPanelProvider extends PanelProvider
                     ->label(fn (): string => __('sync.title'))
                     ->icon('heroicon-o-arrow-path')
                     ->group(fn (): string => __('sync.navigation_group'))
-                    ->url(fn (): string => SyncPage::getUrl(['run' => 1]))
+                    ->url(fn (): string => SyncPage::getUrl())
                     ->sort(90)
                     ->visible(fn (): bool => $this->isAdmin()),
             ])

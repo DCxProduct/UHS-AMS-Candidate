@@ -16,4 +16,21 @@ return [
     'success' => 'ការធ្វើសមកាលកម្មបានជោគជ័យ។',
     'failed' => 'ការធ្វើសមកាលកម្មមិនបានបញ្ចប់',
     'invalid' => 'សំណើធ្វើសមកាលកម្មមិនត្រឹមត្រូវ៖ :message',
+
+    'stat_tables' => 'តារាង',
+    'stat_fetched' => 'ទាញយក',
+    'stat_synced' => 'សមកាលកម្ម',
+    'stat_unchanged' => 'មិនផ្លាស់ប្ដូរ',
+
+    'col_table' => 'តារាង',
+    'col_counts' => 'ទាញយក / សមកាលកម្ម / មិនផ្លាស់ប្ដូរ',
+    'col_status' => 'ស្ថានភាព',
+
+    'mode_full' => 'សមកាលកម្មពេញ',
+    'mode_incremental' => 'បន្ថែម',
+    'mode_auto' => 'ស្វ័យប្រវត្តិ',
+
+    'status_synced' => 'បានសមកាលកម្ម',
+    'status_unchanged' => 'គ្មានការផ្លាស់ប្ដូរ',
+    'status_errors' => 'មានកំហុស',
 ];

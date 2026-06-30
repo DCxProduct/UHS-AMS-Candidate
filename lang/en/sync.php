@@ -21,4 +21,21 @@ return [
     'success' => 'Synchronization completed successfully.',
     'failed' => 'Sync did not finish',
     'invalid' => 'The sync request was not accepted: :message',
+
+    'stat_tables' => 'Tables',
+    'stat_fetched' => 'Fetched',
+    'stat_synced' => 'Synced',
+    'stat_unchanged' => 'Unchanged',
+
+    'col_table' => 'Table',
+    'col_counts' => 'Fetched / Synced / Unch.',
+    'col_status' => 'Status',
+
+    'mode_full' => 'Full Resync',
+    'mode_incremental' => 'Incremental',
+    'mode_auto' => 'Auto',
+
+    'status_synced' => 'Synced',
+    'status_unchanged' => 'No Changes',
+    'status_errors' => 'Errors',
 ];
