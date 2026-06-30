@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 return [
-    'bachelor_transfer_applications' => 'Bachelor Transfer Application',
+    'bachelor_transfer_applications' => 'Bachelor Application',
     'navigation_label' => 'Form Types',
     'title' => 'Form Types',
     'heading' => 'Form Types',

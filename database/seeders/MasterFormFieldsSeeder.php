@@ -34,8 +34,8 @@ class MasterFormFieldsSeeder extends Seeder
         $fields = [
             ['academic_year', 'Academic Year', 'ឆ្នាំសិក្សា', 'text_input', true],
             ['full_name', 'Full Name', 'នាមត្រកូល និង នាមខ្លួន', 'text_input', true],
-            ['family_name', 'Family Name', 'Family name', 'text_input', false],
-            ['given_name', 'Given Name', 'Given Name', 'text_input', false],
+            ['family_name', 'Family Name', 'នាមត្រកូល', 'text_input', false],
+            ['given_name', 'Given Name', 'នាមខ្លួន', 'text_input', false],
             ['date_of_birth', 'Date of Birth', 'ថ្ងៃ-ខែ-ឆ្នាំកំណើត', 'date_picker', true],
             ['gender', 'Gender', 'ភេទ', 'select', true],
             ['place_of_birth', 'Place of Birth', 'ទីកន្លែងកំណើត (រាជធានី/ខេត្ត)', 'text_input', true],

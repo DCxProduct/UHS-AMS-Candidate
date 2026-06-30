@@ -585,11 +585,11 @@ class StudentProfileSeeder extends Seeder
         ];
 
         if (Schema::hasColumn('document_templates', 'name')) {
-            $data['name'] = 'គំរូឯកសារប្រវត្តិរូប';
+            $data['name'] = 'Profile';
         }
 
         if (Schema::hasColumn('document_templates', 'template_name')) {
-            $data['template_name'] = 'គំរូឯកសារប្រវត្តិរូប';
+            $data['template_name'] = 'Profile';
         }
 
         if (Schema::hasColumn('document_templates', 'custom_form_id')) {
