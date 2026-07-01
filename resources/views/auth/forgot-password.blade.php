@@ -6,7 +6,7 @@
     <title>{{ __('app.forgot_password') }}</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Kantumruy+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Battambang:wght@400;700;900&family=Inter:wght@400;500;600;700;800&family=Kantumruy+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <script>
         (function () {
@@ -39,10 +39,9 @@
             --card-border: #e5e7eb;
             --text-main: #111827;
             --text-muted: #64748b;
-            --input-bg: #ffffff;
             --input-border: #d1d5db;
             --input-text: #111827;
-            --input-placeholder: #9ca3af;
+            --input-placeholder: #6b7280;
             --button-bg: #1d4ed8;
             --button-hover: #1e40af;
             --link-color: #f59e0b;
@@ -82,7 +81,8 @@
             min-height: 100vh;
             background: var(--page-bg);
             color: var(--text-main);
-            font-family: 'Kantumruy Pro', 'Inter', system-ui, sans-serif;
+            /* Updated font-family to Battambang */
+            font-family: 'Battambang', 'Kantumruy Pro', 'Inter', system-ui, sans-serif;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -99,10 +99,10 @@
 
         .card {
             width: 100%;
-            max-width: 440px;
+            max-width: 520px;
             background: var(--card-bg);
             border: 1px solid var(--card-border);
-            padding: 40px 32px;
+            padding: 48px 36px;
             border-radius: 16px;
             box-shadow: var(--shadow);
             transition: background-color 0.25s ease, border-color 0.25s ease;
@@ -111,7 +111,7 @@
         .logo {
             display: flex;
             justify-content: center;
-            margin-bottom: 20px;
+            margin-bottom: 24px;
         }
 
         .logo img {
@@ -121,40 +121,39 @@
         }
 
         h1 {
-            margin: 0 0 10px;
-            font-size: 26px;
-            line-height: 1.3;
-            font-weight: 800;
+            margin: 0 0 16px;
+            font-size: 24px; /* Increased size to match login */
+            line-height: 1.4;
             text-align: center;
             color: var(--text-main);
+            font-family: 'Battambang', 'Kantumruy Pro', 'Inter', sans-serif;
         }
 
         .description {
-            margin: 0 auto 28px;
+            margin: 0 auto 32px;
             color: var(--text-muted);
             text-align: center;
-            font-size: 14px;
+            font-size: 15px;
             line-height: 1.6;
         }
 
         label {
             display: block;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
             font-size: 14px;
-            font-weight: 600;
             color: var(--text-main);
         }
 
+        /* Increased height to match login fields */
         input {
             width: 100%;
-            height: 48px;
-            border-radius: 10px;
+            height: 52px;
+            border-radius: 8px;
             border: 1px solid var(--input-border);
             background: var(--input-bg);
             color: var(--input-text);
-            padding: 6 12px;
+            padding: 6px 16px;
             font-size: 15px;
-            font-family: inherit;
             outline: none;
             transition: border-color 0.2s, box-shadow 0.2s, background-color 0.25s ease, color 0.25s ease;
         }
@@ -170,16 +169,15 @@
 
         .input-wrapper {
             width: 100%;
-            height: 48px;
+            height: 52px; /* Matched height */
             display: flex;
             align-items: center;
             overflow: hidden;
-            border-radius: 10px;
+            border-radius: 8px;
             border: 1px solid var(--input-border);
             background: var(--input-bg);
             transition: border-color 0.2s, box-shadow 0.2s, background-color 0.25s ease;
         }
-
         .input-wrapper:focus-within {
             border-color: #f59e0b;
             box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
@@ -194,6 +192,7 @@
             justify-content: center;
             border-right: 1px solid var(--input-border);
             color: var(--input-placeholder);
+            background: transparent;
         }
 
         .input-prefix svg {
@@ -216,36 +215,36 @@
         }
 
         .error {
-            margin-top: 6px;
+            margin-top: 8px;
             color: var(--error-color);
-            font-size: 13px;
+            font-size: 14px;
             line-height: 1.5;
         }
 
         .status {
-            margin-bottom: 20px;
-            border-radius: 10px;
+            margin-bottom: 24px;
+            border-radius: 8px;
             background: var(--status-bg);
             border: 1px solid var(--status-border);
             color: var(--status-text);
-            padding: 12px 16px;
-            font-size: 14px;
+            padding: 14px 16px;
+            font-size: 15px;
             line-height: 1.5;
         }
 
         button {
             width: 100%;
-            height: 48px;
-            margin-top: 24px;
+            height: auto;
+            margin-top: 28px;
             border: 0;
-            border-radius: 10px;
+            border-radius: 8px;
             background: var(--button-bg);
             color: #ffffff;
-            font-size: 15px;
+            font-size: 16px; /* Adjust as needed */
             font-weight: 700;
-            font-family: inherit;
             cursor: pointer;
             transition: background-color 0.2s, transform 0.1s;
+            padding: 12px 16px;
         }
 
         button:hover {
@@ -257,9 +256,9 @@
         }
 
         .back {
-            margin-top: 28px;
+            margin-top: 32px;
             text-align: center;
-            font-size: 16px;
+            font-size: 15.2px;
             color: var(--text-muted);
         }
 
@@ -275,6 +274,7 @@
             text-decoration: underline;
         }
 
+        /* Language Switcher */
         .fls-display-on {
             position: fixed !important;
             top: 18px !important;
@@ -295,13 +295,10 @@
             height: 44px !important;
             min-width: 44px !important;
             min-height: 44px !important;
-
             display: inline-flex !important;
             align-items: center !important;
             justify-content: center !important;
-
             border-radius: 9999px !important;
-
             overflow: hidden !important;
             text-decoration: none !important;
             padding: 0 !important;
@@ -319,7 +316,6 @@
             height: 36px !important;
             min-width: 36px !important;
             min-height: 36px !important;
-
             border-radius: 9999px !important;
             object-fit: cover !important;
             object-position: center !important;
@@ -327,7 +323,7 @@
 
         @media (max-width: 640px) {
             .card {
-                padding: 32px 24px;
+                padding: 36px 24px;
             }
 
             h1 {
