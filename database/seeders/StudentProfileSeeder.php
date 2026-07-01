@@ -151,21 +151,21 @@ class StudentProfileSeeder extends Seeder
         $personalFields = [
             ['name' => 'personal_note', 'label' => $this->t('Brief Resume', 'ប្រវត្តិរូបសង្ខេប'), 'type' => 'info', 'options' => ['content' => $this->t('Brief Resume', 'ប្រវត្តិរូបសង្ខេប'), 'column_span_full' => true, 'is_hidden_label' => true]],
 
-            ['name' => 'first_name_kh', 'label' => $this->t('First Name (Khmer)', 'នាមខ្លួន (ខ្មែរ)'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter First Name', 'placeholder_km' => 'បញ្ចូលនាមខ្លួន']],
-            ['name' => 'last_name_kh', 'label' => $this->t('Last Name (Khmer)', 'នាមត្រកូល (ខ្មែរ)'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Last Name', 'placeholder_km' => 'បញ្ចូលនាមត្រកូល']],
-            ['name' => 'first_name_en', 'label' => $this->t('First Name (English)', 'នាមខ្លួន (អង់គ្លេស)'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter First Name', 'placeholder_km' => 'បញ្ចូលនាមខ្លួនជាអង់គ្លេស']],
-            ['name' => 'last_name_en', 'label' => $this->t('Last Name (English)', 'នាមត្រកូល (អង់គ្លេស)'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Last Name', 'placeholder_km' => 'បញ្ចូលនាមត្រកូលជាអង់គ្លេស']],
+            ['name' => 'first_name_kh', 'label' => $this->t('First Name (Khmer)', 'នាមខ្លួន (ខ្មែរ)'), 'type' => 'text_input', 'required' => true, 'options' => ['placeholder_en' => 'Enter First Name', 'placeholder_km' => 'បញ្ចូលនាមខ្លួន']],
+            ['name' => 'last_name_kh', 'label' => $this->t('Last Name (Khmer)', 'នាមត្រកូល (ខ្មែរ)'), 'type' => 'text_input', 'required' => true, 'options' => ['placeholder_en' => 'Enter Last Name', 'placeholder_km' => 'បញ្ចូលនាមត្រកូល']],
+            ['name' => 'first_name_en', 'label' => $this->t('First Name (English)', 'នាមខ្លួន (អង់គ្លេស)'), 'type' => 'text_input', 'required' => true, 'options' => ['placeholder_en' => 'Enter First Name', 'placeholder_km' => 'បញ្ចូលនាមខ្លួនជាអង់គ្លេស']],
+            ['name' => 'last_name_en', 'label' => $this->t('Last Name (English)', 'នាមត្រកូល (អង់គ្លេស)'), 'type' => 'text_input', 'required' => true, 'options' => ['placeholder_en' => 'Enter Last Name', 'placeholder_km' => 'បញ្ចូលនាមត្រកូលជាអង់គ្លេស']],
 
-            ['name' => 'gender', 'label' => $this->t('Gender', 'ភេទ'), 'type' => 'select_dropdown', 'options' => ['choices' => $genderOptions]],
-            ['name' => 'nationality', 'label' => $this->t('Nationality', 'សញ្ជាតិ'), 'type' => 'select_dropdown', 'options' => ['choices' => $nationalityOptions]],
+            ['name' => 'gender', 'label' => $this->t('Gender', 'ភេទ'), 'type' => 'select_dropdown', 'required' => true, 'options' => ['choices' => $genderOptions]],
+            ['name' => 'nationality', 'label' => $this->t('Nationality', 'សញ្ជាតិ'), 'type' => 'select_dropdown', 'required' => true, 'options' => ['choices' => $nationalityOptions]],
             ['name' => 'ethnicity', 'label' => $this->t('Ethnicity', 'ជនជាតិ'), 'type' => 'select_dropdown', 'options' => ['choices' => $ethnicityOptions]],
             ['name' => 'religion', 'label' => $this->t('Religion', 'សាសនា'), 'type' => 'select_dropdown', 'options' => ['choices' => $religionOptions]],
             ['name' => 'married_status', 'label' => $this->t('Marital Status', 'ស្ថានភាពអាពាហ៍ពិពាហ៍'), 'type' => 'select_dropdown', 'options' => ['choices' => $marriedStatusOptions]],
 
-            ['name' => 'date_of_birth', 'label' => $this->t('Date of Birth', 'ថ្ងៃខែឆ្នាំកំណើត'), 'type' => 'date_picker', 'options' => ['placeholder_en' => 'Enter Date of Birth', 'placeholder_km' => 'ជ្រើសរើសថ្ងៃខែឆ្នាំកំណើត']],
+            ['name' => 'date_of_birth', 'label' => $this->t('Date of Birth', 'ថ្ងៃខែឆ្នាំកំណើត'), 'type' => 'date_picker', 'required' => true, 'options' => ['placeholder_en' => 'Enter Date of Birth', 'placeholder_km' => 'ជ្រើសរើសថ្ងៃខែឆ្នាំកំណើត']],
 
             ['name' => 'place_of_birth_heading', 'label' => $this->t('Place of Birth', 'ទីកន្លែងកំណើត'), 'type' => 'info', 'options' => ['content' => $this->t('Place of Birth', 'ទីកន្លែងកំណើត'), 'column_span_full' => true, 'is_hidden_label' => true]],
-            ['name' => 'birth_province_city', 'label' => $this->t('Province / City', 'រាជធានី / ខេត្ត'), 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('province')],
+            ['name' => 'birth_province_city', 'label' => $this->t('Province / City', 'រាជធានី / ខេត្ត'), 'type' => 'select_dropdown', 'required' => true, 'options' => $this->geoLocationOptions('province')],
             ['name' => 'birth_district_khan', 'label' => $this->t('District / Khan', 'ស្រុក / ខណ្ឌ'), 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('district', 'birth_province_city')],
             ['name' => 'birth_commune_sangkat', 'label' => $this->t('Commune / Sangkat', 'ឃុំ / សង្កាត់'), 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('commune', 'birth_district_khan')],
             ['name' => 'birth_village', 'label' => $this->t('Village', 'ភូមិ'), 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('village', 'birth_commune_sangkat')],
@@ -173,7 +173,7 @@ class StudentProfileSeeder extends Seeder
             ['name' => 'current_address_heading', 'label' => $this->t('Current Address', 'អាសយដ្ឋានបច្ចុប្បន្ន'), 'type' => 'info', 'options' => ['content' => $this->t('Current Address', 'អាសយដ្ឋានបច្ចុប្បន្ន'), 'column_span_full' => true, 'is_hidden_label' => true]],
             ['name' => 'current_house_number', 'label' => $this->t('House Number', 'លេខផ្ទះ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter House Number', 'placeholder_km' => 'បញ្ចូលលេខផ្ទះ']],
             ['name' => 'current_street_number', 'label' => $this->t('Street Number', 'លេខផ្លូវ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Street Number', 'placeholder_km' => 'បញ្ចូលលេខផ្លូវ']],
-            ['name' => 'current_capital_province', 'label' => $this->t('Province / City', 'រាជធានី / ខេត្ត'), 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('province')],
+            ['name' => 'current_capital_province', 'label' => $this->t('Province / City', 'រាជធានី / ខេត្ត'), 'type' => 'select_dropdown', 'required' => true, 'options' => $this->geoLocationOptions('province')],
             ['name' => 'current_district_khan', 'label' => $this->t('District / Khan', 'ស្រុក / ខណ្ឌ'), 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('district', 'current_capital_province')],
             ['name' => 'current_commune_sangkat', 'label' => $this->t('Commune / Sangkat', 'ឃុំ / សង្កាត់'), 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('commune', 'current_district_khan')],
             ['name' => 'current_village', 'label' => $this->t('Village', 'ភូមិ'), 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('village', 'current_commune_sangkat')],
@@ -205,7 +205,7 @@ class StudentProfileSeeder extends Seeder
             ['name' => 'about_parents_heading', 'label' => $this->t('A. About Parents', 'ក. ព័ត៌មានអំពីឪពុកម្ដាយ'), 'type' => 'info', 'options' => ['content' => $this->t('A. About Parents', 'ក. ព័ត៌មានអំពីឪពុកម្ដាយ'), 'column_span_full' => true, 'is_hidden_label' => true]],
 
             ['name' => 'father_heading', 'label' => $this->t("Father's Information", 'ព័ត៌មានឪពុក'), 'type' => 'info', 'options' => ['content' => $this->t("Father's Information", 'ព័ត៌មានឪពុក'), 'column_span_full' => true, 'is_hidden_label' => true]],
-            ['name' => 'father_name', 'label' => $this->t("Father's Name", 'ឈ្មោះឪពុក'), 'type' => 'text_input', 'options' => ['placeholder_en' => "Enter Father's Name", 'placeholder_km' => 'បញ្ចូលឈ្មោះឪពុក']],
+            ['name' => 'father_name', 'label' => $this->t("Father's Name", 'ឈ្មោះឪពុក'), 'type' => 'text_input', 'required' => true, 'options' => ['placeholder_en' => "Enter Father's Name", 'placeholder_km' => 'បញ្ចូលឈ្មោះឪពុក']],
             ['name' => 'father_date_of_birth', 'label' => $this->t("Father's Date of Birth", 'ថ្ងៃខែឆ្នាំកំណើតឪពុក'), 'type' => 'date_picker', 'options' => ['placeholder_en' => "Enter Father Date of Birth", 'placeholder_km' => 'ជ្រើសរើសថ្ងៃខែឆ្នាំកំណើតឪពុក']],
             ['name' => 'father_ethnicity', 'label' => $this->t("Father's Ethnicity", 'ជនជាតិឪពុក'), 'type' => 'select_dropdown', 'options' => ['choices' => $ethnicityOptions]],
             ['name' => 'father_nationality', 'label' => $this->t("Father's Nationality", 'សញ្ជាតិឪពុក'), 'type' => 'select_dropdown', 'options' => ['choices' => $nationalityOptions]],
@@ -215,7 +215,7 @@ class StudentProfileSeeder extends Seeder
             ['name' => 'father_phone_number', 'label' => $this->t("Father's Phone Number", 'លេខទូរស័ព្ទឪពុក'), 'type' => 'phone', 'options' => ['placeholder_en' => 'Enter Father Phone Number', 'placeholder_km' => 'បញ្ចូលលេខទូរស័ព្ទឪពុក']],
 
             ['name' => 'mother_heading', 'label' => $this->t("Mother's Information", 'ព័ត៌មានម្ដាយ'), 'type' => 'info', 'options' => ['content' => $this->t("Mother's Information", 'ព័ត៌មានម្ដាយ'), 'column_span_full' => true, 'is_hidden_label' => true]],
-            ['name' => 'mother_name', 'label' => $this->t("Mother's Name", 'ឈ្មោះម្ដាយ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Mother Name', 'placeholder_km' => 'បញ្ចូលឈ្មោះម្ដាយ']],
+            ['name' => 'mother_name', 'label' => $this->t("Mother's Name", 'ឈ្មោះម្ដាយ'), 'type' => 'text_input', 'required' => true, 'options' => ['placeholder_en' => 'Enter Mother Name', 'placeholder_km' => 'បញ្ចូលឈ្មោះម្ដាយ']],
             ['name' => 'mother_date_of_birth', 'label' => $this->t("Mother's Date of Birth", 'ថ្ងៃខែឆ្នាំកំណើតម្ដាយ'), 'type' => 'date_picker', 'options' => ['placeholder_en' => 'Enter Mother Date of Birth', 'placeholder_km' => 'ជ្រើសរើសថ្ងៃខែឆ្នាំកំណើតម្ដាយ']],
             ['name' => 'mother_ethnicity', 'label' => $this->t("Mother's Ethnicity", 'ជនជាតិម្ដាយ'), 'type' => 'select_dropdown', 'options' => ['choices' => $ethnicityOptions]],
             ['name' => 'mother_nationality', 'label' => $this->t("Mother's Nationality", 'សញ្ជាតិម្ដាយ'), 'type' => 'select_dropdown', 'options' => ['choices' => $nationalityOptions]],

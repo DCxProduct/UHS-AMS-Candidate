@@ -42,6 +42,7 @@ class BachelorTransferFormFieldsSeeder extends Seeder
 
         $sort = 1;
 
+        // Added 6th array element for extra options (like geo location parameters)
         $fields = [
             ['List number', 'List Number', 'លេខបញ្ជី', 'text_input', false],
             ['Selected_Major', 'Selected Major', 'ផ្នែក', 'text_input', true],
@@ -63,15 +64,18 @@ class BachelorTransferFormFieldsSeeder extends Seeder
             ['Class', 'Class', 'ថ្នាក់', 'text_input', false],
             ['Ethnicity', 'Ethnicity', 'ជនជាតិ', 'text_input', false],
             ['Religion', 'Religion', 'សាសនា', 'text_input', false],
+
             ['Currect_house_number', 'House Number', 'ផ្ទះលេខ', 'text_input', false],
             ['current_street_number', 'Street Number', 'ផ្លូវលេខ', 'text_input', false],
-            ['current_commune_sangkat', 'Commune / Sangkat', 'ឃុំ/សង្កាត់', 'text_input', false],
-            ['current_district_khan', 'District / Khan', 'ស្រុក/ខណ្ឌ', 'text_input', false],
-            ['current_capital_province', 'Capital / Province', 'រាជធានី/ខេត្ត', 'text_input', false],
+            // Current Location Geo Fields (Reordered for proper cascading)
+            ['current_capital_province', 'Capital / Province', 'រាជធានី/ខេត្ត', 'select', false, $this->geoLocationOptions('province')],
+            ['current_district_khan', 'District / Khan', 'ស្រុក/ខណ្ឌ', 'select', false, $this->geoLocationOptions('district', 'current_capital_province')],
+            ['current_commune_sangkat', 'Commune / Sangkat', 'ឃុំ/សង្កាត់', 'select', false, $this->geoLocationOptions('commune', 'current_district_khan')],
+
             ['culture_level', 'Culture Level', 'កម្រិតវប្បធម៌', 'text_input', false],
             ['exam_period', 'Exam Period', 'សម័យប្រឡង', 'text_input', false],
             ['exam_center', 'Exam Center', 'មណ្ឌលប្រឡង', 'text_input', false],
-            ['.provinec_exam_center', 'Exam Center Province', 'មណ្ឌលប្រឡងនៅខេត្ត/រាជធានី', 'text_input', false],
+            ['.provinec_exam_center', 'Exam Center Province', 'មណ្ឌលប្រឡងនៅខេត្ត/រាជធានី', 'select', false, $this->geoLocationOptions('province')],
             ['current_occupation', 'Current Occupation', 'មុខរបរបច្ចុប្បន្ន', 'text_input', false],
             ['place_of_work', 'Place of Work', 'កន្លែងធ្វើការ', 'text_input', false],
 
@@ -95,9 +99,10 @@ class BachelorTransferFormFieldsSeeder extends Seeder
 
             ['parents_house_number', 'Parents House Number', 'ផ្ទះលេខ(ឪពុកម្ដាយ)', 'text_input', false],
             ['parents_street_number', 'Parents Street Number', 'ផ្លូវលេខ(ឪពុកម្ដាយ)', 'text_input', false],
-            ['parents_commune', 'Parents Commune', 'ឃុំ/សង្កាត់(ឪពុកម្ដាយ)', 'text_input', false],
-            ['parents_district', 'Parents District', 'ស្រុក/ខណ្ឌ(ឪពុកម្ដាយ)', 'text_input', false],
-            ['parents_province', 'Parents Province', 'រាជធានី/ខេត្ត(ឪពុកម្ដាយ)', 'text_input', false],
+            // Parents Geo Fields (Reordered)
+            ['parents_province', 'Parents Province', 'រាជធានី/ខេត្ត(ឪពុកម្ដាយ)', 'select', false, $this->geoLocationOptions('province')],
+            ['parents_district', 'Parents District', 'ស្រុក/ខណ្ឌ(ឪពុកម្ដាយ)', 'select', false, $this->geoLocationOptions('district', 'parents_province')],
+            ['parents_commune', 'Parents Commune', 'ឃុំ/សង្កាត់(ឪពុកម្ដាយ)', 'select', false, $this->geoLocationOptions('commune', 'parents_district')],
 
             ['guardian_name', 'Guardian Name', 'អាណាព្យាបាលឈ្មោះ', 'text_input', false],
             ['guardian_relationship', 'Guardian Relationship', 'អាណាព្យាបាលត្រូវជា', 'text_input', false],
@@ -109,29 +114,32 @@ class BachelorTransferFormFieldsSeeder extends Seeder
 
             ['primary_school_years', 'Primary School Years', 'រៀននៅបឋមសិក្សាពីឆ្នាំណាដល់ឆ្នាំណា', 'text_input', false],
             ['primary_school_grade', 'Primary School Grade', 'រៀននៅបឋមសិក្សាពីថ្នាក់ទីប៉ុន្មានដល់ទីប៉ុន្មាន', 'text_input', false],
-            ['primary_school_province-capital', 'Primary School Province / Capital', 'រៀននៅបឋមសិក្សានៅខេត្ត/រាជធានី', 'text_input', false],
+            ['primary_school_province-capital', 'Primary School Province / Capital', 'រៀននៅបឋមសិក្សានៅខេត្ត/រាជធានី', 'select', false, $this->geoLocationOptions('province')],
             ['primary_school_graduated', 'Primary School Graduated Year', 'រៀននៅបឋមសិក្សាទទួលបានសញ្ញាបត្រនៅឆ្នាំ', 'text_input', false],
 
             ['secondary_school_years', 'Secondary School Years', 'រៀននៅអនុវិទ្យាល័យពីឆ្នាំណាដល់ឆ្នាំណា', 'text_input', false],
             ['secondary_school_grade', 'Secondary School Grade', 'រៀននៅអនុវិទ្យាល័យថ្នាក់ទីប៉ុន្មានដល់ទីប៉ុន្មាន', 'text_input', false],
-            ['secondary_schools _province_capital', 'Secondary School Province / Capital', 'រៀននៅអនុវិទ្យាល័យនៅខេត្ត/រាជធានី', 'text_input', false],
+            ['secondary_schools _province_capital', 'Secondary School Province / Capital', 'រៀននៅអនុវិទ្យាល័យនៅខេត្ត/រាជធានី', 'select', false, $this->geoLocationOptions('province')],
             ['secondary_school_graduated_in_year', 'Secondary School Graduated Year', 'រៀននៅអនុវិទ្យាល័យទទួលបានសញ្ញាបត្រនៅឆ្នាំ', 'text_input', false],
 
             ['high_school_years', 'High School Years', 'រៀននៅវិទ្យាល័យពីឆ្នាំណាដល់ឆ្នាំ', 'text_input', false],
             ['high_school_grade', 'High School Grade', 'រៀននៅវិទ្យាល័យថ្នាក់ទីប៉ុន្មានដល់ទីប៉ុន្មាន', 'text_input', false],
-            ['high_school_province_or_capital', 'High School Province / Capital', 'រៀននៅវិទ្យាល័យនៅខេត្ត/រាជធានី', 'text_input', false],
+            ['high_school_province_or_capital', 'High School Province / Capital', 'រៀននៅវិទ្យាល័យនៅខេត្ត/រាជធានី', 'select', false, $this->geoLocationOptions('province')],
             ['high_school_graduate', 'High School Graduate Year', 'រៀននៅវិទ្យាល័យទទួលបានសញ្ញាបត្រនៅឆ្នាំណា', 'text_input', false],
 
             ['University_degree_year', 'University Degree Year', 'មហាវិ.សកលវិទ្យាល័យពីឆ្នាំណាដល់ឆ្នាំណា', 'text_input', false],
             ['university_education_hight_level', 'University Education Level', 'មហាវិ.សកលវិទ្យាល័យថ្នាក់ទីប៉ុន្មានដល់ទីប៉ុន្មាន', 'text_input', false],
-            ['Universities_provinces_and_capitals', 'University Province / Capital', 'មហាវិ.សកលវិទ្យាល័យនៅខេត្ត/រាជធានី', 'text_input', false],
+            ['Universities_provinces_and_capitals', 'University Province / Capital', 'មហាវិ.សកលវិទ្យាល័យនៅខេត្ត/រាជធានី', 'select', false, $this->geoLocationOptions('province')],
             ['university_graduate_receive_his_degree', 'University Graduate Receive Degree', 'មហាវិ.សកលវិទ្យាល័យទទួលបានសញ្ញាបត្រនៅឆ្នាំណា', 'text_input', false],
 
             ['married_status', 'Married Status', 'ស្ថានភាពគ្រួសារ', 'select', false],
-            ['birth_village', 'Birth Village', 'ភូមិកំណើត', 'text_input', false],
-            ['birth_commune_sangkat', 'Birth Commune / Sangkat', 'ឃុំ/សង្កាត់ កំណើត', 'text_input', false],
-            ['birth_district_khan', 'Birth District / Khan', 'ស្រុកកំណើត', 'text_input', false],
-            ['birth_province_city', 'Birth Province / City', 'ខេត្ត/ក្រុង កំណើត', 'text_input', false],
+
+            // Birth Geo Fields (Reordered)
+            ['birth_province_city', 'Birth Province / City', 'ខេត្ត/ក្រុង កំណើត', 'select', false, $this->geoLocationOptions('province')],
+            ['birth_district_khan', 'Birth District / Khan', 'ស្រុកកំណើត', 'select', false, $this->geoLocationOptions('district', 'birth_province_city')],
+            ['birth_commune_sangkat', 'Birth Commune / Sangkat', 'ឃុំ/សង្កាត់ កំណើត', 'select', false, $this->geoLocationOptions('commune', 'birth_district_khan')],
+            ['birth_village', 'Birth Village', 'ភូមិកំណើត', 'select', false, $this->geoLocationOptions('village', 'birth_commune_sangkat')],
+
             ['current_house_number', 'Current House Number', 'លេខផ្ទះបច្ចុប្បន្ន', 'text_input', false],
 
             ['Husband_or_wife_name', 'Husband or Wife Name', 'ឈ្មោះប្ដី ឬ ប្រពន្ធ', 'text_input', false],
@@ -141,7 +149,9 @@ class BachelorTransferFormFieldsSeeder extends Seeder
         ];
 
         foreach ($fields as $field) {
-            $options = [];
+            // Extract the optional geo options from the 6th index
+            $options = $field[5] ?? [];
+
             $name = $field[0];
             $enLabel = $field[1];
             $kmLabel = $field[2];
@@ -244,6 +254,16 @@ class BachelorTransferFormFieldsSeeder extends Seeder
             ],
         ])->values()->all();
     }
+
+    // Added helper to construct geo location options format
+    private function geoLocationOptions(string $type, ?string $parentField = null): array
+    {
+        return array_filter([
+            'geo_location_type' => $type,
+            'geo_location_parent_field' => $parentField,
+        ]);
+    }
+
     private function updateDocumentTemplateForForm(CustomForm $form, array $formNames): void
     {
         if (! Schema::hasTable('document_templates')) {
