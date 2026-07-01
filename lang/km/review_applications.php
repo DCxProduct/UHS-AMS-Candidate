@@ -41,6 +41,7 @@ return [
         'pending' => 'កំពុងរង់ចាំ',
         'accepted' => 'បានអនុម័ត',
         'rejected' => 'បានបដិសេធ',
+        'send_back' => 'បញ្ជូលត្រឡប់',
         'passed' => 'ជាប់',
         'failed' => 'ធ្លាក់',
     ],

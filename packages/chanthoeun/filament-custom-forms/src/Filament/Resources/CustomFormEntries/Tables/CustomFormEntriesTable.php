@@ -118,7 +118,7 @@ class CustomFormEntriesTable
                 $column
                     ->badge()
                     ->color('info')
-                    ->formatStateUsing(fn (?string $state): string => ucfirst((string) $state));
+                    ->formatStateUsing(fn (?string $state): string => self::formTypeLabel($state));
             }
 
             if (($fieldTypes[$key] ?? null) === 'number_input') {
@@ -205,7 +205,7 @@ class CustomFormEntriesTable
                 ->label(__('review_applications.form_type'))
                 ->badge()
                 ->sortable()
-                ->formatStateUsing(fn (?string $state): string => ucfirst((string) $state))
+                ->formatStateUsing(fn (?string $state): string => self::formTypeLabel($state))
                 ->color('info'),
         ];
 
@@ -319,7 +319,7 @@ class CustomFormEntriesTable
                                 ->filter()
                                 ->unique()
                                 ->mapWithKeys(fn ($item) => [
-                                    (string) $item => ucfirst((string) $item),
+                                    (string) $item => self::formTypeLabel((string) $item),
                                 ])
                                 ->toArray();
                         })
@@ -385,179 +385,6 @@ class CustomFormEntriesTable
                 }),
         ];
     }
-
-//    protected static function getRecordActions(): array
-//    {
-//        $actions = [
-//            EditAction::make()
-//                ->url(fn ($record): string => CustomFormEntryResource::getUrl('edit', [
-//                    'record' => $record,
-//                ]))
-//                ->visible(function ($record): bool {
-//                    if (self::currentPanelIsAdmin()) {
-//                        return false;
-//                    }
-//
-//                    return self::canEdit($record);
-//                }),
-//        ];
-//
-//        if (self::currentPanelIsAdmin()) {
-//            $actions[] = Action::make('view_template_pdf')
-//                ->label(__('review_applications.view_pdf'))
-//                ->icon('heroicon-o-eye')
-//                ->color('info')
-//                ->visible(fn ($record): bool =>
-//                    self::currentPanelIsAdmin()
-//                    && self::recordIsNationalExam($record)
-//                    && class_exists(\Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate::class)
-//                )
-//                ->action(function ($record) {
-//                    $templateType = null;
-//
-//                    $formSelection = strtolower((string) data_get($record->data, 'form_selection'));
-//
-//                    if (filled($formSelection)) {
-//                        $subForm = \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
-//                            ->where('custom_form_id', $record->custom_form_id)
-//                            ->where('menu_placement', 'sub_item')
-//                            ->where('sub_item_type', $formSelection)
-//                            ->first();
-//
-//                        if ($subForm) {
-//                            $templateType = 'custom_form_' . $subForm->id;
-//                        }
-//                    }
-//
-//                    $templateType ??= 'custom_form_' . $record->custom_form_id;
-//
-//                    $template = \Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate::query()
-//                        ->where('type', $templateType)
-//                        ->first();
-//
-//                    if (! $template) {
-//                        Notification::make()
-//                            ->title('No document template found')
-//                            ->danger()
-//                            ->send();
-//
-//                        return;
-//                    }
-//
-//                    $renderer = app(\Chanthoeun\FilamentDocumentBuilder\Services\DocumentRenderer::class);
-//                    $pdf = $renderer->render($template, $record);
-//
-//                    return response()->streamDownload(function () use ($pdf) {
-//                        echo $pdf->output();
-//                    }, 'template-preview-' . $record->id . '.pdf', [
-//                        'Content-Type' => 'application/pdf',
-//                    ]);
-//                });
-//
-//            $actions[] = Action::make('accepted')
-//                ->label(__('review_applications.statuses.accepted'))
-//                ->icon('heroicon-o-check-circle')
-//                ->color('success')
-//                ->requiresConfirmation()
-//                ->visible(fn ($record): bool =>
-//                    self::recordIsNationalExam($record)
-//                    && self::entryStatus($record) === 'pending'
-//                )
-//                ->action(function ($record): void {
-//                    $data = is_array($record->data) ? $record->data : [];
-//                    $data['candidate_status'] = 'pending';
-//                    $data['registration_status'] = 'approved';
-//
-//                    DB::table('custom_form_entries')
-//                        ->where('id', $record->id)
-//                        ->update([
-//                            'review_status' => 'approved',
-//                            'review_note' => null,
-//                            'reviewed_by' => auth()->id(),
-//                            'reviewed_at' => now(),
-//                            'updated_at' => now(),
-//                            'data' => json_encode($data),
-//                        ]);
-//
-//                    $record->refresh();
-//
-//                    self::notifyStudentNationalExamResult($record, 'approved', null);
-//
-//                    Notification::make()
-//                        ->title('Application approved')
-//                        ->success()
-//                        ->send();
-//                });
-//
-//            $actions[] = Action::make('rejected')
-//                ->label(__('review_applications.statuses.rejected'))
-//                ->icon('heroicon-o-x-circle')
-//                ->color('danger')
-//                ->visible(fn ($record): bool =>
-//                    self::recordIsNationalExam($record)
-//                    && self::entryStatus($record) === 'pending'
-//                )
-//                ->form([
-//                    Textarea::make('review_note')
-//                        ->label(__('review_applications.review_note'))
-//                        ->required()
-//                        ->rows(4),
-//                ])
-//                ->action(function ($record, array $data): void {
-//                    $recordData = is_array($record->data) ? $record->data : [];
-//                    $recordData['registration_status'] = 'rejected';
-//
-//                    DB::table('custom_form_entries')
-//                        ->where('id', $record->id)
-//                        ->update([
-//                            'review_status' => 'rejected',
-//                            'review_note' => $data['review_note'] ?? null,
-//                            'reviewed_by' => auth()->id(),
-//                            'reviewed_at' => now(),
-//                            'updated_at' => now(),
-//                            'data' => json_encode($recordData),
-//                        ]);
-//
-//                    $record->refresh();
-//
-//                    self::notifyStudentNationalExamResult($record, 'rejected', $data['review_note'] ?? null);
-//
-//                    Notification::make()
-//                        ->title('Application rejected')
-//                        ->danger()
-//                        ->send();
-//                });
-//        }
-//
-//        if (class_exists(\Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate::class)) {
-//            $actions[] = \Chanthoeun\FilamentDocumentBuilder\Tables\Actions\DownloadPdfAction::make('download_pdf')
-//                ->label(__('review_applications.download_pdf'))
-//                ->icon('heroicon-o-document-arrow-down')
-//                ->color('success')
-//                ->templateType(function ($record) {
-//                    $formSelection = strtolower((string) data_get($record->data, 'form_selection'));
-//
-//                    if (filled($formSelection)) {
-//                        $subForm = \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
-//                            ->where('custom_form_id', $record->custom_form_id)
-//                            ->where('menu_placement', 'sub_item')
-//                            ->where('sub_item_type', $formSelection)
-//                            ->first();
-//
-//                        if ($subForm) {
-//                            return 'custom_form_' . $subForm->id;
-//                        }
-//                    }
-//
-//                    return 'custom_form_' . $record->custom_form_id;
-//                })
-//                ->filename(fn ($record) => 'document-' . $record->id . '.pdf')
-//                ->visible(fn ($record): bool => self::canDownloadPdf($record));
-//        }
-//
-//        return $actions;
-//    }
-
 
     protected static function getRecordActions(): array
     {
@@ -657,8 +484,8 @@ class CustomFormEntriesTable
                         }),
 
                     Action::make('reject_from_view')
-                        ->label(__('review_applications.statuses.rejected'))
-                        ->icon('heroicon-o-x-circle')
+                        ->label(__('review_applications.statuses.send_back'))
+                        ->icon('heroicon-o-arrow-uturn-left')
                         ->color('danger')
                         ->form([
                             Textarea::make('review_note')
@@ -1013,5 +840,18 @@ class CustomFormEntriesTable
         }
 
         return (string) $value;
+    }
+
+    protected static function formTypeLabel(?string $state): string
+    {
+        $locale = app()->getLocale();
+
+        return match ((string) $state) {
+            'associate' => $locale === 'km' ? 'បរិញ្ញាបត្ររង' : 'Associate',
+            'bachelor' => $locale === 'km' ? 'បរិញ្ញាបត្រ' : 'Bachelor',
+            'master' => $locale === 'km' ? 'អនុបណ្ឌិត' : 'Master',
+            'phd' => $locale === 'km' ? 'បណ្ឌិត' : 'PhD',
+            default => filled($state) ? ucfirst((string) $state) : '-',
+        };
     }
 }

@@ -3,7 +3,8 @@
 return [
     'labels' => [
         'template_details' => 'ព័ត៌មានលម្អិតនៃទម្រង់',
-        'template_name' => 'ឈ្មោះទម្រង់',
+        'template_name_en' => 'ឈ្មោះទម្រង់ភាសាអង់គ្លេស',
+        'template_name_kh' => 'ឈ្មោះទម្រង់ភាសាខ្មែរ',
         'template_type' => 'ប្រភេទឯកសារ',
         'type_placeholder' => 'ឧ. វិក័យប័ត្រ, វិញ្ញាបនប័ត្រ',
         'database_model' => 'ទិន្នន័យ (Database Model)',
@@ -27,5 +28,12 @@ return [
         'last_updated' => 'បានធ្វើបច្ចុប្បន្នភាពចុងក្រោយ',
         'no_model_linked' => 'គ្មានទិន្នន័យភ្ជាប់ទេ',
         'model_prefix' => 'ម៉ូដែល: ',
+        'form_field' => 'ប្រភេទទម្រង់វាល',
+    ],
+
+    'placeholder' => [
+        'form_name_en' => 'បញ្ចូលឈ្មោះទម្រង់ជាភាសាអង់គ្លេស',
+        'form_name_km' => 'បញ្ចូលឈ្មោះទម្រង់ជាភាសាខ្មែរ',
+        'form_field' => 'ជ្រើសរើសជម្រើស',
     ],
 ];

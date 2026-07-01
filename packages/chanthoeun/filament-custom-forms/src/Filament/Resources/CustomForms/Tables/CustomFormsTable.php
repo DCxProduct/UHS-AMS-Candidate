@@ -31,7 +31,7 @@ class CustomFormsTable
                     ->searchable(),
 
                 TextColumn::make('menu_placement')
-                    ->label('Placement')
+                    ->label(__('filament-custom-forms::fcf.form.menu_placement'))
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'sidebar' => 'success',
@@ -39,13 +39,13 @@ class CustomFormsTable
                         default => 'gray',
                     })
                     ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'sidebar' => 'Sidebar',
-                        'sub_item' => 'Sub Item',
+                        'sidebar' => app()->getLocale() === 'km' ? 'ម៉ឺនុយមេ' : 'Sidebar',
+                        'sub_item' => app()->getLocale() === 'km' ? 'ម៉ឺនុយរង' : 'Sub Item',
                         default => $state,
                     }),
 
                 TextColumn::make('parent_sidebar')
-                    ->label('Parent Sidebar')
+                    ->label(__('filament-custom-forms::fcf.form.menu_parent'))
                     ->default('—')
                     ->searchable()
                     ->badge()
@@ -54,15 +54,16 @@ class CustomFormsTable
                     ->color('info'),
 
                 TextColumn::make('sub_item_type')
-                    ->label('Sub Item Type')
+                    ->label(__('filament-custom-forms::fcf.form.sub_form'))
                     ->default('—')
                     ->searchable()
                     ->badge()
                     ->alignCenter()
+                    ->formatStateUsing(fn ($state): string => self::subItemTypeLabel($state))
                     ->color('warning'),
 
                 TextColumn::make('parentForm.name')
-                    ->label('Form Type Field')
+                    ->label(__('filament-custom-forms::fcf.form.form_field'))
                     ->default('—')
                     ->badge()
                     ->alignCenter()
@@ -97,7 +98,7 @@ class CustomFormsTable
             ])
             ->actions([
                 \Filament\Actions\Action::make('edit_template')
-                    ->label('Build Template')
+                    ->label(app()->getLocale() === 'km' ? 'បង្កើតគំរូឯកសារ' : 'Build Template')
                     ->icon('heroicon-o-document-text')
                     ->color('info')
                     ->action(function ($record) {
@@ -182,7 +183,19 @@ class CustomFormsTable
             );
         }
 
-        return (string) $value;
+        $text = (string) $value;
+
+        if (app()->getLocale() === 'km') {
+            return match ($text) {
+                'National Examination Registration' => 'ការចុះឈ្មោះប្រឡងថ្នាក់ជាតិ',
+                'Profile' => 'ប្រវត្តិរូប',
+                'Sidebar' => 'ម៉ឺនុយមេ',
+                'Sub Item' => 'ម៉ឺនុយរង',
+                default => $text,
+            };
+        }
+
+        return $text;
     }
 
     private static function decodeText(mixed $value): mixed
@@ -219,5 +232,17 @@ class CustomFormsTable
             'km' => trim($km . ' គំរូ'),
             'kh' => trim($km . ' គំរូ'),
         ], JSON_UNESCAPED_UNICODE);
+    }
+
+    private static function subItemTypeLabel(mixed $state): string
+    {
+        return match ((string) $state) {
+            'associate' => app()->getLocale() === 'km' ? 'បរិញ្ញាបត្ររង' : 'Associate',
+            'bachelor' => app()->getLocale() === 'km' ? 'បរិញ្ញាបត្រ' : 'Bachelor',
+            'master' => app()->getLocale() === 'km' ? 'អនុបណ្ឌិត' : 'Master',
+            'phd' => app()->getLocale() === 'km' ? 'បណ្ឌិត' : 'PhD',
+            'exam' => app()->getLocale() === 'km' ? 'ការប្រឡង' : 'Exam',
+            default => filled($state) ? (string) $state : '—',
+        };
     }
 }

@@ -21,7 +21,8 @@ class DocumentTemplateForm
                     Step::make(__('filament-document-builder::document-builder.labels.template_details'))->schema([
                         Grid::make(4)->schema([
                             Forms\Components\TextInput::make('name_en')
-                                ->label('Template Name')
+                                ->label(__('filament-document-builder::document-builder.labels.template_name_en'))
+                                ->placeholder(__('filament-document-builder::document-builder.placeholder.form_name_en'))
                                 ->required()
                                 ->afterStateHydrated(function ($component, $record): void {
                                     $form = self::templateCustomForm($record);
@@ -37,7 +38,8 @@ class DocumentTemplateForm
                                 ->maxLength(255),
 
                             Forms\Components\TextInput::make('name_km')
-                                ->label('Label Name Khmer')
+                                ->label(__('filament-document-builder::document-builder.labels.template_name_kh'))
+                                ->placeholder(__('filament-document-builder::document-builder.placeholder.form_name_km'))
                                 ->required()
                                 ->afterStateHydrated(function ($component, $record): void {
                                     $form = self::templateCustomForm($record);
@@ -67,7 +69,8 @@ class DocumentTemplateForm
                                 ->maxLength(255),
 
                             Forms\Components\Select::make('custom_form_id')
-                                ->label('Form Type Field')
+                                ->label(__('filament-document-builder::document-builder.labels.form_field'))
+                                ->placeholder(__('filament-document-builder::document-builder.placeholder.form_field'))
                                 ->options(function () {
                                     if (! class_exists(\Chanthoeun\FilamentCustomForms\Models\CustomForm::class)) {
                                         return [];
@@ -80,7 +83,6 @@ class DocumentTemplateForm
                                         ])
                                         ->toArray();
                                 })
-                                ->placeholder('Please Select Form Type')
                                 ->searchable()
                                 ->live()
                                 ->afterStateUpdated(function ($state, callable $set) {

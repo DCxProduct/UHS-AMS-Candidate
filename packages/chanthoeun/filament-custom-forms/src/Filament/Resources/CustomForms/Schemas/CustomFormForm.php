@@ -23,7 +23,8 @@ class CustomFormForm
                     ->columnSpanFull()
                     ->schema([
                         TextInput::make('name_en')
-                            ->label('Name')
+                            ->label(__('filament-custom-forms::fcf.form.label_english'))
+                            ->placeholder(__('filament-custom-forms::fcf.placeholder.form_name_en'))
                             ->required()
                             ->live(onBlur: true)
                             ->afterStateHydrated(function ($component, $record): void {
@@ -34,7 +35,8 @@ class CustomFormForm
                             ->maxLength(255),
 
                         TextInput::make('name_km')
-                            ->label('Label Name Khmer')
+                            ->label(__('filament-custom-forms::fcf.form.label_khmer'))
+                            ->placeholder(__('filament-custom-forms::fcf.placeholder.form_name_km'))
                             ->required()
                             ->afterStateHydrated(function ($component, $record): void {
                                 $component->state(self::getNameLang($record?->name, 'km'));
@@ -53,15 +55,16 @@ class CustomFormForm
 
                         TextInput::make('slug')
                             ->label(__('filament-custom-forms::fcf.form.slug'))
+                            ->placeholder(__('filament-custom-forms::fcf.placeholder.slug'))
                             ->required()
                             ->maxLength(255)
                             ->unique(ignoreRecord: true),
 
                         Forms\Components\Select::make('menu_placement')
-                            ->label('Menu Placement / ទីតាំងបង្ហាញ')
+                            ->label(__('filament-custom-forms::fcf.form.menu_placement'))
                             ->options([
-                                'sidebar' => 'Create with Sidebar',
-                                'sub_item' => 'In Form Builder Sub Item',
+                                'sidebar' => __('filament-custom-forms::fcf.menu.sidebar'),
+                                'sub_item' => __('filament-custom-forms::fcf.menu.sub_item'),
                             ])
                             ->live()
                             ->afterStateUpdated(function ($set) {
@@ -72,8 +75,8 @@ class CustomFormForm
                             ->native(false),
 
                         Forms\Components\Select::make('custom_form_id')
-                            ->label('Form Type Field')
-                            ->placeholder('Select Form Type')
+                            ->label(__('filament-custom-forms::fcf.form.form_field'))
+                            ->placeholder(__('filament-custom-forms::fcf.placeholder.form_field'))
                             ->searchable()
                             ->preload()
                             ->live()
@@ -90,7 +93,7 @@ class CustomFormForm
                             ->required(fn (Get $get): bool => $get('menu_placement') === 'sub_item'),
 
                         Forms\Components\Select::make('parent_sidebar')
-                            ->label('Select Dynamic Sidebar')
+                            ->label(__('filament-custom-forms::fcf.menu.parent_sidebar'))
                             ->options(fn () => CustomForm::query()
                                 ->where('menu_placement', 'sidebar')
                                 ->orderBy('name')
@@ -109,7 +112,7 @@ class CustomFormForm
                             ->native(false),
 
                         Forms\Components\Select::make('sub_item_type')
-                            ->label('Sub Item Type')
+                            ->label(__('filament-custom-forms::fcf.form.sub_form'))
                             ->options(function (Get $get): array {
                                 $parentSidebarName = $get('parent_sidebar');
 

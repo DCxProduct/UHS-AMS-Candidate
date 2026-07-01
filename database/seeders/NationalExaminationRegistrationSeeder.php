@@ -88,7 +88,7 @@ class NationalExaminationRegistrationSeeder extends Seeder
         $formTypesSection = $this->upsertField(
             $customFormId,
             'form_types',
-            $this->t('Form Types', 'ប្រភេទពាក្យសុំ'),
+            $this->t('Form Types', 'ប្រភេទទម្រង់ពាក្យស្នើសុំ'),
             'section',
             false,
             ['columns' => 1, 'column_span_full' => true],
@@ -104,15 +104,15 @@ class NationalExaminationRegistrationSeeder extends Seeder
             [
                 [
                     'name' => 'form_selection',
-                    'label' => $this->t('Form Selections', 'ជ្រើសរើសពាក្យសុំ'),
+                    'label' => $this->t('Form Selections', 'ជ្រើសរើសទម្រង់ពាក្យសុំស្នើ'),
                     'type' => 'select_dropdown',
                     'required' => true,
                     'options' => [
                         'choices' => [
-                            'associate' => 'Associate',
-                            'bachelor' => 'Bachelor',
-                            'master' => 'Master',
-                            'phd' => 'PhD',
+                            'associate' => $this->t('Associate', 'បរិញ្ញាបត្ររង'),
+                            'bachelor' => $this->t('Bachelor', 'បរិញ្ញាបត្រ'),
+                            'master' => $this->t('Master', 'អនុបណ្ឌិត'),
+                            'phd' => $this->t('PhD', 'បណ្ឌិត'),
                         ],
                         'placeholder_en' => 'Select option',
                         'placeholder_km' => 'ជ្រើសរើសជម្រើស',
