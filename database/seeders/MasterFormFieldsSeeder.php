@@ -25,6 +25,8 @@ class MasterFormFieldsSeeder extends Seeder
             'name' => $this->label('Master Application', 'ពាក្យសុំចូលរៀនថ្នាក់អនុបណ្ឌិត'),
         ]);
 
+        $this->updateDocumentTemplateForForm($form);
+
         DB::table('custom_form_fields')
             ->where('custom_form_id', $form->id)
             ->delete();
@@ -232,5 +234,41 @@ class MasterFormFieldsSeeder extends Seeder
                 'kh' => $choice[2],
             ],
         ])->values()->all();
+    }
+
+    private function updateDocumentTemplateForForm(CustomForm $form): void
+    {
+        if (! Schema::hasTable('document_templates')) {
+            return;
+        }
+
+        DB::table('document_templates')
+            ->where('type', 'custom_form_' . $form->id)
+            ->update([
+                'name' => $this->templateName($form->name),
+                'custom_form_id' => $form->id,
+                'updated_at' => now(),
+            ]);
+    }
+
+    private function templateName(mixed $formName): string
+    {
+        $name = is_string($formName) && str_starts_with(trim($formName), '{')
+            ? json_decode($formName, true)
+            : $formName;
+
+        $en = is_array($name)
+            ? ($name['en'] ?? $name['km'] ?? $name['kh'] ?? '')
+            : (string) $name;
+
+        $km = is_array($name)
+            ? ($name['km'] ?? $name['kh'] ?? $name['en'] ?? '')
+            : (string) $name;
+
+        return json_encode([
+            'en' => trim($en . ' Template'),
+            'km' => trim($km . ' គំរូ'),
+            'kh' => trim($km . ' គំរូ'),
+        ], JSON_UNESCAPED_UNICODE);
     }
 }

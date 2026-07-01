@@ -15,15 +15,21 @@ class NationalExaminationRegistrationSeeder extends Seeder
         }
 
         $now = now();
-        $formName = 'National Examination Registration';
         $formSlug = 'national-examination-registration';
+
+        // 1. Define explicit translations for the parent form
+        $formNames = [
+            'en' => 'National Examination Registration',
+            'km' => 'ការចុះឈ្មោះប្រឡងថ្នាក់ជាតិ',
+            'kh' => 'ការចុះឈ្មោះប្រឡងថ្នាក់ជាតិ',
+        ];
 
         DB::table('custom_forms')->where('slug', 'enrollment')->delete();
 
         $form = DB::table('custom_forms')->where('slug', $formSlug)->first();
 
         $formData = [
-            'name' => $formName,
+            'name' => json_encode($formNames, JSON_UNESCAPED_UNICODE), // Enforce JSON_UNESCAPED_UNICODE
             'slug' => $formSlug,
             'is_active' => true,
             'updated_at' => $now,
@@ -82,7 +88,7 @@ class NationalExaminationRegistrationSeeder extends Seeder
         $formTypesSection = $this->upsertField(
             $customFormId,
             'form_types',
-            'Form Types',
+            $this->t('Form Types', 'ប្រភេទពាក្យសុំ'),
             'section',
             false,
             ['columns' => 1, 'column_span_full' => true],
@@ -98,7 +104,7 @@ class NationalExaminationRegistrationSeeder extends Seeder
             [
                 [
                     'name' => 'form_selection',
-                    'label' => 'Form Selections',
+                    'label' => $this->t('Form Selections', 'ជ្រើសរើសពាក្យសុំ'),
                     'type' => 'select_dropdown',
                     'required' => true,
                     'options' => [
@@ -119,10 +125,10 @@ class NationalExaminationRegistrationSeeder extends Seeder
         );
 
         foreach ([
-                     'associate' => 'Associate Specific Fields',
-                     'bachelor' => 'Bachelor Specific Fields',
-                     'master' => 'Master Specific Fields',
-                     'phd' => 'PhD Specific Fields',
+                     'associate' => $this->t('Associate Specific Fields', 'ព័ត៌មានបរិញ្ញាបត្ររង'),
+                     'bachelor' => $this->t('Bachelor Specific Fields', 'ព័ត៌មានបរិញ្ញាបត្រ'),
+                     'master' => $this->t('Master Specific Fields', 'ព័ត៌មានអនុបណ្ឌិត'),
+                     'phd' => $this->t('PhD Specific Fields', 'ព័ត៌មានបណ្ឌិត'),
                  ] as $value => $label) {
             $name = $value . '_specific_fields';
 
@@ -148,11 +154,12 @@ class NationalExaminationRegistrationSeeder extends Seeder
             $keepNames[] = $name;
         }
 
+        // Pass the array directly to correctly translate the template
         $this->createDocumentTemplate(
             $customFormId,
-            'National Examination Registration Template',
+            $formNames,
             $customFormId,
-            'National Examination Registration'
+            $formNames
         );
 
         $this->createSubItemForms($customFormId);
@@ -162,18 +169,52 @@ class NationalExaminationRegistrationSeeder extends Seeder
     private function createSubItemForms(int $parentFormId): void
     {
         $now = now();
-        $parentFormName = 'National Examination Registration';
+        // Fallback for parent_sidebar mapping if it relies on English string
+        $parentFormNameString = 'National Examination Registration';
 
+        // 2. Define the subforms WITH translations (Especially important for Associate)
         $subForms = [
-            ['name' => 'Associate Form', 'slug' => 'associate-form', 'sub_item_type' => 'associate'],
-            ['name' => 'Bachelor Form', 'slug' => 'bachelor-form', 'sub_item_type' => 'bachelor'],
-            ['name' => 'Master Form', 'slug' => 'master-form', 'sub_item_type' => 'master'],
-            ['name' => 'PhD Form', 'slug' => 'phd-form', 'sub_item_type' => 'phd'],
+            [
+                'name' => [
+                    'en' => 'Associate Form',
+                    'km' => 'ពាក្យសុំចូលរៀនថ្នាក់បរិញ្ញាបត្ររង',
+                    'kh' => 'ពាក្យសុំចូលរៀនថ្នាក់បរិញ្ញាបត្ររង'
+                ],
+                'slug' => 'associate-form',
+                'sub_item_type' => 'associate'
+            ],
+            [
+                'name' => [
+                    'en' => 'Bachelor Form',
+                    'km' => 'ពាក្យសុំផ្ទេរចូលឆ្នាំទី២ ថ្នាក់បរិញ្ញាបត្រ',
+                    'kh' => 'ពាក្យសុំផ្ទេរចូលឆ្នាំទី២ ថ្នាក់បរិញ្ញាបត្រ'
+                ],
+                'slug' => 'bachelor-form',
+                'sub_item_type' => 'bachelor'
+            ],
+            [
+                'name' => [
+                    'en' => 'Master Form',
+                    'km' => 'ពាក្យសុំចូលរៀនថ្នាក់អនុបណ្ឌិត',
+                    'kh' => 'ពាក្យសុំចូលរៀនថ្នាក់អនុបណ្ឌិត'
+                ],
+                'slug' => 'master-form',
+                'sub_item_type' => 'master'
+            ],
+            [
+                'name' => [
+                    'en' => 'PhD Form',
+                    'km' => 'ពាក្យសុំចូលរៀនថ្នាក់បណ្ឌិត',
+                    'kh' => 'ពាក្យសុំចូលរៀនថ្នាក់បណ្ឌិត'
+                ],
+                'slug' => 'phd-form',
+                'sub_item_type' => 'phd'
+            ],
         ];
 
         foreach ($subForms as $subForm) {
             $data = [
-                'name' => $subForm['name'],
+                'name' => json_encode($subForm['name'], JSON_UNESCAPED_UNICODE), // Enforce Unescaped JSON
                 'slug' => $subForm['slug'],
                 'is_active' => true,
                 'updated_at' => $now,
@@ -184,7 +225,7 @@ class NationalExaminationRegistrationSeeder extends Seeder
             }
 
             if (Schema::hasColumn('custom_forms', 'parent_sidebar')) {
-                $data['parent_sidebar'] = $parentFormName;
+                $data['parent_sidebar'] = $parentFormNameString; // Filament uses string mapping here sometimes
             }
 
             if (Schema::hasColumn('custom_forms', 'sub_item_type')) {
@@ -213,9 +254,10 @@ class NationalExaminationRegistrationSeeder extends Seeder
                 $subFormId = (int) DB::table('custom_forms')->insertGetId($data);
             }
 
+            // Create template using translated names directly
             $this->createDocumentTemplate(
                 $subFormId,
-                $subForm['name'] . ' Template',
+                $subForm['name'],
                 $parentFormId,
                 $subForm['name']
             );
@@ -247,7 +289,7 @@ class NationalExaminationRegistrationSeeder extends Seeder
     private function upsertField(
         int $customFormId,
         string $name,
-        string $label,
+        mixed $label, // Changed to mixed to support arrays
         string $type,
         bool $required,
         ?array $options,
@@ -255,12 +297,16 @@ class NationalExaminationRegistrationSeeder extends Seeder
         int $sort,
     ): int {
         $now = now();
-        $options = $this->withDefaultPlaceholders($label, $type, $options);
+
+        $encodedLabel = is_array($label) ? json_encode($label, JSON_UNESCAPED_UNICODE) : (string) $label;
+        $fallbackString = is_array($label) ? ($label['en'] ?? '') : $label;
+
+        $options = $this->withDefaultPlaceholders($fallbackString, $type, $options);
 
         $data = [
             'custom_form_id' => $customFormId,
             'name' => $name,
-            'label' => $label,
+            'label' => $encodedLabel,
             'type' => $type,
             'options' => $this->prepareOptions($options),
             'sort' => $sort,
@@ -341,6 +387,16 @@ class NationalExaminationRegistrationSeeder extends Seeder
         return (int) DB::table('custom_form_fields')->insertGetId($data);
     }
 
+    // Helper for labels
+    private function t(string $en, string $km): array
+    {
+        return [
+            'en' => $en,
+            'km' => $km,
+            'kh' => $km,
+        ];
+    }
+
     private function withDefaultPlaceholders(string $label, string $type, ?array $options): ?array
     {
         if (in_array($type, ['section', 'info', 'repeater', 'hidden'], true)) {
@@ -415,11 +471,12 @@ class NationalExaminationRegistrationSeeder extends Seeder
             ->toArray();
     }
 
+    // 3. Updated Template generation to use language arrays directly
     private function createDocumentTemplate(
         int $templateFormId,
-        string $templateName,
+        array $templateNames,
         int $linkedCustomFormId,
-        string $title,
+        array $titles,
     ): void {
         if (! Schema::hasTable('document_templates')) {
             return;
@@ -444,12 +501,21 @@ class NationalExaminationRegistrationSeeder extends Seeder
             'updated_at' => $now,
         ];
 
+        // Format names using our arrays with fallback logic
         if (Schema::hasColumn('document_templates', 'name')) {
-            $data['name'] = $templateName;
+            $data['name'] = json_encode([
+                'en' => trim($templateNames['en'] . ' Template'),
+                'km' => trim($templateNames['km'] . ' គំរូ'),
+                'kh' => trim($templateNames['kh'] . ' គំរូ'),
+            ], JSON_UNESCAPED_UNICODE);
         }
 
         if (Schema::hasColumn('document_templates', 'template_name')) {
-            $data['template_name'] = $templateName;
+            $data['template_name'] = json_encode([
+                'en' => trim($templateNames['en'] . ' Template'),
+                'km' => trim($templateNames['km'] . ' គំរូ'),
+                'kh' => trim($templateNames['kh'] . ' គំរូ'),
+            ], JSON_UNESCAPED_UNICODE);
         }
 
         if (Schema::hasColumn('document_templates', 'custom_form_id')) {
@@ -475,8 +541,10 @@ class NationalExaminationRegistrationSeeder extends Seeder
             ], JSON_UNESCAPED_UNICODE);
         }
 
+        $documentTitle = $titles['kh'] ?? $titles['km'] ?? $titles['en'] ?? 'Template';
+
         $html = '<div style="font-family: sans-serif; max-width: 900px; margin: 0 auto;">';
-        $html .= '<h1 style="text-align: center;">' . e($title) . '</h1>';
+        $html .= '<h1 style="text-align: center;">' . e($documentTitle) . '</h1>';
         $html .= '<p><strong>Form Type:</strong> {{ form_selection }}</p>';
         $html .= '<p><strong>Student ID:</strong> {{ student_id }}</p>';
         $html .= '<p><strong>National Registration Number:</strong> {{ national_registration_number }}</p>';

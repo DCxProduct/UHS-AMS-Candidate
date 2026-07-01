@@ -21,9 +21,20 @@ class PhdFormFieldsSeeder extends Seeder
             return;
         }
 
-        $form->update([
-            'name' => $this->label('PhD Application', 'ពាក្យសុំចូលរៀនថ្នាក់បណ្ឌិត'),
-        ]);
+        $formNames = [
+            'en' => 'PhD Application',
+            'km' => 'ពាក្យសុំចូលរៀនថ្នាក់បណ្ឌិត',
+            'kh' => 'ពាក្យសុំចូលរៀនថ្នាក់បណ្ឌិត',
+        ];
+
+        DB::table('custom_forms')
+            ->where('id', $form->id)
+            ->update([
+                'name' => json_encode($formNames, JSON_UNESCAPED_UNICODE),
+                'updated_at' => now(),
+            ]);
+
+        $this->updateDocumentTemplateForForm($form, $formNames);
 
         DB::table('custom_form_fields')
             ->where('custom_form_id', $form->id)
@@ -198,5 +209,24 @@ class PhdFormFieldsSeeder extends Seeder
             'value' => $choice[0],
             'label' => ['en' => $choice[1], 'km' => $choice[2], 'kh' => $choice[2]],
         ])->values()->all();
+    }
+
+    private function updateDocumentTemplateForForm(CustomForm $form, array $formNames): void
+    {
+        if (! Schema::hasTable('document_templates')) {
+            return;
+        }
+
+        DB::table('document_templates')
+            ->where('type', 'custom_form_' . $form->id)
+            ->update([
+                'name' => json_encode([
+                    'en' => trim($formNames['en'] . ' Template'),
+                    'km' => trim($formNames['km'] . ' គំរូ'),
+                    'kh' => trim($formNames['kh'] . ' គំរូ'),
+                ], JSON_UNESCAPED_UNICODE),
+                'custom_form_id' => $form->id,
+                'updated_at' => now(),
+            ]);
     }
 }

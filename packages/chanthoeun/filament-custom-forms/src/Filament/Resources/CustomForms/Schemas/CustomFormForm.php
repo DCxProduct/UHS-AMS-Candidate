@@ -22,33 +22,34 @@ class CustomFormForm
                     ->columns(3)
                     ->columnSpanFull()
                     ->schema([
-                        TextInput::make('name')
-                            ->label(__('filament-custom-forms::fcf.form.name'))
+                        TextInput::make('name_en')
+                            ->label('Name')
                             ->required()
                             ->live(onBlur: true)
+                            ->afterStateHydrated(function ($component, $record): void {
+                                $component->state(self::getNameLang($record?->name, 'en'));
+                            })
                             ->afterStateUpdated(fn ($set, $state) => $set('slug', \Illuminate\Support\Str::slug($state)))
-                            ->formatStateUsing(function ($state) {
-                                if (is_string($state) && str_starts_with(trim($state), '{')) {
-                                    $decoded = json_decode($state, true);
-
-                                    if (is_array($decoded)) {
-                                        return $decoded['en'] ?? $decoded['km'] ?? '';
-                                    }
-                                }
-
-                                return $state;
-                            })
-                            ->dehydrateStateUsing(function ($state) {
-                                if (is_string($state) && str_starts_with(trim($state), '{')) {
-                                    return $state;
-                                }
-
-                                return json_encode([
-                                    'en' => $state,
-                                    'km' => $state,
-                                ], JSON_UNESCAPED_UNICODE);
-                            })
+                            ->dehydrated(false)
                             ->maxLength(255),
+
+                        TextInput::make('name_km')
+                            ->label('Label Name Khmer')
+                            ->required()
+                            ->afterStateHydrated(function ($component, $record): void {
+                                $component->state(self::getNameLang($record?->name, 'km'));
+                            })
+                            ->dehydrated(false)
+                            ->maxLength(255),
+
+                        Forms\Components\Hidden::make('name')
+                            ->dehydrateStateUsing(function ($state, $get): string {
+                                return json_encode([
+                                    'en' => $get('name_en'),
+                                    'km' => $get('name_km'),
+                                    'kh' => $get('name_km'),
+                                ], JSON_UNESCAPED_UNICODE);
+                            }),
 
                         TextInput::make('slug')
                             ->label(__('filament-custom-forms::fcf.form.slug'))
@@ -81,7 +82,7 @@ class CustomFormForm
                                 ->orderBy('name')
                                 ->get()
                                 ->mapWithKeys(fn (CustomForm $form): array => [
-                                    $form->id => self::englishText($form->name),
+                                    $form->id => self::localeText($form->name),
                                 ])
                                 ->toArray()
                             )
@@ -95,7 +96,7 @@ class CustomFormForm
                                 ->orderBy('name')
                                 ->get()
                                 ->mapWithKeys(fn (CustomForm $form): array => [
-                                    self::englishText($form->name) => self::englishText($form->name),
+                                    self::englishText($form->name) => self::localeText($form->name),
                                 ])
                                 ->toArray()
                             )
@@ -120,7 +121,8 @@ class CustomFormForm
                                     ->where(function ($query) use ($parentSidebarName): void {
                                         $query->where('name', $parentSidebarName)
                                             ->orWhere('name', 'like', '%"en":"' . $parentSidebarName . '"%')
-                                            ->orWhere('name', 'like', '%"km":"' . $parentSidebarName . '"%');
+                                            ->orWhere('name', 'like', '%"km":"' . $parentSidebarName . '"%')
+                                            ->orWhere('name', 'like', '%"kh":"' . $parentSidebarName . '"%');
                                     })
                                     ->first();
 
@@ -152,7 +154,7 @@ class CustomFormForm
                                     return [];
                                 }
 
-                                return self::englishOptions($choices);
+                                return self::localeOptions($choices);
                             })
                             ->searchable()
                             ->preload()
@@ -355,6 +357,55 @@ class CustomFormForm
         return $blocks;
     }
 
+    private static function getNameLang(mixed $value, string $locale): string
+    {
+        if (is_string($value) && str_starts_with(trim($value), '{')) {
+            $decoded = json_decode($value, true);
+
+            if (is_array($decoded)) {
+                return (string) (
+                    $decoded[$locale]
+                    ?? $decoded['en']
+                    ?? $decoded['km']
+                    ?? $decoded['kh']
+                    ?? ''
+                );
+            }
+        }
+
+        return (string) $value;
+    }
+
+    private static function localeText(mixed $value): string
+    {
+        if (is_string($value) && str_starts_with(trim($value), '{')) {
+            $decoded = json_decode($value, true);
+
+            if (is_array($decoded)) {
+                $value = $decoded;
+            }
+        }
+
+        if (is_object($value)) {
+            $value = json_decode(json_encode($value), true);
+        }
+
+        if (is_array($value)) {
+            $locale = app()->getLocale();
+
+            return (string) (
+                $value[$locale]
+                ?? $value['km']
+                ?? $value['kh']
+                ?? $value['en']
+                ?? collect($value)->first()
+                ?? ''
+            );
+        }
+
+        return (string) $value;
+    }
+
     private static function englishText(mixed $value): string
     {
         if (is_string($value) && str_starts_with(trim($value), '{')) {
@@ -370,24 +421,24 @@ class CustomFormForm
         }
 
         if (is_array($value)) {
-            return (string) ($value['en'] ?? $value['km'] ?? collect($value)->first() ?? '');
+            return (string) ($value['en'] ?? $value['km'] ?? $value['kh'] ?? collect($value)->first() ?? '');
         }
 
         return (string) $value;
     }
 
-    private static function englishOptions(array $choices): array
+    private static function localeOptions(array $choices): array
     {
         return collect($choices)
             ->mapWithKeys(function ($label, $value): array {
                 if (is_array($label) && array_key_exists('value', $label)) {
                     return [
-                        (string) $label['value'] => self::englishText($label['label'] ?? $label['value']),
+                        (string) $label['value'] => self::localeText($label['label'] ?? $label['value']),
                     ];
                 }
 
                 return [
-                    (string) $value => self::englishText($label),
+                    (string) $value => self::localeText($label),
                 ];
             })
             ->toArray();

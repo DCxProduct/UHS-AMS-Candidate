@@ -17,7 +17,7 @@ class DocumentTemplateTable
             ->columns([
                 Tables\Columns\TextColumn::make('name')
                     ->label(__('filament-document-builder::document-builder.labels.template_name'))
-                    ->formatStateUsing(fn ($state): string => self::englishText($state))
+                    ->formatStateUsing(fn ($state): string => self::localeText($state))
                     ->searchable()
                     ->sortable()
                     ->weight('bold'),
@@ -26,7 +26,7 @@ class DocumentTemplateTable
                     ->label('Form Type Field')
                     ->default('—')
                     ->badge()
-                    ->formatStateUsing(fn ($state): string => self::englishText($state))
+                    ->formatStateUsing(fn ($state): string => self::localeText($state))
                     ->color('primary')
                     ->alignCenter()
                     ->sortable(),
@@ -81,14 +81,18 @@ class DocumentTemplateTable
                         }
 
                         $data = [];
+
                         if (class_exists($record->model_class)) {
                             $sampleRecord = $record->model_class::first();
+
                             if ($sampleRecord) {
                                 $data = $sampleRecord;
                             } else {
                                 Notification::make()
                                     ->title(__('filament-document-builder::document-builder.labels.no_records_found_title'))
-                                    ->body(__('filament-document-builder::document-builder.labels.no_records_found_body', ['model' => $record->model_class]))
+                                    ->body(__('filament-document-builder::document-builder.labels.no_records_found_body', [
+                                        'model' => $record->model_class,
+                                    ]))
                                     ->warning()
                                     ->send();
 
@@ -103,6 +107,7 @@ class DocumentTemplateTable
                             echo $pdf->output();
                         }, 'preview.pdf');
                     }),
+
                 Actions\EditAction::make(),
                 Actions\DeleteAction::make(),
             ])
@@ -113,10 +118,18 @@ class DocumentTemplateTable
             ]);
     }
 
-    private static function englishText(mixed $value): string
+    private static function localeText(mixed $value): string
     {
+        $locale = app()->getLocale();
+
         if (is_array($value)) {
-            return (string) ($value['en'] ?? $value['km'] ?? '');
+            return (string) (
+                $value[$locale]
+                ?? $value['km']
+                ?? $value['kh']
+                ?? $value['en']
+                ?? ''
+            );
         }
 
         $text = (string) $value;
@@ -125,10 +138,17 @@ class DocumentTemplateTable
             $decoded = json_decode($matches[1], true);
 
             if (is_array($decoded)) {
-                return trim(($decoded['en'] ?? $decoded['km'] ?? '') . ($matches[2] ?? ''));
+                return trim((
+                        $decoded[$locale]
+                        ?? $decoded['km']
+                        ?? $decoded['kh']
+                        ?? $decoded['en']
+                        ?? ''
+                    ) . ($matches[2] ?? ''));
             }
         }
 
         return $text;
     }
+
 }

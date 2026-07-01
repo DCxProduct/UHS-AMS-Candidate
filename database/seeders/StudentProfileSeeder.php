@@ -471,11 +471,13 @@ class StudentProfileSeeder extends Seeder
         return (int) DB::table('custom_form_fields')->insertGetId($data);
     }
 
+    // 1. ADDED 'kh' FALLBACK TO FIX FILAMENT LANGUAGE SWITCHING
     private function t(string $en, string $km): array
     {
         return [
             'en' => $en,
             'km' => $km,
+            'kh' => $km,
         ];
     }
 
@@ -584,12 +586,21 @@ class StudentProfileSeeder extends Seeder
             'updated_at' => $now,
         ];
 
+        // 2. UPDATED TO BE PROPERLY TRANSLATABLE JSON ARRAYS
         if (Schema::hasColumn('document_templates', 'name')) {
-            $data['name'] = 'Profile';
+            $data['name'] = json_encode([
+                'en' => 'Profile Template',
+                'km' => 'ប្រវត្តិរូប គំរូ',
+                'kh' => 'ប្រវត្តិរូប គំរូ',
+            ], JSON_UNESCAPED_UNICODE);
         }
 
         if (Schema::hasColumn('document_templates', 'template_name')) {
-            $data['template_name'] = 'Profile';
+            $data['template_name'] = json_encode([
+                'en' => 'Profile Template',
+                'km' => 'ប្រវត្តិរូប គំរូ',
+                'kh' => 'ប្រវត្តិរូប គំរូ',
+            ], JSON_UNESCAPED_UNICODE);
         }
 
         if (Schema::hasColumn('document_templates', 'custom_form_id')) {
