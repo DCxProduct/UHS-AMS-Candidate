@@ -21,13 +21,20 @@ class BachelorTransferFormFieldsSeeder extends Seeder
             return;
         }
 
-        $form->update([
-            'name' => json_encode([
-                'en' => 'Bachelor Transfer Application',
-                'km' => 'ពាក្យសុំផ្ទេរចូលឆ្នាំទី២ ថ្នាក់បរិញ្ញាបត្រ',
-                'kh' => 'ពាក្យសុំផ្ទេរចូលឆ្នាំទី២ ថ្នាក់បរិញ្ញាបត្រ',
-            ], JSON_UNESCAPED_UNICODE),
-        ]);
+        $formNames = [
+            'en' => 'Bachelor Transfer Application',
+            'km' => 'ពាក្យសុំផ្ទេរចូលឆ្នាំទី២ ថ្នាក់បរិញ្ញាបត្រ',
+            'kh' => 'ពាក្យសុំផ្ទេរចូលឆ្នាំទី២ ថ្នាក់បរិញ្ញាបត្រ',
+        ];
+
+        DB::table('custom_forms')
+            ->where('id', $form->id)
+            ->update([
+                'name' => json_encode($formNames, JSON_UNESCAPED_UNICODE),
+                'updated_at' => now(),
+            ]);
+
+        $this->updateDocumentTemplateForForm($form, $formNames);
 
         DB::table('custom_form_fields')
             ->where('custom_form_id', $form->id)
@@ -141,7 +148,6 @@ class BachelorTransferFormFieldsSeeder extends Seeder
             $type = $field[3];
             $required = $field[4];
 
-            // 1. Assign Choices if it's a specific select dropdown
             if ($type === 'select' && $name === 'gender') {
                 $options['choices'] = $this->buildChoicesArray([
                     ['male', 'Male', 'ប្រុស'],
@@ -156,7 +162,6 @@ class BachelorTransferFormFieldsSeeder extends Seeder
                 ]);
             }
 
-            // 2. Assign Placeholders into the `options` array EXACTLY like StudentProfileSeeder
             if ($type === 'date_picker') {
                 $options['placeholder_en'] = 'dd/mm/yyyy';
                 $options['placeholder_km'] = 'ថ្ងៃ/ខែ/ឆ្នាំ';
@@ -168,7 +173,6 @@ class BachelorTransferFormFieldsSeeder extends Seeder
                 $options['placeholder_km'] = 'បញ្ចូល' . $kmLabel;
             }
 
-            // 3. Insert Field
             $this->insertField([
                 'custom_form_id' => $form->id,
                 'parent_id' => null,
@@ -177,7 +181,7 @@ class BachelorTransferFormFieldsSeeder extends Seeder
                 'placeholder' => $this->placeholder($enLabel, $kmLabel, $type),
                 'type' => $type,
                 'required' => $required,
-                'options' => json_encode($options, JSON_UNESCAPED_UNICODE), // Store array as JSON
+                'options' => json_encode($options, JSON_UNESCAPED_UNICODE),
                 'sort' => $sort++,
             ]);
         }
@@ -239,5 +243,23 @@ class BachelorTransferFormFieldsSeeder extends Seeder
                 'kh' => $choice[2],
             ],
         ])->values()->all();
+    }
+    private function updateDocumentTemplateForForm(CustomForm $form, array $formNames): void
+    {
+        if (! Schema::hasTable('document_templates')) {
+            return;
+        }
+
+        DB::table('document_templates')
+            ->where('type', 'custom_form_' . $form->id)
+            ->update([
+                'name' => json_encode([
+                    'en' => trim($formNames['en'] . ' Template'),
+                    'km' => trim($formNames['km'] . ' គំរូ'),
+                    'kh' => trim($formNames['kh'] . ' គំរូ'),
+                ], JSON_UNESCAPED_UNICODE),
+                'custom_form_id' => $form->id,
+                'updated_at' => now(),
+            ]);
     }
 }

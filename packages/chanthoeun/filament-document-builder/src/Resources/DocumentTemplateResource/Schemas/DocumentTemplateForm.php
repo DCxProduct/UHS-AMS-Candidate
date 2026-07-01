@@ -20,33 +20,82 @@ class DocumentTemplateForm
                 Wizard::make([
                     Step::make(__('filament-document-builder::document-builder.labels.template_details'))->schema([
                         Grid::make(4)->schema([
-                            Forms\Components\TextInput::make('name')
-                                ->label(__('filament-document-builder::document-builder.labels.template_name'))
-                                ->formatStateUsing(fn ($state): string => self::englishText($state))
+                            Forms\Components\TextInput::make('name_en')
+                                ->label('Template Name')
                                 ->required()
+                                ->afterStateHydrated(function ($component, $record): void {
+                                    $form = self::templateCustomForm($record);
+
+                                    if ($form) {
+                                        $component->state(self::getLangText($form->name, 'en') . ' Template');
+                                        return;
+                                    }
+
+                                    $component->state(self::getLangText($record?->name, 'en'));
+                                })
+                                ->dehydrated(false)
                                 ->maxLength(255),
+
+                            Forms\Components\TextInput::make('name_km')
+                                ->label('Label Name Khmer')
+                                ->required()
+                                ->afterStateHydrated(function ($component, $record): void {
+                                    $form = self::templateCustomForm($record);
+
+                                    if ($form) {
+                                        $component->state(self::getLangText($form->name, 'km') . ' គំរូ');
+                                        return;
+                                    }
+
+                                    $component->state(self::getLangText($record?->name, 'km'));
+                                })
+                                ->dehydrated(false)
+                                ->maxLength(255),
+
+                            Forms\Components\Hidden::make('name')
+                                ->dehydrateStateUsing(function ($state, $get): string {
+                                    return json_encode([
+                                        'en' => $get('name_en'),
+                                        'km' => $get('name_km'),
+                                        'kh' => $get('name_km'),
+                                    ], JSON_UNESCAPED_UNICODE);
+                                }),
+
                             Forms\Components\TextInput::make('type')
                                 ->label(__('filament-document-builder::document-builder.labels.template_type'))
                                 ->placeholder(__('filament-document-builder::document-builder.labels.type_placeholder'))
                                 ->maxLength(255),
+
                             Forms\Components\Select::make('custom_form_id')
                                 ->label('Form Type Field')
                                 ->options(function () {
-                                    if (!class_exists(\Chanthoeun\FilamentCustomForms\Models\CustomForm::class)) {
+                                    if (! class_exists(\Chanthoeun\FilamentCustomForms\Models\CustomForm::class)) {
                                         return [];
                                     }
+
                                     return \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
                                         ->get()
                                         ->mapWithKeys(fn ($form): array => [
-                                            $form->id => self::englishText($form->name),
+                                            $form->id => self::localeText($form->name),
                                         ])
                                         ->toArray();
                                 })
                                 ->placeholder('Please Select Form Type')
                                 ->searchable()
-                                ->live()  // keep this
+                                ->live()
                                 ->afterStateUpdated(function ($state, callable $set) {
-                                    // just triggers reactivity
+                                    if (! $state) {
+                                        return;
+                                    }
+
+                                    $form = \Chanthoeun\FilamentCustomForms\Models\CustomForm::find($state);
+
+                                    if (! $form) {
+                                        return;
+                                    }
+
+                                    $set('name_en', self::getLangText($form->name, 'en') . ' Template');
+                                    $set('name_km', self::getLangText($form->name, 'km') . ' គំរូ');
                                 }),
                             Forms\Components\Select::make('model_class')
                                 ->label(__('filament-document-builder::document-builder.labels.database_model'))
@@ -354,8 +403,24 @@ class DocumentTemplateForm
 
     private static function englishText(mixed $value): string
     {
+        return self::getLangText($value, 'en');
+    }
+
+    private static function localeText(mixed $value): string
+    {
+        return self::getLangText($value, app()->getLocale());
+    }
+
+    private static function getLangText(mixed $value, string $locale): string
+    {
         if (is_array($value)) {
-            return (string) ($value['en'] ?? $value['km'] ?? '');
+            return (string) (
+                $value[$locale]
+                ?? $value['km']
+                ?? $value['kh']
+                ?? $value['en']
+                ?? ''
+            );
         }
 
         $text = (string) $value;
@@ -364,10 +429,29 @@ class DocumentTemplateForm
             $decoded = json_decode($matches[1], true);
 
             if (is_array($decoded)) {
-                return trim(($decoded['en'] ?? $decoded['km'] ?? '') . ($matches[2] ?? ''));
+                return trim((
+                        $decoded[$locale]
+                        ?? $decoded['km']
+                        ?? $decoded['kh']
+                        ?? $decoded['en']
+                        ?? ''
+                    ) . ($matches[2] ?? ''));
             }
         }
 
         return $text;
+    }
+
+    private static function templateCustomForm($record): ?\Chanthoeun\FilamentCustomForms\Models\CustomForm
+    {
+        if (! $record) {
+            return null;
+        }
+
+        if (is_string($record->type ?? null) && preg_match('/^custom_form_(\d+)$/', $record->type, $matches)) {
+            return \Chanthoeun\FilamentCustomForms\Models\CustomForm::find((int) $matches[1]);
+        }
+
+        return $record->customForm ?? null;
     }
 }
