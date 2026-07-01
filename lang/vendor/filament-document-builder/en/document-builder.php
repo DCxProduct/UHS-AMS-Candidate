@@ -3,7 +3,8 @@
 return [
     'labels' => [
         'template_details' => 'Template Details',
-        'template_name' => 'Template Name',
+        'template_name_en' => 'Template Name (English)',
+        'template_name_kh' => 'Template Name (Khmer)',
         'template_type' => 'Document Type',
         'type_placeholder' => 'e.g. invoice, certificate, receipt',
         'database_model' => 'Database Model',
@@ -27,5 +28,12 @@ return [
         'last_updated' => 'Last Updated',
         'no_model_linked' => 'No model linked',
         'model_prefix' => 'Model: ',
+        'form_field' => 'Form Field',
+    ],
+
+    'placeholder' => [
+        'form_name_en' => 'Enter English form name',
+        'form_name_km' => 'Enter Khmer form name',
+        'form_field' => 'Select an option',
     ],
 ];

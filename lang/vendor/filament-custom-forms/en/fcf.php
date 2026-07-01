@@ -21,6 +21,12 @@
          'slug' => 'Slug',
          'is_active' => 'Is Active',
          'details' => 'Form Details',
+         'menu_placement' => 'Menu Placement',
+         'menu_parent' => 'Menu Parent',
+         'sub_form' => 'Sub Form Type',
+         'form_field' => 'Form Field',
+         'label_english' => 'Name (English)',
+         'label_khmer' => 'Name (Khmer)',
          'names' => [],
      ],
      'entry' => [
@@ -92,5 +98,18 @@
          'created_at' => 'Created At',
          'updated_at' => 'Updated At',
          'deleted_at' => 'Deleted At',
+     ],
+
+     'menu' => [
+         'sidebar' => 'Create with Sidebar',
+         'sub_item' => 'Form Builder Sub Item',
+         'parent_sidebar' => 'Select Parent Sidebar',
+     ],
+
+     'placeholder' => [
+         'form_name_en' => 'Enter English form name',
+         'form_name_km' => 'Enter Khmer form name',
+         'slug' => 'enter-form-slug',
+         'form_field' => 'Select an option',
      ],
  ];

@@ -23,7 +23,7 @@ class DocumentTemplateTable
                     ->weight('bold'),
 
                 Tables\Columns\TextColumn::make('customForm.name')
-                    ->label('Form Type Field')
+                    ->label(__('filament-document-builder::document-builder.labels.form_field'))
                     ->default('—')
                     ->badge()
                     ->formatStateUsing(fn ($state): string => self::localeText($state))
