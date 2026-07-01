@@ -68,20 +68,27 @@ class PhdFormFieldsSeeder extends Seeder
             ['ethnicity', 'Ethnicity', 'ជនជាតិ', 'text_input', false],
             ['religion', 'Religion', 'សាសនា', 'text_input', false],
             ['married_status', 'Married Status', 'ស្ថានភាពគ្រួសារ', 'select', false],
-            ['birth_village', 'Birth Village', 'ទីកន្លែងកំណើត: ភូមិ', 'text_input', false],
-            ['birth_commune_sangkat', 'Birth Commune / Sangkat', 'ឃុំ/សង្កាត់', 'text_input', false],
-            ['birth_district_khan', 'Birth District / Khan', 'ស្រុក/ខណ្ឌ', 'text_input', false],
-            ['birth_province_city', 'Birth Province / City', 'រាជធានី/ខេត្ត', 'text_input', false],
+
+            // Birth Geo Fields (Reordered for proper cascading)
+            ['birth_province_city', 'Birth Province / City', 'រាជធានី/ខេត្ត កំណើត', 'select', false, $this->geoLocationOptions('province')],
+            ['birth_district_khan', 'Birth District / Khan', 'ស្រុក/ខណ្ឌ កំណើត', 'select', false, $this->geoLocationOptions('district', 'birth_province_city')],
+            ['birth_commune_sangkat', 'Birth Commune / Sangkat', 'ឃុំ/សង្កាត់ កំណើត', 'select', false, $this->geoLocationOptions('commune', 'birth_district_khan')],
+            ['birth_village', 'Birth Village', 'ទីកន្លែងកំណើត: ភូមិ', 'select', false, $this->geoLocationOptions('village', 'birth_commune_sangkat')],
+
             ['current_house_number', 'Current House Number', 'អាស័យដ្ឋានបច្ចុប្បន្ន: ផ្ទះលេខ', 'text_input', false],
             ['current_street_number', 'Current Street Number', 'ផ្លូវលេខ', 'text_input', false],
-            ['current_commune_sangkat', 'Current Commune / Sangkat', 'ឃុំ/សង្កាត់', 'text_input', false],
-            ['current_district_khan', 'Current District / Khan', 'ស្រុក/ខណ្ឌ', 'text_input', false],
-            ['current_capital_province', 'Current Capital / Province', 'រាជធានី/ខេត្ត', 'text_input', false],
+
+            // Current Address Geo Fields (Reordered for proper cascading)
+            ['current_capital_province', 'Current Capital / Province', 'រាជធានី/ខេត្ត', 'select', false, $this->geoLocationOptions('province')],
+            ['current_district_khan', 'Current District / Khan', 'ស្រុក/ខណ្ឌ', 'select', false, $this->geoLocationOptions('district', 'current_capital_province')],
+            ['current_commune_sangkat', 'Current Commune / Sangkat', 'ឃុំ/សង្កាត់', 'select', false, $this->geoLocationOptions('commune', 'current_district_khan')],
+
             ['culture_level', 'Culture Level', 'កម្រិតវប្បធម៌ជាជាតិ', 'text_input', false],
             ['exam_period', 'Exam Period', 'សម័យប្រឡង', 'text_input', false],
             ['professional_degree_level', 'Professional Degree Level', 'កម្រិតសញ្ញាបត្រជំនាញ', 'text_input', false],
             ['exam_period_degree_level', 'Exam Period Degree Level', 'សម័យប្រឡងកម្រិតសញ្ញាបត្រជំនាញ', 'text_input', false],
             ['from_university', 'From University', 'មកពីសាកលវិទ្យាល័យ', 'text_input', false],
+
             ['father_name', 'Father Name', 'នាមឪពុក', 'text_input', false],
             ['father_date_of_birth', 'Father Date of Birth', 'ថ្ងៃខែឆ្នាំកំណើតឪពុក', 'date_picker', false],
             ['father_ethnicity', 'Father Ethnicity', 'ជនជាតិ', 'text_input', false],
@@ -90,6 +97,7 @@ class PhdFormFieldsSeeder extends Seeder
             ['father_occupation', 'Father Occupation', 'មុខរបរ', 'text_input', false],
             ['father_place_of_work', 'Father Place of Work', 'ទីកន្លែងធ្វើការ', 'text_input', false],
             ['father_phone_number', 'Father Phone Number', 'លេខទូរស័ព្ទ', 'phone', false],
+
             ['mother_name', 'Mother Name', 'ឈ្មោះម្តាយ', 'text_input', false],
             ['mother_date_of_birth', 'Mother Date of Birth', 'ថ្ងៃខែឆ្នាំកំណើតម្តាយ', 'date_picker', false],
             ['mother_ethnicity', 'Mother Ethnicity', 'ជនជាតិ', 'text_input', false],
@@ -98,17 +106,22 @@ class PhdFormFieldsSeeder extends Seeder
             ['mother_occupation', 'Mother Occupation', 'មុខរបរ', 'text_input', false],
             ['mother_place_of_work', 'Mother Place of Work', 'ទីកន្លែងធ្វើការ', 'text_input', false],
             ['mother_phone_number', 'Mother Phone Number', 'លេខទូរស័ព្ទ', 'phone', false],
+
             ['parents_house_number', 'Parents House Number', 'អាស័យដ្ឋានបច្ចុប្បន្ន: ផ្ទះលេខ', 'text_input', false],
             ['parents_street_number', 'Parents Street Number', 'ផ្លូវលេខ', 'text_input', false],
-            ['parents_commune', 'Parents Commune', 'ឃុំ/សង្កាត់', 'text_input', false],
-            ['parents_district', 'Parents District', 'ស្រុក/ខណ្ឌ', 'text_input', false],
-            ['parents_province', 'Parents Province', 'រាជធានី/ខេត្ត', 'text_input', false],
+
+            // Parents Address Geo Fields (Reordered for proper cascading)
+            ['parents_province', 'Parents Province', 'រាជធានី/ខេត្ត', 'select', false, $this->geoLocationOptions('province')],
+            ['parents_district', 'Parents District', 'ស្រុក/ខណ្ឌ', 'select', false, $this->geoLocationOptions('district', 'parents_province')],
+            ['parents_commune', 'Parents Commune', 'ឃុំ/សង្កាត់', 'select', false, $this->geoLocationOptions('commune', 'parents_district')],
+
             ['guardian_relationship', 'Guardian Relationship', 'ត្រូវជា', 'text_input', false],
             ['sibling_information', 'Sibling Information', 'អំពីបងប្អូនបង្កើត', 'text_input', false],
             ['sibling_name', 'Sibling Name', 'ឈ្មោះ', 'text_input', false],
             ['sibling_gender', 'Sibling Gender', 'ភេទ', 'select', false],
             ['sibling_year_of_birth', 'Sibling Year of Birth', 'ថ្ងៃខែឆ្នាំកំណើត', 'date_picker', false],
             ['sibling_occupation', 'Sibling Occupation', 'មុខរបរ', 'text_input', false],
+
             ['spouse_children_heading', 'Spouse & Children', 'អំពីប្តី ឬ ប្រពន្ធ និង កូន', 'text_input', false],
             ['spouse_name', 'Spouse Name', 'ប្តី ឬ ប្រពន្ធឈ្មោះ', 'text_input', false],
             ['spouse_year_of_birth', 'Spouse Year of Birth', 'ថ្ងៃខែឆ្នាំកំណើត', 'date_picker', false],
@@ -116,12 +129,14 @@ class PhdFormFieldsSeeder extends Seeder
             ['number_of_children', 'Number of Children', 'មានកូនចំនួន', 'number_input', false],
             ['number_of_sons', 'Number of Sons', 'ចំនួនកូនប្រុស', 'number_input', false],
             ['number_of_daughters', 'Number of Daughters', 'ចំនួនកូនស្រី', 'number_input', false],
+
             ['educational_information', 'Educational Information', 'ព័ត៌មានសិក្សា', 'text_input', false],
             ['educational_institution', 'Educational Institution', 'គ្រឹះស្ថានបណ្តុះបណ្តាល', 'text_input', false],
             ['degree_level_major', 'Degree Level & Major', 'កម្រិតសញ្ញាបត្រ និង ជំនាញ', 'text_input', false],
             ['from_year_to_year', 'From Year to Year', 'ពីឆ្នាំណា ដល់ឆ្នាំណា', 'text_input', false],
             ['country', 'Country', 'ប្រទេស', 'text_input', false],
             ['graduation_year', 'Graduation Year', 'ឆ្នាំបញ្ចប់ការសិក្សា ឬ ទទួលបានសញ្ញាបត្រ', 'text_input', false],
+
             ['work_history', 'Work History', 'ប្រវត្តិការងារ', 'text_input', false],
             ['cv_start_year', 'Start Year', 'ឆ្នាំចូលបំពេញការងារ', 'text_input', false],
             ['cv_end_year', 'End Year', 'ឆ្នាំបញ្ចប់ការងារ', 'text_input', false],
@@ -131,7 +146,9 @@ class PhdFormFieldsSeeder extends Seeder
         ];
 
         foreach ($fields as $field) {
-            $options = [];
+            // Extract the optional geo options from the 6th index
+            $options = $field[5] ?? [];
+
             $name = $field[0];
             $enLabel = $field[1];
             $kmLabel = $field[2];
@@ -209,6 +226,15 @@ class PhdFormFieldsSeeder extends Seeder
             'value' => $choice[0],
             'label' => ['en' => $choice[1], 'km' => $choice[2], 'kh' => $choice[2]],
         ])->values()->all();
+    }
+
+    // Helper to construct geo location options format
+    private function geoLocationOptions(string $type, ?string $parentField = null): array
+    {
+        return array_filter([
+            'geo_location_type' => $type,
+            'geo_location_parent_field' => $parentField,
+        ]);
     }
 
     private function updateDocumentTemplateForForm(CustomForm $form, array $formNames): void
