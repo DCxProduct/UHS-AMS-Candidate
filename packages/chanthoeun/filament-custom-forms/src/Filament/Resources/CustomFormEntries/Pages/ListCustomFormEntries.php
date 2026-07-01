@@ -98,7 +98,7 @@ class ListCustomFormEntries extends ListRecords
                 return match ($slug) {
                     'profile' => __('navigation.forms.profile'),
                     'national-examination-registration' => __('navigation.national_examination_registration'),
-                    default => (string) ($customForm->name ?? __('navigation.forms.untitled')),
+                    default => $customForm->display_name ?: __('navigation.forms.untitled'),
                 };
             }
         }
@@ -145,7 +145,7 @@ class ListCustomFormEntries extends ListRecords
                 $translated = match ($slug) {
                     'profile' => __('navigation.forms.profile'),
                     'national-examination-registration' => __('navigation.national_examination_registration'),
-                    default => (string) $customForm->name,
+                    default => $customForm->display_name,
                 };
 
                 $name = $translated;

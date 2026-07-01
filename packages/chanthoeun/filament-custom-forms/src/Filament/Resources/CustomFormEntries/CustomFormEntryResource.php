@@ -5,7 +5,6 @@ namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries;
 use App\Support\ClosingDateWorkflow;
 use BackedEnum;
 use Chanthoeun\FilamentCustomForms\CustomFormPlugin;
-use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Pages;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Schemas\CustomFormEntryForm;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Tables\CustomFormEntriesTable;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
@@ -180,7 +179,7 @@ class CustomFormEntryResource extends Resource
         return match ($slug) {
             'profile' => __('navigation.forms.profile'),
             'national-examination-registration' => __('navigation.national_examination_registration'),
-            default => (string) ($form->name ?? __('navigation.forms.untitled')),
+            default => static::localeText($form->name) ?: __('navigation.forms.untitled'),
         };
     }
 
@@ -190,10 +189,8 @@ class CustomFormEntryResource extends Resource
 
         return match ($slug) {
             'profile' => __('navigation.forms.profile'),
-
             'national-examination-registration' => __('navigation.registration'),
-
-            default => (string) ($form->name ?? __('navigation.forms.untitled')),
+            default => static::localeText($form->name) ?: __('navigation.forms.untitled'),
         };
     }
 
@@ -552,5 +549,36 @@ class CustomFormEntryResource extends Resource
             'create' => Pages\CreateCustomFormEntry::route('/create'),
             'edit' => Pages\EditCustomFormEntry::route('/{record}/edit'),
         ];
+    }
+
+    protected static function localeText(mixed $value): string
+    {
+        $locale = app()->getLocale();
+
+        if (is_string($value) && str_starts_with(trim($value), '{')) {
+            $decoded = json_decode($value, true);
+
+            if (is_array($decoded)) {
+                return (string) (
+                    $decoded[$locale]
+                    ?? $decoded['km']
+                    ?? $decoded['kh']
+                    ?? $decoded['en']
+                    ?? ''
+                );
+            }
+        }
+
+        if (is_array($value)) {
+            return (string) (
+                $value[$locale]
+                ?? $value['km']
+                ?? $value['kh']
+                ?? $value['en']
+                ?? ''
+            );
+        }
+
+        return (string) $value;
     }
 }

@@ -67,4 +67,40 @@ class CustomForm extends Model
     {
         return $this->hasMany(CustomFormField::class, 'custom_form_id')->orderBy('sort');
     }
+
+    public function getDisplayNameAttribute(): string
+    {
+        return self::localeText($this->name);
+    }
+
+    public static function localeText(mixed $value): string
+    {
+        $locale = app()->getLocale();
+
+        if (is_string($value) && str_starts_with(trim($value), '{')) {
+            $decoded = json_decode($value, true);
+
+            if (is_array($decoded)) {
+                return (string) (
+                    $decoded[$locale]
+                    ?? $decoded['km']
+                    ?? $decoded['kh']
+                    ?? $decoded['en']
+                    ?? ''
+                );
+            }
+        }
+
+        if (is_array($value)) {
+            return (string) (
+                $value[$locale]
+                ?? $value['km']
+                ?? $value['kh']
+                ?? $value['en']
+                ?? ''
+            );
+        }
+
+        return (string) $value;
+    }
 }
