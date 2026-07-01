@@ -74,19 +74,100 @@ class StudentProgressChart extends ChartWidget
 
     private function nationalExamStatus(int $userId): string
     {
-        $formId = CustomForm::query()->where('slug', 'national-examination-registration')->value('id');
+        $parentId = CustomForm::query()
+            ->where('slug', 'national-examination-registration')
+            ->value('id');
 
-        $entry = $formId
-            ? $this->entryQuery($userId)->where('custom_form_id', $formId)->latest('id')->first()
-            : null;
+        if (! $parentId) {
+            return 'not_submitted';
+        }
+
+        $formIds = CustomForm::query()
+            ->where('id', $parentId)
+            ->orWhere('custom_form_id', $parentId)
+            ->pluck('id')
+            ->all();
+
+        $entry = $this->entryQuery($userId)
+            ->whereIn('custom_form_id', $formIds)
+            ->latest('id')
+            ->first();
 
         if (! $entry) {
             return 'not_submitted';
         }
 
+        $data = is_array($entry->data)
+            ? $entry->data
+            : json_decode((string) $entry->data, true);
+
+        $statuses = [
+            strtolower((string) ($entry->review_status ?? '')),
+            strtolower((string) data_get($data, 'registration_status')),
+            strtolower((string) data_get($data, 'exam_status')),
+            strtolower((string) data_get($data, 'exam_result')),
+            strtolower((string) data_get($data, 'result_status')),
+            strtolower((string) data_get($data, 'status')),
+        ];
+
+        foreach ($statuses as $status) {
+            if (in_array($status, ['passed', 'pass'], true)) {
+                return 'passed';
+            }
+
+            if (in_array($status, ['failed', 'fail', 'rejected'], true)) {
+                return 'failed';
+            }
+        }
+
+        foreach ($statuses as $status) {
+            if (in_array($status, ['approved', 'accepted'], true)) {
+                return 'accepted';
+            }
+
+            if (in_array($status, ['pending', 'draft'], true)) {
+                return $status;
+            }
+        }
+
+        return 'pending';
+    }
+    private function resolveEntryStatus(CustomFormEntry $entry): string
+    {
         $data = is_array($entry->data) ? $entry->data : json_decode((string) $entry->data, true);
 
-        return strtolower((string) (data_get($data, 'registration_status') ?: $entry->review_status ?: 'pending'));
+        $statuses = [
+            strtolower((string) ($entry->review_status ?? '')),
+            strtolower((string) data_get($data, 'registration_status')),
+            strtolower((string) data_get($data, 'exam_status')),
+            strtolower((string) data_get($data, 'exam_result')),
+            strtolower((string) data_get($data, 'result_status')),
+            strtolower((string) data_get($data, 'application_status')),
+            strtolower((string) data_get($data, 'application_result')),
+            strtolower((string) data_get($data, 'status')),
+        ];
+
+        foreach ($statuses as $status) {
+            if (in_array($status, ['passed', 'pass'], true)) {
+                return 'passed';
+            }
+
+            if (in_array($status, ['failed', 'fail', 'rejected'], true)) {
+                return 'failed';
+            }
+        }
+
+        foreach ($statuses as $status) {
+            if (in_array($status, ['approved', 'accepted'], true)) {
+                return 'accepted';
+            }
+
+            if (in_array($status, ['pending', 'draft'], true)) {
+                return $status;
+            }
+        }
+
+        return 'pending';
     }
 
     private function entryQuery(int $userId)

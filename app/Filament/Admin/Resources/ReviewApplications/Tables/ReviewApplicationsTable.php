@@ -236,13 +236,19 @@ class ReviewApplicationsTable
     protected static function markPassed(CustomFormEntry $record): void
     {
         $dataJson = self::normalizeData($record->data);
+
         $dataJson['candidate_status'] = 'passed';
+        $dataJson['registration_status'] = 'passed';
+        $dataJson['exam_result'] = 'passed';
+        $dataJson['result_status'] = 'passed';
         $dataJson['candidate_reviewed_at'] = now()->toDateTimeString();
 
         DB::table('custom_form_entries')
             ->where('id', $record->id)
             ->update([
-                'data' => json_encode($dataJson),
+                'data' => json_encode($dataJson, JSON_UNESCAPED_UNICODE),
+                'review_status' => 'passed',
+                'reviewed_at' => now(),
                 'updated_at' => now(),
             ]);
 

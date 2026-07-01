@@ -91,16 +91,22 @@ class StudentStatsOverview extends StatsOverviewWidget
 
     private function nationalExamEntry(int $userId): ?CustomFormEntry
     {
-        $formId = CustomForm::query()
+        $parentId = CustomForm::query()
             ->where('slug', 'national-examination-registration')
             ->value('id');
 
-        if (! $formId) {
+        if (! $parentId) {
             return null;
         }
 
+        $formIds = CustomForm::query()
+            ->where('id', $parentId)
+            ->orWhere('custom_form_id', $parentId)
+            ->pluck('id')
+            ->all();
+
         return $this->entryQuery($userId)
-            ->where('custom_form_id', $formId)
+            ->whereIn('custom_form_id', $formIds)
             ->latest('id')
             ->first();
     }
@@ -133,10 +139,38 @@ class StudentStatsOverview extends StatsOverviewWidget
             ? $entry->data
             : json_decode((string) $entry->data, true);
 
-        $dataStatus = strtolower((string) data_get($data, 'registration_status'));
-        $reviewStatus = strtolower((string) ($entry->review_status ?? ''));
+        $statuses = [
+            strtolower((string) ($entry->review_status ?? '')),
+            strtolower((string) data_get($data, 'registration_status')),
+            strtolower((string) data_get($data, 'exam_status')),
+            strtolower((string) data_get($data, 'exam_result')),
+            strtolower((string) data_get($data, 'result_status')),
+            strtolower((string) data_get($data, 'application_status')),
+            strtolower((string) data_get($data, 'application_result')),
+            strtolower((string) data_get($data, 'status')),
+        ];
 
-        return $dataStatus ?: $reviewStatus ?: 'pending';
+        foreach ($statuses as $status) {
+            if (in_array($status, ['passed', 'pass'], true)) {
+                return 'passed';
+            }
+
+            if (in_array($status, ['failed', 'fail', 'rejected'], true)) {
+                return 'failed';
+            }
+        }
+
+        foreach ($statuses as $status) {
+            if (in_array($status, ['approved', 'accepted'], true)) {
+                return 'accepted';
+            }
+
+            if (in_array($status, ['pending', 'draft'], true)) {
+                return $status;
+            }
+        }
+
+        return 'pending';
     }
 
     private function examStatusLabel(string $status, bool $submitted): string
