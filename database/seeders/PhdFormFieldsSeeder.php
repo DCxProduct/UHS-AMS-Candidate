@@ -43,10 +43,10 @@ class PhdFormFieldsSeeder extends Seeder
         $sort = 1;
 
         $fields = [
-            ['full_name', 'Full Name', 'នាមត្រកូល និង នាមខ្លួន', 'text_input', true],
+            ['full_name_kh', 'Full Name', 'នាមត្រកូល និង នាមខ្លួន', 'text_input', true],
             ['academic_year', 'Academic Year', 'ឆ្នាំសិក្សា', 'text_input', true],
-            ['family_name', 'Family Name', 'នាមត្រកូល', 'text_input', false],
-            ['given_name', 'Given Name', 'នាមខ្លួន', 'text_input', false],
+            ['last_name_kh', 'Family Name', 'នាមខ្លួន', 'text_input', false],
+            ['first_name_kh', 'Given Name', 'នាមត្រកូល', 'text_input', false],
             ['date_of_birth', 'Date of Birth', 'ថ្ងៃ-ខែ-ឆ្នាំកំណើត', 'date_picker', true],
             ['gender', 'Gender', 'ភេទ', 'select', true],
             ['place_of_birth', 'Place of Birth', 'ទីកន្លែងកំណើត (រាជធានី/ខេត្ត)', 'text_input', true],
@@ -110,10 +110,10 @@ class PhdFormFieldsSeeder extends Seeder
             ['parents_house_number', 'Parents House Number', 'អាស័យដ្ឋានបច្ចុប្បន្ន: ផ្ទះលេខ', 'text_input', false],
             ['parents_street_number', 'Parents Street Number', 'ផ្លូវលេខ', 'text_input', false],
 
-            // Parents Address Geo Fields (Reordered for proper cascading)
-            ['parents_province', 'Parents Province', 'រាជធានី/ខេត្ត', 'select', false, $this->geoLocationOptions('province')],
-            ['parents_district', 'Parents District', 'ស្រុក/ខណ្ឌ', 'select', false, $this->geoLocationOptions('district', 'parents_province')],
-            ['parents_commune', 'Parents Commune', 'ឃុំ/សង្កាត់', 'select', false, $this->geoLocationOptions('commune', 'parents_district')],
+            // Parents Address Geo Fields (Reordered and mapped for proper cascading)
+            ['parents_capital_province', 'Parents Province', 'រាជធានី/ខេត្ត', 'select', false, $this->geoLocationOptions('province')],
+            ['parents_district_khan', 'Parents District', 'ស្រុក/ខណ្ឌ', 'select', false, $this->geoLocationOptions('district', 'parents_capital_province')],
+            ['parents_commune_sangkat', 'Parents Commune', 'ឃុំ/សង្កាត់', 'select', false, $this->geoLocationOptions('commune', 'parents_district_khan')],
 
             ['guardian_relationship', 'Guardian Relationship', 'ត្រូវជា', 'text_input', false],
             ['sibling_information', 'Sibling Information', 'អំពីបងប្អូនបង្កើត', 'text_input', false],
