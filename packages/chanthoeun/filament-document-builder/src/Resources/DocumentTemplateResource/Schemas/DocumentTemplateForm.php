@@ -187,11 +187,11 @@ class DocumentTemplateForm
                             ->label(__('filament-document-builder::document-builder.labels.document_designer'))
                             ->hiddenLabel()
                             ->required(false)
+                            ->dehydrated(true)
                             ->columnSpanFull()
                             ->fileAttachmentsDisk('public')
                             ->fileAttachmentsDirectory('document-templates')
                             ->profile('full')
-//                            ->key(fn (Get $get) => 'tinymce-'.md5(json_encode($get('extra_data_sources')).$get('model_class').$get('type').json_encode($get('page_settings'))))
                             ->key(fn (Get $get) => 'tinymce-'.md5(
                                     json_encode($get('extra_data_sources')) .
                                     $get('model_class') .

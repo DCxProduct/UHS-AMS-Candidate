@@ -106,7 +106,7 @@ class CustomFormsTable
                             return;
                         }
 
-                        $template = \Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate::updateOrCreate(
+                        $template = \Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate::firstOrCreate(
                             ['type' => 'custom_form_' . $record->id],
                             [
                                 'name' => self::templateName($record->name),
@@ -123,6 +123,12 @@ class CustomFormsTable
                                 ],
                             ]
                         );
+
+                        $template->update([
+                            'name' => self::templateName($record->name),
+                            'custom_form_id' => $record->id,
+                            'model_class' => \Chanthoeun\FilamentCustomForms\Models\CustomFormEntry::class,
+                        ]);
 
                         if (class_exists(\App\Filament\Resources\DocumentTemplateResource::class)) {
                             $url = \App\Filament\Resources\DocumentTemplateResource::getUrl('edit', ['record' => $template]);
