@@ -35,7 +35,12 @@ class ClosingDateForm
                         Select::make('type')
                             ->label(__('closing_dates.student_application'))
                             ->placeholder(__('closing_dates.type_placeholder'))
-                            ->options(fn (): array => ClosingDate::typeOptions())
+                            ->options(fn (): array => collect(ClosingDate::typeOptions())
+                                ->mapWithKeys(fn ($label, $value): array => [
+                                    $value => self::localeText($label),
+                                ])
+                                ->toArray()
+                            )
                             ->searchable()
                             ->preload()
                             ->required()
@@ -122,5 +127,36 @@ class ClosingDateForm
                     ->columns(12)
                     ->columnSpan(12),
             ]);
+    }
+
+    private static function localeText(mixed $value): string
+    {
+        $locale = app()->getLocale();
+
+        if (is_string($value) && str_starts_with(trim($value), '{')) {
+            $decoded = json_decode($value, true);
+
+            if (is_array($decoded)) {
+                return (string) (
+                    $decoded[$locale]
+                    ?? $decoded['km']
+                    ?? $decoded['kh']
+                    ?? $decoded['en']
+                    ?? ''
+                );
+            }
+        }
+
+        if (is_array($value)) {
+            return (string) (
+                $value[$locale]
+                ?? $value['km']
+                ?? $value['kh']
+                ?? $value['en']
+                ?? ''
+            );
+        }
+
+        return (string) $value;
     }
 }
