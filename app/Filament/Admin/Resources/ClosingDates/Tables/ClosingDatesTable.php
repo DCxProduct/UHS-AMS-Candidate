@@ -23,7 +23,7 @@ class ClosingDatesTable
                 TextColumn::make('type')
                     ->label(__('closing_dates.student_application'))
                     ->badge()
-                    ->formatStateUsing(fn (?string $state): string => ClosingDate::typeOptions()[$state] ?? '-')
+                    ->formatStateUsing(fn (?string $state): string => self::localeText(ClosingDate::typeOptions()[$state] ?? '-'))
                     ->color('warning')
                     ->searchable()
                     ->sortable(),
@@ -34,7 +34,7 @@ class ClosingDatesTable
                     ->formatStateUsing(fn (?string $state): string => __('closing_dates.statuses.' . ($state ?? 'not_open')))
                     ->color(fn (?string $state): string => match ($state) {
                         'open' => 'success',
-                        'not_open' => 'warning',
+                        'not_open' => 'info',
                         'closed' => 'danger',
                         default => 'gray',
                     })
@@ -81,5 +81,36 @@ class ClosingDatesTable
                     ->tooltip(__('closing_dates.actions')),
             ])
             ->defaultSort('created_at', 'desc');
+    }
+
+    private static function localeText(mixed $value): string
+    {
+        $locale = app()->getLocale();
+
+        if (is_string($value) && str_starts_with(trim($value), '{')) {
+            $decoded = json_decode($value, true);
+
+            if (is_array($decoded)) {
+                return (string) (
+                    $decoded[$locale]
+                    ?? $decoded['km']
+                    ?? $decoded['kh']
+                    ?? $decoded['en']
+                    ?? ''
+                );
+            }
+        }
+
+        if (is_array($value)) {
+            return (string) (
+                $value[$locale]
+                ?? $value['km']
+                ?? $value['kh']
+                ?? $value['en']
+                ?? ''
+            );
+        }
+
+        return (string) $value;
     }
 }
