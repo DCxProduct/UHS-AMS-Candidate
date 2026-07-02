@@ -683,9 +683,14 @@ class CustomFormEntryForm
         foreach ($data as $key => $value) {
             $keyLower = strtolower((string) $key);
 
+            $keyLower = str_replace(['_', '-'], ' ', $keyLower);
+
             foreach ($parentKeywords as $keyword) {
-                if (str_contains($keyLower, $keyword) && $key !== $currentName && filled($value)) {
-                    return $value;
+                if (preg_match('/\b' . preg_quote($keyword, '/') . '\b/', $keyLower) && $key !== $currentName && filled($value)) {
+
+                    if (is_numeric($value)) {
+                        return $value;
+                    }
                 }
             }
         }
