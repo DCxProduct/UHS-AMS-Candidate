@@ -96,7 +96,21 @@ class ClosingDate extends Model
             return false;
         }
 
-        return $deadline->status === self::STATUS_OPEN;
+        return $deadline->status === self::STATUS_OPEN
+            && now()->toDateString() >= $deadline->start_date?->toDateString()
+            && now()->toDateString() <= $deadline->end_date?->toDateString();
+    }
+
+    public static function shouldShowCustomForm(int|string|null $customFormId): bool
+    {
+        return self::isCustomFormOpen($customFormId);
+    }
+
+    public static function shouldShowContact(int|string|null $customFormId): bool
+    {
+        $deadline = self::getDeadlineByCustomFormId($customFormId);
+
+        return $deadline?->status === self::STATUS_CLOSED;
     }
 
     public static function isCustomFormClosed(int|string|null $customFormId): bool
@@ -127,6 +141,16 @@ class ClosingDate extends Model
             })
             ->orderBy('id')
             ->get();
+    }
+
+    public static function isApplicationOpen(string $slug): bool
+    {
+        return self::query()
+            ->where('type', $slug)
+            ->where('status', 'open')
+            ->whereDate('start_date', '<=', now())
+            ->whereDate('end_date', '>=', now())
+            ->exists();
     }
 
     public function getStatusLabelAttribute(): string

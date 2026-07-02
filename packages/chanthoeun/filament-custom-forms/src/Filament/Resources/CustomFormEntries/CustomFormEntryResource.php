@@ -2,6 +2,7 @@
 
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries;
 
+use App\Models\ClosingDate;
 use App\Support\ClosingDateWorkflow;
 use BackedEnum;
 use Chanthoeun\FilamentCustomForms\CustomFormPlugin;
@@ -471,28 +472,20 @@ class CustomFormEntryResource extends Resource
 
     protected static function formShouldShowFeature(int $formId): bool
     {
-        if (method_exists(ClosingDateWorkflow::class, 'shouldShowFeature')) {
-            return ClosingDateWorkflow::shouldShowFeature($formId);
+        if (static::currentUserIsAdmin()) {
+            return true;
         }
 
-        if (method_exists(ClosingDateWorkflow::class, 'canSeeCustomFormId')) {
-            return ClosingDateWorkflow::canSeeCustomFormId($formId);
-        }
-
-        $workflow = ClosingDateWorkflow::checkByCustomFormId($formId);
-
-        return (bool) ($workflow['can_see_form'] ?? true);
+        return ClosingDate::shouldShowCustomForm($formId);
     }
 
     protected static function formShouldShowContact(int $formId): bool
     {
-        if (method_exists(ClosingDateWorkflow::class, 'shouldShowContact')) {
-            return ClosingDateWorkflow::shouldShowContact($formId);
+        if (static::currentUserIsAdmin()) {
+            return false;
         }
 
-        $workflow = ClosingDateWorkflow::checkByCustomFormId($formId);
-
-        return (bool) ($workflow['show_contact'] ?? false);
+        return ClosingDate::shouldShowContact($formId);
     }
 
     protected static function getDynamicFormIcon(CustomForm $form): string

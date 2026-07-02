@@ -2,6 +2,7 @@
 
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Pages;
 
+use App\Models\ClosingDate;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
@@ -26,6 +27,14 @@ class ListCustomFormEntries extends ListRecords
 
         if (auth()->user()?->registration_type === 'student' && $this->activeFormId) {
             $customForm = CustomForm::find($this->activeFormId);
+
+            if (
+                $customForm
+                && $customForm->slug !== 'profile'
+                && ! ClosingDate::isCustomFormOpen($customForm->id)
+            ) {
+                abort(403, 'This application is not open.');
+            }
 
             if ($customForm?->slug === 'profile') {
                 $entry = $this->studentCurrentFormEntry();

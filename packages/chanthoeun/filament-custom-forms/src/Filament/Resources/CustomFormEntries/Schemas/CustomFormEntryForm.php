@@ -301,6 +301,11 @@ class CustomFormEntryForm
                             ->format('Y-m-d')
                             ->placeholder('ថ្ងៃ/ខែ/ឆ្នាំ')
                             ->suffixIcon('heroicon-o-calendar-days');
+
+                        // Enforce max date if specified in options
+                        if (isset($options['max_date']) && $options['max_date'] === 'today') {
+                            $component->maxDate(now());
+                        }
                         break;
 
                     case 'time_picker':
