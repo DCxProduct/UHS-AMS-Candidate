@@ -600,32 +600,31 @@ class CustomFormEntryForm
     {
         $text = strtolower($name . ' ' . $label);
 
-        return str_contains($text, 'province')
-            || str_contains($text, 'city')
-            || str_contains($text, 'district')
-            || str_contains($text, 'khan')
-            || str_contains($text, 'commune')
-            || str_contains($text, 'sangkat')
-            || str_contains($text, 'village');
+        $text = str_replace(['_', '-'], ' ', $text);
+
+        return preg_match('/\b(province|city|district|khan|commune|sangkat|village)\b/', $text) === 1;
     }
 
     protected static function geoType(string $name, string $label): ?string
     {
         $text = strtolower($name . ' ' . $label);
 
-        if (str_contains($text, 'province') || str_contains($text, 'city')) {
+        // Replace underscores and hyphens with spaces
+        $text = str_replace(['_', '-'], ' ', $text);
+
+        if (preg_match('/\b(province|city)\b/', $text)) {
             return 'province';
         }
 
-        if (str_contains($text, 'district') || str_contains($text, 'khan')) {
+        if (preg_match('/\b(district|khan)\b/', $text)) {
             return 'district';
         }
 
-        if (str_contains($text, 'commune') || str_contains($text, 'sangkat')) {
+        if (preg_match('/\b(commune|sangkat)\b/', $text)) {
             return 'commune';
         }
 
-        if (str_contains($text, 'village')) {
+        if (preg_match('/\bvillage\b/', $text)) {
             return 'village';
         }
 
