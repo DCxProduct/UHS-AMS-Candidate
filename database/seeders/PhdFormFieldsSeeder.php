@@ -172,6 +172,7 @@ class PhdFormFieldsSeeder extends Seeder
             if ($type === 'date_picker') {
                 $options['placeholder_en'] = 'dd/mm/yyyy';
                 $options['placeholder_km'] = 'ថ្ងៃ/ខែ/ឆ្នាំ';
+                $options['max_date'] = 'today';
             } elseif ($type === 'select') {
                 $options['placeholder_en'] = 'Select ' . $enLabel;
                 $options['placeholder_km'] = 'ជ្រើសរើស ' . $kmLabel;
