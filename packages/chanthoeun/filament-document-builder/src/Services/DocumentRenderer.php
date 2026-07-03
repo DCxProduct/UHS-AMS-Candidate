@@ -180,6 +180,17 @@ class DocumentRenderer
         $htmlContent = preg_replace('/align-items:\s*center;?/', 'vertical-align: middle;', $htmlContent);
         $htmlContent = preg_replace('/justify-content:\s*center;?/', 'text-align: center;', $htmlContent);
 
+        // Fix Zero Width Space (ZWSP) causing empty rectangle boxes in mPDF Khmer rendering
+        $htmlContent = str_replace("\xE2\x80\x8B", '', $htmlContent); // ZWSP
+        $htmlContent = str_replace("\xE2\x80\x8C", '', $htmlContent); // ZWNJ
+        $htmlContent = str_replace("\xE2\x80\x8D", '', $htmlContent); // ZWJ
+        $htmlContent = str_replace("\xEF\xBB\xBF", '', $htmlContent); // BOM
+        $htmlContent = str_replace('&#8203;', '', $htmlContent);
+        $htmlContent = str_replace('&#8204;', '', $htmlContent);
+        $htmlContent = str_replace('&#8205;', '', $htmlContent);
+        $htmlContent = str_replace('<wbr>', '', $htmlContent);
+        $htmlContent = str_replace('<wbr/>', '', $htmlContent);
+
         $htmlContent = preg_replace_callback(
             '/<div[^>]*style="([^"]*height:\s*(\d+px)[^"]*)"[^>]*>/i',
             function ($matches) {
@@ -199,13 +210,15 @@ class DocumentRenderer
         // Strip remote Google Fonts @import rules to prevent massive mPDF network delays
         $htmlContent = preg_replace('/@import\s+url\([\'"]?https:\/\/fonts\.googleapis\.com.*?[\'"]?\);?/i', '', $htmlContent);
 
+        // Allow font-family inline styles since we now register the custom fonts in mPDF config
+
         $appUrl = config('app.url');
         if (! str_ends_with($appUrl, '/')) {
             $appUrl .= '/';
         }
 
         $htmlContent = preg_replace(
-            '/src=["\']('.preg_quote($appUrl, '/').')?storage\/(.*?)["\']/i',
+            '/src=["\']('.preg_quote($appUrl, '/').')?\/?storage\/(.*?)["\']/i',
             'src="'.public_path('storage/$2').'"',
             $htmlContent
         );
@@ -231,7 +244,65 @@ class DocumentRenderer
             'format' => $format,
             'orientation' => $orientation === 'landscape' ? 'L' : 'P',
             'autoScriptToLang' => true,
-            'autoLangToFont' => true,
+            'autoLangToFont' => false,
+            'default_font' => 'khmerbattambang',
+            'custom_font_dir' => realpath(__DIR__.'/../../resources/fonts').'/',
+            'custom_font_data' => [
+                'khmerbattambang' => [
+                    'R' => 'KhmerOSbattambang.ttf',
+                    'useOTL' => 0xFF,
+                ],
+                'khmerosbattambang' => [
+                    'R' => 'KhmerOSbattambang.ttf',
+                    'useOTL' => 0xFF,
+                ],
+                'battambang' => [
+                    'R' => 'KhmerOSbattambang.ttf',
+                    'useOTL' => 0xFF,
+                ],
+                'khmermoullight' => [
+                    'R' => 'KhmerOSmuollight.ttf',
+                    'useOTL' => 0xFF,
+                ],
+                'khmerosmuollight' => [
+                    'R' => 'KhmerOSmuollight.ttf',
+                    'useOTL' => 0xFF,
+                ],
+                'moul' => [
+                    'R' => 'KhmerOSmuollight.ttf',
+                    'useOTL' => 0xFF,
+                ],
+                'khmersiemreap' => [
+                    'R' => 'KhmerOSsiemreap.ttf',
+                    'useOTL' => 0xFF,
+                ],
+                'khmerossiemreap' => [
+                    'R' => 'KhmerOSsiemreap.ttf',
+                    'useOTL' => 0xFF,
+                ],
+                'siemreap' => [
+                    'R' => 'KhmerOSsiemreap.ttf',
+                    'useOTL' => 0xFF,
+                ],
+                'calibri' => [
+                    'R' => 'FreeSans.ttf',
+                    'B' => 'FreeSansBold.ttf',
+                    'I' => 'FreeSansOblique.ttf',
+                    'BI' => 'FreeSansBoldOblique.ttf',
+                ],
+                'arial' => [
+                    'R' => 'FreeSans.ttf',
+                    'B' => 'FreeSansBold.ttf',
+                    'I' => 'FreeSansOblique.ttf',
+                    'BI' => 'FreeSansBoldOblique.ttf',
+                ],
+                'timesnewroman' => [
+                    'R' => 'FreeSerif.ttf',
+                    'B' => 'FreeSerifBold.ttf',
+                    'I' => 'FreeSerifItalic.ttf',
+                    'BI' => 'FreeSerifBoldItalic.ttf',
+                ],
+            ],
         ];
 
         if (is_array($settings)) {
