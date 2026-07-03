@@ -2,6 +2,7 @@
 
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Schemas;
 
+use App\Models\GeoLocation;
 use Chanthoeun\FilamentCustomForms\CustomFormPlugin;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Filament\Forms\Components\DatePicker;
@@ -20,7 +21,6 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
-use App\Models\GeoLocation;
 
 class CustomFormEntryForm
 {
@@ -321,7 +321,6 @@ class CustomFormEntryForm
                             ->placeholder('ថ្ងៃ/ខែ/ឆ្នាំ')
                             ->suffixIcon('heroicon-o-calendar-days');
 
-                        // Enforce max date if specified in options
                         if (isset($options['max_date']) && $options['max_date'] === 'today') {
                             $component->maxDate(now());
                         }
@@ -364,8 +363,8 @@ class CustomFormEntryForm
 
                     case 'select':
                     case 'select_dropdown':
-                        if (self::isGeoField($name, $label)) {
-                            $component = self::geoSelectComponent($name, $label);
+                        if (self::isGeoField($name, $label, $options)) {
+                            $component = self::geoSelectComponent($name, $label, $options);
                         } else {
                             $component = Select::make("data.{$name}")
                                 ->options(self::transOptions($options['choices'] ?? []))
@@ -425,9 +424,7 @@ class CustomFormEntryForm
 
             if ($component) {
                 self::applyVisibilityRule($component, $options);
-
                 self::applyColumnLayout($component, $options);
-
                 $components[] = $component;
             }
         }
@@ -620,10 +617,13 @@ class CustomFormEntryForm
         $component->columnSpan((int) $columnSpan);
     }
 
-    protected static function isGeoField(string $name, string $label): bool
+    protected static function isGeoField(string $name, string $label, array $options = []): bool
     {
-        $text = strtolower($name . ' ' . $label);
+        if (filled($options['geo_location_type'] ?? null)) {
+            return true;
+        }
 
+        $text = strtolower($name . ' ' . $label);
         $text = str_replace(['_', '-'], ' ', $text);
 
         return preg_match('/\b(province|city|district|khan|commune|sangkat|village)\b/', $text) === 1;
@@ -632,8 +632,6 @@ class CustomFormEntryForm
     protected static function geoType(string $name, string $label): ?string
     {
         $text = strtolower($name . ' ' . $label);
-
-        // Replace underscores and hyphens with spaces
         $text = str_replace(['_', '-'], ' ', $text);
 
         if (preg_match('/\b(province|city)\b/', $text)) {
@@ -655,9 +653,10 @@ class CustomFormEntryForm
         return null;
     }
 
-    protected static function geoSelectComponent(string $name, string $label): Select
+    protected static function geoSelectComponent(string $name, string $label, array $options = []): Select
     {
-        $type = self::geoType($name, $label);
+        $type = $options['geo_location_type'] ?? self::geoType($name, $label);
+        $parentField = $options['geo_location_parent_field'] ?? null;
 
         return Select::make("data.{$name}")
             ->label($label)
@@ -665,16 +664,20 @@ class CustomFormEntryForm
             ->searchable()
             ->preload()
             ->live()
-            ->options(function (Get $get) use ($type, $name): array {
+            ->options(function (Get $get) use ($type, $parentField): array {
                 $query = GeoLocation::query()
                     ->where('is_active', true)
                     ->where('type', $type)
                     ->orderBy('code');
 
                 if ($type !== 'province') {
-                    $parentId = self::geoParentValue($get, $type, $name);
+                    if (blank($parentField)) {
+                        return [];
+                    }
 
-                    if (! $parentId) {
+                    $parentId = $get("data.{$parentField}");
+
+                    if (blank($parentId)) {
                         return [];
                     }
 
@@ -690,35 +693,25 @@ class CustomFormEntryForm
                     ])
                     ->toArray();
             })
-            ->dehydrated(true);
-    }
+            ->afterStateUpdated(function ($state, callable $set) use ($name): void {
+                $children = [
+                    'birth_province_city' => ['birth_district_khan', 'birth_commune_sangkat', 'birth_village'],
+                    'birth_district_khan' => ['birth_commune_sangkat', 'birth_village'],
+                    'birth_commune_sangkat' => ['birth_village'],
 
-    protected static function geoParentValue(Get $get, ?string $type, string $currentName): mixed
-    {
-        $data = $get('data') ?? [];
+                    'current_capital_province' => ['current_district_khan', 'current_commune_sangkat', 'current_village'],
+                    'current_district_khan' => ['current_commune_sangkat', 'current_village'],
+                    'current_commune_sangkat' => ['current_village'],
 
-        $parentKeywords = match ($type) {
-            'district' => ['province', 'city'],
-            'commune' => ['district', 'khan'],
-            'village' => ['commune', 'sangkat'],
-            default => [],
-        };
+                    'parents_capital_province' => ['parents_district_khan', 'parents_commune_sangkat', 'parents_village'],
+                    'parents_district_khan' => ['parents_commune_sangkat', 'parents_village'],
+                    'parents_commune_sangkat' => ['parents_village'],
+                ];
 
-        foreach ($data as $key => $value) {
-            $keyLower = strtolower((string) $key);
-
-            $keyLower = str_replace(['_', '-'], ' ', $keyLower);
-
-            foreach ($parentKeywords as $keyword) {
-                if (preg_match('/\b' . preg_quote($keyword, '/') . '\b/', $keyLower) && $key !== $currentName && filled($value)) {
-
-                    if (is_numeric($value)) {
-                        return $value;
-                    }
+                foreach ($children[$name] ?? [] as $child) {
+                    $set("data.{$child}", null);
                 }
-            }
-        }
-
-        return null;
+            })
+            ->dehydrated(true);
     }
 }

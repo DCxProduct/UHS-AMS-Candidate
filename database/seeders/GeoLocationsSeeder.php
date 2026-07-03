@@ -91,26 +91,24 @@ class GeoLocationsSeeder extends Seeder
                     continue;
                 }
 
-                $data = array_map(function ($value) {
-                    return is_string($value) ? trim($value) : $value;
-                }, $data);
+                $data = array_map(fn ($value) => is_string($value) ? trim($value) : $value, $data);
 
                 if (empty($data['province_code']) || empty($data['province_en'])) {
                     continue;
                 }
 
-                $provinceCode = $this->provinceCode($data['province_code']);
+                $provinceCode = $this->normalizeCode($data['province_code'], 2);
                 $provinceKey = $provinceCode;
 
                 if (! isset($provinceMap[$provinceKey])) {
                     $provinceMap[$provinceKey] = DB::table('geo_locations')->insertGetId([
-                        'name_en'    => $data['province_en'],
-                        'code'       => $provinceCode,
-                        'name_kh'    => $data['province_kh'] ?: null,
-                        'type'       => 'province',
-                        'parent_id'  => null,
-                        'metadata'   => null,
-                        'is_active'  => true,
+                        'name_en' => $data['province_en'],
+                        'name_kh' => $data['province_kh'] ?: null,
+                        'code' => $provinceCode,
+                        'type' => 'province',
+                        'parent_id' => null,
+                        'metadata' => null,
+                        'is_active' => true,
                         'created_at' => $now,
                         'updated_at' => $now,
                     ]);
@@ -120,18 +118,18 @@ class GeoLocationsSeeder extends Seeder
                     continue;
                 }
 
-                $districtCode = $this->childCode($provinceCode, $data['district_code'], 'district');
+                $districtCode = $this->normalizeChildCode($provinceCode, $data['district_code'], 4);
                 $districtKey = $districtCode;
 
                 if (! isset($districtMap[$districtKey])) {
                     $districtMap[$districtKey] = DB::table('geo_locations')->insertGetId([
-                        'name_en'    => $data['district_en'],
-                        'code'       => $districtCode,
-                        'name_kh'    => $data['district_kh'] ?: null,
-                        'type'       => 'district',
-                        'parent_id'  => $provinceMap[$provinceKey],
-                        'metadata'   => null,
-                        'is_active'  => true,
+                        'name_en' => $data['district_en'],
+                        'name_kh' => $data['district_kh'] ?: null,
+                        'code' => $districtCode,
+                        'type' => 'district',
+                        'parent_id' => $provinceMap[$provinceKey],
+                        'metadata' => null,
+                        'is_active' => true,
                         'created_at' => $now,
                         'updated_at' => $now,
                     ]);
@@ -141,18 +139,18 @@ class GeoLocationsSeeder extends Seeder
                     continue;
                 }
 
-                $communeCode = $this->childCode($districtCode, $data['commune_code'], 'commune');
+                $communeCode = $this->normalizeChildCode($districtCode, $data['commune_code'], 6);
                 $communeKey = $communeCode;
 
                 if (! isset($communeMap[$communeKey])) {
                     $communeMap[$communeKey] = DB::table('geo_locations')->insertGetId([
-                        'name_en'    => $data['commune_en'],
-                        'code'       => $communeCode,
-                        'name_kh'    => $data['commune_kh'] ?: null,
-                        'type'       => 'commune',
-                        'parent_id'  => $districtMap[$districtKey],
-                        'metadata'   => null,
-                        'is_active'  => true,
+                        'name_en' => $data['commune_en'],
+                        'name_kh' => $data['commune_kh'] ?: null,
+                        'code' => $communeCode,
+                        'type' => 'commune',
+                        'parent_id' => $districtMap[$districtKey],
+                        'metadata' => null,
+                        'is_active' => true,
                         'created_at' => $now,
                         'updated_at' => $now,
                     ]);
@@ -162,18 +160,18 @@ class GeoLocationsSeeder extends Seeder
                     continue;
                 }
 
-                $villageCode = $this->childCode($communeCode, $data['village_code'], 'village');
+                $villageCode = $this->normalizeChildCode($communeCode, $data['village_code'], 8);
                 $villageKey = $villageCode;
 
                 if (! isset($villageMap[$villageKey])) {
                     $villageMap[$villageKey] = DB::table('geo_locations')->insertGetId([
-                        'name_en'    => $data['village_en'],
-                        'code'       => $villageCode,
-                        'name_kh'    => $data['village_kh'] ?: null,
-                        'type'       => 'village',
-                        'parent_id'  => $communeMap[$communeKey],
-                        'metadata'   => null,
-                        'is_active'  => true,
+                        'name_en' => $data['village_en'],
+                        'name_kh' => $data['village_kh'] ?: null,
+                        'code' => $villageCode,
+                        'type' => 'village',
+                        'parent_id' => $communeMap[$communeKey],
+                        'metadata' => null,
+                        'is_active' => true,
                         'created_at' => $now,
                         'updated_at' => $now,
                     ]);
@@ -190,46 +188,37 @@ class GeoLocationsSeeder extends Seeder
         }
     }
 
-    private function provinceCode(mixed $code): string
+    private function normalizeChildCode(string $parentCode, mixed $code, int $digits): string
     {
         $code = $this->onlyDigits($code);
 
-        if (strlen($code) > 2) {
-            $code = substr($code, -2);
+        if ($code === '') {
+            return '';
         }
 
-        return str_pad($code, 2, '0', STR_PAD_LEFT);
-    }
-
-    private function childCode(string $parentCode, mixed $code, string $type): string
-    {
-        $segment = $this->lastTwoDigits($code);
-
-        $fullCode = $parentCode . $segment;
-
-        $digits = match ($type) {
-            'district' => 4,
-            'commune' => 6,
-            'village' => 8,
-            default => strlen($fullCode),
-        };
-
-        if (strlen($fullCode) > $digits) {
-            $fullCode = substr($fullCode, -$digits);
+        if (strlen($code) >= $digits) {
+            return substr($code, 0, $digits);
         }
 
-        return str_pad($fullCode, $digits, '0', STR_PAD_LEFT);
+        $segmentLength = $digits - strlen($parentCode);
+        $segment = str_pad($code, $segmentLength, '0', STR_PAD_LEFT);
+
+        if (strlen($segment) > $segmentLength) {
+            $segment = substr($segment, -$segmentLength);
+        }
+
+        return str_pad($parentCode . $segment, $digits, '0', STR_PAD_LEFT);
     }
 
-    private function lastTwoDigits(mixed $code): string
+    private function normalizeCode(mixed $code, int $digits): string
     {
         $code = $this->onlyDigits($code);
 
-        if (strlen($code) > 2) {
-            $code = substr($code, -2);
+        if (strlen($code) >= $digits) {
+            return substr($code, 0, $digits);
         }
 
-        return str_pad($code, 2, '0', STR_PAD_LEFT);
+        return str_pad($code, $digits, '0', STR_PAD_LEFT);
     }
 
     private function onlyDigits(mixed $value): string
