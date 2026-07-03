@@ -3,6 +3,7 @@
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Tables;
 
 use App\Models\User;
+use App\Models\GeoLocation;
 use App\Support\NotificationLanguage;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
 use Filament\Actions\Action;
@@ -134,6 +135,10 @@ class CustomFormEntriesTable
                 $column->time();
             }
 
+            if (self::isGeoColumn((string) $key)) {
+                $column->formatStateUsing(fn (mixed $state): string => self::geoLocationName($state));
+            }
+
             $columns[] = $column;
         }
 
@@ -235,11 +240,17 @@ class CustomFormEntriesTable
                         continue;
                     }
 
-                    $columns[] = TextColumn::make("data.{$key}")
+                    $column = TextColumn::make("data.{$key}")
                         ->label(self::transText($field->label ?: $key))
                         ->placeholder('-')
                         ->toggleable()
                         ->wrap();
+
+                    if (self::isGeoColumn((string) $key)) {
+                        $column->formatStateUsing(fn (mixed $state): string => self::geoLocationName($state));
+                    }
+
+                    $columns[] = $column;
                 }
             }
         }
@@ -853,5 +864,42 @@ class CustomFormEntriesTable
             'phd' => $locale === 'km' ? 'បណ្ឌិត' : 'PhD',
             default => filled($state) ? ucfirst((string) $state) : '-',
         };
+    }
+
+    protected static function isGeoColumn(string $key): bool
+    {
+        return in_array($key, [
+            'birth_province_city',
+            'birth_district_khan',
+            'birth_commune_sangkat',
+            'birth_village',
+
+            'current_capital_province',
+            'current_district_khan',
+            'current_commune_sangkat',
+            'current_village',
+
+            'parents_capital_province',
+            'parents_district_khan',
+            'parents_commune_sangkat',
+            'parents_village',
+        ], true);
+    }
+
+    protected static function geoLocationName(mixed $state): string
+    {
+        if (blank($state)) {
+            return '-';
+        }
+
+        $location = GeoLocation::query()->find($state);
+
+        if (! $location) {
+            return (string) $state;
+        }
+
+        return app()->getLocale() === 'km'
+            ? ($location->name_kh ?: $location->name_en ?: '-')
+            : ($location->name_en ?: $location->name_kh ?: '-');
     }
 }
