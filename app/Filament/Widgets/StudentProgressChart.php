@@ -195,13 +195,42 @@ class StudentProgressChart extends ChartWidget
 
     protected function getOptions(): array
     {
+        $fontFamily = "'Khmer OS Battambang', 'Khmer Battambang', 'Noto Sans Khmer', sans-serif";
+
         return [
             'indexAxis' => 'y',
             'maintainAspectRatio' => false,
-            'plugins' => ['legend' => ['display' => false]],
+            'plugins' => [
+                'legend' => [
+                    'display' => false,
+                    'labels' => [
+                        'font' => [
+                            'family' => $fontFamily,
+                        ],
+                    ],
+                ],
+            ],
             'scales' => [
-                'x' => ['beginAtZero' => true, 'max' => 100, 'ticks' => ['stepSize' => 25]],
-                'y' => ['grid' => ['display' => false]],
+                'x' => [
+                    'beginAtZero' => true,
+                    'max' => 100,
+                    'ticks' => [
+                        'stepSize' => 25,
+                        'font' => [
+                            'family' => $fontFamily,
+                        ],
+                    ],
+                ],
+                'y' => [
+                    'grid' => [
+                        'display' => false,
+                    ],
+                    'ticks' => [
+                        'font' => [
+                            'family' => $fontFamily,
+                        ],
+                    ],
+                ],
             ],
         ];
     }

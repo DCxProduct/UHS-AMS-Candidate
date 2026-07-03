@@ -64,21 +64,37 @@ class StudentSubmissionTrendChart extends ChartWidget
 
     protected function getOptions(): array
     {
+        $fontFamily = "'Khmer OS Battambang', 'Khmer Battambang', 'Noto Sans Khmer', sans-serif";
+
         return [
             'maintainAspectRatio' => false,
 
             'plugins' => [
                 'legend' => [
                     'display' => false,
+                    'labels' => [
+                        'font' => [
+                            'family' => $fontFamily,
+                        ],
+                    ],
                 ],
             ],
 
             'scales' => [
+                'x' => [
+                    'ticks' => [
+                        'font' => [
+                            'family' => $fontFamily,
+                        ],
+                    ],
+                ],
                 'y' => [
                     'beginAtZero' => true,
-
                     'ticks' => [
                         'precision' => 0,
+                        'font' => [
+                            'family' => $fontFamily,
+                        ],
                     ],
                 ],
             ],

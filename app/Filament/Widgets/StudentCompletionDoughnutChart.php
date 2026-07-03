@@ -212,6 +212,8 @@ class StudentCompletionDoughnutChart extends ChartWidget
 
     protected function getOptions(): array
     {
+        $fontFamily = "'Khmer OS Battambang', 'Khmer Battambang', 'Noto Sans Khmer', sans-serif";
+
         return [
             'maintainAspectRatio' => false,
             'responsive' => true,
@@ -223,6 +225,9 @@ class StudentCompletionDoughnutChart extends ChartWidget
                     'labels' => [
                         'usePointStyle' => true,
                         'padding' => 20,
+                        'font' => [
+                            'family' => $fontFamily,
+                        ],
                     ],
                 ],
             ],
