@@ -41,7 +41,7 @@ return [
         'pending' => 'Pending',
         'accepted' => 'Approved',
         'rejected' => 'Rejected',
-        'send back' => 'Send Back',
+        'send_back' => 'Send Back',
         'passed' => 'Passed',
         'failed' => 'Failed',
     ],
