@@ -118,11 +118,20 @@ class CustomFormEntryForm
             return self::getFields($rootFields, $isLocked);
         }
 
-        $formSelectionFields = $formTypesSection->children()->orderBy('sort')->get();
+        $childForms = CustomForm::query()
+            ->where('custom_form_id', $customForm->id)
+            ->where('menu_placement', 'sub_item')
+            ->whereNotNull('sub_item_type')
+            ->where('is_active', true)
+            ->orderBy('id')
+            ->get();
 
-        if ($formSelectionFields->isEmpty()) {
-            $formSelectionFields = collect([$formSelectionField]);
-        }
+        $activeSubItemTypes = $childForms
+            ->pluck('sub_item_type')
+            ->filter()
+            ->map(fn ($type) => strtolower((string) $type))
+            ->values()
+            ->all();
 
         $selectionOptions = self::normalizeOptions($formSelectionField->options ?? []);
 
@@ -131,7 +140,7 @@ class CustomFormEntryForm
                 ->schema([
                     Select::make('data.form_selection')
                         ->label(self::transText($formSelectionField->label ?: 'Form Selections'))
-                        ->options(self::transOptions($selectionOptions['choices'] ?? []))
+                        ->options(self::transOptionsOnlyActive($selectionOptions['choices'] ?? [], $activeSubItemTypes))
                         ->placeholder(self::selectPlaceholder())
                         ->required((bool) ($formSelectionField->required ?? false))
                         ->validationMessages([
@@ -144,14 +153,6 @@ class CustomFormEntryForm
         ];
 
         $applicationSchema = [];
-
-        $childForms = CustomForm::query()
-            ->where('custom_form_id', $customForm->id)
-            ->where('menu_placement', 'sub_item')
-            ->whereNotNull('sub_item_type')
-            ->where('is_active', true)
-            ->orderBy('id')
-            ->get();
 
         foreach ($childForms as $childForm) {
             $childRootFields = $childForm->fields()->roots()->orderBy('sort')->get();
@@ -188,6 +189,24 @@ class CustomFormEntryForm
                 ->columnSpanFull()
                 ->skippable(false),
         ];
+    }
+
+    protected static function transOptionsOnlyActive(array $choices, array $activeTypes): array
+    {
+        return collect($choices)
+            ->mapWithKeys(function ($label, $key): array {
+                if (is_array($label) && array_key_exists('value', $label)) {
+                    return [
+                        (string) $label['value'] => self::transText($label['label'] ?? $label['value']),
+                    ];
+                }
+
+                return [
+                    (string) $key => self::transText($label),
+                ];
+            })
+            ->filter(fn ($label, $key): bool => in_array(strtolower((string) $key), $activeTypes, true))
+            ->toArray();
     }
 
     protected static function getFields($fields, bool $isLocked = false, array $hiddenFieldNames = []): array
