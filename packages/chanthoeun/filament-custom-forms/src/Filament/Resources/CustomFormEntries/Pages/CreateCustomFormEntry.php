@@ -45,7 +45,7 @@ class CreateCustomFormEntry extends CreateRecord
                 ->action(function (): void {
                     $this->isSavingDraft = true;
 
-                    $data = $this->form->getState();
+                    $data = $this->form->getRawState();
                     $data = $this->mutateFormDataBeforeCreate($data);
 
                     $data['review_status'] = 'draft';
