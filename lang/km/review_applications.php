@@ -86,7 +86,7 @@ return [
     ],
 
     'form_type' => 'ទម្រង់ប្រភេទ',
-    'reviewed_year' => 'ឆ្នាំបច្ចុប្បន្ន',
+    'reviewed_year' => 'ឆ្នាំ',
     'national_registration_number' => 'លេខចុះឈ្មោះថ្នាក់ជាតិ',
     'not_reviewed_yet' => 'មិនទាន់បានពិនិត្យ',
     'download_pdf' => 'ទាញយក PDF',
