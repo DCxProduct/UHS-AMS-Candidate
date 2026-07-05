@@ -349,11 +349,7 @@ class CustomFormEntriesTable
 
                     Select::make('reviewed_year')
                         ->label(__('review_applications.reviewed_year'))
-                        ->options(
-                            collect(range(2025, 2050))
-                                ->mapWithKeys(fn ($year) => [(string) $year => (string) $year])
-                                ->toArray()
-                        )
+                        ->options(fn (): array => self::dynamicRequestReviewedYears($formId))
                         ->native(false)
                         ->live(),
                 ])
@@ -387,7 +383,12 @@ class CustomFormEntriesTable
                         )
                         ->when(
                             filled($data['reviewed_year'] ?? null),
-                            fn (Builder $query): Builder => $query->whereYear('reviewed_at', $data['reviewed_year'])
+                            function (Builder $query) use ($data): Builder {
+                                return $query->where(function (Builder $query) use ($data): void {
+                                    $query->whereYear('created_at', $data['reviewed_year'])
+                                        ->orWhereYear('reviewed_at', $data['reviewed_year']);
+                                });
+                            }
                         )
                         ->when(
                             filled($data['reviewed_month'] ?? null),
@@ -395,6 +396,33 @@ class CustomFormEntriesTable
                         );
                 }),
         ];
+    }
+
+    protected static function dynamicRequestReviewedYears(?string $formId): array
+    {
+        $rows = \Chanthoeun\FilamentCustomForms\Models\CustomFormEntry::query()
+            ->when($formId, fn ($query) => $query->where('custom_form_id', $formId))
+            ->get(['created_at', 'reviewed_at']);
+
+        return $rows
+            ->flatMap(function ($entry): array {
+                $years = [];
+
+                if ($entry->created_at) {
+                    $years[] = \Carbon\Carbon::parse($entry->created_at)->format('Y');
+                }
+
+                if ($entry->reviewed_at) {
+                    $years[] = \Carbon\Carbon::parse($entry->reviewed_at)->format('Y');
+                }
+
+                return $years;
+            })
+            ->filter()
+            ->unique()
+            ->sort()
+            ->mapWithKeys(fn ($year): array => [(string) $year => (string) $year])
+            ->toArray();
     }
 
     protected static function getRecordActions(): array

@@ -93,7 +93,18 @@ class ListCustomFormEntries extends ListRecords
 
     public function updatedTableFilters(): void
     {
-        $this->activeFormId = data_get($this->tableFilters, 'custom_form_id.value');
+        $filterFormId = data_get($this->tableFilters, 'custom_form_id.value');
+
+        if (filled($filterFormId)) {
+            $this->activeFormId = $filterFormId;
+
+            return;
+        }
+
+        $this->activeFormId = request()->input('tableFilters.custom_form_id.value')
+            ?? data_get(request()->query('tableFilters'), 'custom_form_id.value')
+            ?? request()->query('form_id')
+            ?? $this->activeFormId;
     }
 
     public function getHeading(): string|Htmlable

@@ -135,11 +135,7 @@ class ReviewApplicationsTable
 
                         Select::make('reviewed_year')
                             ->label(__('review_applications.reviewed_year'))
-                            ->options(
-                                collect(range(2025, 2050))
-                                    ->mapWithKeys(fn ($year) => [(string) $year => (string) $year])
-                                    ->toArray()
-                            )
+                            ->options(fn (): array => self::dynamicRequestReviewedYears())
                             ->native(false)
                             ->live(),
                     ])
@@ -170,7 +166,16 @@ class ReviewApplicationsTable
                             )
                             ->when(
                                 filled($data['reviewed_year'] ?? null),
-                                fn (Builder $query): Builder => $query->whereYear('reviewed_at', $data['reviewed_year'])
+                                function (Builder $query) use ($data): Builder {
+                                    return $query->where(function (Builder $query) use ($data): void {
+                                        $query->whereYear('created_at', $data['reviewed_year'])
+                                            ->orWhereYear('reviewed_at', $data['reviewed_year'])
+                                            ->orWhereRaw(
+                                                "EXTRACT(YEAR FROM NULLIF(data->>'candidate_reviewed_at', '')::timestamp) = ?",
+                                                [$data['reviewed_year']]
+                                            );
+                                    });
+                                }
                             )
                             ->when(
                                 filled($data['reviewed_month'] ?? null),
@@ -231,6 +236,36 @@ class ReviewApplicationsTable
                             ->send();
                     }),
             ]);
+    }
+
+    protected static function dynamicRequestReviewedYears(): array
+    {
+        return CustomFormEntry::query()
+            ->get(['created_at', 'reviewed_at', 'data'])
+            ->flatMap(function (CustomFormEntry $entry): array {
+                $years = [];
+
+                if ($entry->created_at) {
+                    $years[] = Carbon::parse($entry->created_at)->format('Y');
+                }
+
+                if ($entry->reviewed_at) {
+                    $years[] = Carbon::parse($entry->reviewed_at)->format('Y');
+                }
+
+                $candidateReviewedAt = data_get($entry->data, 'candidate_reviewed_at');
+
+                if ($candidateReviewedAt) {
+                    $years[] = Carbon::parse($candidateReviewedAt)->format('Y');
+                }
+
+                return $years;
+            })
+            ->filter()
+            ->unique()
+            ->sort()
+            ->mapWithKeys(fn ($year): array => [(string) $year => (string) $year])
+            ->toArray();
     }
 
     protected static function markPassed(CustomFormEntry $record): void
