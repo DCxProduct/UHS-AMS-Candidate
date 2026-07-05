@@ -202,9 +202,6 @@
     </style>
 </head>
 <body>
-<div class="language">
-    @includeIf('filament.components.language-toggle')
-</div>
 
 <main class="card">
     <div class="logo">

@@ -264,8 +264,8 @@ html.dark .uhs-brand-logo-en,
     width: 100% !important;
 }
 
-.uhs-register-type-wrapper .fi-fo-toggle-buttons > div,
-.uhs-register-type-wrapper .fi-toggle-buttons > div {
+.uhs-register-type-wrapper .fi-fo-toggle-buttons>div,
+.uhs-register-type-wrapper .fi-toggle-buttons>div {
     display: flex !important;
     justify-content: center !important;
     gap: 16px !important;
@@ -286,7 +286,7 @@ html.dark .uhs-brand-logo-en,
     gap: 16px !important;
 }
 
-.uhs-register-type-wrapper .fi-fo-toggle-buttons-inline > * {
+.uhs-register-type-wrapper .fi-fo-toggle-buttons-inline>* {
     flex: 1 1 0% !important;
     min-width: 0 !important;
 }
@@ -302,6 +302,7 @@ html.dark .uhs-brand-logo-en,
 .fi-main {
     max-width: 100% !important;
 }
+
 form button[type="submit"].fi-btn,
 .fi-page .fi-btn.fi-color-primary,
 .fi-main button[type="submit"] {
@@ -400,4 +401,116 @@ form button[type="submit"].fi-btn:hover,
     line-height: 1 !important;
 }
 
+/* =====================================================
+   GORGEOUS PREMIUM AUTH LAYOUT & GLASSMORPHISM
+ ===================================================== */
 
+/* Background with Twilight Health Science Building theme */
+.fi-simple-layout {
+    background-image: linear-gradient(rgba(15, 23, 42, 0.72), rgba(15, 23, 42, 0.72)), url('/images/uhs_login_bg.png') !important;
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+    background-attachment: fixed !important;
+    transition: all 0.3s ease !important;
+}
+
+html.dark .fi-simple-layout {
+    background-image: linear-gradient(rgba(9, 9, 11, 0.84), rgba(9, 9, 11, 0.9)), url('/images/uhs_login_bg.png') !important;
+}
+
+html.light .fi-simple-layout {
+    background-image: linear-gradient(rgba(241, 245, 249, 0.84), rgba(241, 245, 249, 0.9)), url('/images/uhs_login_bg.png') !important;
+}
+
+/* Glassmorphic Auth Card Container */
+.fi-simple-layout .fi-simple-main {
+    background: rgba(255, 255, 255, 0.85) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.45) !important;
+    border-radius: 24px !important;
+    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.28) !important;
+    padding: 2.75rem 2.25rem !important;
+    transition: all 0.3s ease !important;
+}
+
+html.dark .fi-simple-layout .fi-simple-main {
+    background: rgba(24, 24, 27, 0.8) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.6) !important;
+}
+
+/* Card Heading (Title) styling */
+.fi-simple-layout .fi-simple-header-heading {
+    color: #1e3a8a !important;
+    font-weight: 800 !important;
+    font-size: 1.6rem !important;
+    letter-spacing: -0.025em !important;
+    font-family: 'Battambang', 'Kantumruy Pro', 'Inter', sans-serif !important;
+}
+
+html.dark .fi-simple-layout .fi-simple-header-heading {
+    color: #ffffff !important;
+}
+
+/* Custom styles for inputs to make them modern and sleek */
+.fi-simple-layout .fi-input-wrp {
+    border-radius: 10px !important;
+    border: 1px solid rgba(209, 213, 219, 0.8) !important;
+    background: rgba(255, 255, 255, 0.9) !important;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.02) !important;
+    transition: all 0.2s ease !important;
+}
+
+html.dark .fi-simple-layout .fi-input-wrp {
+    border: 1px solid rgba(82, 82, 91, 0.7) !important;
+    background: rgba(39, 39, 42, 0.7) !important;
+}
+
+.fi-simple-layout .fi-input-wrp:focus-within {
+    border-color: #f59e0b !important;
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2) !important;
+}
+
+.fi-simple-layout .fi-input-wrp:focus-within svg {
+    color: #f59e0b !important;
+}
+
+/* Primary Button Design */
+.fi-simple-layout button[type="submit"] {
+    background-image: linear-gradient(135deg, #1e40af, #3b82f6) !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    border-radius: 10px !important;
+    height: 46px !important;
+    border: none !important;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25) !important;
+    transition: all 0.2s ease !important;
+}
+
+.fi-simple-layout button[type="submit"]:hover {
+    background-image: linear-gradient(135deg, #1d4ed8, #1e40af) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35) !important;
+}
+
+.fi-simple-layout button[type="submit"]:active {
+    transform: translateY(1px) !important;
+}
+
+/* Adjust checkbox wrapper */
+.fi-simple-layout .fi-checkbox-input {
+    border-radius: 4px !important;
+    border-color: rgba(209, 213, 219, 0.8) !important;
+}
+
+.fi-simple-layout .fi-checkbox-input:checked {
+    background-color: #2563eb !important;
+    border-color: #2563eb !important;
+}
+
+/* Hide default bottom link container in simple layout header */
+.fi-simple-layout .fi-simple-header .fi-link {
+    display: none !important;
+}

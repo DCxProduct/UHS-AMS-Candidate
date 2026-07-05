@@ -23,6 +23,19 @@ Route::get('/language/toggle', function () {
     return back();
 })->name('language.toggle');
 
+Route::get('/language/{locale}', function (string $locale) {
+    if (in_array($locale, ['en', 'km'], true)) {
+        session([
+            'locale' => $locale,
+        ]);
+
+        app()->setLocale($locale);
+    }
+
+    return back();
+})->name('language.set');
+
+
 
 
 Route::middleware(['web', 'auth'])->group(function () {

@@ -333,9 +333,6 @@
     </style>
 </head>
 <body>
-<div class="language">
-    @include('language-switch::language-switch')
-</div>
 
 <main class="card">
     <div class="logo">

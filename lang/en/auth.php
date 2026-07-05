@@ -17,7 +17,7 @@ return [
     ],
 
     'forgot_password' => [
-        'label' => 'Forgot password?',
+        'label' => 'Forgot your password?',
     ],
 
     'register' => [
