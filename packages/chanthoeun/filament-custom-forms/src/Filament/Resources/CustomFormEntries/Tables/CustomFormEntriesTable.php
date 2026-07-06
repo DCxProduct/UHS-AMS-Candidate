@@ -58,100 +58,279 @@ class CustomFormEntriesTable
 
     protected static function getColumns(?string $formId): array
     {
-        if (empty($formId) || self::isNationalExaminationForm($formId)) {
-            return self::getNationalExaminationColumns();
-        }
-
         if ($formId && self::isProfileForm($formId)) {
             return self::getProfileColumns();
         }
 
-        $columns = [];
+        $nationalExamFormId = \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
+            ->where('slug', 'national-examination-registration')
+            ->value('id');
 
-        $fieldsMetadata = \Chanthoeun\FilamentCustomForms\Models\CustomFormField::query()
-            ->when($formId, fn ($query) => $query->where('custom_form_id', $formId))
-            ->orderBy('sort')
-            ->get()
-            ->keyBy('name');
-
-        $definedKeys = $fieldsMetadata->keys();
-
-        $dataKeys = \Chanthoeun\FilamentCustomForms\Models\CustomFormEntry::query()
-            ->when($formId, fn ($query) => $query->where('custom_form_id', $formId))
-            ->latest()
-            ->limit(20)
-            ->get()
-            ->flatMap(fn ($entry) => array_keys(is_array($entry->data) ? $entry->data : []))
-            ->unique();
-
-        $keys = $definedKeys->merge($dataKeys)->unique();
-
-        $sortOrder = $fieldsMetadata->pluck('sort', 'name');
-        $fieldTypes = $fieldsMetadata->pluck('type', 'name');
-        $fieldOptions = $fieldsMetadata->pluck('options', 'name');
-        $fieldsById = $fieldsMetadata->keyBy('id');
-
-        $sortedKeys = $keys->sortBy(fn ($key) => $sortOrder[$key] ?? 999999);
-
-        foreach ($sortedKeys as $key) {
-            if ($key === 'registration_status') {
-                continue;
+        $targetFormIds = [];
+        if (empty($formId) || (string)$formId === (string)$nationalExamFormId) {
+            if ($nationalExamFormId) {
+                $targetFormIds[] = $nationalExamFormId;
+                $childFormIds = \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
+                    ->where('custom_form_id', $nationalExamFormId)
+                    ->where('menu_placement', 'sub_item')
+                    ->whereNotNull('sub_item_type')
+                    ->where('is_active', true)
+                    ->pluck('id')
+                    ->toArray();
+                $targetFormIds = array_merge($targetFormIds, $childFormIds);
             }
+        } elseif ($formId) {
+            $targetFormIds[] = $formId;
+        }
 
-            if (in_array(($fieldTypes[$key] ?? null), ['repeater', 'section', 'grid', 'fieldset'], true)) {
-                continue;
-            }
+        $additionalColumns = [];
+        if (!empty($targetFormIds)) {
+            $fields = \Chanthoeun\FilamentCustomForms\Models\CustomFormField::query()
+                ->whereIn('custom_form_id', $targetFormIds)
+                ->whereNotIn('type', ['section', 'grid', 'fieldset', 'repeater', 'wizard', 'info'])
+                ->orderBy('sort')
+                ->get();
 
-            $field = $fieldsMetadata[$key] ?? null;
+            $processedKeys = [
+                'form_selection',
+                'list_number',
+                'selected_major',
+                'degree_level_major',
+                'gender',
+                'phone_number',
+                'academic_year',
+                'class',
+                'registration_status',
+            ];
 
-            if ($field && $field->parent_id) {
-                $parent = $fieldsById[$field->parent_id] ?? null;
-
-                if ($parent && $parent->type === 'repeater') {
+            foreach ($fields as $field) {
+                $key = (string) $field->name;
+                if (blank($key) || in_array($key, $processedKeys, true)) {
                     continue;
                 }
+
+                if (isset($additionalColumns[$key])) {
+                    continue;
+                }
+
+                $label = self::transText($field->label ?: $key);
+                if ($key === 'last_name_kh') {
+                    $label = app()->getLocale() === 'km' ? 'នាមត្រកូល (ខ្មែរ)' : 'Family Name (Khmer)';
+                } elseif ($key === 'first_name_kh') {
+                    $label = app()->getLocale() === 'km' ? 'នាមខ្លួន (ខ្មែរ)' : 'Given Name (Khmer)';
+                } elseif ($key === 'last_name_en') {
+                    $label = app()->getLocale() === 'km' ? 'នាមត្រកូល (អង់គ្លេស)' : 'Family Name (English)';
+                } elseif ($key === 'first_name_en') {
+                    $label = app()->getLocale() === 'km' ? 'នាមខ្លួន (អង់គ្លេស)' : 'Given Name (English)';
+                }
+
+                $column = TextColumn::make("data.{$key}")
+                    ->label($label)
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->wrap();
+
+                if (self::isGeoColumn((string) $key)) {
+                    $column->formatStateUsing(fn (mixed $state): string => self::geoLocationName($state));
+                }
+
+                // Format Choice Columns (Select, Dropdown, Radio, Checkbox, etc.)
+                if (!self::isGeoColumn((string) $key)) {
+                    $fieldOptions = is_array($field->options) ? $field->options : json_decode((string) $field->options, true);
+                    $choices = $fieldOptions['choices'] ?? null;
+                    if (is_array($choices) && !empty($choices)) {
+                        $column->formatStateUsing(function (mixed $state) use ($choices): string {
+                            if (blank($state)) {
+                                return '-';
+                            }
+
+                            $transChoices = collect($choices)
+                                ->mapWithKeys(function ($label, $key): array {
+                                    if (is_array($label) && array_key_exists('value', $label)) {
+                                        return [
+                                            (string) $label['value'] => self::transText($label['label'] ?? $label['value']),
+                                        ];
+                                    }
+                                    return [
+                                        (string) $key => self::transText($label),
+                                    ];
+                                })
+                                ->toArray();
+
+                            if (is_array($state)) {
+                                return collect($state)
+                                    ->map(fn ($val) => $transChoices[(string)$val] ?? (string)$val)
+                                    ->join(', ');
+                            }
+
+                            if (is_string($state) && str_starts_with(trim($state), '[')) {
+                                $decoded = json_decode($state, true);
+                                if (is_array($decoded)) {
+                                    return collect($decoded)
+                                        ->map(fn ($val) => $transChoices[(string)$val] ?? (string)$val)
+                                        ->join(', ');
+                                }
+                            }
+
+                            return $transChoices[(string)$state] ?? (string)$state;
+                        });
+                    }
+                }
+
+                // Format Date Columns
+                if (in_array($field->type, ['date_picker', 'date_time_picker'], true)) {
+                    $column->formatStateUsing(function (mixed $state): string {
+                        if (blank($state)) {
+                            return '-';
+                        }
+                        try {
+                            return \Carbon\Carbon::parse($state)->format('d-M-Y');
+                        } catch (\Throwable) {
+                            return (string) $state;
+                        }
+                    });
+                }
+
+                $additionalColumns[$key] = $column;
             }
 
-            $column = TextColumn::make("data.{$key}")
-                ->label($key === 'form_selection' ? 'Form Type' : \Illuminate\Support\Str::headline($key));
+            // Also scan recent entry data keys for any extra/ad-hoc data
+            $dataKeys = \Chanthoeun\FilamentCustomForms\Models\CustomFormEntry::query()
+                ->whereIn('custom_form_id', $targetFormIds)
+                ->latest()
+                ->limit(20)
+                ->get()
+                ->flatMap(fn ($entry) => array_keys(is_array($entry->data) ? $entry->data : []))
+                ->unique();
 
-            if ($key === 'form_selection') {
-                $column
-                    ->badge()
-                    ->color('info')
-                    ->formatStateUsing(fn (?string $state): string => self::formTypeLabel($state));
+            foreach ($dataKeys as $key) {
+                if (blank($key) || in_array($key, $processedKeys, true) || isset($additionalColumns[$key])) {
+                    continue;
+                }
+
+                $label = \Illuminate\Support\Str::headline($key);
+                if ($key === 'last_name_kh') {
+                    $label = app()->getLocale() === 'km' ? 'នាមត្រកូល (ខ្មែរ)' : 'Family Name (Khmer)';
+                } elseif ($key === 'first_name_kh') {
+                    $label = app()->getLocale() === 'km' ? 'នាមខ្លួន (ខ្មែរ)' : 'Given Name (Khmer)';
+                } elseif ($key === 'last_name_en') {
+                    $label = app()->getLocale() === 'km' ? 'នាមត្រកូល (អង់គ្លេស)' : 'Family Name (English)';
+                } elseif ($key === 'first_name_en') {
+                    $label = app()->getLocale() === 'km' ? 'នាមខ្លួន (អង់គ្លេស)' : 'Given Name (English)';
+                }
+
+                $column = TextColumn::make("data.{$key}")
+                    ->label($label)
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->wrap();
+
+                // Format if it looks like a date/time string
+                if (str_contains($key, 'date') || str_contains($key, 'period') || str_contains($key, 'dob') || str_contains($key, 'born')) {
+                    $column->formatStateUsing(function (mixed $state): string {
+                        if (blank($state)) {
+                            return '-';
+                        }
+                        try {
+                            return \Carbon\Carbon::parse($state)->format('d-M-Y');
+                        } catch (\Throwable) {
+                            return (string) $state;
+                        }
+                    });
+                }
+
+                $additionalColumns[$key] = $column;
             }
+        }
 
-            if (($fieldTypes[$key] ?? null) === 'number_input') {
-                $column->numeric();
-            }
+        $columns = [
+            // Row number
+            TextColumn::make('row_number')
+                ->label(app()->getLocale() === 'km' ? 'ល.រ' : 'No.')
+                ->rowIndex()
+                ->alignCenter()
+                ->width('60px'),
 
-            if (($fieldTypes[$key] ?? null) === 'money') {
-                $currency = $fieldOptions[$key]['currency'] ?? 'USD';
-                $column->money(strtoupper($currency));
-            }
+            // 1. Form Type
+            TextColumn::make('data.form_selection')
+                ->label(app()->getLocale() === 'km' ? 'ប្រភេទទម្រង់' : 'Form Type')
+                ->badge()
+                ->sortable()
+                ->formatStateUsing(fn (?string $state): string => self::formTypeLabel($state))
+                ->color('info')
+                ->toggleable(isToggledHiddenByDefault: false),
 
-            if (($fieldTypes[$key] ?? null) === 'time_picker') {
-                $column->time();
-            }
+            // 2. List Number
+            TextColumn::make('data.list_number')
+                ->label(app()->getLocale() === 'km' ? 'លេខបញ្ជី' : 'List Number')
+                ->placeholder('-')
+                ->searchable()
+                ->sortable()
+                ->toggleable(isToggledHiddenByDefault: false),
 
-            if (self::isGeoColumn((string) $key)) {
-                $column->formatStateUsing(fn (mixed $state): string => self::geoLocationName($state));
-            }
+            // 3. Major
+            TextColumn::make('major')
+                ->label(app()->getLocale() === 'km' ? 'ផ្នែក/ជំនាញ' : 'Major')
+                ->getStateUsing(fn ($record) => data_get($record->data, 'selected_major') ?? data_get($record->data, 'degree_level_major') ?? '-')
+                ->placeholder('-')
+                ->searchable(query: function (Builder $query, string $search): Builder {
+                    return $query->where(function ($q) use ($search) {
+                        $q->where('data->selected_major', 'like', "%{$search}%")
+                          ->orWhere('data->degree_level_major', 'like', "%{$search}%");
+                    });
+                })
+                ->sortable()
+                ->toggleable(isToggledHiddenByDefault: false),
 
+            // 4. Gender
+            TextColumn::make('data.gender')
+                ->label(app()->getLocale() === 'km' ? 'ភេទ' : 'Gender')
+                ->placeholder('-')
+                ->formatStateUsing(fn (?string $state): string => match ($state) {
+                    'male' => app()->getLocale() === 'km' ? 'ប្រុស' : 'Male',
+                    'female' => app()->getLocale() === 'km' ? 'ស្រី' : 'Female',
+                    default => filled($state) ? ucfirst($state) : '-',
+                })
+                ->sortable()
+                ->toggleable(isToggledHiddenByDefault: false),
+
+            // 5. Phone Number
+            TextColumn::make('data.phone_number')
+                ->label(app()->getLocale() === 'km' ? 'លេខទូរស័ព្ទ' : 'Phone Number')
+                ->placeholder('-')
+                ->searchable()
+                ->sortable()
+                ->toggleable(isToggledHiddenByDefault: false),
+
+            // 6. Academic Year
+            TextColumn::make('data.academic_year')
+                ->label(app()->getLocale() === 'km' ? 'ឆ្នាំសិក្សា' : 'Academic Year')
+                ->placeholder('-')
+                ->searchable()
+                ->sortable()
+                ->toggleable(isToggledHiddenByDefault: false),
+
+            // 7. Class
+            TextColumn::make('data.class')
+                ->label(app()->getLocale() === 'km' ? 'ថ្នាក់' : 'Class')
+                ->placeholder('-')
+                ->searchable()
+                ->sortable()
+                ->toggleable(isToggledHiddenByDefault: false),
+        ];
+
+        foreach ($additionalColumns as $column) {
             $columns[] = $column;
         }
 
-        if (count($columns) > 0) {
-            $columns[] = self::reviewStatusColumn();
+        $columns[] = self::reviewStatusColumn()->toggleable(isToggledHiddenByDefault: false);
 
-            $columns[] = TextColumn::make('reviewed_at')
-                ->label(__('review_applications.reviewed_at'))
-                ->dateTime('d M Y H:i')
-                ->placeholder(__('review_applications.not_reviewed_yet'))
-                ->color('info')
-                ->sortable();
-        }
+        $columns[] = TextColumn::make('created_at')
+            ->label(__('review_applications.request_at'))
+            ->dateTime('d-M-Y')
+            ->color('gray')
+            ->sortable()
+            ->toggleable(isToggledHiddenByDefault: false);
 
         return $columns;
     }
@@ -299,7 +478,7 @@ class CustomFormEntriesTable
         }
 
         try {
-            return \Carbon\Carbon::parse($state)->format('d/m/Y');
+            return \Carbon\Carbon::parse($state)->format('d-M-Y');
         } catch (\Throwable) {
             return (string) $state;
         }

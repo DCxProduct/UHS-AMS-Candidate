@@ -16,10 +16,10 @@ return [
     'id' => 'ID',
     'student' => 'Student',
     'student_id' => 'Student ID',
-    'first_name_en' => 'First Name EN',
-    'last_name_en' => 'Last Name EN',
-    'first_name_kh' => 'First Name KH',
-    'last_name_kh' => 'Last Name KH',
+    'first_name_en' => 'First Name (English)',
+    'last_name_en' => 'Last Name (English)',
+    'first_name_kh' => 'First Name (Khmer)',
+    'last_name_kh' => 'Last Name (Khmer)',
     'review_status' => 'Review Status',
     'review_note' => 'Review Note',
     'review_note_placeholder' => 'Enter reject reason or review note',
@@ -39,7 +39,7 @@ return [
 
     'statuses' => [
         'pending' => 'Pending',
-        'accepted' => 'Approved',
+        'accepted' => 'Check',
         'rejected' => 'Rejected',
         'send_back' => 'Send Back',
         'passed' => 'Passed',
@@ -105,9 +105,9 @@ return [
         '12' => 'December',
     ],
 
-    'request_at' => 'Request At',
-    'approve_at' => 'Approved At',
+    'request_at' => 'Requested At',
+    'approve_at' => 'Checked At',
     'review_status_result' => 'Status Result',
 
-    'view_pdf' => 'View PDF',
+    'view_pdf' => 'Check',
 ];

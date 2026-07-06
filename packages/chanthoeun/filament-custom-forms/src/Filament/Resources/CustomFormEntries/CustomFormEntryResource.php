@@ -190,7 +190,7 @@ class CustomFormEntryResource extends Resource
 
         return match ($slug) {
             'profile' => __('navigation.forms.profile'),
-            'national-examination-registration' => __('navigation.registration'),
+            'national-examination-registration' => __('navigation.national_examination_registration'),
             default => static::localeText($form->name) ?: __('navigation.forms.untitled'),
         };
     }

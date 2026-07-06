@@ -16,10 +16,10 @@ return [
     'id' => 'លេខសម្គាល់',
     'student' => 'និស្សិត',
     'student_id' => 'អត្តលេខនិស្សិត',
-    'first_name_en' => 'នាមខ្លួន អង់គ្លេស',
-    'last_name_en' => 'នាមត្រកូល អង់គ្លេស',
-    'first_name_kh' => 'នាមខ្លួន ខ្មែរ',
-    'last_name_kh' => 'នាមត្រកូល ខ្មែរ',
+    'first_name_en' => 'នាមខ្លួន (អង់គ្លេស)',
+    'last_name_en' => 'នាមត្រកូល (អង់គ្លេស)',
+    'first_name_kh' => 'នាមខ្លួន (ខ្មែរ)',
+    'last_name_kh' => 'នាមត្រកូល (ខ្មែរ)',
     'review_status' => 'ស្ថានភាពពិនិត្យ',
     'review_note' => 'កំណត់សម្គាល់',
     'review_note_placeholder' => 'បញ្ចូលមូលហេតុបដិសេធ ឬកំណត់សម្គាល់',
@@ -39,7 +39,7 @@ return [
 
     'statuses' => [
         'pending' => 'កំពុងរង់ចាំ',
-        'accepted' => 'បានអនុម័ត',
+        'accepted' => 'បានពិនិត្យ',
         'rejected' => 'បានបដិសេធ',
         'send_back' => 'បញ្ជូលត្រឡប់',
         'passed' => 'ជាប់',
@@ -107,8 +107,8 @@ return [
     ],
 
     'request_at' => 'ស្នើសុំនៅ',
-    'approve_at' => 'អនុម័តនៅ',
+    'approve_at' => 'បានពិនិត្យ',
     'review_status_result' => 'លទ្ធផលប្រលង',
 
-    'view_pdf' => 'មើលលម្អិត PDF',
+    'view_pdf' => 'បានពិនិត្យ',
 ];
