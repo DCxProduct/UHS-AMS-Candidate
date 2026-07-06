@@ -202,7 +202,7 @@ class StudentProfileSeeder extends Seeder
         $keepNames[] = 'family_information';
 
         $familyFields = [
-            ['name' => 'about_parents_heading', 'label' => $this->t('A. About Parents', 'ក. ព័ត៌មានអំពីឪពុកម្ដាយ'), 'type' => 'info', 'options' => ['content' => $this->t('A. About Parents', 'ក. ព័ត៌មានអំពីឪពុកម្ដាយ'), 'column_span_full' => true, 'is_hidden_label' => true]],
+            ['name' => 'about_parents_heading', 'label' => $this->t('A. About Parents', 'ក. អំពីឪពុកម្ដាយ'), 'type' => 'info', 'options' => ['content' => $this->t('A. About Parents', 'ក. អំពីឪពុកម្ដាយ'), 'column_span_full' => true, 'is_hidden_label' => true]],
 
             ['name' => 'father_heading', 'label' => $this->t("Father's Information", 'ព័ត៌មានឪពុក'), 'type' => 'info', 'options' => ['content' => $this->t("Father's Information", 'ព័ត៌មានឪពុក'), 'column_span_full' => true, 'is_hidden_label' => true]],
             ['name' => 'father_name', 'label' => $this->t("Father's Name", 'ឈ្មោះឪពុក'), 'type' => 'text_input', 'required' => true, 'options' => ['placeholder_en' => "Enter Father's Name", 'placeholder_km' => 'បញ្ចូលឈ្មោះឪពុក']],
@@ -243,7 +243,7 @@ class StudentProfileSeeder extends Seeder
         $siblingsRepeater = $this->upsertField(
             $customFormId,
             'siblings',
-            $this->t('B. About Siblings', 'ខ. ព័ត៌មានអំពីបងប្អូន'),
+            $this->t('B. About Siblings', 'ខ. អំពីបងប្អូន'),
             'repeater',
             false,
             ['columns' => 2, 'column_span_full' => true],
@@ -263,7 +263,7 @@ class StudentProfileSeeder extends Seeder
         $this->upsertFields($customFormId, $siblingsRepeater, $siblingFields, $keepNames, $sort);
 
         $spouseFields = [
-            ['name' => 'spouse_children_heading', 'label' => $this->t('C. About Spouse and Children', 'គ. ព័ត៌មានអំពីប្ដី/ប្រពន្ធ និងកូន'), 'type' => 'info', 'options' => ['content' => $this->t('C. About Spouse and Children', 'គ. ព័ត៌មានអំពីប្ដី/ប្រពន្ធ និងកូន'), 'column_span_full' => true, 'is_hidden_label' => true]],
+            ['name' => 'spouse_children_heading', 'label' => $this->t('C. About Spouse and Children', 'គ. អំពីប្ដី/ប្រពន្ធ និងកូន'), 'type' => 'info', 'options' => ['content' => $this->t('C. About Spouse and Children', 'គ. អំពីប្ដី/ប្រពន្ធ និងកូន'), 'column_span_full' => true, 'is_hidden_label' => true]],
             ['name' => 'spouse_name', 'label' => $this->t('Spouse Name', 'ឈ្មោះប្ដី/ប្រពន្ធ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Spouse Name', 'placeholder_km' => 'បញ្ចូលឈ្មោះប្ដី/ប្រពន្ធ']],
             ['name' => 'spouse_year_of_birth', 'label' => $this->t('Date of Birth', 'ថ្ងៃខែឆ្នាំកំណើត'), 'type' => 'date_picker', 'options' => ['placeholder_en' => 'Enter Spouse Date of Birth', 'placeholder_km' => 'ជ្រើសរើសថ្ងៃខែឆ្នាំកំណើតប្ដី/ប្រពន្ធ', 'max_date' => 'today']],
             ['name' => 'spouse_occupation', 'label' => $this->t('Occupation', 'មុខរបរ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Spouse Occupation', 'placeholder_km' => 'បញ្ចូលមុខរបរប្ដី/ប្រពន្ធ']],

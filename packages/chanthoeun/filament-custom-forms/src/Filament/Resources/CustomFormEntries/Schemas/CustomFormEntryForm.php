@@ -217,10 +217,6 @@ class CustomFormEntryForm
             $name = (string) $fieldModel->name;
             $type = (string) $fieldModel->type;
 
-            if ($type === 'info') {
-                continue;
-            }
-
             if (in_array($name, $hiddenFieldNames, true)) {
                 continue;
             }
@@ -266,10 +262,19 @@ class CustomFormEntryForm
                     continue;
                 }
 
+                $repeaterLabel = $label;
+                if ((string) $fieldModel->name === 'siblings') {
+                    $repeaterLabel = new \Illuminate\Support\HtmlString('<span style="font-size: 1.1rem; font-weight: 700; color: inherit;">' . e($label) . '</span>');
+                }
+
                 $component = \Filament\Forms\Components\Repeater::make("data.{$fieldModel->name}")
-                    ->label($label)
+                    ->label($repeaterLabel)
                     ->schema($children)
                     ->columns($options['columns'] ?? 1);
+
+                if ((string) $fieldModel->name === 'siblings') {
+                    $component->addActionLabel(app()->getLocale() === 'km' ? 'បន្ថែមលើ ខ. អំពីបងប្អូន' : 'Add to B. About Siblings');
+                }
 
                 if (! empty($options['is_compact']) && method_exists($component, 'compact')) {
                     $component->compact();
@@ -350,6 +355,14 @@ class CustomFormEntryForm
                         if ($options['default'] ?? false) {
                             $component->default(true);
                         }
+                        break;
+
+                    case 'info':
+                        $content = self::transText($options['content'] ?? $label);
+                        $component = \Filament\Forms\Components\Placeholder::make($name)
+                            ->content(new \Illuminate\Support\HtmlString('<div style="margin-top: 0.5rem; margin-bottom: 0.25rem; font-size: 1.05rem; font-weight: 700; color: inherit; display: block;">' . e($content) . '</div>'))
+                            ->columnSpanFull();
+                        $isHiddenLabel = true;
                         break;
 
                     case 'image':
