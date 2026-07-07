@@ -150,6 +150,10 @@ class CustomFormEntryForm
                         ->dehydrated(true)
                         ->live()
                         ->afterStateUpdated(function (Select $component, $state, $livewire) {
+                            if (property_exists($livewire, 'form_selection')) {
+                                $livewire->form_selection = $state ?: null;
+                            }
+
                             if ($state) {
                                 $wizardKey = null;
                                 $container = $component->getContainer();
@@ -207,6 +211,7 @@ class CustomFormEntryForm
             ])
                 ->key('national-exam-wizard')
                 ->persistStepInQueryString()
+                ->startOnStep(fn (Get $get) => filled($get('data.form_selection')) ? 2 : 1)
                 ->nextAction(fn (Action $action) => $action->hidden(
                     fn (Wizard $component) => $component->getCurrentStepIndex() === 0
                 ))
