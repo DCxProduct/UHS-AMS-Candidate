@@ -648,7 +648,7 @@ class CustomFormEntriesTable
                 ->visible(fn ($record): bool =>
                     auth()->user()?->registration_type === 'student'
                     && self::recordIsNationalExam($record)
-                    && in_array(self::entryStatus($record), ['draft', 'pending'], true)
+                    && self::entryStatus($record) === 'draft'
                 ),
         ];
 

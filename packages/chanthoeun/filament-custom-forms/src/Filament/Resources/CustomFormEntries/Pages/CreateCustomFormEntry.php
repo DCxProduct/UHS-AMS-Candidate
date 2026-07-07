@@ -25,7 +25,20 @@ class CreateCustomFormEntry extends CreateRecord
     #[\Livewire\Attributes\Url]
     public ?string $draft_id = null;
 
+    #[\Livewire\Attributes\Url]
+    public ?string $form_selection = null;
+
     public ?string $wizard_step = null;
+
+    public function boot(): void
+    {
+        $step = request()->query('step');
+        if ($step && str_contains($step, '.')) {
+            $cleanStep = substr($step, strrpos($step, '.') + 1);
+            request()->query->set('step', $cleanStep);
+            request()->merge(['step' => $cleanStep]);
+        }
+    }
 
     public function mount(): void
     {
@@ -35,6 +48,14 @@ class CreateCustomFormEntry extends CreateRecord
 
         if (! $this->draftEntryId) {
             $this->fillNationalExamFromProfile();
+
+            if ($this->form_selection) {
+                $this->form->fill([
+                    'data' => [
+                        'form_selection' => $this->form_selection,
+                    ],
+                ]);
+            }
         }
     }
 
@@ -73,7 +94,11 @@ class CreateCustomFormEntry extends CreateRecord
                         ->success()
                         ->send();
 
-                    $this->redirect($this->getBackUrl());
+                    $this->redirect(CustomFormEntryResource::getUrl('create', [
+                        'form_id' => $this->form_id,
+                        'draft_id' => $this->draftEntryId,
+                        'form_selection' => $this->form_selection,
+                    ]));
                 }),
         ];
     }
@@ -383,7 +408,7 @@ class CreateCustomFormEntry extends CreateRecord
 
         if ($step) {
             foreach ($wizard->getChildSchema()->getComponents() as $index => $stepComponent) {
-                if ($stepComponent->getId() === $step || $stepComponent->getKey() === $step) {
+                if (\Illuminate\Support\Str::endsWith($step, $stepComponent->getId()) || \Illuminate\Support\Str::endsWith($step, $stepComponent->getKey())) {
                     return $index === 0;
                 }
             }

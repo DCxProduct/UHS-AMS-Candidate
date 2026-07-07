@@ -6,6 +6,7 @@ use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFo
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Actions\Action;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Schema;
 
@@ -17,12 +18,22 @@ class EditCustomFormEntry extends EditRecord
 
     public ?string $wizard_step = null;
 
+    public function boot(): void
+    {
+        $step = request()->query('step');
+        if ($step && str_contains($step, '.')) {
+            $cleanStep = substr($step, strrpos($step, '.') + 1);
+            request()->query->set('step', $cleanStep);
+            request()->merge(['step' => $cleanStep]);
+        }
+    }
+
     public function isLockedForEditing(): bool
     {
         $slug = $this->record->customForm?->slug;
         $status = strtolower((string) ($this->record->review_status ?? 'pending'));
 
-        if (in_array($status, ['passed', 'accepted', 'approved'], true)) {
+        if (in_array($status, ['passed', 'accepted', 'approved', 'pending'], true)) {
             return true;
         }
 
@@ -51,6 +62,51 @@ class EditCustomFormEntry extends EditRecord
             ->hidden(fn () => $this->hasWizardOnFirstStep());
 
         return $actions;
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('save_draft')
+                ->label(__('student_profile.save_as_draft'))
+                ->color('info')
+                ->hidden(fn () => $this->isLockedForEditing() || $this->hasWizardOnFirstStep())
+                ->action(function (): void {
+                    $data = $this->form->getRawState();
+                    $data = $this->mutateFormDataBeforeSave($data);
+
+                    $data['review_status'] = 'draft';
+                    $data['data'] = $data['data'] ?? [];
+                    $data['data']['registration_status'] = 'draft';
+
+                    if (Schema::hasColumn('custom_form_entries', 'status')) {
+                        $data['status'] = 'draft';
+                    }
+
+                    if (Schema::hasColumn('custom_form_entries', 'review_note')) {
+                        $data['review_note'] = null;
+                    }
+
+                    if (Schema::hasColumn('custom_form_entries', 'reviewed_by')) {
+                        $data['reviewed_by'] = null;
+                    }
+
+                    if (Schema::hasColumn('custom_form_entries', 'reviewed_at')) {
+                        $data['reviewed_at'] = null;
+                    }
+
+                    $this->record->update($data);
+
+                    Notification::make()
+                        ->title(__('student_profile.draft_saved'))
+                        ->success()
+                        ->send();
+
+                    $this->redirect(CustomFormEntryResource::getUrl('edit', [
+                        'record' => $this->record->id,
+                    ]));
+                }),
+        ];
     }
 
     protected function mutateFormDataBeforeSave(array $data): array
@@ -266,7 +322,7 @@ class EditCustomFormEntry extends EditRecord
 
         if ($step) {
             foreach ($wizard->getChildSchema()->getComponents() as $index => $stepComponent) {
-                if ($stepComponent->getId() === $step || $stepComponent->getKey() === $step) {
+                if (\Illuminate\Support\Str::endsWith($step, $stepComponent->getId()) || \Illuminate\Support\Str::endsWith($step, $stepComponent->getKey())) {
                     return $index === 0;
                 }
             }

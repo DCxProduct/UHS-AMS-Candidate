@@ -42,7 +42,7 @@
         value="{{
             collect($steps)
                 ->filter(static fn (\Filament\Schemas\Components\Wizard\Step $step): bool => $step->isVisible())
-                ->map(static fn (\Filament\Schemas\Components\Wizard\Step $step): ?string => $step->getKey())
+                ->map(static fn (\Filament\Schemas\Components\Wizard\Step $step): ?string => $step->getId())
                 ->values()
                 ->toJson()
         }}"
@@ -70,8 +70,8 @@
                     <button
                         type="button"
                         x-bind:aria-current="getStepIndex(step) === {{ $loop->index }} ? 'step' : null"
-                        x-on:click="step = @js($step->getKey())"
-                        x-bind:disabled="! isStepAccessible(@js($step->getKey())) || @js($previousAction->isDisabled())"
+                        x-on:click="step = @js($step->getId())"
+                        x-bind:disabled="! isStepAccessible(@js($step->getId())) || @js($previousAction->isDisabled())"
                         class="fi-sc-wizard-header-step-btn"
                     >
                         <div class="fi-sc-wizard-header-step-icon-ctn">
