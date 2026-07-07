@@ -5,6 +5,7 @@ namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Sc
 use App\Models\GeoLocation;
 use Chanthoeun\FilamentCustomForms\CustomFormPlugin;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
+use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
@@ -147,7 +148,25 @@ class CustomFormEntryForm
                             'required' => __('student_profile.form_type_required'),
                         ])
                         ->dehydrated(true)
-                        ->live(false),
+                        ->live()
+                        ->afterStateUpdated(function (Select $component, $state, $livewire) {
+                            if ($state) {
+                                $wizardKey = null;
+                                $container = $component->getContainer();
+                                while ($container) {
+                                    $parentComponent = $container->getParentComponent();
+                                    if ($parentComponent instanceof \Filament\Schemas\Components\Wizard) {
+                                        $wizardKey = $parentComponent->getKey();
+                                        break;
+                                    }
+                                    $container = $parentComponent?->getContainer();
+                                }
+
+                                if ($wizardKey) {
+                                    $livewire->dispatch('next-wizard-step', key: $wizardKey);
+                                }
+                            }
+                        }),
                 ])
                 ->columns(1),
         ];
@@ -186,6 +205,11 @@ class CustomFormEntryForm
                     ->schema($applicationSchema)
                     ->columns(1),
             ])
+                ->key('national-exam-wizard')
+                ->persistStepInQueryString()
+                ->nextAction(fn (Action $action) => $action->hidden(
+                    fn (Wizard $component) => $component->getCurrentStepIndex() === 0
+                ))
                 ->columnSpanFull()
                 ->skippable(false),
         ];
