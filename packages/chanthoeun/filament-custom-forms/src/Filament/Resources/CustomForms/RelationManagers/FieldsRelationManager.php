@@ -228,7 +228,7 @@ class FieldsRelationManager extends RelationManager
                                             ->get()
                                             ->unique('name')
                                             ->mapWithKeys(fn ($field) => [
-                                                $field->name => $field->name . ' - ' . self::englishText($field->label ?? $field->name),
+                                                $field->name => $field->name . ' - ' . self::localeText($field->label ?? $field->name),
                                             ])
                                             ->toArray();
                                     })
@@ -802,5 +802,10 @@ class FieldsRelationManager extends RelationManager
         }
 
         return $items;
+    }
+
+    private static function localeText(mixed $value): string
+    {
+        return self::getLangValue($value, app()->getLocale());
     }
 }
