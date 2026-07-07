@@ -60,7 +60,6 @@ class FieldsRelationManager extends RelationManager
 
                         \Filament\Forms\Components\TextInput::make('name')
                             ->label(__('filament-custom-forms::fcf.field.name'))
-                            ->required()
                             ->unique(
                                 ignoreRecord: true,
                                 modifyRuleUsing: fn (\Illuminate\Validation\Rules\Unique $rule, $livewire) => $rule->where('custom_form_id', $livewire->getOwnerRecord()->id)
@@ -69,7 +68,6 @@ class FieldsRelationManager extends RelationManager
 
                         \Filament\Forms\Components\Select::make('type')
                             ->label(__('filament-custom-forms::fcf.field.type'))
-                            ->required()
                             ->options([
                                 'Container' => [
                                     'step' => 'Step',
@@ -204,6 +202,45 @@ class FieldsRelationManager extends RelationManager
 
                                 \Filament\Forms\Components\Hidden::make('options.visible_when.operator')
                                     ->default('='),
+                            ]),
+
+                        \Filament\Schemas\Components\Section::make('Multiple Creating Selection Field')
+                            ->columnSpanFull()
+                            ->columns(2)
+                            ->hidden(fn (?object $record = null): bool => filled($record))
+                            ->components([
+                                \Filament\Forms\Components\Select::make('options.visible_when.fields')
+                                    ->label('Select Field')
+                                    ->options(function ($livewire): array {
+                                        $ownerForm = $livewire->getOwnerRecord();
+
+                                        $existingNames = $ownerForm
+                                            ? $ownerForm->fields()->pluck('name')->filter()->toArray()
+                                            : [];
+
+                                        return \Chanthoeun\FilamentCustomForms\Models\CustomFormField::query()
+                                            ->whereNotIn('type', self::CONTAINER_TYPES)
+                                            ->whereNotIn('name', $existingNames)
+                                            ->whereNotNull('name')
+                                            ->where('name', '!=', '')
+                                            ->orderBy('custom_form_id')
+                                            ->orderBy('sort')
+                                            ->get()
+                                            ->unique('name')
+                                            ->mapWithKeys(fn ($field) => [
+                                                $field->name => $field->name . ' - ' . self::englishText($field->label ?? $field->name),
+                                            ])
+                                            ->toArray();
+                                    })
+                                    ->searchable()
+                                    ->preload()
+                                    ->multiple()
+                                    ->native(false)
+                                    ->live()
+                                    ->columnSpanFull()
+                                    ->afterStateUpdated(function ($state, $set): void {
+                                        $set('options.visible_when.operator', 'in');
+                                    }),
                             ]),
 
                         \Filament\Schemas\Components\Section::make(__('filament-custom-forms::fcf.admin.configuration'))
@@ -531,6 +568,29 @@ class FieldsRelationManager extends RelationManager
             data_forget($data, 'options.choice_rows');
         }
 
+        $conditionalField = data_get($data, 'options.conditional_when.field');
+        $conditionalValues = data_get($data, 'options.conditional_when.values', []);
+
+        if (! is_array($conditionalValues)) {
+            $conditionalValues = filled($conditionalValues) ? [$conditionalValues] : [];
+        }
+
+        $conditionalValues = array_values(array_filter($conditionalValues, fn ($value): bool => filled($value)));
+
+        if (filled($conditionalField) && ! empty($conditionalValues)) {
+            data_set($data, 'options.visible_when.field', $conditionalField);
+            data_set($data, 'options.visible_when.operator', 'in');
+            data_set($data, 'options.visible_when.value', $conditionalValues);
+            data_forget($data, 'options.visible_when.values');
+            data_forget($data, 'options.conditional_when');
+
+            $data['custom_form_id'] = $ownerForm->id;
+
+            return $data;
+        }
+
+        data_forget($data, 'options.conditional_when');
+
         $selectedValues = data_get($data, 'options.visible_when.values');
         if (is_array($selectedValues)) {
             $selectedType = head(array_filter($selectedValues, fn ($val) => filled($val)));
@@ -678,6 +738,42 @@ class FieldsRelationManager extends RelationManager
 
     private function prepareFieldDataList(array $data): array
     {
+        $selectedFields = data_get($data, 'options.visible_when.fields', []);
+
+        if (! is_array($selectedFields)) {
+            $selectedFields = filled($selectedFields) ? [$selectedFields] : [];
+        }
+
+        $selectedFields = array_values(array_filter($selectedFields, fn ($value): bool => filled($value)));
+
+        if (! empty($selectedFields) && blank($data['name'] ?? null)) {
+            $ownerForm = $this->getOwnerRecord();
+
+            $existingNames = $ownerForm->fields()
+                ->pluck('name')
+                ->filter()
+                ->toArray();
+
+            return \Chanthoeun\FilamentCustomForms\Models\CustomFormField::query()
+                ->whereIn('name', $selectedFields)
+                ->whereNotIn('name', $existingNames)
+                ->whereNotIn('type', self::CONTAINER_TYPES)
+                ->orderBy('sort')
+                ->get()
+                ->unique('name')
+                ->map(function ($field) use ($ownerForm): array {
+                    $copy = $field->toArray();
+
+                    unset($copy['id'], $copy['created_at'], $copy['updated_at']);
+
+                    $copy['custom_form_id'] = $ownerForm->id;
+                    $copy['parent_id'] = null;
+
+                    return $copy;
+                })
+                ->toArray();
+        }
+
         $selectedTypes = data_get($data, 'options.visible_when.values', []);
 
         if (! is_array($selectedTypes)) {
