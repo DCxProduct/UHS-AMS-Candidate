@@ -15,6 +15,8 @@ class EditCustomFormEntry extends EditRecord
 
     protected bool $shouldResetToPendingAfterSave = false;
 
+    public ?string $wizard_step = null;
+
     public function isLockedForEditing(): bool
     {
         $slug = $this->record->customForm?->slug;
@@ -38,13 +40,15 @@ class EditCustomFormEntry extends EditRecord
         if (! $this->isLockedForEditing()) {
             $actions[] = $this->getSaveFormAction()
                 ->label(__('student_profile.submit'))
-                ->color('primary');
+                ->color('primary')
+                ->hidden(fn () => $this->hasWizardOnFirstStep());
         }
 
         $actions[] = Action::make('back')
             ->label(__('student_profile.back'))
             ->color('success')
-            ->url($this->getBackUrl());
+            ->url($this->getBackUrl())
+            ->hidden(fn () => $this->hasWizardOnFirstStep());
 
         return $actions;
     }
@@ -177,6 +181,11 @@ class EditCustomFormEntry extends EditRecord
         ]);
     }
 
+    protected function getRedirectUrl(): string
+    {
+        return $this->getBackUrl();
+    }
+
     public function getHeading(): string|\Illuminate\Contracts\Support\Htmlable
     {
         $prefix = $this->isLockedForEditing()
@@ -233,5 +242,49 @@ class EditCustomFormEntry extends EditRecord
         if (in_array($status, ['approved', 'accepted', 'passed'], true)) {
             $this->redirect(static::getResource()::getUrl('index'));
         }
+    }
+
+    #[\Livewire\Attributes\On('update-wizard-step')]
+    public function updateWizardStep(string $step): void
+    {
+        $this->wizard_step = $step;
+    }
+
+    protected function hasWizardOnFirstStep(): bool
+    {
+        if (! isset($this->form)) {
+            return false;
+        }
+
+        $wizard = $this->form->getComponent(fn ($component) => $component instanceof \Filament\Schemas\Components\Wizard);
+
+        if (! $wizard) {
+            return false;
+        }
+
+        $step = $this->wizard_step;
+
+        if ($step) {
+            foreach ($wizard->getChildSchema()->getComponents() as $index => $stepComponent) {
+                if ($stepComponent->getId() === $step || $stepComponent->getKey() === $step) {
+                    return $index === 0;
+                }
+            }
+        }
+
+        return $wizard->getCurrentStepIndex() === 0;
+    }
+
+    protected function getSavedNotificationTitle(): ?string
+    {
+        $customForm = $this->record->customForm;
+        if ($customForm) {
+            $formName = $this->transText($customForm->name);
+            return app()->getLocale() === 'km'
+                ? "បានរក្សាទុក {$formName} ដោយជោគជ័យ"
+                : "Saved {$formName} successfully";
+        }
+
+        return parent::getSavedNotificationTitle();
     }
 }

@@ -25,6 +25,8 @@ class CreateCustomFormEntry extends CreateRecord
     #[\Livewire\Attributes\Url]
     public ?string $draft_id = null;
 
+    public ?string $wizard_step = null;
+
     public function mount(): void
     {
         parent::mount();
@@ -42,6 +44,7 @@ class CreateCustomFormEntry extends CreateRecord
             Action::make('save_draft')
                 ->label(__('student_profile.save_as_draft'))
                 ->color('info')
+                ->hidden(fn () => $this->hasWizardOnFirstStep())
                 ->action(function (): void {
                     $this->isSavingDraft = true;
 
@@ -147,6 +150,7 @@ class CreateCustomFormEntry extends CreateRecord
             Action::make('submit')
                 ->label(__('student_profile.submit'))
                 ->color('primary')
+                ->hidden(fn () => $this->hasWizardOnFirstStep())
                 ->action(function (): void {
                     $state = $this->form->getRawState();
 
@@ -158,9 +162,9 @@ class CreateCustomFormEntry extends CreateRecord
                         : null;
 
                     if (
-                        $customForm
-                        && (string) $customForm->slug === 'national-examination-registration'
-                        && blank(data_get($state, 'data.form_selection'))
+                         $customForm
+                         && (string) $customForm->slug === 'national-examination-registration'
+                         && blank(data_get($state, 'data.form_selection'))
                     ) {
                         Notification::make()
                             ->danger()
@@ -203,7 +207,8 @@ class CreateCustomFormEntry extends CreateRecord
             Action::make('back')
                 ->label(__('student_profile.back'))
                 ->color('success')
-                ->url($this->getBackUrl()),
+                ->url($this->getBackUrl())
+                ->hidden(fn () => $this->hasWizardOnFirstStep()),
         ];
     }
 
@@ -231,9 +236,7 @@ class CreateCustomFormEntry extends CreateRecord
 
     protected function getRedirectUrl(): string
     {
-        return CustomFormEntryResource::getUrl('edit', [
-            'record' => $this->getRecord()->id,
-        ]);
+        return $this->getBackUrl();
     }
 
     protected function getBackUrl(): string
@@ -356,5 +359,51 @@ class CreateCustomFormEntry extends CreateRecord
         ];
 
         $this->form->fill($state);
+    }
+
+    #[\Livewire\Attributes\On('update-wizard-step')]
+    public function updateWizardStep(string $step): void
+    {
+        $this->wizard_step = $step;
+    }
+
+    protected function hasWizardOnFirstStep(): bool
+    {
+        if (! isset($this->form)) {
+            return false;
+        }
+
+        $wizard = $this->form->getComponent(fn ($component) => $component instanceof \Filament\Schemas\Components\Wizard);
+
+        if (! $wizard) {
+            return false;
+        }
+
+        $step = $this->wizard_step;
+
+        if ($step) {
+            foreach ($wizard->getChildSchema()->getComponents() as $index => $stepComponent) {
+                if ($stepComponent->getId() === $step || $stepComponent->getKey() === $step) {
+                    return $index === 0;
+                }
+            }
+        }
+
+        return $wizard->getCurrentStepIndex() === 0;
+    }
+
+    protected function getCreatedNotificationTitle(): ?string
+    {
+        if ($this->form_id) {
+            $customForm = CustomForm::find($this->form_id);
+            if ($customForm) {
+                $formName = $this->transText($customForm->name);
+                return app()->getLocale() === 'km'
+                    ? "បានបង្កើត {$formName} បានជោគជ័យ"
+                    : "Created {$formName} successfully";
+            }
+        }
+
+        return parent::getCreatedNotificationTitle();
     }
 }
