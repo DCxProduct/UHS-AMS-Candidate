@@ -21,7 +21,7 @@
             })"
     x-on:next-wizard-step.window="if ($event.detail.key === @js($key)) goToNextStep()"
     x-on:go-to-wizard-step.window="$event.detail.key === @js($key) && goToStep($event.detail.step)"
-    x-init="$watch('step', value => { if (typeof $wire.updateWizardStep === 'function') { $wire.updateWizardStep(value) } }); if (typeof $wire.updateWizardStep === 'function') { $wire.updateWizardStep(step) }"
+    x-init="@if (isset($this) && method_exists($this, 'updateWizardStep')) $watch('step', value => $wire.updateWizardStep(value)); $wire.updateWizardStep(step); @endif"
     wire:ignore.self
     {{
         $attributes
@@ -174,7 +174,7 @@
             @if (! $nextAction->isDisabled())
                 x-on:click="requestNextStep()"
             @endif
-            x-bind:class="{ 'fi-hidden': isLastStep() || isFirstStep() }"
+            x-bind:class="{ 'fi-hidden': isLastStep() }"
             wire:loading.class="fi-disabled"
         >
             {{ $nextAction }}

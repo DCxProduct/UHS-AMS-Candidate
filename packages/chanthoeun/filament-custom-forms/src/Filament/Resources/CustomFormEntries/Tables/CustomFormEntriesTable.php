@@ -741,9 +741,9 @@ class CustomFormEntriesTable
                 ])
                 ->visible(fn ($record): bool =>
                     self::currentPanelIsAdmin()
-                    && self::recordIsNationalExam($record)
+                    && ! self::isProfileForm($record->custom_form_id)
                     && self::entryStatus($record) === 'pending'
-                    && class_exists(\Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate::class)
+                    && self::hasDocumentTemplate($record)
                 );
 
             $actions[] = Action::make('accepted')
@@ -751,7 +751,12 @@ class CustomFormEntriesTable
                 ->icon('heroicon-o-check-circle')
                 ->color('success')
                 ->requiresConfirmation()
-                ->visible(fn ($record): bool => false)
+                ->visible(fn ($record): bool =>
+                    self::currentPanelIsAdmin()
+                    && ! self::isProfileForm($record->custom_form_id)
+                    && self::entryStatus($record) === 'pending'
+                    && ! self::hasDocumentTemplate($record)
+                )
                 ->action(function ($record): void {
                     $data = is_array($record->data) ? $record->data : [];
                     $data['candidate_status'] = 'pending';
@@ -782,7 +787,12 @@ class CustomFormEntriesTable
                 ->label(__('review_applications.statuses.rejected'))
                 ->icon('heroicon-o-x-circle')
                 ->color('danger')
-                ->visible(fn ($record): bool => false)
+                ->visible(fn ($record): bool =>
+                    self::currentPanelIsAdmin()
+                    && ! self::isProfileForm($record->custom_form_id)
+                    && self::entryStatus($record) === 'pending'
+                    && ! self::hasDocumentTemplate($record)
+                )
                 ->form([
                     Textarea::make('review_note')
                         ->label(__('review_applications.review_note'))
@@ -900,11 +910,40 @@ class CustomFormEntriesTable
 
     protected static function canDownloadPdf($record): bool
     {
-        return in_array(self::entryStatus($record), [
+        $status = self::entryStatus($record);
+
+        return in_array($status, [
             'passed',
             'accepted',
             'approved',
         ], true);
+    }
+
+    protected static function hasDocumentTemplate($record): bool
+    {
+        if (! class_exists(\Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate::class)) {
+            return false;
+        }
+
+        $formSelection = strtolower((string) data_get($record->data, 'form_selection'));
+
+        if (filled($formSelection)) {
+            $subForm = \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
+                ->where('custom_form_id', $record->custom_form_id)
+                ->where('menu_placement', 'sub_item')
+                ->where('sub_item_type', $formSelection)
+                ->first();
+
+            if ($subForm) {
+                return \Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate::query()
+                    ->where('type', 'custom_form_' . $subForm->id)
+                    ->exists();
+            }
+        }
+
+        return \Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate::query()
+            ->where('type', 'custom_form_' . $record->custom_form_id)
+            ->exists();
     }
 
     protected static function currentPanelIsAdmin(): bool
@@ -989,10 +1028,22 @@ class CustomFormEntriesTable
             return;
         }
 
+        $formName = $record->customForm
+            ? ($record->customForm->display_name ?: (app()->getLocale() === 'km' ? 'ពាក្យស្នើសុំ' : 'Application'))
+            : (app()->getLocale() === 'km' ? 'ពាក្យស្នើសុំ' : 'Application');
+
         if ($status === 'approved') {
             Notification::make()
-                ->title(NotificationLanguage::transForUser($student, 'review_applications.notifications.national_exam_approved_title'))
-                ->body(NotificationLanguage::transForUser($student, 'review_applications.notifications.national_exam_approved_body'))
+                ->title(
+                    self::recordIsNationalExam($record)
+                        ? NotificationLanguage::transForUser($student, 'review_applications.notifications.national_exam_approved_title')
+                        : (app()->getLocale() === 'km' ? "ពាក្យស្នើសុំ {$formName} ត្រូវបានអនុម័ត" : "Application {$formName} Approved")
+                )
+                ->body(
+                    self::recordIsNationalExam($record)
+                        ? NotificationLanguage::transForUser($student, 'review_applications.notifications.national_exam_approved_body')
+                        : (app()->getLocale() === 'km' ? "ពាក្យស្នើសុំ {$formName} របស់អ្នកត្រូវបានអនុម័តរួចរាល់ហើយ។" : "Your application for {$formName} has been approved.")
+                )
                 ->icon('heroicon-o-check-circle')
                 ->iconColor('success')
                 ->success()
@@ -1002,10 +1053,20 @@ class CustomFormEntriesTable
         }
 
         Notification::make()
-            ->title(NotificationLanguage::transForUser($student, 'review_applications.notifications.national_exam_rejected_title'))
-            ->body(NotificationLanguage::transForUser($student, 'review_applications.notifications.national_exam_rejected_body', [
-                'note' => filled($note) ? $note : NotificationLanguage::transForUser($student, 'review_applications.notifications.no_reject_note'),
-            ]))
+            ->title(
+                self::recordIsNationalExam($record)
+                    ? NotificationLanguage::transForUser($student, 'review_applications.notifications.national_exam_rejected_title')
+                    : (app()->getLocale() === 'km' ? "ពាក្យស្នើសុំ {$formName} ត្រូវបានបដិសេធ" : "Application {$formName} Rejected")
+            )
+            ->body(
+                self::recordIsNationalExam($record)
+                    ? NotificationLanguage::transForUser($student, 'review_applications.notifications.national_exam_rejected_body', [
+                        'note' => filled($note) ? $note : NotificationLanguage::transForUser($student, 'review_applications.notifications.no_reject_note'),
+                    ])
+                    : (app()->getLocale() === 'km'
+                        ? "ពាក្យស្នើសុំ {$formName} របស់អ្នកត្រូវបានបដិសេធ។ មូលហេតុ៖ " . (filled($note) ? $note : 'គ្មាន')
+                        : "Your application for {$formName} has been rejected. Reason: " . (filled($note) ? $note : 'None'))
+            )
             ->icon('heroicon-o-x-circle')
             ->iconColor('danger')
             ->danger()
