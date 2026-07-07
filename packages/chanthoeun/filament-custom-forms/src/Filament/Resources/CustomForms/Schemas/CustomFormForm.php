@@ -70,27 +70,12 @@ class CustomFormForm
                             ->afterStateUpdated(function ($set) {
                                 $set('parent_sidebar', null);
                                 $set('sub_item_type', null);
+                                $set('custom_form_id', null);
                             })
                             ->required()
                             ->native(false),
 
-                        Forms\Components\Select::make('custom_form_id')
-                            ->label(__('filament-custom-forms::fcf.form.form_field'))
-                            ->placeholder(__('filament-custom-forms::fcf.placeholder.form_field'))
-                            ->searchable()
-                            ->preload()
-                            ->live()
-                            ->afterStateUpdated(fn ($set) => $set('sub_item_type', null))
-                            ->options(fn () => CustomForm::query()
-                                ->orderBy('name')
-                                ->get()
-                                ->mapWithKeys(fn (CustomForm $form): array => [
-                                    $form->id => self::localeText($form->name),
-                                ])
-                                ->toArray()
-                            )
-                            ->visible(fn (Get $get): bool => $get('menu_placement') === 'sub_item')
-                            ->required(fn (Get $get): bool => $get('menu_placement') === 'sub_item'),
+                        Forms\Components\Hidden::make('custom_form_id'),
 
                         Forms\Components\Select::make('parent_sidebar')
                             ->label(__('filament-custom-forms::fcf.menu.parent_sidebar'))
@@ -106,7 +91,25 @@ class CustomFormForm
                             ->searchable()
                             ->preload()
                             ->live()
-                            ->afterStateUpdated(fn ($set) => $set('sub_item_type', null))
+                            ->afterStateUpdated(function ($state, $set): void {
+                                $set('sub_item_type', null);
+
+                                if (blank($state)) {
+                                    $set('custom_form_id', null);
+                                    return;
+                                }
+
+                                $parentForm = CustomForm::query()
+                                    ->where(function ($query) use ($state): void {
+                                        $query->where('name', $state)
+                                            ->orWhere('name', 'like', '%"en":"' . $state . '"%')
+                                            ->orWhere('name', 'like', '%"km":"' . $state . '"%')
+                                            ->orWhere('name', 'like', '%"kh":"' . $state . '"%');
+                                    })
+                                    ->first();
+
+                                $set('custom_form_id', $parentForm?->id);
+                            })
                             ->visible(fn (Get $get): bool => $get('menu_placement') === 'sub_item')
                             ->required(fn (Get $get): bool => $get('menu_placement') === 'sub_item')
                             ->native(false),
