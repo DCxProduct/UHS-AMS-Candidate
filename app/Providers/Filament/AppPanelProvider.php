@@ -3,6 +3,7 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Pages\Auth\Login;
+use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use App\Filament\Pages\Auth\Register;
 use App\Filament\Pages\Dashboard as AppDashboard;
 use App\Filament\Pages\Sync as SyncPage;
@@ -70,6 +71,7 @@ class AppPanelProvider extends PanelProvider
             )
 
             ->plugins([
+                FilamentShieldPlugin::make(),
                 CustomFormPlugin::make()
                     ->navigationGroup('Form Builder')
                     ->navigationFormIcon('heroicon-o-document-duplicate')
