@@ -10,11 +10,13 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable implements FilamentUser, HasAvatar
 {
     use Notifiable;
     use SoftDeletes;
+    use HasRoles;
 
     protected $fillable = [
         'registration_type',
@@ -54,7 +56,8 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
             return false;
         }
 
-        return in_array($this->registration_type, ['admin', 'student'], true);
+        return $this->hasAnyRole(['admin', 'student'])
+            || in_array($this->registration_type, ['admin', 'student'], true);
     }
 
     public function getFilamentAvatarUrl(): ?string
