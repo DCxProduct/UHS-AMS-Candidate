@@ -148,7 +148,7 @@ class FieldsRelationManager extends RelationManager
                                 return $owner && in_array($owner->menu_placement, ['sidebar', 'sub_item'], true);
                             })
                             ->components([
-                                \Filament\Forms\Components\Select::make('options.visible_when.value')
+                                \Filament\Forms\Components\CheckboxList::make('options.visible_when.values')
                                     ->label(__('filament-custom-forms::fcf.field.form_type'))
                                     ->options(function ($livewire): array {
                                         $customForm = $livewire->getOwnerRecord();
@@ -175,9 +175,19 @@ class FieldsRelationManager extends RelationManager
 
                                         return self::englishOptions(is_array($choices) ? $choices : []);
                                     })
-                                    ->searchable()
-                                    ->preload()
-                                    ->native(false)
+                                    ->columns(2)
+                                    ->bulkToggleable()
+                                    ->afterStateHydrated(function ($component, $state, $record): void {
+                                        if (filled($state)) {
+                                            return;
+                                        }
+
+                                        $oldValue = data_get($record?->options, 'visible_when.value');
+
+                                        if (filled($oldValue)) {
+                                            $component->state([$oldValue]);
+                                        }
+                                    })
                                     ->live()
                                     ->afterStateUpdated(function ($state, $set): void {
                                         if (filled($state)) {
@@ -521,7 +531,14 @@ class FieldsRelationManager extends RelationManager
             data_forget($data, 'options.choice_rows');
         }
 
-        $selectedType = data_get($data, 'options.visible_when.value');
+        $selectedValues = data_get($data, 'options.visible_when.values');
+        if (is_array($selectedValues)) {
+            $selectedType = head(array_filter($selectedValues, fn ($val) => filled($val)));
+            data_set($data, 'options.visible_when.value', $selectedType);
+            data_forget($data, 'options.visible_when.values');
+        } else {
+            $selectedType = data_get($data, 'options.visible_when.value');
+        }
 
         if (blank($selectedType)) {
             if (filled($ownerForm->sub_item_type)) {
@@ -538,7 +555,29 @@ class FieldsRelationManager extends RelationManager
             data_set($data, 'options.visible_when.operator', '=');
         }
 
-        $data['custom_form_id'] = $ownerForm->id;
+        $targetFormId = $ownerForm->id;
+
+        if (filled($selectedType)) {
+            $rootFormId = $ownerForm->id;
+
+            if ($ownerForm->menu_placement === 'sub_item' && filled($ownerForm->custom_form_id)) {
+                $rootFormId = $ownerForm->custom_form_id;
+            }
+
+            $targetForm = \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
+                ->where('custom_form_id', $rootFormId)
+                ->whereRaw('LOWER(sub_item_type) = ?', [
+                    strtolower(trim((string) $selectedType)),
+                ])
+                ->first();
+
+            if ($targetForm) {
+                $targetFormId = $targetForm->id;
+                $data['parent_id'] = null;
+            }
+        }
+
+        $data['custom_form_id'] = $targetFormId;
 
         return $data;
     }
@@ -639,8 +678,33 @@ class FieldsRelationManager extends RelationManager
 
     private function prepareFieldDataList(array $data): array
     {
-        return [
-            $this->prepareFieldData($data),
-        ];
+        $selectedTypes = data_get($data, 'options.visible_when.values', []);
+
+        if (! is_array($selectedTypes)) {
+            $selectedTypes = filled($selectedTypes) ? [$selectedTypes] : [];
+        }
+
+        $selectedTypes = array_values(array_filter($selectedTypes, fn ($value): bool => filled($value)));
+
+        if (empty($selectedTypes)) {
+            return [
+                $this->prepareFieldData($data),
+            ];
+        }
+
+        $items = [];
+
+        foreach ($selectedTypes as $selectedType) {
+            $copy = $data;
+
+            data_set($copy, 'options.visible_when.field', 'form_selection');
+            data_set($copy, 'options.visible_when.operator', '=');
+            data_set($copy, 'options.visible_when.value', $selectedType);
+            data_forget($copy, 'options.visible_when.values');
+
+            $items[] = $this->prepareFieldData($copy);
+        }
+
+        return $items;
     }
 }
