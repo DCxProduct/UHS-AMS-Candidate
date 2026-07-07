@@ -50,7 +50,7 @@ class EditCustomFormEntry extends EditRecord
 
         if (! $this->isLockedForEditing()) {
             $actions[] = $this->getSaveFormAction()
-                ->label(__('student_profile.submit'))
+                ->label(__('app.save'))
                 ->color('primary')
                 ->hidden(fn () => $this->hasWizardOnFirstStep());
         }
