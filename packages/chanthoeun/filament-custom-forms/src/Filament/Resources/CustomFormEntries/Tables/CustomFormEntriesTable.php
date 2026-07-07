@@ -256,7 +256,7 @@ class CustomFormEntriesTable
                 ->label(app()->getLocale() === 'km' ? 'ប្រភេទទម្រង់' : 'Form Type')
                 ->badge()
                 ->sortable()
-                ->formatStateUsing(fn (?string $state): string => self::formTypeLabel($state))
+                ->formatStateUsing(fn (?string $state, $record): string => self::formTypeLabel($state, $record?->custom_form_id))
                 ->color('info')
                 ->toggleable(isToggledHiddenByDefault: false),
 
@@ -490,10 +490,6 @@ class CustomFormEntriesTable
             return [];
         }
 
-        if ($formId && ! self::isNationalExaminationForm($formId)) {
-            return [];
-        }
-
         return [
             Filter::make('application_review_filters')
                 ->label(new HtmlString('&nbsp;'))
@@ -509,9 +505,15 @@ class CustomFormEntriesTable
                                 ->filter()
                                 ->unique()
                                 ->mapWithKeys(fn ($item) => [
-                                    (string) $item => self::formTypeLabel((string) $item),
+                                    (string) $item => self::formTypeLabel((string) $item, $formId),
                                 ])
                                 ->toArray();
+                        })
+                        ->hidden(function () use ($formId): bool {
+                            return ! \Chanthoeun\FilamentCustomForms\Models\CustomFormEntry::query()
+                                ->when($formId, fn ($query) => $query->where('custom_form_id', $formId))
+                                ->whereNotNull('data->form_selection')
+                                ->exists();
                         })
                         ->native(false)
                         ->live(),
@@ -1121,9 +1123,23 @@ class CustomFormEntriesTable
         return (string) $value;
     }
 
-    protected static function formTypeLabel(?string $state): string
+    protected static function formTypeLabel(?string $state, ?string $parentFormId = null): string
     {
+        if (blank($state)) {
+            return '-';
+        }
+
         $locale = app()->getLocale();
+
+        $subForm = \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
+            ->where('menu_placement', 'sub_item')
+            ->where('sub_item_type', $state)
+            ->when($parentFormId, fn ($query) => $query->where('custom_form_id', $parentFormId))
+            ->first();
+
+        if ($subForm) {
+            return self::transText($subForm->name);
+        }
 
         return match ((string) $state) {
             'associate' => $locale === 'km' ? 'បរិញ្ញាបត្ររង' : 'Associate',
