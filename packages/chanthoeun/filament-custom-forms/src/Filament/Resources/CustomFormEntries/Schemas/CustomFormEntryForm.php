@@ -247,7 +247,7 @@ class CustomFormEntryForm
 
             $options = self::normalizeOptions($fieldModel->options ?? []);
             $isHiddenLabel = (bool) ($options['is_hidden_label'] ?? false);
-            $label = self::transText($fieldModel->label);
+            $label = self::formatLabel(self::transText($fieldModel->label), $options);
             $component = null;
 
             if ($type === 'section') {
@@ -467,6 +467,41 @@ class CustomFormEntryForm
         }
 
         return $components;
+    }
+
+    protected static function formatLabel(string $label, array $options): string|\Illuminate\Contracts\Support\Htmlable
+    {
+        $format = strtolower((string) ($options['text_format'] ?? 'normal'));
+
+        if ($format === 'normal' || blank($label)) {
+            return $label;
+        }
+
+        $tag = match ($format) {
+            'h1' => 'h1',
+            'h2' => 'h2',
+            'h3' => 'h3',
+            'h4' => 'h4',
+            'h5' => 'h5',
+            'h6' => 'h6',
+            'h7' => 'div',
+            default => 'span',
+        };
+
+        $style = match ($format) {
+            'h1' => 'font-size: 2rem; font-weight: 700; line-height: 1.2;',
+            'h2' => 'font-size: 1.75rem; font-weight: 700; line-height: 1.2;',
+            'h3' => 'font-size: 1.5rem; font-weight: 700; line-height: 1.25;',
+            'h4' => 'font-size: 1.25rem; font-weight: 700; line-height: 1.3;',
+            'h5' => 'font-size: 1.1rem; font-weight: 700; line-height: 1.35;',
+            'h6' => 'font-size: 1rem; font-weight: 700; line-height: 1.4;',
+            'h7' => 'font-size: 0.9rem; font-weight: 700; line-height: 1.4;',
+            default => 'font-size: 1rem; font-weight: 400; line-height: 1.4;',
+        };
+
+        return new \Illuminate\Support\HtmlString(
+            '<' . $tag . ' style="' . $style . ' margin: 0; color: inherit;">' . e($label) . '</' . $tag . '>'
+        );
     }
 
     protected static function lockComponent(object $component, bool $isLocked): void

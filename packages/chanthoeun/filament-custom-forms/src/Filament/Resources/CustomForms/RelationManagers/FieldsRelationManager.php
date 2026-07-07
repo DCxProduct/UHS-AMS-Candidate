@@ -123,6 +123,21 @@ class FieldsRelationManager extends RelationManager
                                     ->afterStateHydrated(function ($component, $record): void {
                                         $component->state(self::getLangValue($record?->label, 'km'));
                                     }),
+
+                                \Filament\Forms\Components\Select::make('options.text_format')
+                                    ->label('Text Format')
+                                    ->options([
+                                        'normal' => 'Normal',
+                                        'h1' => 'H1',
+                                        'h2' => 'H2',
+                                        'h3' => 'H3',
+                                        'h4' => 'H4',
+                                        'h5' => 'H5',
+                                        'h6' => 'H6',
+                                        'h7' => 'H7',
+                                    ])
+                                    ->default('normal')
+                                    ->native(false),
                             ]),
 
                         \Filament\Schemas\Components\Section::make('Dynamic Form Type Field')
@@ -133,7 +148,7 @@ class FieldsRelationManager extends RelationManager
                                 return $owner && in_array($owner->menu_placement, ['sidebar', 'sub_item'], true);
                             })
                             ->components([
-                                \Filament\Forms\Components\CheckboxList::make('options.visible_when.values')
+                                \Filament\Forms\Components\Select::make('options.visible_when.value')
                                     ->label(__('filament-custom-forms::fcf.field.form_type'))
                                     ->options(function ($livewire): array {
                                         $customForm = $livewire->getOwnerRecord();
@@ -160,19 +175,9 @@ class FieldsRelationManager extends RelationManager
 
                                         return self::englishOptions(is_array($choices) ? $choices : []);
                                     })
-                                    ->columns(2)
-                                    ->bulkToggleable()
-                                    ->afterStateHydrated(function ($component, $state, $record): void {
-                                        if (filled($state)) {
-                                            return;
-                                        }
-
-                                        $oldValue = data_get($record?->options, 'visible_when.value');
-
-                                        if (filled($oldValue)) {
-                                            $component->state([$oldValue]);
-                                        }
-                                    })
+                                    ->searchable()
+                                    ->preload()
+                                    ->native(false)
                                     ->live()
                                     ->afterStateUpdated(function ($state, $set): void {
                                         if (filled($state)) {
@@ -516,14 +521,7 @@ class FieldsRelationManager extends RelationManager
             data_forget($data, 'options.choice_rows');
         }
 
-        $selectedValues = data_get($data, 'options.visible_when.values');
-        if (is_array($selectedValues)) {
-            $selectedType = head(array_filter($selectedValues, fn ($val) => filled($val)));
-            data_set($data, 'options.visible_when.value', $selectedType);
-            data_forget($data, 'options.visible_when.values');
-        } else {
-            $selectedType = data_get($data, 'options.visible_when.value');
-        }
+        $selectedType = data_get($data, 'options.visible_when.value');
 
         if (blank($selectedType)) {
             if (filled($ownerForm->sub_item_type)) {
@@ -540,29 +538,7 @@ class FieldsRelationManager extends RelationManager
             data_set($data, 'options.visible_when.operator', '=');
         }
 
-        $targetFormId = $ownerForm->id;
-
-        if (filled($selectedType)) {
-            $rootFormId = $ownerForm->id;
-
-            if ($ownerForm->menu_placement === 'sub_item' && filled($ownerForm->custom_form_id)) {
-                $rootFormId = $ownerForm->custom_form_id;
-            }
-
-            $targetForm = \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
-                ->where('custom_form_id', $rootFormId)
-                ->whereRaw('LOWER(sub_item_type) = ?', [
-                    strtolower(trim((string) $selectedType)),
-                ])
-                ->first();
-
-            if ($targetForm) {
-                $targetFormId = $targetForm->id;
-                $data['parent_id'] = null;
-            }
-        }
-
-        $data['custom_form_id'] = $targetFormId;
+        $data['custom_form_id'] = $ownerForm->id;
 
         return $data;
     }
@@ -663,33 +639,8 @@ class FieldsRelationManager extends RelationManager
 
     private function prepareFieldDataList(array $data): array
     {
-        $selectedTypes = data_get($data, 'options.visible_when.values', []);
-
-        if (! is_array($selectedTypes)) {
-            $selectedTypes = filled($selectedTypes) ? [$selectedTypes] : [];
-        }
-
-        $selectedTypes = array_values(array_filter($selectedTypes, fn ($value): bool => filled($value)));
-
-        if (empty($selectedTypes)) {
-            return [
-                $this->prepareFieldData($data),
-            ];
-        }
-
-        $items = [];
-
-        foreach ($selectedTypes as $selectedType) {
-            $copy = $data;
-
-            data_set($copy, 'options.visible_when.field', 'form_selection');
-            data_set($copy, 'options.visible_when.operator', '=');
-            data_set($copy, 'options.visible_when.value', $selectedType);
-            data_forget($copy, 'options.visible_when.values');
-
-            $items[] = $this->prepareFieldData($copy);
-        }
-
-        return $items;
+        return [
+            $this->prepareFieldData($data),
+        ];
     }
 }
