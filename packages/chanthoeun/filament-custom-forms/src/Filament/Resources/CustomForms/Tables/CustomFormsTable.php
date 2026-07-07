@@ -66,6 +66,7 @@ class CustomFormsTable
                     ->label(__('filament-custom-forms::fcf.form.form_field'))
                     ->default('—')
                     ->badge()
+                    ->hidden()
                     ->alignCenter()
                     ->formatStateUsing(fn ($state): string => self::localeText($state))
                     ->color('info'),
