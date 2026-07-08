@@ -71,7 +71,7 @@ class EditCustomFormEntry extends EditRecord
             Action::make('save_draft')
                 ->label(__('student_profile.save_as_draft'))
                 ->color('info')
-                ->hidden(fn () => $this->isLockedForEditing() || $this->hasWizardOnFirstStep())
+                ->hidden(fn () => $this->isLockedForEditing() || $this->hasWizardOnFirstStep() || strtolower((string) ($this->record->review_status ?? '')) !== 'draft')
                 ->action(function (): void {
                     $data = $this->form->getRawState();
                     $data = $this->mutateFormDataBeforeSave($data);
