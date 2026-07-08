@@ -7,6 +7,8 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 
+use Spatie\Permission\Models\Role;
+
 class AdminUserSeeder extends Seeder
 {
     public function run(): void
@@ -38,8 +40,13 @@ class AdminUserSeeder extends Seeder
             $data,
         );
 
-        if (method_exists($admin, 'assignRole') && ! $admin->hasRole('Admin')) {
-            $admin->assignRole('Admin');
+        Role::firstOrCreate([
+            'name' => 'admin',
+            'guard_name' => 'web',
+        ]);
+
+        if (method_exists($admin, 'assignRole') && ! $admin->hasRole('admin')) {
+            $admin->assignRole('admin');
         }
     }
 }

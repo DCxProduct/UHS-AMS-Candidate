@@ -10,20 +10,18 @@ return new class extends Migration {
      */
     public function up(): void
     {
-        if (!Schema::hasTable('custom_form_fields')) {
-            Schema::create('custom_form_fields', function (Blueprint $table) {
-                $table->id();
-                $table->foreignId('custom_form_id')->constrained()->cascadeOnDelete();
-                $table->foreignId('parent_id')->nullable()->constrained('custom_form_fields')->cascadeOnDelete();
-                $table->string('name');
-                $table->string('label')->nullable();
-                $table->string('type');
-                $table->boolean('required')->default(false);
-                $table->json('options')->nullable();
-                $table->integer('sort')->default(0);
-                $table->timestamps();
-            });
-        }
+        Schema::create('custom_form_fields', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('custom_form_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('parent_id')->nullable()->constrained('custom_form_fields')->cascadeOnDelete();
+            $table->string('name');
+            $table->string('label')->nullable();
+            $table->string('type');
+            $table->boolean('required')->default(false);
+            $table->json('options')->nullable();
+            $table->integer('sort')->default(0);
+            $table->timestamps();
+        });
     }
 
     /**
