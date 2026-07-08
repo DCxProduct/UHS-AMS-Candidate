@@ -20,7 +20,7 @@ jobs:
           script: |
             set -e
             APP_DIR="/var/www/html/UHS-AMS-Candidate"
-            
+
             # ─────────────────────────────────────────────
             # 🔧 Load Node.js (FIX for npm not found)
             # ─────────────────────────────────────────────
@@ -32,7 +32,7 @@ jobs:
             echo "🧪 Checking Node environment..."
             node -v || echo "❌ node not found"
             npm -v || echo "❌ npm not found"
-            
+
             # ── Pull latest code ──────────────────────────────────────────
             if [ -d "$APP_DIR" ] && [ ! -d "$APP_DIR/.git" ]; then
               rm -rf $APP_DIR
@@ -50,21 +50,21 @@ jobs:
               git clone https://oauth2:${{ secrets.TOKEN }}@github.com/DCxProduct/UHS-AMS-Candidate.git $APP_DIR
               cd $APP_DIR
             fi
-            
-            # ── Install Dependencies ───────────────────────────── 
-            echo "📦 Installing PHP dependencies..." 
+
+            # ── Install Dependencies ─────────────────────────────
+            echo "📦 Installing PHP dependencies..."
             composer install
             npm install
             npm run build
-            # ── Laravel Setup ──────────────────────────────────── 
-            echo "🔧 Running migrations..." 
-            php artisan migrate:fresh --force
+            # ── Laravel Setup ────────────────────────────────────
+            echo "🔧 Running migrations..."
+            php artisan migrate
             php artisan db:seed
 
-            # ── Optimize ──────────────────────────────────────── 
+            # ── Optimize ────────────────────────────────────────
             php artisan optimize:clear
 
-            # ── Permissions ────────────────────────────────────── 
-            echo "🔐 Fixing permissions..." 
-            chown -R www-data:www-data $APP_DIR 
+            # ── Permissions ──────────────────────────────────────
+            echo "🔐 Fixing permissions..."
+            chown -R www-data:www-data $APP_DIR
             chmod -R 775 $APP_DIR/storage $APP_DIR/bootstrap/cache
