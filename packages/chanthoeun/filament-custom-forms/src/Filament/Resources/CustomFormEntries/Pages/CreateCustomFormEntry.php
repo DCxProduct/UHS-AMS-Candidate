@@ -160,9 +160,61 @@ class CreateCustomFormEntry extends CreateRecord
         $state['custom_form_id'] = $currentFormId;
         $state['data'] = $state['data'] ?? [];
 
+        $targetFields = \Illuminate\Support\Facades\DB::table('custom_form_fields')
+            ->where('custom_form_id', $currentFormId)
+            ->orWhereIn('custom_form_id', function ($query) use ($currentFormId) {
+                $query->select('id')->from('custom_forms')->where('custom_form_id', $currentFormId);
+            })
+            ->get()
+            ->keyBy('name');
+
+        $profileFields = \Illuminate\Support\Facades\DB::table('custom_form_fields')
+            ->where('custom_form_id', $profileFormId)
+            ->get()
+            ->keyBy('name');
+
+        $locale = app()->getLocale();
+
         foreach ($profileData as $key => $value) {
             if (filled($value) && blank(data_get($state, "data.$key"))) {
-                $state['data'][$key] = $value;
+                $resolvedValue = $value;
+
+                $targetField = $targetFields->get($key);
+                $profileField = $profileFields->get($key);
+
+                if ($profileField) {
+                    $profileOptions = is_array($profileField->options) 
+                        ? $profileField->options 
+                        : json_decode((string) $profileField->options, true);
+                    $profileChoices = $profileOptions['choices'] ?? null;
+
+                    if (is_array($profileChoices) && isset($profileChoices[$value])) {
+                        $isTargetSelectWithMatchingKey = false;
+
+                        if ($targetField) {
+                            $targetType = (string) $targetField->type;
+                            $targetOptions = is_array($targetField->options) 
+                                ? $targetField->options 
+                                : json_decode((string) $targetField->options, true);
+                            $targetChoices = $targetOptions['choices'] ?? null;
+                            
+                            $isTargetSelectWithMatchingKey = in_array($targetType, ['select', 'select_dropdown'], true)
+                                && is_array($targetChoices)
+                                && isset($targetChoices[$value]);
+                        }
+
+                        if (! $isTargetSelectWithMatchingKey) {
+                            $choiceVal = $profileChoices[$value];
+                            if (is_array($choiceVal)) {
+                                $resolvedValue = $choiceVal[$locale] ?? $choiceVal['km'] ?? $choiceVal['kh'] ?? $choiceVal['en'] ?? collect($choiceVal)->first() ?? $value;
+                            } else {
+                                $resolvedValue = (string) $choiceVal;
+                            }
+                        }
+                    }
+                }
+
+                $state['data'][$key] = $resolvedValue;
             }
         }
 
