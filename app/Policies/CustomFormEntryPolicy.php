@@ -12,64 +12,92 @@ class CustomFormEntryPolicy
 {
     use HandlesAuthorization;
     
+    protected function check(AuthUser $authUser, string $permission, ?CustomFormEntry $entry = null): bool
+    {
+        $customCheck = \Chanthoeun\FilamentCustomForms\Models\CustomFormAuthorization::checkPermission($authUser, $permission, null, $entry);
+
+        if ($customCheck !== null) {
+            return $customCheck;
+        }
+
+        $spatiePermissionMap = [
+            'view_any' => 'ViewAny:CustomFormEntry',
+            'view' => 'View:CustomFormEntry',
+            'create' => 'Create:CustomFormEntry',
+            'update' => 'Update:CustomFormEntry',
+            'delete' => 'Delete:CustomFormEntry',
+            'delete_any' => 'DeleteAny:CustomFormEntry',
+            'restore' => 'Restore:CustomFormEntry',
+            'force_delete' => 'ForceDelete:CustomFormEntry',
+            'force_delete_any' => 'ForceDeleteAny:CustomFormEntry',
+            'restore_any' => 'RestoreAny:CustomFormEntry',
+            'replicate' => 'Replicate:CustomFormEntry',
+            'reorder' => 'Reorder:CustomFormEntry',
+        ];
+
+        $spatiePermission = $spatiePermissionMap[$permission] ?? 'ViewAny:CustomFormEntry';
+
+        return $authUser->can($spatiePermission);
+    }
+
     public function viewAny(AuthUser $authUser): bool
     {
-        return $authUser->can('ViewAny:CustomFormEntry');
+        return $this->check($authUser, 'view_any');
     }
 
     public function view(AuthUser $authUser, CustomFormEntry $customFormEntry): bool
     {
-        return $authUser->can('View:CustomFormEntry');
+        return $this->check($authUser, 'view', $customFormEntry);
     }
 
     public function create(AuthUser $authUser): bool
     {
-        return $authUser->can('Create:CustomFormEntry');
+        return $this->check($authUser, 'create');
     }
 
     public function update(AuthUser $authUser, CustomFormEntry $customFormEntry): bool
     {
-        return $authUser->can('Update:CustomFormEntry');
+        return $this->check($authUser, 'update', $customFormEntry);
     }
 
     public function delete(AuthUser $authUser, CustomFormEntry $customFormEntry): bool
     {
-        return $authUser->can('Delete:CustomFormEntry');
+        return $this->check($authUser, 'delete', $customFormEntry);
     }
 
     public function deleteAny(AuthUser $authUser): bool
     {
-        return $authUser->can('DeleteAny:CustomFormEntry');
+        return $this->check($authUser, 'delete_any');
     }
 
     public function restore(AuthUser $authUser, CustomFormEntry $customFormEntry): bool
     {
-        return $authUser->can('Restore:CustomFormEntry');
+        return $this->check($authUser, 'restore', $customFormEntry);
     }
 
     public function forceDelete(AuthUser $authUser, CustomFormEntry $customFormEntry): bool
     {
-        return $authUser->can('ForceDelete:CustomFormEntry');
+        return $this->check($authUser, 'force_delete', $customFormEntry);
     }
 
     public function forceDeleteAny(AuthUser $authUser): bool
     {
-        return $authUser->can('ForceDeleteAny:CustomFormEntry');
+        return $this->check($authUser, 'force_delete_any');
     }
 
     public function restoreAny(AuthUser $authUser): bool
     {
-        return $authUser->can('RestoreAny:CustomFormEntry');
+        return $this->check($authUser, 'restore_any');
     }
 
     public function replicate(AuthUser $authUser, CustomFormEntry $customFormEntry): bool
     {
-        return $authUser->can('Replicate:CustomFormEntry');
+        return $this->check($authUser, 'replicate', $customFormEntry);
     }
 
     public function reorder(AuthUser $authUser): bool
     {
-        return $authUser->can('Reorder:CustomFormEntry');
+        return $this->check($authUser, 'reorder');
     }
 
 }

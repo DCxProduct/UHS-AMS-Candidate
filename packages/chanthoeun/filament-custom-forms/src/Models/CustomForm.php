@@ -63,6 +63,11 @@ class CustomForm extends Model
         return $this->hasMany(CustomFormEntry::class);
     }
 
+    public function authorizations(): HasMany
+    {
+        return $this->hasMany(CustomFormAuthorization::class, 'custom_form_id');
+    }
+
     public function fields(): HasMany
     {
         return $this->hasMany(CustomFormField::class, 'custom_form_id')->orderBy('sort');

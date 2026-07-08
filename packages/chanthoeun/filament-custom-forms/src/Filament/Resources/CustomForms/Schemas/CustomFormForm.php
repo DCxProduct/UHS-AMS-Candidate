@@ -5,6 +5,7 @@ namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomForms\Schemas;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormField;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Forms\Components\TextInput;
@@ -175,10 +176,76 @@ class CustomFormForm
                                 && filled($get('parent_sidebar'))
                             ),
 
-                        Toggle::make('is_active')
+                         Toggle::make('is_active')
                             ->label(__('filament-custom-forms::fcf.form.is_active'))
                             ->default(true)
                             ->required(),
+                    ]),
+
+                Section::make('Panel Access & Permissions')
+                    ->columnSpanFull()
+                    ->schema([
+                        Forms\Components\Repeater::make('authorizations')
+                            ->relationship('authorizations')
+                            ->hiddenLabel()
+                            ->schema([
+                                Grid::make(3)
+                                    ->schema([
+                                        Forms\Components\Select::make('panel')
+                                            ->label('Filament Panel')
+                                            ->options([
+                                                'admin' => 'Admin',
+                                                'student' => 'Student',
+                                            ])
+                                            ->required()
+                                            ->native(false),
+
+                                        Forms\Components\Select::make('allowed_users')
+                                            ->label('Allowed Users')
+                                            ->multiple()
+                                            ->options(fn () => \App\Models\User::query()->where('registration_type', 'student')->pluck('username', 'id')->toArray())
+                                            ->preload()
+                                            ->searchable()
+                                            ->native(false),
+
+                                        Forms\Components\Select::make('allowed_roles')
+                                            ->label('Allowed Roles')
+                                            ->multiple()
+                                            ->options(fn () => \Spatie\Permission\Models\Role::query()->pluck('name', 'name')->toArray())
+                                            ->preload()
+                                            ->searchable()
+                                            ->native(false),
+                                    ]),
+
+                                Forms\Components\Toggle::make('isolate_user_data')
+                                    ->label('Isolate User Data')
+                                    ->helperText('If enabled, users can only see form entries they created themselves.')
+                                    ->default(false),
+
+                                Section::make('Permissions')
+                                    ->collapsible()
+                                    ->schema([
+                                        Forms\Components\CheckboxList::make('permissions')
+                                            ->hiddenLabel()
+                                            ->options([
+                                                'view_any' => 'View Any',
+                                                'view' => 'View',
+                                                'create' => 'Create',
+                                                'update' => 'Update',
+                                                'delete' => 'Delete',
+                                                'delete_any' => 'Delete Any',
+                                                'restore' => 'Restore',
+                                                'force_delete' => 'Force Delete',
+                                                'force_delete_any' => 'Force Delete Any',
+                                                'restore_any' => 'Restore Any',
+                                                'replicate' => 'Replicate',
+                                                'reorder' => 'Reorder',
+                                            ])
+                                            ->bulkToggleable()
+                                            ->columns(4),
+                                    ]),
+                            ])
+                            ->addActionLabel('Add to panel Access & Permissions'),
                     ]),
             ]);
     }
