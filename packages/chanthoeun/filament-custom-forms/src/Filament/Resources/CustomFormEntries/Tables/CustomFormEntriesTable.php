@@ -509,12 +509,6 @@ class CustomFormEntriesTable
                                 ])
                                 ->toArray();
                         })
-                        ->hidden(function () use ($formId): bool {
-                            return ! \Chanthoeun\FilamentCustomForms\Models\CustomFormEntry::query()
-                                ->when($formId, fn ($query) => $query->where('custom_form_id', $formId))
-                                ->whereNotNull('data->form_selection')
-                                ->exists();
-                        })
                         ->native(false)
                         ->live(),
 
