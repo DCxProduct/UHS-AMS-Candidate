@@ -117,8 +117,9 @@ class EditCustomFormEntry extends EditRecord
         }
 
         $oldStatus = strtolower((string) ($this->record->review_status ?? ''));
+        $slug = $this->record->customForm?->slug;
 
-        if (in_array($oldStatus, ['rejected', 'failed'], true)) {
+        if ($slug === 'profile' || in_array($oldStatus, ['rejected', 'failed', 'draft'], true)) {
             $this->shouldResetToPendingAfterSave = true;
 
             if (Schema::hasColumn('custom_form_entries', 'review_status')) {
