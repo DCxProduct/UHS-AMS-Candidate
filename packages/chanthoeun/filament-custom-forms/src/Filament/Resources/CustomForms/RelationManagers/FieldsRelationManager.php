@@ -446,18 +446,22 @@ class FieldsRelationManager extends RelationManager
                     ->label(__('filament-custom-forms::fcf.field.name'))
                     ->searchable(),
 
-                TextColumn::make('label_en')
-                    ->label('Label (EN)')
+                 TextColumn::make('label_en')
+                    ->label(app()->getLocale() === 'km' ? 'ស្លាក (EN)' : 'Label (EN)')
                     ->state(fn ($record): string => self::getLangValue($record->label, 'en'))
-                    ->searchable(),
+                    ->searchable(query: function (\Illuminate\Database\Eloquent\Builder $query, string $search): \Illuminate\Database\Eloquent\Builder {
+                        return $query->where('label', 'ilike', "%{$search}%");
+                    }),
 
-                TextColumn::make('label_km')
-                    ->label('Label (KM)')
+                 TextColumn::make('label_km')
+                    ->label(app()->getLocale() === 'km' ? 'ស្លាក (KM)' : 'Label (KM)')
                     ->state(fn ($record): string => self::getLangValue($record->label, 'km'))
-                    ->searchable(),
+                    ->searchable(query: function (\Illuminate\Database\Eloquent\Builder $query, string $search): \Illuminate\Database\Eloquent\Builder {
+                        return $query->where('label', 'ilike', "%{$search}%");
+                    }),
 
 
-                ToggleColumn::make('required')
+                 ToggleColumn::make('required')
                     ->label(__('filament-custom-forms::fcf.field.is_required'))
                     ->onColor('success')
                     ->offColor('gray')
@@ -467,18 +471,94 @@ class FieldsRelationManager extends RelationManager
                         true
                     )),
 
-                TextColumn::make('type')
+                 TextColumn::make('type')
                     ->label(__('filament-custom-forms::fcf.field.type'))
                     ->badge()
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'step' => app()->getLocale() === 'km' ? 'ជំហាន' : 'Step',
+                        'section' => app()->getLocale() === 'km' ? 'ផ្នែក' : 'Section',
+                        'grid' => app()->getLocale() === 'km' ? 'ក្រឡាចត្រង្គ' : 'Grid',
+                        'fieldset' => 'Fieldset',
+                        'repeater' => app()->getLocale() === 'km' ? 'ឧបករណ៍ផ្ទួន' : 'Repeater',
+                        'wizard' => app()->getLocale() === 'km' ? 'អ្នកជំនួយការ' : 'Wizard',
+                        'text_input' => app()->getLocale() === 'km' ? 'ប្រអប់បញ្ចូលអត្ថបទ' : 'Text Input',
+                        'textarea' => app()->getLocale() === 'km' ? 'តំបន់អត្ថបទ' : 'Textarea',
+                        'email' => app()->getLocale() === 'km' ? 'អ៊ីមែល' : 'Email',
+                        'number_input' => app()->getLocale() === 'km' ? 'ប្រអប់បញ្ចូលលេខ' : 'Number Input',
+                        'money' => app()->getLocale() === 'km' ? 'ប្រអប់បញ្ចូលរូបិយប័ណ្ណ' : 'Money',
+                        'date_picker' => app()->getLocale() === 'km' ? 'ការរើសថ្ងៃ' : 'Date Picker',
+                        'time_picker' => app()->getLocale() === 'km' ? 'ការរើសម៉ោង' : 'Time Picker',
+                        'boolean' => app()->getLocale() === 'km' ? 'ប៊ូតុងបិទបើក' : 'Toggle',
+                        'select_dropdown' => app()->getLocale() === 'km' ? 'បញ្ជីរើស (Dropdown)' : 'Select Dropdown',
+                        'radio' => app()->getLocale() === 'km' ? 'ប៊ូតុងរើស (Radio)' : 'Radio',
+                        'checkbox' => app()->getLocale() === 'km' ? 'ប្រអប់ជ្រើសរើស' : 'Checkbox',
+                        'checkbox_list' => app()->getLocale() === 'km' ? 'បញ្ជីប្រអប់ជ្រើសរើស' : 'Checkbox List',
+                        'multi_select' => app()->getLocale() === 'km' ? 'ជ្រើសរើសច្រើន' : 'Multi Select',
+                        'info' => app()->getLocale() === 'km' ? 'ព័ត៌មាន' : 'Info',
+                        'image' => app()->getLocale() === 'km' ? 'រូបភាព' : 'Image',
+                        'password' => app()->getLocale() === 'km' ? 'ពាក្យសម្ងាត់' : 'Password',
+                        'phone' => app()->getLocale() === 'km' ? 'ទូរស័ព្ទ' : 'Phone',
+                        default => $state,
+                    })
                     ->color(fn (string $state): string => match ($state) {
                         'step', 'section', 'grid', 'fieldset', 'repeater', 'wizard' => 'info',
                         default => 'gray',
                     }),
 
-                TextColumn::make('options.visible_when.value')
-                    ->label('Form Type')
+                 TextColumn::make('options.visible_when.value')
+                    ->label(app()->getLocale() === 'km' ? 'ទម្រង់ប្រភេទ' : 'Form Type')
                     ->badge()
-                    ->formatStateUsing(fn ($state) => $state ? ucfirst((string) $state) : 'All')
+                    ->formatStateUsing(function ($state, $record) {
+                        if (blank($state) || $state === false || $state === 'false') {
+                            return app()->getLocale() === 'km' ? '—' : '—';
+                        }
+
+                        $stateString = (string) $state;
+                        $ownerForm = $record->form;
+
+                        if ($ownerForm) {
+                            $rootFormId = $ownerForm->id;
+                            if ($ownerForm->menu_placement === 'sub_item' && filled($ownerForm->custom_form_id)) {
+                                $rootFormId = $ownerForm->custom_form_id;
+                            }
+
+                            $selectionField = \Chanthoeun\FilamentCustomForms\Models\CustomFormField::query()
+                                ->where('custom_form_id', $rootFormId)
+                                ->where('name', 'form_selection')
+                                ->first();
+
+                            if ($selectionField && !blank($selectionField->options)) {
+                                $config = is_string($selectionField->options)
+                                    ? json_decode($selectionField->options, true)
+                                    : $selectionField->options;
+
+                                $choices = $config['choices'] ?? [];
+                                if (is_array($choices)) {
+                                    foreach ($choices as $value => $label) {
+                                        if (is_array($label) && isset($label['value']) && (string)$label['value'] === $stateString) {
+                                            return self::localeText($label['label'] ?? $label['value']);
+                                        }
+                                        if ((string)$value === $stateString) {
+                                            return self::localeText($label);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        return match ($stateString) {
+                            'associate' => app()->getLocale() === 'km' ? 'បរិញ្ញាបត្ររង' : 'Associate',
+                            'bachelor' => app()->getLocale() === 'km' ? 'បរិញ្ញាបត្រ' : 'Bachelor',
+                            'master' => app()->getLocale() === 'km' ? 'អនុបណ្ឌិត' : 'Master',
+                            'phd' => app()->getLocale() === 'km' ? 'បណ្ឌិត' : 'PhD',
+                            'exam' => app()->getLocale() === 'km' ? 'ការប្រឡង' : 'Exam',
+                            'national_candidate' => app()->getLocale() === 'km' ? 'បេក្ខជនថ្នាក់ជាតិ' : 'National Candidate',
+                            'general_candidate' => app()->getLocale() === 'km' ? 'បេក្ខជនទូទៅ' : 'General Candidate',
+                            'continuing_candidate' => app()->getLocale() === 'km' ? 'បេក្ខជនបន្តសិក្សា' : 'Continuing Candidate',
+                            'master_candidate' => app()->getLocale() === 'km' ? 'បេក្ខជនថ្នាក់អនុបណ្ឌិត' : 'Master Candidate',
+                            default => ucfirst($stateString),
+                        };
+                    })
                     ->color(fn ($state): string => match ($state) {
                         'associate' => 'gray',
                         'bachelor' => 'info',
@@ -487,10 +567,11 @@ class FieldsRelationManager extends RelationManager
                         default => 'gray',
                     }),
 
-                TextColumn::make('parent.name')
+                 TextColumn::make('parent.label')
                     ->label(__('filament-custom-forms::fcf.admin.parent_container'))
                     ->badge()
-                    ->formatStateUsing(fn ($state): string => self::englishText($state)),
+                    ->default('—')
+                    ->formatStateUsing(fn ($state): string => self::localeText($state)),
             ])
             ->reorderable('sort')
             ->defaultSort('sort', 'asc')

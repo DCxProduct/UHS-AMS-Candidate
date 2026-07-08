@@ -59,7 +59,7 @@ class CustomFormsTable
                     ->searchable()
                     ->badge()
                     ->alignCenter()
-                    ->formatStateUsing(fn ($state): string => self::subItemTypeLabel($state))
+                    ->formatStateUsing(fn ($state, $record): string => self::subItemTypeLabel($state, $record))
                     ->color('warning'),
 
                 TextColumn::make('parentForm.name')
@@ -192,6 +192,31 @@ class CustomFormsTable
 
         $text = (string) $value;
 
+        $formModel = \Chanthoeun\FilamentCustomForms\CustomFormPlugin::get()->getFormModel();
+        if (class_exists($formModel)) {
+            $form = $formModel::query()
+                ->where('name', $text)
+                ->orWhere('name', 'like', '%"en":"' . $text . '"%')
+                ->orWhere('name', 'like', '%"km":"' . $text . '"%')
+                ->orWhere('name', 'like', '%"kh":"' . $text . '"%')
+                ->first();
+
+            if ($form && $form->name) {
+                $decodedName = self::decodeText($form->name);
+                if (is_array($decodedName)) {
+                    $locale = app()->getLocale();
+                    return (string) (
+                        $decodedName[$locale]
+                        ?? $decodedName['km']
+                        ?? $decodedName['kh']
+                        ?? $decodedName['en']
+                        ?? collect($decodedName)->first()
+                        ?? $text
+                    );
+                }
+            }
+        }
+
         if (app()->getLocale() === 'km') {
             return match ($text) {
                 'National Examination Registration' => 'ការចុះឈ្មោះប្រឡងថ្នាក់ជាតិ',
@@ -241,9 +266,40 @@ class CustomFormsTable
         ], JSON_UNESCAPED_UNICODE);
     }
 
-    private static function subItemTypeLabel(mixed $state): string
+    private static function subItemTypeLabel(mixed $state, $record = null): string
     {
-        return match ((string) $state) {
+        if (blank($state)) {
+            return '—';
+        }
+
+        $stateString = (string) $state;
+
+        if ($record && $record->custom_form_id) {
+            $field = \Chanthoeun\FilamentCustomForms\Models\CustomFormField::query()
+                ->where('custom_form_id', $record->custom_form_id)
+                ->where('name', 'form_selection')
+                ->first();
+
+            if ($field && !blank($field->options)) {
+                $config = is_string($field->options)
+                    ? json_decode($field->options, true)
+                    : $field->options;
+
+                $choices = $config['choices'] ?? [];
+                if (is_array($choices)) {
+                    foreach ($choices as $value => $label) {
+                        if (is_array($label) && isset($label['value']) && (string)$label['value'] === $stateString) {
+                            return self::localeText($label['label'] ?? $label['value']);
+                        }
+                        if ((string)$value === $stateString) {
+                            return self::localeText($label);
+                        }
+                    }
+                }
+            }
+        }
+
+        return match ($stateString) {
             'associate' => app()->getLocale() === 'km' ? 'បរិញ្ញាបត្ររង' : 'Associate',
             'bachelor' => app()->getLocale() === 'km' ? 'បរិញ្ញាបត្រ' : 'Bachelor',
             'master' => app()->getLocale() === 'km' ? 'អនុបណ្ឌិត' : 'Master',
