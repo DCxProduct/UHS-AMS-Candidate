@@ -31,13 +31,14 @@ class EditCustomFormEntry extends EditRecord
     public function isLockedForEditing(): bool
     {
         $slug = $this->record->customForm?->slug;
+
+        if ($slug === 'profile') {
+            return $this->studentHasAcceptedNationalExam();
+        }
+
         $status = strtolower((string) ($this->record->review_status ?? 'pending'));
 
         if (in_array($status, ['passed', 'accepted', 'approved', 'pending'], true)) {
-            return true;
-        }
-
-        if ($slug === 'profile' && $this->studentHasAcceptedNationalExam()) {
             return true;
         }
 
@@ -59,7 +60,7 @@ class EditCustomFormEntry extends EditRecord
             ->label(__('student_profile.back'))
             ->color('success')
             ->url($this->getBackUrl())
-            ->hidden(fn () => $this->hasWizardOnFirstStep());
+            ->hidden(fn () => $this->hasWizardOnFirstStep() || $this->record->customForm?->slug === 'profile');
 
         return $actions;
     }
@@ -239,6 +240,13 @@ class EditCustomFormEntry extends EditRecord
 
     protected function getRedirectUrl(): string
     {
+        $slug = $this->record->customForm?->slug;
+        if ($slug === 'profile') {
+            return CustomFormEntryResource::getUrl('edit', [
+                'record' => $this->record->id,
+            ]);
+        }
+
         return $this->getBackUrl();
     }
 

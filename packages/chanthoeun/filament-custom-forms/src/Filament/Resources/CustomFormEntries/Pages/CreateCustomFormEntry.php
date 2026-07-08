@@ -233,7 +233,7 @@ class CreateCustomFormEntry extends CreateRecord
                 ->label(__('student_profile.back'))
                 ->color('success')
                 ->url($this->getBackUrl())
-                ->hidden(fn () => $this->hasWizardOnFirstStep()),
+                ->hidden(fn () => $this->hasWizardOnFirstStep() || ($this->form_id && CustomForm::find($this->form_id)?->slug === 'profile')),
         ];
     }
 
@@ -261,6 +261,13 @@ class CreateCustomFormEntry extends CreateRecord
 
     protected function getRedirectUrl(): string
     {
+        $customForm = $this->form_id ? CustomForm::find($this->form_id) : null;
+        if ($customForm && (string) $customForm->slug === 'profile') {
+            return CustomFormEntryResource::getUrl('edit', [
+                'record' => $this->record->id,
+            ]);
+        }
+
         return $this->getBackUrl();
     }
 
