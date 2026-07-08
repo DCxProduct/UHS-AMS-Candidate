@@ -23,6 +23,7 @@ class DatabaseSeeder extends Seeder
             BachelorTransferFormFieldsSeeder::class,
             MasterFormFieldsSeeder::class,
             PhdFormFieldsSeeder::class,
+            RolesAndPermissionsSeeder::class,
         ]);
     }
 }
