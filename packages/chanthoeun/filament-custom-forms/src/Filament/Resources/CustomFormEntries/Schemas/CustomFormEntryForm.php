@@ -387,9 +387,18 @@ class CustomFormEntryForm
                         break;
 
                     case 'info':
-                        $content = self::transText($options['content'] ?? $label);
+                        $content = $options['content'] ?? null;
+                        if (filled($content)) {
+                            $content = self::transText($content);
+                            $htmlContent = new \Illuminate\Support\HtmlString('<div style="margin-top: 0.5rem; margin-bottom: 0.25rem; font-size: 1.05rem; font-weight: 700; color: inherit; display: block;">' . e($content) . '</div>');
+                        } else {
+                            $htmlContent = $label instanceof \Illuminate\Contracts\Support\Htmlable 
+                                ? $label 
+                                : new \Illuminate\Support\HtmlString($label);
+                        }
+
                         $component = \Filament\Forms\Components\Placeholder::make($name)
-                            ->content(new \Illuminate\Support\HtmlString('<div style="margin-top: 0.5rem; margin-bottom: 0.25rem; font-size: 1.05rem; font-weight: 700; color: inherit; display: block;">' . e($content) . '</div>'))
+                            ->content($htmlContent)
                             ->columnSpanFull();
                         $isHiddenLabel = true;
                         break;
@@ -620,6 +629,10 @@ class CustomFormEntryForm
 
     protected static function transText(mixed $value): string
     {
+        if ($value instanceof \Illuminate\Contracts\Support\Htmlable) {
+            return $value->toHtml();
+        }
+
         $locale = strtolower((string) app()->getLocale());
 
         if (is_string($value) && str_starts_with(trim($value), '{')) {
