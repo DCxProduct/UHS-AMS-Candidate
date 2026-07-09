@@ -35,6 +35,7 @@ class CustomFormEntriesTable
             ->filters(self::getFilters($formId), layout: FiltersLayout::AboveContent)
             ->deferFilters(false)
             ->filtersFormColumns(4)
+            ->defaultSort('created_at', 'desc')
             ->recordActions(self::getRecordActions())
             ->toolbarActions([
                 BulkActionGroup::make([
