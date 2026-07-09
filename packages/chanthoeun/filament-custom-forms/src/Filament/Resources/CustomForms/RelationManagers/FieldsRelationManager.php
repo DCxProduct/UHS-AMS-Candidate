@@ -699,13 +699,16 @@ class FieldsRelationManager extends RelationManager
 
         $selectedValues = data_get($data, 'options.visible_when.values');
         if (is_array($selectedValues)) {
-            $selectedType = head(array_filter($selectedValues, fn ($val) => filled($val)));
+            $selectedType = head(array_filter(
+                $selectedValues,
+                fn ($val) => filled($val) && $val !== false && $val !== 'false'
+            ));
             data_forget($data, 'options.visible_when.values');
         } else {
             $selectedType = data_get($data, 'options.visible_when.value');
         }
 
-        if (blank($selectedType)) {
+        if (blank($selectedType) || $selectedType === false || $selectedType === 'false') {
             if (filled($ownerForm->sub_item_type)) {
                 $selectedType = $ownerForm->sub_item_type;
 
@@ -886,7 +889,10 @@ class FieldsRelationManager extends RelationManager
             $selectedTypes = filled($selectedTypes) ? [$selectedTypes] : [];
         }
 
-        $selectedTypes = array_values(array_filter($selectedTypes, fn ($value): bool => filled($value)));
+        $selectedTypes = array_values(array_filter(
+            $selectedTypes,
+            fn ($value): bool => filled($value) && $value !== false && $value !== 'false'
+        ));
 
         if (empty($selectedTypes)) {
             return [

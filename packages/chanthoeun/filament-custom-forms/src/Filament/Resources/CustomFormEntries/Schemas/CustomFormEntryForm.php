@@ -138,9 +138,21 @@ class CustomFormEntryForm
             ->all();
 
         $selectionOptions = self::normalizeOptions($formSelectionField->options ?? []);
+        $parentFields = $rootFields
+            ->reject(fn ($field): bool => (string) $field->name === 'form_types')
+            ->values();
 
-        $formTypeStepSchema = [
-            Section::make(self::transText($formTypesSection->label ?: 'Form Types'))
+        $parentSchema = self::getFields($parentFields, $isLocked);
+
+        $formTypeStepSchema = [];
+
+        if (! empty($parentSchema)) {
+            $formTypeStepSchema[] = Section::make(self::transText($customForm->name))
+                ->schema($parentSchema)
+                ->columns(2);
+        }
+
+        $formTypeStepSchema[] = Section::make(self::transText($formTypesSection->label ?: 'Form Types'))
                 ->schema([
                     Select::make('data.form_selection')
                         ->label(self::transText($formSelectionField->label ?: 'Form Selections'))
@@ -175,8 +187,7 @@ class CustomFormEntryForm
                             }
                         }),
                 ])
-                ->columns(1),
-        ];
+                ->columns(1);
 
         $applicationSchema = [];
 
