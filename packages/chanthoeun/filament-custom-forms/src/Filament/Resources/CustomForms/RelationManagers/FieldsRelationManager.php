@@ -2,7 +2,6 @@
 
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomForms\RelationManagers;
 
-use App\Support\ProfileFormData;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
@@ -247,15 +246,6 @@ class FieldsRelationManager extends RelationManager
                         \Filament\Schemas\Components\Section::make(__('filament-custom-forms::fcf.admin.configuration'))
                             ->columnSpanFull()
                             ->components([
-                                \Filament\Forms\Components\Select::make('options.profile_keyword')
-                                    ->label('Profile Keyword')
-                                    ->options(fn (): array => app(ProfileFormData::class)->profileKeywordOptions())
-                                    ->searchable()
-                                    ->preload()
-                                    ->native(false)
-                                    ->visible(fn ($get): bool => ! in_array((string) $get('type'), self::CONTAINER_TYPES, true))
-                                    ->helperText('Optional. Use this when the field name is different from the profile key.'),
-
                                 \Filament\Forms\Components\Select::make('options.columns')
                                     ->label(__('filament-custom-forms::fcf.admin.columns'))
                                     ->visible(fn ($get): bool => in_array((string) $get('type'), self::CONTAINER_TYPES, true))
@@ -456,14 +446,14 @@ class FieldsRelationManager extends RelationManager
                     ->label(__('filament-custom-forms::fcf.field.name'))
                     ->searchable(),
 
-                 TextColumn::make('label_en')
+                TextColumn::make('label_en')
                     ->label(app()->getLocale() === 'km' ? 'ស្លាក (EN)' : 'Label (EN)')
                     ->state(fn ($record): string => self::getLangValue($record->label, 'en'))
                     ->searchable(query: function (\Illuminate\Database\Eloquent\Builder $query, string $search): \Illuminate\Database\Eloquent\Builder {
                         return $query->where('label', 'ilike', "%{$search}%");
                     }),
 
-                 TextColumn::make('label_km')
+                TextColumn::make('label_km')
                     ->label(app()->getLocale() === 'km' ? 'ស្លាក (KM)' : 'Label (KM)')
                     ->state(fn ($record): string => self::getLangValue($record->label, 'km'))
                     ->searchable(query: function (\Illuminate\Database\Eloquent\Builder $query, string $search): \Illuminate\Database\Eloquent\Builder {
@@ -471,7 +461,7 @@ class FieldsRelationManager extends RelationManager
                     }),
 
 
-                 ToggleColumn::make('required')
+                ToggleColumn::make('required')
                     ->label(__('filament-custom-forms::fcf.field.is_required'))
                     ->onColor('success')
                     ->offColor('gray')
@@ -481,7 +471,7 @@ class FieldsRelationManager extends RelationManager
                         true
                     )),
 
-                 TextColumn::make('type')
+                TextColumn::make('type')
                     ->label(__('filament-custom-forms::fcf.field.type'))
                     ->badge()
                     ->formatStateUsing(fn (string $state): string => match ($state) {
@@ -515,7 +505,7 @@ class FieldsRelationManager extends RelationManager
                         default => 'gray',
                     }),
 
-                 TextColumn::make('options.visible_when.value')
+                TextColumn::make('options.visible_when.value')
                     ->label(app()->getLocale() === 'km' ? 'ទម្រង់ប្រភេទ' : 'Form Type')
                     ->badge()
                     ->formatStateUsing(function ($state, $record) {
@@ -577,7 +567,7 @@ class FieldsRelationManager extends RelationManager
                         default => 'gray',
                     }),
 
-                 TextColumn::make('parent.label')
+                TextColumn::make('parent.label')
                     ->label(__('filament-custom-forms::fcf.admin.parent_container'))
                     ->badge()
                     ->default('—')
