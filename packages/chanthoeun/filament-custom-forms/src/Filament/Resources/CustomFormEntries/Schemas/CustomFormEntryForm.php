@@ -548,7 +548,7 @@ class CustomFormEntryForm
         $operator = (string) ($rule['operator'] ?? '=');
         $expected = $rule['value'] ?? null;
 
-        if ($field === '') {
+        if ($field === '' || blank($expected) || $expected === false || $expected === 'false') {
             return;
         }
 

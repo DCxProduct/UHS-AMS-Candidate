@@ -184,6 +184,18 @@ class FieldsRelationManager extends RelationManager
 
                                         if (filled($oldValue)) {
                                             $component->state([$oldValue]);
+
+                                            return;
+                                        }
+
+                                        $ownerForm = $record?->form;
+
+                                        if (
+                                            $ownerForm
+                                            && $ownerForm->menu_placement === 'sub_item'
+                                            && filled($ownerForm->sub_item_type)
+                                        ) {
+                                            $component->state([$ownerForm->sub_item_type]);
                                         }
                                     })
                                     ->live()
@@ -507,6 +519,19 @@ class FieldsRelationManager extends RelationManager
 
                 TextColumn::make('options.visible_when.value')
                     ->label(app()->getLocale() === 'km' ? 'ទម្រង់ប្រភេទ' : 'Form Type')
+                    ->state(function ($record): mixed {
+                        $state = data_get($record->options, 'visible_when.value');
+
+                        if (blank($state) || $state === false || $state === 'false') {
+                            $ownerForm = $record->form;
+
+                            if ($ownerForm && $ownerForm->menu_placement === 'sub_item' && filled($ownerForm->sub_item_type)) {
+                                return $ownerForm->sub_item_type;
+                            }
+                        }
+
+                        return $state;
+                    })
                     ->badge()
                     ->formatStateUsing(function ($state, $record) {
                         if (blank($state) || $state === false || $state === 'false') {
@@ -675,7 +700,6 @@ class FieldsRelationManager extends RelationManager
         $selectedValues = data_get($data, 'options.visible_when.values');
         if (is_array($selectedValues)) {
             $selectedType = head(array_filter($selectedValues, fn ($val) => filled($val)));
-            data_set($data, 'options.visible_when.value', $selectedType);
             data_forget($data, 'options.visible_when.values');
         } else {
             $selectedType = data_get($data, 'options.visible_when.value');
@@ -694,6 +718,7 @@ class FieldsRelationManager extends RelationManager
         } else {
             data_set($data, 'options.visible_when.field', 'form_selection');
             data_set($data, 'options.visible_when.operator', '=');
+            data_set($data, 'options.visible_when.value', $selectedType);
         }
 
         $targetFormId = $ownerForm->id;
