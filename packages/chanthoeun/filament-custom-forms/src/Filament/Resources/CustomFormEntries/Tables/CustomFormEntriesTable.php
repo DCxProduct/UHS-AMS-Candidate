@@ -82,6 +82,16 @@ class CustomFormEntriesTable
             }
         } elseif ($formId) {
             $targetFormIds[] = $formId;
+
+            $childFormIds = \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
+                ->where('custom_form_id', $formId)
+                ->where('menu_placement', 'sub_item')
+                ->whereNotNull('sub_item_type')
+                ->where('is_active', true)
+                ->pluck('id')
+                ->toArray();
+
+            $targetFormIds = array_merge($targetFormIds, $childFormIds);
         }
 
         $additionalColumns = [];
@@ -102,6 +112,7 @@ class CustomFormEntriesTable
                 'academic_year',
                 'class',
                 'registration_status',
+                'candidate_status',
             ];
 
             foreach ($fields as $field) {
