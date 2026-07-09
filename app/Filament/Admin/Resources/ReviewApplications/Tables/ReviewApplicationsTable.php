@@ -32,21 +32,18 @@ class ReviewApplicationsTable
             })
             ->columns([
                 TextColumn::make('id')
-                    ->label(__('review_applications.id'))
-                    ->sortable(),
+                    ->label(__('review_applications.id')),
 
                 TextColumn::make('creator.name')
                     ->label(__('review_applications.student'))
-                    ->searchable()
-                    ->sortable(),
+                    ->searchable(),
 
                 TextColumn::make('data.form_selection')
                     ->label(__('review_applications.form_type'))
                     ->badge()
                     ->formatStateUsing(fn (?string $state): string => self::formTypeLabel($state))
                     ->color('info')
-                    ->searchable()
-                    ->sortable(),
+                    ->searchable(),
 
                 TextColumn::make('data.student_id')
                     ->label(__('review_applications.student_id'))
