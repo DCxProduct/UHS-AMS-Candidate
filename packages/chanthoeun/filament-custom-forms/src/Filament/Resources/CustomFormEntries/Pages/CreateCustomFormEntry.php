@@ -2,6 +2,7 @@
 
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Pages;
 
+use App\Support\ProfileFormData;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
@@ -47,15 +48,7 @@ class CreateCustomFormEntry extends CreateRecord
         $this->loadExistingDraft();
 
         if (! $this->draftEntryId) {
-            $this->fillNationalExamFromProfile();
-
-            if ($this->form_selection) {
-                $this->form->fill([
-                    'data' => [
-                        'form_selection' => $this->form_selection,
-                    ],
-                ]);
-            }
+            $this->fillCurrentFormFromProfile();
         }
     }
 
@@ -103,7 +96,7 @@ class CreateCustomFormEntry extends CreateRecord
         ];
     }
 
-    protected function fillNationalExamFromProfile(): void
+    protected function fillCurrentFormFromProfile(): void
     {
         if (! auth()->check()) {
             return;
@@ -115,110 +108,16 @@ class CreateCustomFormEntry extends CreateRecord
             return;
         }
 
-        $currentForm = CustomForm::query()->find($currentFormId);
-
-        if (! $currentForm || $currentForm->slug !== 'national-examination-registration') {
-            return;
-        }
-
-        $profileFormId = CustomForm::query()
-            ->where('slug', 'profile')
-            ->value('id');
-
-        if (! $profileFormId) {
-            return;
-        }
-
-        $profileQuery = CustomFormEntry::query()
-            ->where('custom_form_id', $profileFormId)
-            ->latest();
-
-        if (Schema::hasColumn('custom_form_entries', 'created_by')) {
-            $profileQuery->where('created_by', auth()->id());
-        } elseif (Schema::hasColumn('custom_form_entries', 'user_id')) {
-            $profileQuery->where('user_id', auth()->id());
-        } elseif (Schema::hasColumn('custom_form_entries', 'created_by_id')) {
-            $profileQuery->where('created_by_id', auth()->id());
-        }
-
-        $profileEntry = $profileQuery->first();
-
-        if (! $profileEntry) {
-            return;
-        }
-
-        $profileData = is_array($profileEntry->data)
-            ? $profileEntry->data
-            : json_decode((string) $profileEntry->data, true);
-
-        if (! is_array($profileData)) {
-            return;
-        }
-
         $state = $this->form->getRawState();
 
         $state['custom_form_id'] = $currentFormId;
         $state['data'] = $state['data'] ?? [];
 
-        $targetFields = \Illuminate\Support\Facades\DB::table('custom_form_fields')
-            ->where('custom_form_id', $currentFormId)
-            ->orWhereIn('custom_form_id', function ($query) use ($currentFormId) {
-                $query->select('id')->from('custom_forms')->where('custom_form_id', $currentFormId);
-            })
-            ->get()
-            ->keyBy('name');
-
-        $profileFields = \Illuminate\Support\Facades\DB::table('custom_form_fields')
-            ->where('custom_form_id', $profileFormId)
-            ->get()
-            ->keyBy('name');
-
-        $locale = app()->getLocale();
-
-        foreach ($profileData as $key => $value) {
-            if (filled($value) && blank(data_get($state, "data.$key"))) {
-                $resolvedValue = $value;
-
-                $targetField = $targetFields->get($key);
-                $profileField = $profileFields->get($key);
-
-                if ($profileField) {
-                    $profileOptions = is_array($profileField->options) 
-                        ? $profileField->options 
-                        : json_decode((string) $profileField->options, true);
-                    $profileChoices = $profileOptions['choices'] ?? null;
-
-                    if (is_array($profileChoices) && isset($profileChoices[$value])) {
-                        $isTargetSelectWithMatchingKey = false;
-
-                        if ($targetField) {
-                            $targetType = (string) $targetField->type;
-                            $targetOptions = is_array($targetField->options) 
-                                ? $targetField->options 
-                                : json_decode((string) $targetField->options, true);
-                            $targetChoices = $targetOptions['choices'] ?? null;
-                            
-                            $isTargetSelectWithMatchingKey = in_array($targetType, ['select', 'select_dropdown'], true)
-                                && is_array($targetChoices)
-                                && isset($targetChoices[$value]);
-                        }
-
-                        if (! $isTargetSelectWithMatchingKey) {
-                            $choiceVal = $profileChoices[$value];
-                            if (is_array($choiceVal)) {
-                                $resolvedValue = $choiceVal[$locale] ?? $choiceVal['km'] ?? $choiceVal['kh'] ?? $choiceVal['en'] ?? collect($choiceVal)->first() ?? $value;
-                            } else {
-                                $resolvedValue = (string) $choiceVal;
-                            }
-                        }
-                    }
-                }
-
-                $state['data'][$key] = $resolvedValue;
-            }
+        if ($this->form_selection) {
+            $state['data']['form_selection'] = $this->form_selection;
         }
 
-        $this->form->fill($state);
+        $this->form->fill(app(ProfileFormData::class)->prefillStateForForm($currentFormId, $state));
     }
 
     protected function getFormActions(): array

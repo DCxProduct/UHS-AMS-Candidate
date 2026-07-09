@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Filament\Concerns\StudentOnly;
 use App\Filament\Student\Resources\CustomFormEntries\CustomFormEntryResource;
 use App\Support\ClosingDateWorkflow;
+use App\Support\ProfileFormData;
 use App\Support\StudentDynamicFormSchema;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -76,7 +77,9 @@ class StudentDynamicFormPage extends Page implements HasForms
 
         $this->data = [];
 
-        $this->form->fill([]);
+        $this->data = app(ProfileFormData::class)->prefillDataForForm($this->customForm->id, []);
+
+        $this->form->fill($this->data);
     }
 
     public function form(Schema $schema): Schema
