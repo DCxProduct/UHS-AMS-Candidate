@@ -2,6 +2,7 @@
 
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Pages;
 
+use App\Models\ClosingDate;
 use App\Support\ProfileFormData;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
@@ -150,6 +151,19 @@ class CreateCustomFormEntry extends CreateRecord
                         return;
                     }
 
+                    if (
+                        $customForm
+                        && (string) $customForm->slug === 'national-examination-registration'
+                        && ! $this->selectedSubFormIsOpen($customForm, data_get($state, 'data.form_selection'))
+                    ) {
+                        Notification::make()
+                            ->danger()
+                            ->title(__('app.form_not_open_message'))
+                            ->send();
+
+                        return;
+                    }
+
                     $this->isSavingDraft = false;
 
                     if ($this->draftEntryId) {
@@ -208,6 +222,23 @@ class CreateCustomFormEntry extends CreateRecord
         $data['data']['registration_status'] = $status;
 
         return $data;
+    }
+
+    protected function selectedSubFormIsOpen(CustomForm $parentForm, mixed $formSelection): bool
+    {
+        if (blank($formSelection)) {
+            return false;
+        }
+
+        $subForm = CustomForm::query()
+            ->where('custom_form_id', $parentForm->id)
+            ->where('menu_placement', 'sub_item')
+            ->whereRaw('LOWER(sub_item_type) = ?', [strtolower((string) $formSelection)])
+            ->first();
+
+        return $subForm
+            ? ClosingDate::isCustomFormOpen($subForm->id)
+            : false;
     }
 
     protected function getRedirectUrl(): string

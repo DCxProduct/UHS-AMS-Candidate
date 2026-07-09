@@ -67,13 +67,66 @@ class ClosingDate extends Model
             $query->orderBy('display_order');
         }
 
-        return $query
+        $forms = $query
             ->orderBy('id')
-            ->get(['id', 'name'])
+            ->get(['id', 'custom_form_id', 'name', 'menu_placement', 'sub_item_type']);
+
+        $parentNames = $forms
+            ->keyBy('id')
+            ->map(fn ($form): string => self::displayFormName($form->name))
+            ->toArray();
+
+        return $forms
             ->mapWithKeys(fn ($form): array => [
-                self::customFormTypeKey($form->id) => $form->name,
+                self::customFormTypeKey($form->id) => self::displayTypeOptionLabel($form, $parentNames),
             ])
             ->toArray();
+    }
+
+    protected static function displayTypeOptionLabel(object $form, array $parentNames): string
+    {
+        $formName = self::displayFormName($form->name);
+
+        if (($form->menu_placement ?? null) === 'sub_item') {
+            $parentName = $parentNames[(int) ($form->custom_form_id ?? 0)] ?? __('closing_dates.parent_form');
+
+            return __('closing_dates.sub_form') . ": {$parentName} → {$formName}";
+        }
+
+        return __('closing_dates.parent_form') . ": {$formName}";
+    }
+
+    protected static function displayFormName(mixed $value): string
+    {
+        $locale = app()->getLocale();
+
+        if (is_string($value) && str_starts_with(trim($value), '{')) {
+            $decoded = json_decode($value, true);
+
+            if (is_array($decoded)) {
+                return (string) (
+                    $decoded[$locale]
+                    ?? $decoded['km']
+                    ?? $decoded['kh']
+                    ?? $decoded['en']
+                    ?? collect($decoded)->first()
+                    ?? ''
+                );
+            }
+        }
+
+        if (is_array($value)) {
+            return (string) (
+                $value[$locale]
+                ?? $value['km']
+                ?? $value['kh']
+                ?? $value['en']
+                ?? collect($value)->first()
+                ?? ''
+            );
+        }
+
+        return (string) $value;
     }
 
     public static function getDeadlineByCustomFormId(int|string|null $customFormId): ?self

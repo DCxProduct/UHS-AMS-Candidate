@@ -2,6 +2,7 @@
 
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Schemas;
 
+use App\Models\ClosingDate;
 use App\Models\GeoLocation;
 use Chanthoeun\FilamentCustomForms\CustomFormPlugin;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
@@ -125,7 +126,9 @@ class CustomFormEntryForm
             ->whereNotNull('sub_item_type')
             ->where('is_active', true)
             ->orderBy('id')
-            ->get();
+            ->get()
+            ->filter(fn (CustomForm $form): bool => ClosingDate::isCustomFormOpen($form->id))
+            ->values();
 
         $activeSubItemTypes = $childForms
             ->pluck('sub_item_type')
