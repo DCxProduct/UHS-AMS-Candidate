@@ -2,6 +2,7 @@
 
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomForms\RelationManagers;
 
+use App\Support\ProfileFormData;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
@@ -202,6 +203,76 @@ class FieldsRelationManager extends RelationManager
 
                                 \Filament\Forms\Components\Hidden::make('options.visible_when.operator')
                                     ->default('='),
+                            ]),
+
+                        \Filament\Schemas\Components\Section::make('Profile Keyword')
+                            ->columnSpanFull()
+                            ->columns(2)
+                            ->description('Use profile field keywords to prefill this custom form field from the student profile.')
+                            ->components([
+                                \Filament\Forms\Components\Select::make('options.profile_keyword')
+                                    ->label('Profile Keyword')
+                                    ->options(fn (): array => app(ProfileFormData::class)->profileKeywordOptions())
+                                    ->searchable()
+                                    ->preload()
+                                    ->native(false)
+                                    ->live()
+                                    ->visible(fn ($get): bool => ! in_array((string) $get('type'), self::CONTAINER_TYPES, true))
+                                    ->helperText('Leave blank to use the field name as the profile keyword.')
+                                    ->afterStateUpdated(function ($state, $set, $get): void {
+                                        if (blank($state)) {
+                                            return;
+                                        }
+
+                                        $profileField = app(ProfileFormData::class)->profileFieldByName((string) $state);
+
+                                        if (! $profileField) {
+                                            if (blank($get('name'))) {
+                                                $set('name', (string) $state);
+                                            }
+
+                                            return;
+                                        }
+
+                                        if (blank($get('name'))) {
+                                            $set('name', (string) $profileField->name);
+                                        }
+
+                                        $set('type', (string) ($profileField->type ?: 'text_input'));
+
+                                        if (blank($get('label_en'))) {
+                                            $set('label_en', self::getLangValue($profileField->label, 'en'));
+                                        }
+
+                                        if (blank($get('label_km'))) {
+                                            $set('label_km', self::getLangValue($profileField->label, 'km'));
+                                        }
+
+                                        self::fillProfileKeywordOptions($profileField, $set);
+                                    }),
+                            ]),
+
+                        \Filament\Schemas\Components\Section::make('Create From Profile Keywords')
+                            ->columnSpanFull()
+                            ->columns(1)
+                            ->hidden(fn (?object $record = null): bool => filled($record))
+                            ->components([
+                                \Filament\Forms\Components\Select::make('options.profile_keywords')
+                                    ->label('Profile Keywords')
+                                    ->options(function ($livewire): array {
+                                        $ownerForm = $livewire->getOwnerRecord();
+
+                                        $existingNames = $ownerForm
+                                            ? $ownerForm->fields()->pluck('name')->filter()->toArray()
+                                            : [];
+
+                                        return app(ProfileFormData::class)->profileKeywordOptions($existingNames);
+                                    })
+                                    ->searchable()
+                                    ->preload()
+                                    ->multiple()
+                                    ->native(false)
+                                    ->helperText('Select keywords and leave Name empty to create matching fields from the profile form.'),
                             ]),
 
                         \Filament\Schemas\Components\Section::make('Multiple Creating Selection Field')
@@ -446,6 +517,16 @@ class FieldsRelationManager extends RelationManager
                     ->label(__('filament-custom-forms::fcf.field.name'))
                     ->searchable(),
 
+                TextColumn::make('profile_keyword')
+                    ->label('Profile Keyword')
+                    ->state(function ($record): string {
+                        $keyword = data_get(self::normalizeOptions($record->options ?? []), 'profile_keyword');
+
+                        return filled($keyword) ? (string) $keyword : '—';
+                    })
+                    ->badge()
+                    ->color(fn (string $state): string => $state === '—' ? 'gray' : 'success'),
+
                  TextColumn::make('label_en')
                     ->label(app()->getLocale() === 'km' ? 'ស្លាក (EN)' : 'Label (EN)')
                     ->state(fn ($record): string => self::getLangValue($record->label, 'en'))
@@ -623,6 +704,8 @@ class FieldsRelationManager extends RelationManager
         ], JSON_UNESCAPED_UNICODE);
 
         unset($data['label_en'], $data['label_km']);
+
+        data_forget($data, 'options.profile_keywords');
 
         $choiceRows = data_get($data, 'options.choice_rows');
 
@@ -817,8 +900,78 @@ class FieldsRelationManager extends RelationManager
         return $rows;
     }
 
+    private static function fillProfileKeywordOptions(object $profileField, callable $set): void
+    {
+        $options = self::normalizeOptions($profileField->options ?? []);
+
+        if (isset($options['choices']) && is_array($options['choices'])) {
+            $set('options.choice_rows', self::choicesToRows($options['choices']));
+        }
+
+        foreach ([
+            'geo_location_type',
+            'geo_location_parent_field',
+            'geo_location_child_fields',
+            'geo_location_value_column',
+            'data_source_table',
+            'data_source_label_column',
+            'column_span',
+            'column_span_full',
+            'is_decimal',
+            'is_hidden_label',
+            'is_hidden_on_view',
+            'is_copyable',
+            'image_editor',
+            'is_revealable',
+            'text_format',
+        ] as $key) {
+            if (array_key_exists($key, $options)) {
+                $set("options.{$key}", $options[$key]);
+            }
+        }
+    }
+
     private function prepareFieldDataList(array $data): array
     {
+        $selectedProfileKeywords = data_get($data, 'options.profile_keywords', []);
+
+        if (! is_array($selectedProfileKeywords)) {
+            $selectedProfileKeywords = filled($selectedProfileKeywords) ? [$selectedProfileKeywords] : [];
+        }
+
+        $selectedProfileKeywords = array_values(array_filter($selectedProfileKeywords, fn ($value): bool => filled($value)));
+
+        if (! empty($selectedProfileKeywords) && blank($data['name'] ?? null)) {
+            $ownerForm = $this->getOwnerRecord();
+
+            $existingNames = $ownerForm->fields()
+                ->pluck('name')
+                ->filter()
+                ->toArray();
+
+            $nextSort = ((int) $ownerForm->fields()->max('sort')) + 1;
+
+            return app(ProfileFormData::class)
+                ->profileFieldsByName($selectedProfileKeywords)
+                ->reject(fn ($field): bool => in_array((string) $field->name, $existingNames, true))
+                ->map(function ($field) use ($ownerForm, &$nextSort): array {
+                    $copy = $field->toArray();
+
+                    unset($copy['id'], $copy['created_at'], $copy['updated_at']);
+
+                    $options = self::normalizeOptions($copy['options'] ?? []);
+                    $options['profile_keyword'] = (string) $copy['name'];
+
+                    $copy['custom_form_id'] = $ownerForm->id;
+                    $copy['parent_id'] = null;
+                    $copy['options'] = $options;
+                    $copy['sort'] = $nextSort++;
+
+                    return $copy;
+                })
+                ->toArray();
+        }
+
         $selectedFields = data_get($data, 'options.visible_when.fields', []);
 
         if (! is_array($selectedFields)) {
