@@ -139,10 +139,10 @@ class CustomFormEntryForm
 
         $selectionOptions = self::normalizeOptions($formSelectionField->options ?? []);
         $parentFields = $rootFields
-            ->reject(fn ($field): bool => (string) $field->name === 'form_types')
+            ->reject(fn ($field): bool => in_array((string) $field->name, ['form_types', 'form_selection'], true))
             ->values();
 
-        $parentSchema = self::getFields($parentFields, $isLocked);
+        $parentSchema = self::getFields($parentFields, $isLocked, ['form_selection']);
 
         $formTypeStepSchema = [];
 
@@ -152,41 +152,51 @@ class CustomFormEntryForm
                 ->columns(2);
         }
 
+        $formTypesSchema = self::getFields(
+            $formTypesSection->children()
+                ->orderBy('sort')
+                ->get()
+                ->reject(fn ($field): bool => (string) $field->name === 'form_selection')
+                ->values(),
+            $isLocked,
+            ['form_selection']
+        );
+
+        $formTypesSchema[] = Select::make('data.form_selection')
+            ->label(self::transText($formSelectionField->label ?: 'Form Selections'))
+            ->options(self::transOptionsOnlyActive($selectionOptions['choices'] ?? [], $activeSubItemTypes))
+            ->placeholder(self::selectPlaceholder())
+            ->required((bool) ($formSelectionField->required ?? false))
+            ->validationMessages([
+                'required' => __('student_profile.form_type_required'),
+            ])
+            ->dehydrated(true)
+            ->live()
+            ->afterStateUpdated(function (Select $component, $state, $livewire) {
+                if (property_exists($livewire, 'form_selection')) {
+                    $livewire->form_selection = $state ?: null;
+                }
+
+                if ($state) {
+                    $wizardKey = null;
+                    $container = $component->getContainer();
+                    while ($container) {
+                        $parentComponent = $container->getParentComponent();
+                        if ($parentComponent instanceof \Filament\Schemas\Components\Wizard) {
+                            $wizardKey = $parentComponent->getKey();
+                            break;
+                        }
+                        $container = $parentComponent?->getContainer();
+                    }
+
+                    if ($wizardKey) {
+                        $livewire->dispatch('next-wizard-step', key: $wizardKey);
+                    }
+                }
+            });
+
         $formTypeStepSchema[] = Section::make(self::transText($formTypesSection->label ?: 'Form Types'))
-                ->schema([
-                    Select::make('data.form_selection')
-                        ->label(self::transText($formSelectionField->label ?: 'Form Selections'))
-                        ->options(self::transOptionsOnlyActive($selectionOptions['choices'] ?? [], $activeSubItemTypes))
-                        ->placeholder(self::selectPlaceholder())
-                        ->required((bool) ($formSelectionField->required ?? false))
-                        ->validationMessages([
-                            'required' => __('student_profile.form_type_required'),
-                        ])
-                        ->dehydrated(true)
-                        ->live()
-                        ->afterStateUpdated(function (Select $component, $state, $livewire) {
-                            if (property_exists($livewire, 'form_selection')) {
-                                $livewire->form_selection = $state ?: null;
-                            }
-
-                            if ($state) {
-                                $wizardKey = null;
-                                $container = $component->getContainer();
-                                while ($container) {
-                                    $parentComponent = $container->getParentComponent();
-                                    if ($parentComponent instanceof \Filament\Schemas\Components\Wizard) {
-                                        $wizardKey = $parentComponent->getKey();
-                                        break;
-                                    }
-                                    $container = $parentComponent?->getContainer();
-                                }
-
-                                if ($wizardKey) {
-                                    $livewire->dispatch('next-wizard-step', key: $wizardKey);
-                                }
-                            }
-                        }),
-                ])
+                ->schema($formTypesSchema)
                 ->columns(1);
 
         $applicationSchema = [];
