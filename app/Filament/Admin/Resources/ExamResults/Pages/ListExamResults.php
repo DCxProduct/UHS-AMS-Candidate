@@ -55,21 +55,17 @@ class ListExamResults extends ListRecords
 
             echo '</tr></thead><tbody>';
 
-            foreach ($records as $record) {
+            foreach ($records as $index => $record) {
                 $data = is_array($record->data) ? $record->data : [];
-                $passedAt = data_get($data, 'candidate_reviewed_at');
 
                 $row = [
-                    $record->id,
-                    $record->creator?->name,
-                    $this->formTypeLabel(data_get($data, 'form_selection')),
-                    data_get($data, 'student_id'),
-                    data_get($data, 'first_name_en'),
-                    data_get($data, 'last_name_en'),
-                    data_get($data, 'first_name_kh'),
-                    data_get($data, 'last_name_kh'),
-                    __('review_applications.statuses.passed'),
-                    filled($passedAt) ? Carbon::parse($passedAt)->format('d M Y H:i') : '',
+                    $index + 1,
+                    $this->entryValue($record, 'academic_year', $record->creator?->academic_year),
+                    $this->entryValue($record, 'seat_number', $this->entryValue($record, 'list_number', $record->creator?->seat_number)),
+                    $this->khmerName($record),
+                    $this->latinName($record),
+                    $this->genderLabel($this->entryValue($record, 'gender')),
+                    $this->dateValue($this->entryValue($record, 'date_of_birth', $record->creator?->date_of_birth)),
                 ];
 
                 echo '<tr>';
@@ -91,16 +87,13 @@ class ListExamResults extends ListRecords
     protected function excelHeadings(): array
     {
         return [
-            __('review_applications.id'),
-            __('review_applications.student'),
-            __('review_applications.form_type'),
-            __('review_applications.student_id'),
-            __('review_applications.first_name_en'),
-            __('review_applications.last_name_en'),
-            __('review_applications.first_name_kh'),
-            __('review_applications.last_name_kh'),
-            __('exam_results.exam_result'),
-            __('exam_results.passed_at'),
+            __('exam_results.no'),
+            __('exam_results.academic_year'),
+            __('exam_results.seat_number'),
+            __('exam_results.name_khmer'),
+            __('exam_results.name_latin'),
+            __('exam_results.gender'),
+            __('exam_results.date_of_birth'),
         ];
     }
 
@@ -113,5 +106,58 @@ class ListExamResults extends ListRecords
             'phd' => app()->getLocale() === 'km' ? 'បណ្ឌិត' : 'PhD',
             default => filled($state) ? ucfirst((string) $state) : '-',
         };
+    }
+
+    protected function entryValue($record, string $key, mixed $fallback = null): string
+    {
+        $value = data_get($record->data, $key);
+
+        if (blank($value)) {
+            $value = $fallback;
+        }
+
+        return blank($value) ? '-' : (string) $value;
+    }
+
+    protected function khmerName($record): string
+    {
+        $name = trim(collect([
+            data_get($record->data, 'last_name_kh'),
+            data_get($record->data, 'first_name_kh'),
+        ])->filter()->join(' '));
+
+        return filled($name) ? $name : $this->entryValue($record, 'name_khmer', $record->creator?->name);
+    }
+
+    protected function latinName($record): string
+    {
+        $name = trim(collect([
+            data_get($record->data, 'last_name_en'),
+            data_get($record->data, 'first_name_en'),
+        ])->filter()->join(' '));
+
+        return filled($name) ? strtoupper($name) : $this->entryValue($record, 'name_latin', $record->creator?->name_latin);
+    }
+
+    protected function genderLabel(string $state): string
+    {
+        return match (strtolower($state)) {
+            'male' => app()->getLocale() === 'km' ? 'ប្រុស' : 'Male',
+            'female' => app()->getLocale() === 'km' ? 'ស្រី' : 'Female',
+            default => $state,
+        };
+    }
+
+    protected function dateValue(mixed $state): string
+    {
+        if (blank($state) || $state === '-') {
+            return '-';
+        }
+
+        try {
+            return Carbon::parse($state)->format('d/m/Y');
+        } catch (\Throwable) {
+            return (string) $state;
+        }
     }
 }

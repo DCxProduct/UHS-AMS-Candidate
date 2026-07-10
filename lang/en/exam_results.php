@@ -8,4 +8,11 @@ return [
     'exam_result' => 'Exam Result',
     'passed_at' => 'Passed At',
     'download_excel' => 'Download Excel',
+    'no' => 'No.',
+    'academic_year' => 'Academic Year',
+    'seat_number' => 'Seat Number',
+    'name_khmer' => 'Name (Khmer)',
+    'name_latin' => 'Name (Latin)',
+    'gender' => 'Gender',
+    'date_of_birth' => 'Date of Birth',
 ];
