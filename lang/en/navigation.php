@@ -13,6 +13,7 @@ return [
     'profile' => 'Profile',
     'national_examination_registration' => 'National Examination Registration',
     'review_applications' => 'Candidate Lists',
+    'exam_results' => 'Exam Results',
     'custom_forms' => 'Custom Forms',
     'document_templates' => 'Document Templates',
     'closing_date' => 'Closing Date',

@@ -13,6 +13,7 @@ return [
     'profile' => 'ប្រវត្តិរូប',
     'national_examination_registration' => 'ការចុះឈ្មោះប្រឡងថ្នាក់ជាតិ',
     'review_applications' => 'បញ្ជីបេក្ខជន',
+    'exam_results' => 'លទ្ធផលប្រឡង',
     'custom_forms' => 'ទម្រង់កំណត់តាមតម្រូវការ',
     'document_templates' => 'គំរូឯកសារ',
     'closing_date' => 'កាលបរិច្ឆេទបិទ',
