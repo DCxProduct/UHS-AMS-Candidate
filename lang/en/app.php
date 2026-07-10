@@ -151,7 +151,7 @@ return [
 
     'waiting_review' => 'Waiting Review',
     'approved' => 'Approved',
-    'rejected' => 'Rejected',
+    'rejected' => 'Incomplete',
     'need_correction' => 'Need Correction',
     'not_submitted' => 'Not Submitted',
 
