@@ -102,6 +102,13 @@ class CustomFormEntriesTable
                 ->orderBy('sort')
                 ->get();
 
+            $imageFieldKeys = $fields
+                ->filter(fn ($field): bool => self::isImageFieldType((string) $field->type))
+                ->pluck('name')
+                ->filter()
+                ->map(fn ($name): string => (string) $name)
+                ->all();
+
             $processedKeys = [
                 'form_selection',
                 'list_number',
@@ -117,7 +124,7 @@ class CustomFormEntriesTable
 
             foreach ($fields as $field) {
                 $key = (string) $field->name;
-                if (blank($key) || in_array($key, $processedKeys, true)) {
+                if (blank($key) || in_array($key, $processedKeys, true) || in_array($key, $imageFieldKeys, true)) {
                     continue;
                 }
 
@@ -216,7 +223,7 @@ class CustomFormEntriesTable
                 ->unique();
 
             foreach ($dataKeys as $key) {
-                if (blank($key) || in_array($key, $processedKeys, true) || isset($additionalColumns[$key])) {
+                if (blank($key) || in_array($key, $processedKeys, true) || in_array($key, $imageFieldKeys, true) || isset($additionalColumns[$key])) {
                     continue;
                 }
 
@@ -1218,6 +1225,11 @@ class CustomFormEntriesTable
             'phd' => $locale === 'km' ? 'បណ្ឌិត' : 'PhD',
             default => filled($state) ? ucfirst((string) $state) : '-',
         };
+    }
+
+    protected static function isImageFieldType(string $type): bool
+    {
+        return in_array($type, ['image', 'image_upload'], true);
     }
 
     protected static function isGeoColumn(string $key): bool
