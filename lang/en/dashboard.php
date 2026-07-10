@@ -47,7 +47,7 @@ return [
         'draft' => 'Save as Draft',
         'pending' => 'Pending',
         'accepted' => 'Accepted',
-        'rejected' => 'Rejected',
+        'rejected' => 'Incomplete',
         'passed' => 'Passed',
         'failed' => 'Failed',
         'not_ready' => 'Not Ready',
