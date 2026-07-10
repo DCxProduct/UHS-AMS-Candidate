@@ -84,10 +84,6 @@ class EditCustomFormEntry extends EditRecord
                         $data['status'] = 'draft';
                     }
 
-                    if (Schema::hasColumn('custom_form_entries', 'review_note')) {
-                        $data['review_note'] = null;
-                    }
-
                     if (Schema::hasColumn('custom_form_entries', 'reviewed_by')) {
                         $data['reviewed_by'] = null;
                     }
@@ -133,10 +129,6 @@ class EditCustomFormEntry extends EditRecord
             $data['data'] = $data['data'] ?? [];
             $data['data']['registration_status'] = 'pending';
 
-            if (Schema::hasColumn('custom_form_entries', 'review_note')) {
-                $data['review_note'] = null;
-            }
-
             if (Schema::hasColumn('custom_form_entries', 'reviewed_by')) {
                 $data['reviewed_by'] = null;
             }
@@ -172,10 +164,6 @@ class EditCustomFormEntry extends EditRecord
 
         if (Schema::hasColumn('custom_form_entries', 'status')) {
             $update['status'] = 'pending';
-        }
-
-        if (Schema::hasColumn('custom_form_entries', 'review_note')) {
-            $update['review_note'] = null;
         }
 
         if (Schema::hasColumn('custom_form_entries', 'reviewed_by')) {

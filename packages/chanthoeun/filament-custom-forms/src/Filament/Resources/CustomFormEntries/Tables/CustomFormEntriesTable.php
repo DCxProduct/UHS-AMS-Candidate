@@ -386,6 +386,11 @@ class CustomFormEntriesTable
         return $reviewStatus ?: $dataStatus ?: 'pending';
     }
 
+    protected static function reviewMessage($record): string
+    {
+        return trim((string) ($record->review_note ?? ''));
+    }
+
     protected static function isNationalExaminationForm(string $formId): bool
     {
         return \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
@@ -615,6 +620,65 @@ class CustomFormEntriesTable
     protected static function getRecordActions(): array
     {
         $actions = [
+            Action::make('edit_review_note')
+                ->label(app()->getLocale() === 'km' ? 'ប្រអប់សារ' : 'Message')
+                ->icon('heroicon-o-chat-bubble-left-ellipsis')
+                ->link()
+                ->color('danger')
+                ->modalHeading(app()->getLocale() === 'km' ? 'ប្រអប់សារ' : 'Message')
+                ->modalSubmitActionLabel(app()->getLocale() === 'km' ? 'រក្សាទុក' : 'Save')
+                ->modalCancelActionLabel(app()->getLocale() === 'km' ? 'បិទ' : 'Close')
+                ->fillForm(fn ($record): array => [
+                    'review_note' => self::reviewMessage($record),
+                ])
+                ->form([
+                    Textarea::make('review_note')
+                        ->label(app()->getLocale() === 'km' ? 'ការណែនាំ' : 'Recommendation')
+                        ->required()
+                        ->rows(5),
+                ])
+                ->action(function ($record, array $data): void {
+                    DB::table('custom_form_entries')
+                        ->where('id', $record->id)
+                        ->update([
+                            'review_note' => $data['review_note'] ?? null,
+                            'updated_at' => now(),
+                        ]);
+
+                    $record->refresh();
+
+                    Notification::make()
+                        ->title(app()->getLocale() === 'km' ? 'បានរក្សាទុកសារ' : 'Message saved')
+                        ->success()
+                        ->send();
+                })
+                ->visible(fn ($record): bool =>
+                    self::currentPanelIsAdmin()
+                    && in_array(self::entryStatus($record), ['pending', 'rejected'], true)
+                    && filled(self::reviewMessage($record))
+                ),
+
+            Action::make('view_review_note')
+                ->label(app()->getLocale() === 'km' ? 'ប្រអប់សារ' : 'Message')
+                ->icon('heroicon-o-chat-bubble-left-ellipsis')
+                ->link()
+                ->color('danger')
+                ->modalHeading(app()->getLocale() === 'km' ? 'ប្រអប់សារ' : 'Message')
+                ->modalSubmitAction(false)
+                ->modalCancelActionLabel(app()->getLocale() === 'km' ? 'បិទ' : 'Close')
+                ->modalContent(function ($record): HtmlString {
+                    return new HtmlString(
+                        '<div class="rounded-lg border border-warning-200 bg-warning-50 p-4 text-sm leading-6 text-warning-900 dark:border-warning-800 dark:bg-warning-950 dark:text-warning-100">'
+                        . nl2br(e(self::reviewMessage($record)))
+                        . '</div>'
+                    );
+                })
+                ->visible(fn ($record): bool =>
+                    ! self::currentPanelIsAdmin()
+                    && in_array(self::entryStatus($record), ['pending', 'rejected'], true)
+                    && filled(self::reviewMessage($record))
+                ),
+
             EditAction::make()
                 ->url(fn ($record): string => CustomFormEntryResource::getUrl('edit', [
                     'record' => $record,
