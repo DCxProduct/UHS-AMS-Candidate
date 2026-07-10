@@ -35,6 +35,9 @@ class FieldsRelationManager extends RelationManager
         'multi_select',
     ];
 
+    private const PARENT_FORM_TYPE = '__parent_form';
+    private const FORM_TARGET_PREFIX = 'form:';
+
     public function form(Schema $schema): Schema
     {
         return $schema
@@ -148,31 +151,7 @@ class FieldsRelationManager extends RelationManager
                             ->components([
                                 \Filament\Forms\Components\CheckboxList::make('options.visible_when.values')
                                     ->label(__('filament-custom-forms::fcf.field.form_type'))
-                                    ->options(function ($livewire): array {
-                                        $customForm = $livewire->getOwnerRecord();
-
-                                        if (! $customForm) {
-                                            return [];
-                                        }
-
-                                        $rootFormId = $customForm->id;
-                                        if ($customForm->menu_placement === 'sub_item' && filled($customForm->custom_form_id)) {
-                                            $rootFormId = $customForm->custom_form_id;
-                                        }
-
-                                        $selectionField = \Chanthoeun\FilamentCustomForms\Models\CustomFormField::query()
-                                            ->where('custom_form_id', $rootFormId)
-                                            ->where('name', 'form_selection')
-                                            ->first();
-
-                                        if (! $selectionField) {
-                                            return [];
-                                        }
-
-                                        $choices = data_get($selectionField->options, 'choices') ?? [];
-
-                                        return self::englishOptions(is_array($choices) ? $choices : []);
-                                    })
+                                    ->options(fn (): array => self::dynamicFormTargetOptions())
                                     ->columns(2)
                                     ->bulkToggleable()
                                     ->afterStateHydrated(function ($component, $state, $record): void {
@@ -182,7 +161,7 @@ class FieldsRelationManager extends RelationManager
 
                                         $oldValue = data_get($record?->options, 'visible_when.value');
 
-                                        if (filled($oldValue)) {
+                                        if (is_string($oldValue) && str_starts_with($oldValue, self::FORM_TARGET_PREFIX)) {
                                             $component->state([$oldValue]);
 
                                             return;
@@ -190,12 +169,18 @@ class FieldsRelationManager extends RelationManager
 
                                         $ownerForm = $record?->form;
 
+                                        if ($ownerForm && $ownerForm->menu_placement === 'sidebar') {
+                                            $component->state([self::formTargetValue($ownerForm->id)]);
+
+                                            return;
+                                        }
+
                                         if (
                                             $ownerForm
                                             && $ownerForm->menu_placement === 'sub_item'
                                             && filled($ownerForm->sub_item_type)
                                         ) {
-                                            $component->state([$ownerForm->sub_item_type]);
+                                            $component->state([self::formTargetValue($ownerForm->id)]);
                                         }
                                     })
                                     ->live()
@@ -528,6 +513,10 @@ class FieldsRelationManager extends RelationManager
                             if ($ownerForm && $ownerForm->menu_placement === 'sub_item' && filled($ownerForm->sub_item_type)) {
                                 return $ownerForm->sub_item_type;
                             }
+
+                            if ($ownerForm && $ownerForm->menu_placement === 'sidebar') {
+                                return self::PARENT_FORM_TYPE;
+                            }
                         }
 
                         return $state;
@@ -539,6 +528,11 @@ class FieldsRelationManager extends RelationManager
                         }
 
                         $stateString = (string) $state;
+
+                        if ($stateString === self::PARENT_FORM_TYPE) {
+                            return app()->getLocale() === 'km' ? 'ទម្រង់មេ' : 'Parent Form';
+                        }
+
                         $ownerForm = $record->form;
 
                         if ($ownerForm) {
@@ -708,6 +702,37 @@ class FieldsRelationManager extends RelationManager
             $selectedType = data_get($data, 'options.visible_when.value');
         }
 
+        $rootFormId = $ownerForm->id;
+
+        if ($ownerForm->menu_placement === 'sub_item' && filled($ownerForm->custom_form_id)) {
+            $rootFormId = $ownerForm->custom_form_id;
+        }
+
+        $targetForm = self::formTargetFromValue($selectedType);
+
+        if ($targetForm) {
+            $data['custom_form_id'] = $targetForm->id;
+            $data['parent_id'] = null;
+
+            if ($targetForm->menu_placement === 'sub_item' && filled($targetForm->sub_item_type)) {
+                data_set($data, 'options.visible_when.field', 'form_selection');
+                data_set($data, 'options.visible_when.operator', '=');
+                data_set($data, 'options.visible_when.value', $targetForm->sub_item_type);
+            } else {
+                data_forget($data, 'options.visible_when');
+            }
+
+            return $data;
+        }
+
+        if ($selectedType === self::PARENT_FORM_TYPE) {
+            data_forget($data, 'options.visible_when');
+            $data['custom_form_id'] = $rootFormId;
+            $data['parent_id'] = null;
+
+            return $data;
+        }
+
         if (blank($selectedType) || $selectedType === false || $selectedType === 'false') {
             if (filled($ownerForm->sub_item_type)) {
                 $selectedType = $ownerForm->sub_item_type;
@@ -727,12 +752,6 @@ class FieldsRelationManager extends RelationManager
         $targetFormId = $ownerForm->id;
 
         if (filled($selectedType)) {
-            $rootFormId = $ownerForm->id;
-
-            if ($ownerForm->menu_placement === 'sub_item' && filled($ownerForm->custom_form_id)) {
-                $rootFormId = $ownerForm->custom_form_id;
-            }
-
             $targetForm = \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
                 ->where('custom_form_id', $rootFormId)
                 ->whereRaw('LOWER(sub_item_type) = ?', [
@@ -843,6 +862,44 @@ class FieldsRelationManager extends RelationManager
         }
 
         return $rows;
+    }
+
+    private static function formTargetValue(int|string $formId): string
+    {
+        return self::FORM_TARGET_PREFIX . $formId;
+    }
+
+    private static function formTargetFromValue(mixed $value): ?\Chanthoeun\FilamentCustomForms\Models\CustomForm
+    {
+        if (! is_string($value) || ! str_starts_with($value, self::FORM_TARGET_PREFIX)) {
+            return null;
+        }
+
+        $formId = (int) substr($value, strlen(self::FORM_TARGET_PREFIX));
+
+        if ($formId <= 0) {
+            return null;
+        }
+
+        return \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
+            ->where('is_active', true)
+            ->find($formId);
+    }
+
+    private static function dynamicFormTargetOptions(): array
+    {
+        $forms = \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
+            ->where('is_active', true)
+            ->whereIn('menu_placement', ['sidebar', 'sub_item'])
+            ->orderBy('custom_form_id')
+            ->orderBy('id')
+            ->get(['id', 'name', 'menu_placement', 'custom_form_id', 'sub_item_type']);
+
+        return $forms
+            ->mapWithKeys(fn ($form): array => [
+                self::formTargetValue($form->id) => self::localeText($form->name),
+            ])
+            ->toArray();
     }
 
     private function prepareFieldDataList(array $data): array
