@@ -20,58 +20,45 @@ class ExamResultsTable
             ->recordAction(null)
             ->recordUrl(null)
             ->columns([
-                TextColumn::make('id')
-                    ->label(__('review_applications.id')),
+                TextColumn::make('row_number')
+                    ->label(__('exam_results.no'))
+                    ->rowIndex()
+                    ->alignCenter(),
 
-                TextColumn::make('creator.name')
-                    ->label(__('review_applications.student'))
-                    ->searchable(),
+                TextColumn::make('academic_year')
+                    ->label(__('exam_results.academic_year'))
+                    ->getStateUsing(fn ($record): string => self::entryValue($record, 'academic_year', $record->creator?->academic_year))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => $query->where('data->academic_year', 'like', "%{$search}%"))
+                    ->sortable(),
 
-                TextColumn::make('data.form_selection')
-                    ->label(__('review_applications.form_type'))
-                    ->badge()
-                    ->formatStateUsing(fn (?string $state): string => self::formTypeLabel($state))
-                    ->color('info')
-                    ->searchable(),
+                TextColumn::make('seat_number')
+                    ->label(__('exam_results.seat_number'))
+                    ->getStateUsing(fn ($record): string => self::entryValue($record, 'seat_number', self::entryValue($record, 'list_number', $record->creator?->seat_number)))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => $query
+                        ->where('data->seat_number', 'like', "%{$search}%")
+                        ->orWhere('data->list_number', 'like', "%{$search}%")),
 
-                TextColumn::make('data.student_id')
-                    ->label(__('review_applications.student_id'))
-                    ->searchable(),
+                TextColumn::make('name_khmer')
+                    ->label(__('exam_results.name_khmer'))
+                    ->getStateUsing(fn ($record): string => self::khmerName($record))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => $query
+                        ->where('data->first_name_kh', 'like', "%{$search}%")
+                        ->orWhere('data->last_name_kh', 'like', "%{$search}%")),
 
-                TextColumn::make('data.first_name_en')
-                    ->label(__('review_applications.first_name_en'))
-                    ->searchable()
-                    ->toggleable(),
+                TextColumn::make('name_latin')
+                    ->label(__('exam_results.name_latin'))
+                    ->getStateUsing(fn ($record): string => self::latinName($record))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => $query
+                        ->where('data->first_name_en', 'like', "%{$search}%")
+                        ->orWhere('data->last_name_en', 'like', "%{$search}%")),
 
-                TextColumn::make('data.last_name_en')
-                    ->label(__('review_applications.last_name_en'))
-                    ->searchable()
-                    ->toggleable(),
+                TextColumn::make('gender')
+                    ->label(__('exam_results.gender'))
+                    ->getStateUsing(fn ($record): string => self::genderLabel(self::entryValue($record, 'gender'))),
 
-                TextColumn::make('data.first_name_kh')
-                    ->label(__('review_applications.first_name_kh'))
-                    ->searchable()
-                    ->toggleable(),
-
-                TextColumn::make('data.last_name_kh')
-                    ->label(__('review_applications.last_name_kh'))
-                    ->searchable()
-                    ->toggleable(),
-
-                TextColumn::make('data.exam_result')
-                    ->label(__('exam_results.exam_result'))
-                    ->badge()
-                    ->getStateUsing(fn ($record): string => (string) (data_get($record->data, 'exam_result') ?: data_get($record->data, 'result_status') ?: 'passed'))
-                    ->formatStateUsing(fn (?string $state): string => self::statusLabel($state))
-                    ->color(fn (?string $state): string => strtolower((string) $state) === 'passed' ? 'success' : 'gray'),
-
-                TextColumn::make('data.candidate_reviewed_at')
-                    ->label(__('exam_results.passed_at'))
-                    ->formatStateUsing(fn ($state): string => filled($state)
-                        ? Carbon::parse($state)->format('d M Y H:i')
-                        : '-')
-                    ->color('info')
-                    ->sortable(false),
+                TextColumn::make('date_of_birth')
+                    ->label(__('exam_results.date_of_birth'))
+                    ->getStateUsing(fn ($record): string => self::dateValue(self::entryValue($record, 'date_of_birth', $record->creator?->date_of_birth))),
             ])
             ->filters([
                 Filter::make('exam_result_filters')
@@ -154,5 +141,58 @@ class ExamResultsTable
             'passed' => __('review_applications.statuses.passed'),
             default => filled($state) ? ucfirst((string) $state) : '-',
         };
+    }
+
+    protected static function entryValue($record, string $key, mixed $fallback = null): string
+    {
+        $value = data_get($record->data, $key);
+
+        if (blank($value)) {
+            $value = $fallback;
+        }
+
+        return blank($value) ? '-' : (string) $value;
+    }
+
+    protected static function khmerName($record): string
+    {
+        $name = trim(collect([
+            data_get($record->data, 'last_name_kh'),
+            data_get($record->data, 'first_name_kh'),
+        ])->filter()->join(' '));
+
+        return filled($name) ? $name : self::entryValue($record, 'name_khmer', $record->creator?->name);
+    }
+
+    protected static function latinName($record): string
+    {
+        $name = trim(collect([
+            data_get($record->data, 'last_name_en'),
+            data_get($record->data, 'first_name_en'),
+        ])->filter()->join(' '));
+
+        return filled($name) ? strtoupper($name) : self::entryValue($record, 'name_latin', $record->creator?->name_latin);
+    }
+
+    protected static function genderLabel(string $state): string
+    {
+        return match (strtolower($state)) {
+            'male' => app()->getLocale() === 'km' ? 'ប្រុស' : 'Male',
+            'female' => app()->getLocale() === 'km' ? 'ស្រី' : 'Female',
+            default => $state,
+        };
+    }
+
+    protected static function dateValue(mixed $state): string
+    {
+        if (blank($state) || $state === '-') {
+            return '-';
+        }
+
+        try {
+            return Carbon::parse($state)->format('d/m/Y');
+        } catch (\Throwable) {
+            return (string) $state;
+        }
     }
 }
