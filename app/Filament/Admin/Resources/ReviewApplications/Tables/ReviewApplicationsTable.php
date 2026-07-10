@@ -203,6 +203,25 @@ class ReviewApplicationsTable
                             ->success()
                             ->send();
                     }),
+
+                Action::make('pending')
+                    ->label(__('review_applications.statuses.pending'))
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->modalHeading(__('review_applications.statuses.pending'))
+                    ->modalSubmitActionLabel(__('review_applications.statuses.pending'))
+                    ->visible(fn (CustomFormEntry $record): bool =>
+                        strtolower((string) data_get($record->data, 'candidate_status', 'pending')) === 'passed'
+                    )
+                    ->action(function (CustomFormEntry $record): void {
+                        self::markCandidatePending($record);
+
+                        Notification::make()
+                            ->title(__('review_applications.statuses.pending'))
+                            ->success()
+                            ->send();
+                    }),
             ])
             ->toolbarActions([
                 BulkAction::make('bulk_passed')
@@ -291,6 +310,21 @@ class ReviewApplicationsTable
             status: 'passed',
             note: null,
         );
+    }
+
+    protected static function markCandidatePending(CustomFormEntry $record): void
+    {
+        $dataJson = self::normalizeData($record->data);
+        $dataJson['candidate_status'] = 'pending';
+
+        DB::table('custom_form_entries')
+            ->where('id', $record->id)
+            ->update([
+                'data' => json_encode($dataJson, JSON_UNESCAPED_UNICODE),
+                'updated_at' => now(),
+            ]);
+
+        $record->refresh();
     }
 
     protected static function formTypeLabel(?string $state): string
