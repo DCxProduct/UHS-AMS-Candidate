@@ -5,6 +5,7 @@ namespace Chanthoeun\FilamentDocumentBuilder\Services;
 use Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 use Mccarlosen\LaravelMpdf\Facades\LaravelMpdf as Pdf;
 
 class DocumentRenderer
@@ -129,6 +130,10 @@ class DocumentRenderer
                 $value = data_get($currentContext, $key);
             }
 
+            if ($value === null && $data instanceof Model && is_array($data->getAttribute('data'))) {
+                $value = data_get($data->getAttribute('data'), $key);
+            }
+
             if ($value === null || $value === '') {
                 return ''; // Return empty string instead of debug text in production
             }
@@ -136,13 +141,179 @@ class DocumentRenderer
                 return ''; // Ignore array printing rather than crashing mPDF
             }
 
+            if ($imageHtml = $this->imageHtmlFromValue((string) $value)) {
+                return $imageHtml;
+            }
+
             return $value;
         }, $content);
+    }
+
+    protected function imageHtmlFromValue(string $value): ?string
+    {
+        $localPath = $this->localImagePathFromValue($value);
+
+        if (! $localPath) {
+            return null;
+        }
+
+        return '<img src="' . e($localPath) . '" style="max-width: 180px; max-height: 120px; object-fit: contain;" />';
+    }
+
+    protected function localImagePathFromValue(string $value): ?string
+    {
+        $path = trim($value);
+
+        if ($path === '' || ! preg_match('/\.(jpe?g|png|webp|gif)$/i', $path)) {
+            return null;
+        }
+
+        if (str_starts_with($path, 'storage/')) {
+            $path = substr($path, strlen('storage/'));
+        }
+
+        if (str_starts_with($path, '/storage/')) {
+            $path = substr($path, strlen('/storage/'));
+        }
+
+        if (preg_match('/^https?:\/\//i', $path)) {
+            $publicPath = parse_url($path, PHP_URL_PATH);
+
+            if (is_string($publicPath) && str_starts_with($publicPath, '/storage/')) {
+                $path = substr($publicPath, strlen('/storage/'));
+            }
+        }
+
+        $disk = config('filament-custom-forms.uploads.disk', 'public');
+
+        if (! Storage::disk($disk)->exists($path)) {
+            return null;
+        }
+
+        return Storage::disk($disk)->path($path);
+    }
+
+    protected function attachmentImagesHtml(array|object $data): string
+    {
+        if (! $data instanceof Model || ! is_array($data->getAttribute('data'))) {
+            return '';
+        }
+
+        $images = $this->collectAttachmentImages(
+            $data->getAttribute('data'),
+            $this->attachmentImageLabels($data)
+        );
+
+        if (empty($images)) {
+            return '';
+        }
+
+        $html = '<div style="page-break-before: always; padding: 6mm; background-color: #f3f4f6; border: 1px solid #d1d5db; min-height: 270mm;">';
+
+        foreach ($images as $label => $path) {
+            $html .= '<div style="margin-bottom: 6mm; padding: 4mm; background-color: #ffffff; border: 1px solid #cbd5e1;">'
+                . '<img src="' . e($path) . '" style="width: 100%; max-height: 258mm; object-fit: contain; border: 1px solid #e5e7eb;" />'
+                . '</div>';
+        }
+
+        return $html . '</div>';
+    }
+
+    protected function collectAttachmentImages(array $data, array $labels = [], string $prefix = ''): array
+    {
+        $images = [];
+
+        foreach ($data as $key => $value) {
+            $label = $prefix === '' ? (string) $key : $prefix . '.' . $key;
+
+            if (is_array($value)) {
+                $images += $this->collectAttachmentImages($value, $labels, $label);
+
+                continue;
+            }
+
+            if (! is_string($value)) {
+                continue;
+            }
+
+            $path = $this->localImagePathFromValue($value);
+
+            if ($path) {
+                $images[$labels[(string) $key] ?? $label] = $path;
+            }
+        }
+
+        return $images;
+    }
+
+    protected function attachmentImageLabels(Model $entry): array
+    {
+        if (! class_exists(\Chanthoeun\FilamentCustomForms\Models\CustomFormField::class)) {
+            return [];
+        }
+
+        $formIds = array_filter([(int) ($entry->custom_form_id ?? 0)]);
+        $selection = strtolower((string) data_get($entry->data, 'form_selection'));
+
+        if (
+            filled($selection)
+            && class_exists(\Chanthoeun\FilamentCustomForms\Models\CustomForm::class)
+        ) {
+            $subFormId = \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
+                ->where('custom_form_id', $entry->custom_form_id)
+                ->where('menu_placement', 'sub_item')
+                ->whereRaw('LOWER(sub_item_type) = ?', [$selection])
+                ->value('id');
+
+            if ($subFormId) {
+                $formIds[] = (int) $subFormId;
+            }
+        }
+
+        return \Chanthoeun\FilamentCustomForms\Models\CustomFormField::query()
+            ->whereIn('custom_form_id', array_unique($formIds))
+            ->whereIn('type', ['image', 'image_upload'])
+            ->get(['name', 'label'])
+            ->mapWithKeys(fn ($field): array => [
+                (string) $field->name => $this->localizedText($field->label) ?: (string) $field->name,
+            ])
+            ->toArray();
+    }
+
+    protected function localizedText(mixed $value): string
+    {
+        if (is_string($value) && str_starts_with(trim($value), '{')) {
+            $decoded = json_decode($value, true);
+
+            if (is_array($decoded)) {
+                $value = $decoded;
+            }
+        }
+
+        if (is_object($value)) {
+            $value = json_decode(json_encode($value), true);
+        }
+
+        if (is_array($value)) {
+            $locale = app()->getLocale();
+
+            return (string) (
+                $value[$locale]
+                ?? $value['km']
+                ?? $value['kh']
+                ?? $value['en']
+                ?? collect($value)->first()
+                ?? ''
+            );
+        }
+
+        return (string) $value;
     }
 
     protected function processHtmlContent(DocumentTemplate $template, array|object $data = []): string
     {
         $htmlContent = $template->content ?? '';
+        $recordData = $data;
 
         // Eager load relations to prevent N+1 performance bottlenecks
         $this->preloadRelations($htmlContent, $data);
@@ -174,6 +345,7 @@ class DocumentRenderer
 
         $htmlContent = $this->replaceLoops($htmlContent, $data);
         $htmlContent = $this->replaceVariables($htmlContent, $data);
+        $htmlContent .= $this->attachmentImagesHtml($recordData);
 
         // mPDF compatibility fixes
         $htmlContent = preg_replace('/display:\s*inline-flex;?/', 'display: inline-block;', $htmlContent);

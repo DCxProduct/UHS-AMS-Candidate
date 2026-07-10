@@ -315,6 +315,10 @@ class EditCustomFormEntry extends EditRecord
             return false;
         }
 
+        if (filled(data_get($this->form->getRawState(), 'data.form_selection'))) {
+            return false;
+        }
+
         $step = $this->wizard_step;
 
         if ($step) {
