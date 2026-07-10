@@ -40,7 +40,7 @@ return [
     'statuses' => [
         'pending' => 'កំពុងរង់ចាំ',
         'accepted' => 'បានពិនិត្យ',
-        'rejected' => 'បានបដិសេធ',
+        'rejected' => 'មិនគ្រប់គ្រាន់',
         'send_back' => 'បញ្ជូលត្រឡប់',
         'passed' => 'ជាប់',
         'failed' => 'ធ្លាក់',

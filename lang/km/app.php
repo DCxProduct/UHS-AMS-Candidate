@@ -151,7 +151,7 @@ return [
 
     'waiting_review' => 'កំពុងរង់ចាំពិនិត្យ',
     'approved' => 'បានអនុម័ត',
-    'rejected' => 'បានបដិសេធ',
+    'rejected' => 'មិនគ្រប់គ្រាន់',
     'need_correction' => 'ត្រូវកែតម្រូវ',
     'not_submitted' => 'មិនទាន់ដាក់ស្នើ',
 
