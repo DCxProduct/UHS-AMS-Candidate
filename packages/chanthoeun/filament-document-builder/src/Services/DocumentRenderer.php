@@ -5,6 +5,8 @@ namespace Chanthoeun\FilamentDocumentBuilder\Services;
 use Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Mccarlosen\LaravelMpdf\Facades\LaravelMpdf as Pdf;
 
@@ -14,6 +16,8 @@ class DocumentRenderer
      * Cache for extra data sources during the request lifecycle to prevent N+1 queries across multiple PDFs.
      */
     protected static array $extraDataCache = [];
+
+    protected ?string $renderLocale = null;
 
     /**
      * Eager load relations used in the template to prevent N+1 queries.
@@ -122,16 +126,23 @@ class DocumentRenderer
                 return $matches[0];
             }
 
+            $valueContext = $data;
             $value = data_get($data, $key);
 
             $currentContext = $data;
             while ($value === null && is_array($currentContext) && array_key_exists('_parent', $currentContext)) {
                 $currentContext = $currentContext['_parent'];
                 $value = data_get($currentContext, $key);
+                $valueContext = $currentContext;
             }
 
             if ($value === null && $data instanceof Model && is_array($data->getAttribute('data'))) {
                 $value = data_get($data->getAttribute('data'), $key);
+                $valueContext = $data;
+            }
+
+            if ($value === null && $valueContext instanceof Model && is_array($valueContext->getAttribute('data'))) {
+                $value = data_get($valueContext->getAttribute('data'), $key);
             }
 
             if ($value === null || $value === '') {
@@ -145,8 +156,146 @@ class DocumentRenderer
                 return $imageHtml;
             }
 
-            return $value;
+            return $this->displayValueForKey($key, $value, $valueContext);
         }, $content);
+    }
+
+    protected function displayValueForKey(string $key, mixed $value, array|object $data): string
+    {
+        if (! is_scalar($value)) {
+            return '';
+        }
+
+        $choiceLabel = $this->choiceLabelForKey($key, (string) $value, $data);
+
+        return $choiceLabel
+            ?? $this->fallbackChoiceLabel($key, (string) $value)
+            ?? (string) $value;
+    }
+
+    protected function fallbackChoiceLabel(string $key, string $value): ?string
+    {
+        if (! in_array(strtolower($key), ['gender', 'sibling_gender'], true)) {
+            return null;
+        }
+
+        $locale = $this->renderLocale ?? app()->getLocale();
+
+        return match (strtolower($value)) {
+            'male' => $locale === 'km' ? 'ប្រុស' : 'Male',
+            'female' => $locale === 'km' ? 'ស្រី' : 'Female',
+            default => null,
+        };
+    }
+
+    protected function choiceLabelForKey(string $key, string $value, array|object $data): ?string
+    {
+        if (! $data instanceof Model || ! Schema::hasTable('custom_form_fields')) {
+            return null;
+        }
+
+        $formId = $data->getAttribute('custom_form_id');
+
+        if (! $formId) {
+            return null;
+        }
+
+        $field = DB::table('custom_form_fields')
+            ->whereIn('custom_form_id', $this->formIdsForEntry((int) $formId))
+            ->where('name', $key)
+            ->whereNotNull('options')
+            ->orderBy('sort')
+            ->first();
+
+        $label = $field ? $this->choiceLabelFromField($field, $value) : null;
+
+        if ($label !== null) {
+            return $label;
+        }
+
+        $fallbackFields = DB::table('custom_form_fields')
+            ->where('name', $key)
+            ->whereNotNull('options')
+            ->orderBy('custom_form_id')
+            ->orderBy('sort')
+            ->get();
+
+        foreach ($fallbackFields as $fallbackField) {
+            $label = $this->choiceLabelFromField($fallbackField, $value);
+
+            if ($label !== null) {
+                return $label;
+            }
+        }
+
+        return null;
+    }
+
+    protected function choiceLabelFromField(object $field, string $value): ?string
+    {
+        $options = $this->normalizeOptions($field->options ?? []);
+        $choices = $this->normalizeChoices($options['choices'] ?? []);
+
+        return array_key_exists($value, $choices)
+            ? $this->localizedText($choices[$value])
+            : null;
+    }
+
+    protected function formIdsForEntry(int $formId): array
+    {
+        $ids = [$formId];
+
+        if (Schema::hasTable('custom_forms') && Schema::hasColumn('custom_forms', 'custom_form_id')) {
+            $childIds = DB::table('custom_forms')
+                ->where('custom_form_id', $formId)
+                ->pluck('id')
+                ->map(fn ($id): int => (int) $id)
+                ->all();
+
+            $ids = array_merge($ids, $childIds);
+        }
+
+        return array_values(array_unique($ids));
+    }
+
+    protected function normalizeOptions(mixed $options): array
+    {
+        if (is_array($options)) {
+            return $options;
+        }
+
+        if (is_string($options) && $options !== '') {
+            $decoded = json_decode($options, true);
+
+            return is_array($decoded) ? $decoded : [];
+        }
+
+        if (is_object($options)) {
+            return json_decode(json_encode($options), true) ?: [];
+        }
+
+        return [];
+    }
+
+    protected function normalizeChoices(mixed $choices): array
+    {
+        if (! is_array($choices)) {
+            return [];
+        }
+
+        $normalized = [];
+
+        foreach ($choices as $key => $label) {
+            if (is_array($label) && array_key_exists('value', $label)) {
+                $normalized[(string) $label['value']] = $label['label'] ?? $label['value'];
+
+                continue;
+            }
+
+            $normalized[(string) $key] = $label;
+        }
+
+        return $normalized;
     }
 
     protected function imageHtmlFromValue(string $value): ?string
@@ -295,7 +444,7 @@ class DocumentRenderer
         }
 
         if (is_array($value)) {
-            $locale = app()->getLocale();
+            $locale = $this->renderLocale ?? app()->getLocale();
 
             return (string) (
                 $value[$locale]
@@ -313,6 +462,7 @@ class DocumentRenderer
     protected function processHtmlContent(DocumentTemplate $template, array|object $data = []): string
     {
         $htmlContent = $template->content ?? '';
+        $this->renderLocale = $this->detectRenderLocale($htmlContent);
         $recordData = $data;
 
         // Eager load relations to prevent N+1 performance bottlenecks
@@ -345,6 +495,7 @@ class DocumentRenderer
 
         $htmlContent = $this->replaceLoops($htmlContent, $data);
         $htmlContent = $this->replaceVariables($htmlContent, $data);
+        $htmlContent = $this->localizeFallbackChoiceWords($htmlContent);
         $htmlContent .= $this->attachmentImagesHtml($recordData);
 
         // mPDF compatibility fixes
@@ -396,6 +547,28 @@ class DocumentRenderer
         );
 
         return $htmlContent;
+    }
+
+    protected function detectRenderLocale(string $content): string
+    {
+        if (preg_match('/[\x{1780}-\x{17FF}]/u', $content) === 1) {
+            return 'km';
+        }
+
+        $locale = strtolower((string) app()->getLocale());
+
+        return in_array($locale, ['en', 'km'], true) ? $locale : 'km';
+    }
+
+    protected function localizeFallbackChoiceWords(string $htmlContent): string
+    {
+        if (($this->renderLocale ?? app()->getLocale()) !== 'km') {
+            return $htmlContent;
+        }
+
+        $htmlContent = preg_replace('/(?<![A-Za-z])female(?![A-Za-z])/i', 'ស្រី', $htmlContent) ?? $htmlContent;
+
+        return preg_replace('/(?<![A-Za-z])male(?![A-Za-z])/i', 'ប្រុស', $htmlContent) ?? $htmlContent;
     }
 
     protected function generatePdfFromHtml(DocumentTemplate $template, string $htmlContent)
