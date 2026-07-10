@@ -483,6 +483,10 @@ class CustomFormEntryForm
                         $component->copyable();
                     }
 
+                    if (! self::isFieldInputEnabled($options) && method_exists($component, 'disabled')) {
+                        $component->disabled(true);
+                    }
+
                     self::lockComponent($component, $isLocked);
                 }
             }
@@ -495,6 +499,15 @@ class CustomFormEntryForm
         }
 
         return $components;
+    }
+
+    protected static function isFieldInputEnabled(array $options): bool
+    {
+        if (! array_key_exists('is_field_input_enabled', $options)) {
+            return true;
+        }
+
+        return ! in_array($options['is_field_input_enabled'], [false, 'false', 0, '0'], true);
     }
 
     protected static function formatLabel(string $label, array $options): string|\Illuminate\Contracts\Support\Htmlable

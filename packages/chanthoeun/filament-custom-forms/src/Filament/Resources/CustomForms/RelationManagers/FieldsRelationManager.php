@@ -102,12 +102,19 @@ class FieldsRelationManager extends RelationManager
                             ])
                             ->default('text_input')
                             ->native()
+                            ->columnSpan(2)
                             ->live(),
 
                         \Filament\Forms\Components\Toggle::make('required')
                             ->label(__('filament-custom-forms::fcf.field.is_required'))
                             ->default(false)
                             ->visible(fn ($get): bool => ! in_array((string) $get('type'), self::CONTAINER_TYPES, true)),
+
+                        \Filament\Forms\Components\Toggle::make('options.is_field_input_enabled')
+                            ->label('Field Input')
+                            ->default(true)
+                            ->visible(fn ($get): bool => ! in_array((string) $get('type'), self::CONTAINER_TYPES, true)
+                                && (string) $get('type') !== 'info'),
 
                         \Filament\Schemas\Components\Section::make('Field Label')
                             ->columns(2)
@@ -468,6 +475,25 @@ class FieldsRelationManager extends RelationManager
                         true
                     )),
 
+                ToggleColumn::make('field_input')
+                    ->label(app()->getLocale() === 'km' ? 'បញ្ចូលទិន្នន័យ' : 'Field Input')
+                    ->state(fn ($record): bool => self::isFieldInputEnabled($record->options ?? []))
+                    ->updateStateUsing(function ($record, $state): bool {
+                        $options = self::normalizeOptions($record->options ?? []);
+                        $options['is_field_input_enabled'] = (bool) $state;
+
+                        $record->update(['options' => $options]);
+
+                        return (bool) $state;
+                    })
+                    ->onColor('success')
+                    ->offColor('gray')
+                    ->disabled(fn ($record) => in_array(
+                        $record->type,
+                        self::CONTAINER_TYPES,
+                        true
+                    ) || (string) $record->type === 'info'),
+
                 TextColumn::make('type')
                     ->label(__('filament-custom-forms::fcf.field.type'))
                     ->badge()
@@ -787,6 +813,17 @@ class FieldsRelationManager extends RelationManager
         }
 
         return [];
+    }
+
+    private static function isFieldInputEnabled(mixed $options): bool
+    {
+        $options = self::normalizeOptions($options);
+
+        if (! array_key_exists('is_field_input_enabled', $options)) {
+            return true;
+        }
+
+        return ! in_array($options['is_field_input_enabled'], [false, 'false', 0, '0'], true);
     }
 
     private static function getLangValue(mixed $value, string $locale): string
