@@ -738,7 +738,10 @@ class FieldsRelationManager extends RelationManager
 
         if ($targetForm) {
             $data['custom_form_id'] = $targetForm->id;
-            $data['parent_id'] = null;
+
+            if ((string) $targetForm->id !== (string) $ownerForm->id) {
+                $data['parent_id'] = null;
+            }
 
             if ($targetForm->menu_placement === 'sub_item' && filled($targetForm->sub_item_type)) {
                 data_set($data, 'options.visible_when.field', 'form_selection');
@@ -754,7 +757,10 @@ class FieldsRelationManager extends RelationManager
         if ($selectedType === self::PARENT_FORM_TYPE) {
             data_forget($data, 'options.visible_when');
             $data['custom_form_id'] = $rootFormId;
-            $data['parent_id'] = null;
+
+            if ((string) $rootFormId !== (string) $ownerForm->id) {
+                $data['parent_id'] = null;
+            }
 
             return $data;
         }
