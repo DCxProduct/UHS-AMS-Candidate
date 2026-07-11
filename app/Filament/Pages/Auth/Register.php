@@ -8,17 +8,27 @@ use Carbon\Carbon;
 use Filament\Auth\Pages\Register as BaseRegister;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\HtmlString;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rule;
 
 class Register extends BaseRegister
 {
+    public function mount(): void
+    {
+        $this->refreshCaptchaChallenge();
+
+        parent::mount();
+    }
+
     public function getTitle(): string | Htmlable
     {
         return __('app.sign_up');
@@ -36,6 +46,8 @@ class Register extends BaseRegister
 
     public function form(Schema $schema): Schema
     {
+        $this->ensureCaptchaChallenge();
+
         return $schema
             ->components([
                 Hidden::make('registration_type')
@@ -205,8 +217,54 @@ class Register extends BaseRegister
                         'same' => __('app.confirm_password_same'),
                         'regex' => __('app.password_english_only'),
                     ]),
+
+                Placeholder::make('captcha_preview')
+                    ->label(__('app.captcha'))
+                    ->content(fn (): HtmlString => new HtmlString($this->captchaPreviewHtml()))
+                    ->columnSpanFull(),
+
+                TextInput::make('captcha_answer')
+                    ->label(__('app.captcha_answer'))
+                    ->helperText(__('app.captcha_question'))
+                    ->placeholder(__('app.enter_captcha_answer'))
+                    ->required()
+                    ->minLength(7)
+                    ->maxLength(7)
+                    ->prefixIcon('heroicon-o-shield-check')
+                    ->rules([
+                        function (): \Closure {
+                            return function (string $attribute, mixed $value, \Closure $fail): void {
+                                if (trim((string) $value) !== (string) session('register_captcha_answer')) {
+                                    $this->refreshCaptchaChallenge();
+                                    $fail(__('app.captcha_invalid'));
+                                }
+                            };
+                        },
+                    ])
+                    ->validationMessages([
+                        'required' => __('app.captcha_required'),
+                        'min' => __('app.captcha_length'),
+                        'max' => __('app.captcha_length'),
+                    ]),
             ])
             ->statePath('data');
+    }
+
+    protected function mutateFormDataBeforeRegister(array $data): array
+    {
+        if (trim((string) ($data['captcha_answer'] ?? '')) !== (string) session('register_captcha_answer')) {
+            $this->refreshCaptchaChallenge();
+
+            throw ValidationException::withMessages([
+                'data.captcha_answer' => __('app.captcha_invalid'),
+            ]);
+        }
+
+        unset($data['captcha_answer']);
+
+        $this->refreshCaptchaChallenge();
+
+        return $data;
     }
 
     protected function handleRegistration(array $data): Model
@@ -276,5 +334,55 @@ class Register extends BaseRegister
 
             return $user;
         });
+    }
+
+    protected function ensureCaptchaChallenge(): void
+    {
+        if (session()->has('register_captcha_answer')) {
+            return;
+        }
+
+        $this->refreshCaptchaChallenge();
+    }
+
+    protected function refreshCaptchaChallenge(): void
+    {
+        $characters = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        $code = collect(range(1, 7))
+            ->map(fn (): string => $characters[random_int(0, strlen($characters) - 1)])
+            ->join('');
+
+        session([
+            'register_captcha_answer' => $code,
+        ]);
+    }
+
+    public function refreshCaptchaChallengeForForm(): void
+    {
+        $this->refreshCaptchaChallenge();
+
+        data_set($this->data, 'captcha_answer', null);
+    }
+
+    protected function captchaPreviewHtml(): string
+    {
+        $code = e((string) session('register_captcha_answer'));
+        $refreshLabel = e(__('app.refresh_captcha'));
+
+        return <<<HTML
+            <div style="display:flex; align-items:center; gap:10px;">
+                <div style="min-width:190px; padding:10px 16px; border:1px solid #d1d5db; background:
+                    repeating-linear-gradient(35deg, rgba(17,24,39,.16) 0, rgba(17,24,39,.16) 1px, transparent 1px, transparent 8px),
+                    repeating-linear-gradient(120deg, rgba(17,24,39,.12) 0, rgba(17,24,39,.12) 1px, transparent 1px, transparent 10px),
+                    #f8fafc;
+                    color:#111827; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+                    font-size:32px; font-weight:800; letter-spacing:6px; line-height:1; user-select:none; transform:skew(-5deg);">
+                    {$code}
+                </div>
+                <button type="button" wire:click="refreshCaptchaChallengeForForm" style="height:42px; min-width:42px; border:1px solid #d1d5db; border-radius:8px; background:#ffffff; color:#374151; font-size:18px; cursor:pointer;" title="{$refreshLabel}" aria-label="{$refreshLabel}">
+                    &#8635;
+                </button>
+            </div>
+        HTML;
     }
 }
