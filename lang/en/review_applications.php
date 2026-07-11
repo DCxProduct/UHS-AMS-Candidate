@@ -35,7 +35,17 @@ return [
     'reject_title' => 'Reject Application',
 
     // Added keys for Passed/Failed modals
-    'passed_confirm_description' => 'Are you sure this application has passed?',
+    'passed_confirm_title' => 'Information',
+    'passed_confirm_description' => 'Did this candidate pass?',
+    'passed_confirm_yes' => 'Yes',
+    'passed_confirm_no' => 'No',
+
+    'pending_modal' => [
+        'heading' => 'Information',
+        'description' => 'Do you want to edit result?',
+        'submit' => 'Yes',
+        'cancel' => 'No',
+    ],
 
     'statuses' => [
         'pending' => 'Pending',
@@ -54,6 +64,7 @@ return [
         // Added actions for the modal buttons
         'passed' => 'Pass',
         'failed' => 'Fail',
+        'edit_result' => 'Edit',
     ],
 
     'notifications' => [

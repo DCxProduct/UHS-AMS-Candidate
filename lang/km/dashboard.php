@@ -24,7 +24,7 @@ return [
 
     'profile' => 'ប្រវត្តិរូប',
     'national_examination' => 'ការប្រឡងថ្នាក់ជាតិ',
-    'exam_result' => 'លទ្ធផលប្រឡង',
+    'exam_result' => 'បេក្ខជនជាប់',
     'overall_progress' => 'វឌ្ឍនភាពសរុប',
 
     'profile_description' => 'ព័ត៌មានប្រវត្តិរូបនិស្សិតរបស់អ្នក',

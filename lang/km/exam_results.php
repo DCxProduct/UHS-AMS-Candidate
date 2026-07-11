@@ -1,11 +1,11 @@
 <?php
 
 return [
-    'model_label' => 'លទ្ធផលប្រឡង',
-    'plural_model_label' => 'លទ្ធផលប្រឡង',
-    'list_title' => 'លទ្ធផលប្រឡង',
+    'model_label' => 'បេក្ខជនជាប់',
+    'plural_model_label' => 'បេក្ខជនជាប់',
+    'list_title' => 'បេក្ខជនជាប់',
     'breadcrumb_list' => 'បញ្ជី',
-    'exam_result' => 'លទ្ធផលប្រឡង',
+    'exam_result' => 'បេក្ខជនជាប់',
     'passed_at' => 'បានជាប់នៅ',
     'download_excel' => 'ទាញយក Excel',
     'no' => 'ល.រ',

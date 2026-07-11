@@ -180,9 +180,10 @@ class ReviewApplicationsTable
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->modalHeading(__('review_applications.actions.passed'))
+                    ->modalHeading(__('review_applications.passed_confirm_title'))
                     ->modalDescription(__('review_applications.passed_confirm_description'))
-                    ->modalSubmitActionLabel(__('review_applications.actions.passed'))
+                    ->modalSubmitActionLabel(__('review_applications.passed_confirm_yes'))
+                    ->modalCancelActionLabel(__('review_applications.passed_confirm_no'))
                     ->visible(fn (CustomFormEntry $record): bool =>
                         strtolower((string) data_get($record->data, 'candidate_status', 'pending')) === 'pending'
                     )
@@ -197,12 +198,14 @@ class ReviewApplicationsTable
                     }),
 
                 Action::make('pending')
-                    ->label(__('review_applications.statuses.pending'))
+                    ->label(__('review_applications.actions.edit_result'))
                     ->icon('heroicon-o-arrow-path')
                     ->color('warning')
                     ->requiresConfirmation()
-                    ->modalHeading(__('review_applications.statuses.pending'))
-                    ->modalSubmitActionLabel(__('review_applications.statuses.pending'))
+                    ->modalHeading(__('review_applications.pending_modal.heading'))
+                    ->modalDescription(__('review_applications.pending_modal.description'))
+                    ->modalSubmitActionLabel(__('review_applications.pending_modal.submit'))
+                    ->modalCancelActionLabel(__('review_applications.pending_modal.cancel'))
                     ->visible(fn (CustomFormEntry $record): bool =>
                         strtolower((string) data_get($record->data, 'candidate_status', 'pending')) === 'passed'
                     )
@@ -210,7 +213,7 @@ class ReviewApplicationsTable
                         self::markCandidatePending($record);
 
                         Notification::make()
-                            ->title(__('review_applications.statuses.pending'))
+                            ->title(__('review_applications.actions.edit_result'))
                             ->success()
                             ->send();
                     }),
@@ -222,9 +225,10 @@ class ReviewApplicationsTable
                     ->color('success')
                     ->button()
                     ->requiresConfirmation()
-                    ->modalHeading(__('review_applications.actions.passed'))
+                    ->modalHeading(__('review_applications.passed_confirm_title'))
                     ->modalDescription(__('review_applications.passed_confirm_description'))
-                    ->modalSubmitActionLabel(__('review_applications.actions.passed'))
+                    ->modalSubmitActionLabel(__('review_applications.passed_confirm_yes'))
+                    ->modalCancelActionLabel(__('review_applications.passed_confirm_no'))
                     ->deselectRecordsAfterCompletion()
                     ->action(function (Collection $records): void {
                         $passedCount = 0;
@@ -330,16 +334,16 @@ class ReviewApplicationsTable
     protected static function statusLabel(?string $state): string
     {
         return match ($state) {
-            'passed', 'accepted' => 'Passed',
-            default => 'Pending',
+            'passed', 'accepted' => __('review_applications.statuses.passed'),
+            default => __('review_applications.statuses.pending'),
         };
     }
 
     protected static function actionLabel(string $action): string
     {
         return match ($action) {
-            'passed' => 'Passed',
-            default => 'Pending',
+            'passed' => __('review_applications.statuses.passed'),
+            default => __('review_applications.statuses.pending'),
         };
     }
 
