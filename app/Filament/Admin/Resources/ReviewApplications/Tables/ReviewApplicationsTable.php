@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Resources\ReviewApplications\Tables;
 use App\Models\User;
 use App\Support\NotificationLanguage;
 use Carbon\Carbon;
+use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
@@ -35,6 +36,13 @@ class ReviewApplicationsTable
                     ->label(__('exam_results.no'))
                     ->rowIndex()
                     ->alignCenter(),
+
+                TextColumn::make('form_type')
+                    ->label(__('review_applications.form_type'))
+                    ->getStateUsing(fn (CustomFormEntry $record): string => self::recordFormTypeLabel($record))
+                    ->badge()
+                    ->color('info')
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('academic_year')
                     ->label(__('exam_results.academic_year'))
@@ -98,18 +106,7 @@ class ReviewApplicationsTable
                     ->schema([
                         Select::make('form_selection')
                             ->label(__('review_applications.form_type'))
-                            ->options(function (): array {
-                                return CustomFormEntry::query()
-                                    ->whereNotNull('data->form_selection')
-                                    ->get(['data'])
-                                    ->pluck('data.form_selection')
-                                    ->filter()
-                                    ->unique()
-                                    ->mapWithKeys(fn ($item) => [
-                                        (string) $item => ucfirst((string) $item),
-                                    ])
-                                    ->toArray();
-                            })
+                            ->options(fn (): array => self::dynamicFormTypeOptions())
                             ->native(false)
                             ->live(),
 
@@ -134,7 +131,10 @@ class ReviewApplicationsTable
                         return $query
                             ->when(
                                 filled($data['form_selection'] ?? null),
-                                fn (Builder $query): Builder => $query->where('data->form_selection', $data['form_selection'])
+                                fn (Builder $query): Builder => self::applyFormTypeFilter(
+                                    $query,
+                                    (string) $data['form_selection'],
+                                )
                             )
                             ->when(
                                 filled($data['review_status'] ?? null),
@@ -280,6 +280,153 @@ class ReviewApplicationsTable
             ->toArray();
     }
 
+    protected static function dynamicFormTypeOptions(): array
+    {
+        $options = [];
+
+        CustomForm::query()
+            ->where('menu_placement', 'sidebar')
+            ->where('is_active', true)
+            ->where('slug', '!=', 'profile')
+            ->orderBy('id')
+            ->get(['id', 'name'])
+            ->each(function (CustomForm $form) use (&$options): void {
+                $childForms = CustomForm::query()
+                    ->where('custom_form_id', $form->id)
+                    ->where('menu_placement', 'sub_item')
+                    ->where('is_active', true)
+                    ->whereNotNull('sub_item_type')
+                    ->orderBy('id')
+                    ->get(['id', 'name', 'custom_form_id', 'sub_item_type']);
+
+                if (self::formHasCandidateEntries((int) $form->id, $childForms->pluck('id')->all())) {
+                    $options[self::formFilterValue((int) $form->id)] = $form->display_name;
+                }
+
+                foreach ($childForms as $childForm) {
+                    if (! self::subFormHasCandidateEntries($childForm)) {
+                        continue;
+                    }
+
+                    $options[self::subFormFilterValue((int) $childForm->id)] = $form->display_name . ' - ' . $childForm->display_name;
+                }
+            });
+
+        return $options;
+    }
+
+    protected static function applyFormTypeFilter(Builder $query, string $formType): Builder
+    {
+        if (str_starts_with($formType, 'form:')) {
+            $formId = self::formIdFromFilterValue($formType);
+
+            if ($formId) {
+                return $query->whereIn('custom_form_id', self::sidebarFormIdsForFilter($formId));
+            }
+        }
+
+        if (str_starts_with($formType, 'subform:')) {
+            $subFormId = self::subFormIdFromFilterValue($formType);
+            $subForm = $subFormId
+                ? CustomForm::query()->whereKey($subFormId)->first(['id', 'custom_form_id', 'sub_item_type'])
+                : null;
+
+            if ($subForm) {
+                return $query->where(function (Builder $query) use ($subForm): void {
+                    $query->where('custom_form_id', $subForm->id);
+
+                    if (filled($subForm->sub_item_type)) {
+                        $query->orWhere(function (Builder $query) use ($subForm): void {
+                            $query->where('custom_form_id', $subForm->custom_form_id)
+                                ->where('data->form_selection', $subForm->sub_item_type);
+                        });
+                    }
+                });
+            }
+        }
+
+        return $query->where('data->form_selection', $formType);
+    }
+
+    protected static function formFilterValue(int $formId): string
+    {
+        return 'form:' . $formId;
+    }
+
+    protected static function formIdFromFilterValue(string $value): ?int
+    {
+        if (! str_starts_with($value, 'form:')) {
+            return null;
+        }
+
+        $formId = (int) substr($value, 5);
+
+        return $formId > 0 ? $formId : null;
+    }
+
+    protected static function subFormFilterValue(int $formId): string
+    {
+        return 'subform:' . $formId;
+    }
+
+    protected static function subFormIdFromFilterValue(string $value): ?int
+    {
+        if (! str_starts_with($value, 'subform:')) {
+            return null;
+        }
+
+        $formId = (int) substr($value, 8);
+
+        return $formId > 0 ? $formId : null;
+    }
+
+    protected static function sidebarFormIdsForFilter(int $formId): array
+    {
+        $childIds = CustomForm::query()
+            ->where('custom_form_id', $formId)
+            ->where('menu_placement', 'sub_item')
+            ->where('is_active', true)
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->all();
+
+        return array_values(array_unique(array_merge([$formId], $childIds)));
+    }
+
+    protected static function candidateStatusQuery(Builder $query): Builder
+    {
+        return $query->whereIn('review_status', [
+            'passed',
+            'accepted',
+            'approved',
+        ]);
+    }
+
+    protected static function formHasCandidateEntries(int $formId, array $childFormIds = []): bool
+    {
+        $formIds = array_values(array_unique(array_merge([$formId], array_map('intval', $childFormIds))));
+
+        return self::candidateStatusQuery(CustomFormEntry::query())
+            ->whereIn('custom_form_id', $formIds)
+            ->exists();
+    }
+
+    protected static function subFormHasCandidateEntries(CustomForm $subForm): bool
+    {
+        return self::candidateStatusQuery(CustomFormEntry::query())
+            ->where(function (Builder $query) use ($subForm): void {
+                $query->where('custom_form_id', $subForm->id);
+
+                if (filled($subForm->sub_item_type)) {
+                    $query->orWhere(function (Builder $query) use ($subForm): void {
+                        $query->where('custom_form_id', $subForm->custom_form_id)
+                            ->where('data->form_selection', $subForm->sub_item_type);
+                    });
+                }
+            })
+            ->exists();
+    }
+
     protected static function markPassed(CustomFormEntry $record): void
     {
         $dataJson = self::normalizeData($record->data);
@@ -323,10 +470,59 @@ class ReviewApplicationsTable
         $record->refresh();
     }
 
+    protected static function recordFormTypeLabel(CustomFormEntry $record): string
+    {
+        $form = $record->customForm;
+
+        if ($form?->menu_placement === 'sub_item') {
+            $parentName = $form->parentForm?->display_name;
+
+            return filled($parentName)
+                ? $parentName . ' - ' . $form->display_name
+                : $form->display_name;
+        }
+
+        $selection = (string) data_get($record->data, 'form_selection');
+
+        if ($form?->menu_placement === 'sidebar' && filled($selection)) {
+            $subForm = CustomForm::query()
+                ->where('custom_form_id', $form->id)
+                ->where('menu_placement', 'sub_item')
+                ->where('sub_item_type', $selection)
+                ->first(['name']);
+
+            if ($subForm) {
+                return $form->display_name . ' - ' . $subForm->display_name;
+            }
+        }
+
+        if ($form) {
+            return $form->display_name;
+        }
+
+        return self::formTypeLabel($selection);
+    }
+
     protected static function formTypeLabel(?string $state): string
     {
-        return match ($state) {
-            'master' => 'Master',
+        if (blank($state)) {
+            return '-';
+        }
+
+        $form = CustomForm::query()
+            ->where('menu_placement', 'sub_item')
+            ->where('sub_item_type', $state)
+            ->first(['name']);
+
+        if ($form) {
+            return $form->display_name;
+        }
+
+        return match ((string) $state) {
+            'associate' => app()->getLocale() === 'km' ? 'បរិញ្ញាបត្ររង' : 'Associate',
+            'bachelor' => app()->getLocale() === 'km' ? 'បរិញ្ញាបត្រ' : 'Bachelor',
+            'master' => app()->getLocale() === 'km' ? 'អនុបណ្ឌិត' : 'Master',
+            'phd' => app()->getLocale() === 'km' ? 'បណ្ឌិត' : 'PhD',
             default => filled($state) ? ucfirst((string) $state) : '-',
         };
     }

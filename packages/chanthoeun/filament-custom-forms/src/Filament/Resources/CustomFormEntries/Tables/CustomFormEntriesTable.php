@@ -518,24 +518,6 @@ class CustomFormEntriesTable
             Filter::make('application_review_filters')
                 ->label(new HtmlString('&nbsp;'))
                 ->schema([
-                    Select::make('form_selection')
-                        ->label(__('review_applications.form_type'))
-                        ->options(function () use ($formId): array {
-                            return \Chanthoeun\FilamentCustomForms\Models\CustomFormEntry::query()
-                                ->when($formId, fn ($query) => $query->where('custom_form_id', $formId))
-                                ->whereNotNull('data->form_selection')
-                                ->get(['data'])
-                                ->pluck('data.form_selection')
-                                ->filter()
-                                ->unique()
-                                ->mapWithKeys(fn ($item) => [
-                                    (string) $item => self::formTypeLabel((string) $item, $formId),
-                                ])
-                                ->toArray();
-                        })
-                        ->native(false)
-                        ->live(),
-
                     Select::make('review_status')
                         ->label(__('review_applications.review_status'))
                         ->options([
@@ -556,10 +538,6 @@ class CustomFormEntriesTable
                 ->columnSpanFull()
                 ->query(function (Builder $query, array $data): Builder {
                     return $query
-                        ->when(
-                            filled($data['form_selection'] ?? null),
-                            fn (Builder $query): Builder => $query->where('data->form_selection', $data['form_selection'])
-                        )
                         ->when(
                             filled($data['review_status'] ?? null),
                             function (Builder $query) use ($data): Builder {
