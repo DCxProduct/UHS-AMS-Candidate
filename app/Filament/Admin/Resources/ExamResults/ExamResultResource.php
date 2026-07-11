@@ -56,9 +56,21 @@ class ExamResultResource extends Resource
                 'customForm',
             ])
             ->whereHas('customForm', function (Builder $query): void {
-                $query->where('menu_placement', 'sidebar')
-                    ->where('is_active', true)
-                    ->where('slug', '!=', 'profile');
+                $query
+                    ->where(function (Builder $query): void {
+                        $query->where('menu_placement', 'sidebar')
+                            ->where('is_active', true)
+                            ->where('slug', '!=', 'profile');
+                    })
+                    ->orWhere(function (Builder $query): void {
+                        $query->where('menu_placement', 'sub_item')
+                            ->where('is_active', true)
+                            ->whereHas('parentForm', function (Builder $query): void {
+                                $query->where('menu_placement', 'sidebar')
+                                    ->where('is_active', true)
+                                    ->where('slug', '!=', 'profile');
+                            });
+                    });
             })
             ->where('data->candidate_status', 'passed')
             ->latest('id');
