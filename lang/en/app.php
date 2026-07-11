@@ -56,6 +56,15 @@ return [
     'confirm_password_required' => 'Confirm password is required.',
     'confirm_password_same' => 'Confirm password does not match.',
 
+    'captcha' => 'Captcha',
+    'captcha_answer' => 'Captcha code',
+    'captcha_question' => 'Enter the characters shown above.',
+    'enter_captcha_answer' => 'Enter captcha code',
+    'refresh_captcha' => 'Refresh captcha',
+    'captcha_required' => 'Captcha answer is required.',
+    'captcha_length' => 'Captcha code must be 7 characters.',
+    'captcha_invalid' => 'Captcha answer is incorrect. Please try again.',
+
     'remember_me' => 'Remember me',
 
     'login_required' => 'Username, email, or phone number is required.',
