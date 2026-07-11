@@ -28,7 +28,6 @@ class ListExamResults extends ListRecords
         return [
             Action::make('download_excel')
                 ->label(__('exam_results.download_excel'))
-                ->icon('heroicon-o-arrow-down-tray')
                 ->color('success')
                 ->action(fn () => $this->downloadExcel()),
         ];

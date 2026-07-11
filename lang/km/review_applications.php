@@ -35,7 +35,17 @@ return [
     'reject_title' => 'បដិសេធពាក្យស្នើសុំ',
 
     // Added for Passed Action Modal
-    'passed_confirm_description' => 'តើអ្នកប្រាកដថាពាក្យស្នើសុំនេះបានជាប់មែនទេ?',
+    'passed_confirm_title' => 'ព័ត៌មាន',
+    'passed_confirm_description' => 'តើអ្នកលទ្ធផលរបស់បេក្ខជនជាប់ឬ?',
+    'passed_confirm_yes' => 'បាទ/ចា៎',
+    'passed_confirm_no' => 'ទេ',
+
+    'pending_modal' => [
+        'heading' => 'ព័ត៌មាន',
+        'description' => 'តើអ្នកចង់កែលទ្ធផលឬ?',
+        'submit' => 'បាទ/ចា៎',
+        'cancel' => 'ទេ',
+    ],
 
     'statuses' => [
         'pending' => 'កំពុងរង់ចាំ',
@@ -55,6 +65,7 @@ return [
         // Added for Passed/Failed Action Buttons
         'passed' => 'ជាប់',
         'failed' => 'ធ្លាក់',
+        'edit_result' => 'កែប្រែ',
     ],
 
     'notifications' => [
