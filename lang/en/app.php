@@ -332,6 +332,7 @@ return [
 
     'custom_form_entry' => 'Custom Form Entry',
     'custom_form_entries' => 'Custom Form Entries',
+    'custom_form_entries_table_not_found' => 'Table custom_form_entries not found.',
     'form_entries' => 'Form Entries',
     'list' => 'List',
     'name' => 'Name',

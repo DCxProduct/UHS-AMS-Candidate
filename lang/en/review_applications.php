@@ -86,6 +86,7 @@ return [
         // Added notifications for Passed/Failed
         'admin_passed_success_title' => 'Application Passed',
         'admin_passed_success_body' => 'The application has been marked as passed.',
+        'bulk_passed_success_title' => ':count candidates passed.',
         'admin_failed_success_title' => 'Application Failed',
         'admin_failed_success_body' => 'The application has been marked as failed.',
 

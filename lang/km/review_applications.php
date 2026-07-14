@@ -36,7 +36,7 @@ return [
 
     // Added for Passed Action Modal
     'passed_confirm_title' => 'ព័ត៌មាន',
-    'passed_confirm_description' => 'តើអ្នកលទ្ធផលរបស់បេក្ខជនជាប់ឬ?',
+    'passed_confirm_description' => 'តើលទ្ធផលរបស់បេក្ខជនជាប់ឬ?',
     'passed_confirm_yes' => 'បាទ/ចា៎',
     'passed_confirm_no' => 'ទេ',
 
@@ -87,6 +87,7 @@ return [
         // Added for Passed/Failed Notifications
         'admin_passed_success_title' => 'ពាក្យស្នើសុំបានជាប់',
         'admin_passed_success_body' => 'ពាក្យស្នើសុំត្រូវបានកត់សម្គាល់ថាបានជាប់។',
+        'bulk_passed_success_title' => 'បេក្ខជន :count នាក់បានជាប់។',
         'admin_failed_success_title' => 'ពាក្យស្នើសុំបានធ្លាក់',
         'admin_failed_success_body' => 'ពាក្យស្នើសុំត្រូវបានកត់សម្គាល់ថាបានធ្លាក់។',
 

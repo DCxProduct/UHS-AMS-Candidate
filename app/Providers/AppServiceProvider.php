@@ -170,7 +170,10 @@ class AppServiceProvider extends ServiceProvider
                         $admin,
                         'review_applications.notifications.enrollment_submitted_body',
                         [
-                            'student' => $studentName,
+                            'student' => $studentName ?: NotificationLanguage::transForUser(
+                                $admin,
+                                'review_applications.notifications.unknown_student'
+                            ),
                         ]
                     ))
                     ->icon('heroicon-o-clipboard-document-check')
@@ -193,7 +196,7 @@ class AppServiceProvider extends ServiceProvider
         return is_array($decoded) ? $decoded : [];
     }
 
-    protected function getStudentNameForNotification(array $data, ?string $fallbackName = null): string
+    protected function getStudentNameForNotification(array $data, ?string $fallbackName = null): ?string
     {
         $khmerName = trim(implode(' ', array_filter([
             $data['last_name_kh'] ?? null,
@@ -217,6 +220,6 @@ class AppServiceProvider extends ServiceProvider
             return (string) $data['student_id'];
         }
 
-        return filled($fallbackName) ? $fallbackName : __('review_applications.notifications.unknown_student');
+        return filled($fallbackName) ? $fallbackName : null;
     }
 }

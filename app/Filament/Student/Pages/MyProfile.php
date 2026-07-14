@@ -3,6 +3,7 @@
 namespace App\Filament\Student\Pages;
 
 use App\Models\User;
+use App\Support\NotificationLanguage;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\TextInput;
@@ -175,7 +176,7 @@ class MyProfile extends Page implements HasForms
         ]);
 
         Notification::make()
-            ->title(__('student_profile.updated_successfully'))
+            ->title(NotificationLanguage::trans('student_profile.updated_successfully'))
             ->success()
             ->send();
     }

@@ -191,8 +191,8 @@ class ReviewApplicationsTable
                         self::markPassed($record);
 
                         Notification::make()
-                            ->title(__('review_applications.notifications.admin_passed_success_title'))
-                            ->body(__('review_applications.notifications.admin_passed_success_body'))
+                            ->title(NotificationLanguage::trans('review_applications.notifications.admin_passed_success_title'))
+                            ->body(NotificationLanguage::trans('review_applications.notifications.admin_passed_success_body'))
                             ->success()
                             ->send();
                     }),
@@ -213,7 +213,7 @@ class ReviewApplicationsTable
                         self::markCandidatePending($record);
 
                         Notification::make()
-                            ->title(__('review_applications.actions.edit_result'))
+                            ->title(NotificationLanguage::trans('review_applications.actions.edit_result'))
                             ->success()
                             ->send();
                     }),
@@ -243,7 +243,10 @@ class ReviewApplicationsTable
                         });
 
                         Notification::make()
-                            ->title($passedCount . ' candidates passed')
+                            ->title(NotificationLanguage::trans(
+                                'review_applications.notifications.bulk_passed_success_title',
+                                ['count' => $passedCount]
+                            ))
                             ->success()
                             ->send();
                     }),
@@ -605,7 +608,7 @@ class ReviewApplicationsTable
         }
 
         $data = self::normalizeData($record->data);
-        $studentName = self::getStudentName($data, $student->name);
+        $studentName = self::getStudentName($data, $student->name, $student);
 
         if ($status === 'passed') {
             Notification::make()
@@ -695,7 +698,7 @@ class ReviewApplicationsTable
         return is_array($decoded) ? $decoded : [];
     }
 
-    protected static function getStudentName(array $data, ?string $fallbackName = null): string
+    protected static function getStudentName(array $data, ?string $fallbackName = null, ?User $user = null): string
     {
         $khmerName = trim(implode(' ', array_filter([
             $data['last_name_kh'] ?? null,
@@ -721,6 +724,6 @@ class ReviewApplicationsTable
 
         return filled($fallbackName)
             ? $fallbackName
-            : __('review_applications.notifications.unknown_student');
+            : NotificationLanguage::transForUser($user, 'review_applications.notifications.unknown_student');
     }
 }

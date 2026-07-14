@@ -332,6 +332,7 @@ return [
 
     'custom_form_entry' => 'ទិន្នន័យទម្រង់',
     'custom_form_entries' => 'ទិន្នន័យទម្រង់',
+    'custom_form_entries_table_not_found' => 'រកមិនឃើញតារាង custom_form_entries។',
     'form_entries' => 'ទិន្នន័យទម្រង់',
     'list' => 'បញ្ជី',
     'name' => 'ឈ្មោះ',
