@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\NotificationLanguage;
 use Closure;
 use Filament\Notifications\Notification;
 use Illuminate\Http\Request;
@@ -13,7 +14,7 @@ class CheckUserActive
     {
         if (Auth::check() && Auth::user()?->is_active === false) {
             Notification::make()
-                ->title(__('auth.account_disabled'))
+                ->title(NotificationLanguage::trans('auth.account_disabled'))
                 ->danger()
                 ->send();
 

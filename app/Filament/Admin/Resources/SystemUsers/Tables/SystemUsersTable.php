@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources\SystemUsers\Tables;
 
+use App\Support\NotificationLanguage;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
@@ -89,7 +90,7 @@ class SystemUsersTable
                             $record->activateAccount();
 
                             Notification::make()
-                                ->title(__('system_users.notifications.activated'))
+                                ->title(NotificationLanguage::trans('system_users.notifications.activated'))
                                 ->success()
                                 ->send();
                         }),
@@ -104,7 +105,7 @@ class SystemUsersTable
                             $record->deactivateAccount();
 
                             Notification::make()
-                                ->title(__('system_users.notifications.deactivated'))
+                                ->title(NotificationLanguage::trans('system_users.notifications.deactivated'))
                                 ->success()
                                 ->send();
                         }),

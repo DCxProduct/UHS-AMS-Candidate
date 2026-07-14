@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Filament\Concerns\StudentOnly;
 use App\Filament\Student\Resources\CustomFormEntries\CustomFormEntryResource;
 use App\Support\ClosingDateWorkflow;
+use App\Support\NotificationLanguage;
 use App\Support\ProfileFormData;
 use App\Support\StudentDynamicFormSchema;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
@@ -151,7 +152,7 @@ class StudentDynamicFormPage extends Page implements HasForms
 
         if (! ($workflow['can_submit'] ?? true)) {
             Notification::make()
-                ->title($workflow['message'] ?? __('app.form_not_open_message'))
+                ->title($workflow['message'] ?? NotificationLanguage::trans('app.form_not_open_message'))
                 ->warning()
                 ->send();
 
@@ -162,7 +163,7 @@ class StudentDynamicFormPage extends Page implements HasForms
 
         if (! $this->hasFormData($state)) {
             Notification::make()
-                ->title(__('app.please_input_data_before_save'))
+                ->title(NotificationLanguage::trans('app.please_input_data_before_save'))
                 ->warning()
                 ->send();
 
@@ -176,7 +177,7 @@ class StudentDynamicFormPage extends Page implements HasForms
         $this->resetFormState();
 
         Notification::make()
-            ->title(__('app.saved_successfully'))
+            ->title(NotificationLanguage::trans('app.saved_successfully'))
             ->success()
             ->send();
 
@@ -195,7 +196,7 @@ class StudentDynamicFormPage extends Page implements HasForms
 
         if (! ($workflow['can_submit'] ?? true)) {
             Notification::make()
-                ->title($workflow['message'] ?? __('app.form_not_open_message'))
+                ->title($workflow['message'] ?? NotificationLanguage::trans('app.form_not_open_message'))
                 ->warning()
                 ->send();
 
@@ -206,7 +207,7 @@ class StudentDynamicFormPage extends Page implements HasForms
 
         if (! $this->hasFormData($state)) {
             Notification::make()
-                ->title(__('app.please_input_data_before_save'))
+                ->title(NotificationLanguage::trans('app.please_input_data_before_save'))
                 ->warning()
                 ->send();
 
@@ -220,7 +221,7 @@ class StudentDynamicFormPage extends Page implements HasForms
         $this->resetFormState();
 
         Notification::make()
-            ->title(__('app.saved_successfully'))
+            ->title(NotificationLanguage::trans('app.saved_successfully'))
             ->success()
             ->send();
     }
@@ -239,7 +240,7 @@ class StudentDynamicFormPage extends Page implements HasForms
     {
         if (! DatabaseSchema::hasTable('custom_form_entries')) {
             Notification::make()
-                ->title('Table custom_form_entries not found.')
+                ->title(NotificationLanguage::trans('app.custom_form_entries_table_not_found'))
                 ->danger()
                 ->send();
 
