@@ -80,6 +80,103 @@
             opacity: 0.78;
         }
 
+        .sync-dropdown {
+            position: relative;
+            display: inline-flex;
+            justify-content: center;
+        }
+
+        .sync-button-group {
+            display: inline-flex;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.25);
+        }
+
+        .sync-button-group .sync-button {
+            margin-top: 0;
+            border-radius: 0;
+            box-shadow: none;
+        }
+
+        .sync-button-main {
+            border-radius: 8px 0 0 8px;
+        }
+
+        .sync-button-chevron {
+            border-radius: 0 8px 8px 0;
+            padding: 12px 10px;
+            min-width: auto;
+            border-left: 1px solid rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .sync-button-chevron:hover:not(:disabled) {
+            background: #1d4ed8;
+        }
+
+        .sync-button-chevron:disabled {
+            cursor: wait;
+            opacity: 0.78;
+        }
+
+        .sync-button-chevron svg {
+            transition: transform 0.2s ease;
+        }
+
+        .sync-button-chevron.is-open svg {
+            transform: rotate(180deg);
+        }
+
+        .sync-dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-top: 6px;
+            min-width: 100%;
+            width: max-content;
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
+            z-index: 50;
+            overflow: hidden;
+            padding: 4px;
+        }
+
+        .sync-dropdown-menu.is-open {
+            display: block;
+        }
+
+        .sync-dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            padding: 10px 14px;
+            border: none;
+            background: transparent;
+            color: #374151;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: 7px;
+            white-space: nowrap;
+            transition: background 0.15s ease;
+        }
+
+        .sync-dropdown-item:hover {
+            background: #f3f4f6;
+        }
+
+        .sync-dropdown-item svg {
+            flex: 0 0 16px;
+            color: #6b7280;
+        }
+
         .sync-button-icon {
             width: 18px;
             height: 18px;
@@ -396,14 +493,31 @@
                 <h2 class="sync-title">{{ __('sync.heading') }}</h2>
                 <p class="sync-text">{{ __('sync.description') }}</p>
 
-                <button type="button" class="sync-button" data-sync-button>
-                    <svg class="sync-button-icon" data-sync-button-icon xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.9" stroke="currentColor" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992M2.985 19.644v-4.992m0 0h4.992m-4.992 0 3.181-3.183a8.25 8.25 0 0 1 13.803 3.183m0 0a8.25 8.25 0 0 1-13.803 3.183" />
-                    </svg>
-                    <span data-sync-button-label data-sync-now="{{ __('sync.sync_now') }}" data-syncing="{{ __('sync.syncing') }}">
-                        {{ __('sync.sync_now') }}
-                    </span>
-                </button>
+                <div class="sync-dropdown" data-sync-dropdown>
+                    <div class="sync-button-group">
+                        <button type="button" class="sync-button sync-button-main" data-sync-button>
+                            <svg class="sync-button-icon" data-sync-button-icon xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.9" stroke="currentColor" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992M2.985 19.644v-4.992m0 0h4.992m-4.992 0 3.181-3.183a8.25 8.25 0 0 1 13.803 3.183m0 0a8.25 8.25 0 0 1-13.803 3.183" />
+                            </svg>
+                            <span data-sync-button-label data-sync-now="{{ __('sync.sync_now') }}" data-syncing="{{ __('sync.syncing') }}" data-sync-now-full="{{ __('sync.full_sync') }}" data-syncing-full="{{ __('sync.syncing_full') }}">
+                                {{ __('sync.sync_now') }}
+                            </span>
+                        </button>
+                        <button type="button" class="sync-button sync-button-chevron" data-sync-chevron aria-label="More options">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="16" height="16" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="sync-dropdown-menu" data-sync-dropdown-menu>
+                        <button type="button" class="sync-dropdown-item" data-sync-option data-full-resync="true">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" width="16" height="16" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992M2.985 19.644v-4.992m0 0h4.992m-4.992 0 3.181-3.183a8.25 8.25 0 0 1 13.803 3.183m0 0a8.25 8.25 0 0 1-13.803 3.183" />
+                            </svg>
+                            <span>{{ __('sync.full_sync') }}</span>
+                        </button>
+                    </div>
+                </div>
 
                 <div class="sync-alert" data-sync-alert role="status" aria-live="polite">
                     <strong class="sync-alert-title" data-sync-alert-title></strong>
@@ -490,7 +604,11 @@
                 return;
             }
 
+            const dropdown = page.querySelector('[data-sync-dropdown]');
             const button = page.querySelector('[data-sync-button]');
+            const chevron = page.querySelector('[data-sync-chevron]');
+            const dropdownMenu = page.querySelector('[data-sync-dropdown-menu]');
+            const options = page.querySelectorAll('[data-sync-option]');
             const icon = page.querySelector('[data-sync-button-icon]');
             const label = page.querySelector('[data-sync-button-label]');
             const alertBox = page.querySelector('[data-sync-alert]');
@@ -510,14 +628,58 @@
             const tablesContainer = page.querySelector('[data-sync-tables]');
 
             let isSyncing = false;
+            let currentFullResync = false;
+
+            const closeDropdown = () => {
+                dropdownMenu.classList.remove('is-open');
+                chevron.classList.remove('is-open');
+            };
+
+            const toggleDropdown = (e) => {
+                e.stopPropagation();
+                dropdownMenu.classList.toggle('is-open');
+                chevron.classList.toggle('is-open');
+            };
+
+            button.addEventListener('click', () => {
+                if (isSyncing) return;
+                currentFullResync = false;
+                startSync();
+            });
+
+            chevron.addEventListener('click', (e) => {
+                if (isSyncing) return;
+                toggleDropdown(e);
+            });
+
+            options.forEach(opt => {
+                opt.addEventListener('click', () => {
+                    currentFullResync = true;
+                    closeDropdown();
+                    startSync();
+                });
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!dropdown.contains(e.target)) {
+                    closeDropdown();
+                }
+            });
 
             const setLoading = (loading) => {
                 isSyncing = loading;
                 button.disabled = loading;
+                chevron.disabled = loading;
                 icon.classList.toggle('is-spinning', loading);
-                label.textContent = loading
-                    ? label.dataset.syncing
-                    : label.dataset.syncNow;
+                if (loading) {
+                    label.textContent = currentFullResync
+                        ? label.dataset.syncingFull
+                        : label.dataset.syncing;
+                } else {
+                    label.textContent = currentFullResync
+                        ? label.dataset.syncNowFull
+                        : label.dataset.syncNow;
+                }
             };
 
             const hideResults = () => {
@@ -695,7 +857,7 @@
                         },
                         body: JSON.stringify({
                             dry_run: false,
-                            full_resync: false,
+                            full_resync: currentFullResync,
                         }),
                     });
 
@@ -712,8 +874,6 @@
                     setLoading(false);
                 }
             };
-
-            button.addEventListener('click', startSync);
 
             if (page.dataset.autoRun === 'true') {
                 startSync();

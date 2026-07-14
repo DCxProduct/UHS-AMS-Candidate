@@ -7,6 +7,8 @@ return [
 
     'sync_now' => 'Sync Now',
     'syncing' => 'Syncing...',
+    'full_sync' => 'Full Sync',
+    'syncing_full' => 'Full Syncing...',
 
     'success_title' => 'Sync Complete',
     'success_message' => 'Your data is now up to date.',

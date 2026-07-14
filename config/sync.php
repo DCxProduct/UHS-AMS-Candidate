@@ -10,7 +10,7 @@ return [
         'dbname' => env('SOURCE_DB_DATABASE'),
         'user' => env('SOURCE_DB_USERNAME'),
         'password' => env('SOURCE_DB_PASSWORD'),
-        'sslmode' => env('SOURCE_DB_SSLMODE', 'require'),
+        'sslmode' => env('SOURCE_DB_SSLMODE', 'disable'),
     ],
 
     'local_db' => [
