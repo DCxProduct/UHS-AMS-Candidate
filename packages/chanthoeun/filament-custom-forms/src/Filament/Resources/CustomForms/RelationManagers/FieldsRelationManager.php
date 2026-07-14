@@ -955,34 +955,6 @@ class FieldsRelationManager extends RelationManager
 
         $selectedFields = array_values(array_filter($selectedFields, fn ($value): bool => filled($value)));
 
-        if (! empty($selectedFields) && blank($data['name'] ?? null)) {
-            $ownerForm = $this->getOwnerRecord();
-
-            $existingNames = $ownerForm->fields()
-                ->pluck('name')
-                ->filter()
-                ->toArray();
-
-            return \Chanthoeun\FilamentCustomForms\Models\CustomFormField::query()
-                ->whereIn('name', $selectedFields)
-                ->whereNotIn('name', $existingNames)
-                ->whereNotIn('type', self::CONTAINER_TYPES)
-                ->orderBy('sort')
-                ->get()
-                ->unique('name')
-                ->map(function ($field) use ($ownerForm): array {
-                    $copy = $field->toArray();
-
-                    unset($copy['id'], $copy['created_at'], $copy['updated_at']);
-
-                    $copy['custom_form_id'] = $ownerForm->id;
-                    $copy['parent_id'] = null;
-
-                    return $copy;
-                })
-                ->toArray();
-        }
-
         $selectedTypes = data_get($data, 'options.visible_when.values', []);
 
         if (! is_array($selectedTypes)) {
@@ -993,6 +965,64 @@ class FieldsRelationManager extends RelationManager
             $selectedTypes,
             fn ($value): bool => filled($value) && $value !== false && $value !== 'false'
         ));
+
+        if (! empty($selectedFields) && blank($data['name'] ?? null)) {
+            $ownerForm = $this->getOwnerRecord();
+            $sourceFields = \Chanthoeun\FilamentCustomForms\Models\CustomFormField::query()
+                ->whereIn('name', $selectedFields)
+                ->whereNotIn('type', self::CONTAINER_TYPES)
+                ->orderBy('sort')
+                ->get()
+                ->unique('name')
+                ->keyBy('name');
+
+            $targetForms = empty($selectedTypes)
+                ? collect([$ownerForm])
+                : collect($selectedTypes)
+                    ->map(fn ($selectedType) => self::formTargetFromValue($selectedType))
+                    ->filter();
+
+            $items = [];
+
+            foreach ($targetForms as $targetForm) {
+                $existingNames = $targetForm->fields()
+                    ->pluck('name')
+                    ->filter()
+                    ->toArray();
+
+                foreach ($selectedFields as $selectedField) {
+                    if (in_array($selectedField, $existingNames, true)) {
+                        continue;
+                    }
+
+                    $field = $sourceFields->get($selectedField);
+
+                    if (! $field) {
+                        continue;
+                    }
+
+                    $copy = $field->toArray();
+
+                    unset($copy['id'], $copy['created_at'], $copy['updated_at']);
+
+                    $copy['custom_form_id'] = $targetForm->id;
+                    $copy['parent_id'] = null;
+
+                    if ($targetForm->menu_placement === 'sub_item' && filled($targetForm->sub_item_type)) {
+                        data_set($copy, 'options.visible_when.field', 'form_selection');
+                        data_set($copy, 'options.visible_when.operator', '=');
+                        data_set($copy, 'options.visible_when.value', $targetForm->sub_item_type);
+                    } else {
+                        data_forget($copy, 'options.visible_when');
+                    }
+
+                    $items[] = $copy;
+                    $existingNames[] = $selectedField;
+                }
+            }
+
+            return $items;
+        }
 
         if (empty($selectedTypes)) {
             return [
