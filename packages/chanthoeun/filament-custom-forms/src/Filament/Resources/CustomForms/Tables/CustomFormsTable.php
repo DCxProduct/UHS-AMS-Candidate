@@ -6,14 +6,13 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Actions\ForceDeleteAction;
-use Filament\Actions\RestoreAction;
-use Filament\Actions\ForceDeleteBulkAction;
-use Filament\Actions\RestoreBulkAction;
-use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\IconColumn;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
+use Illuminate\Support\LazyCollection;
 
 class CustomFormsTable
 {
@@ -94,9 +93,6 @@ class CustomFormsTable
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
-            ->filters([
-                TrashedFilter::make(),
-            ])
             ->actions([
                 \Filament\Actions\Action::make('edit_template')
                     ->label(app()->getLocale() === 'km' ? 'បង្កើតគំរូឯកសារ' : 'Build Template')
@@ -141,15 +137,18 @@ class CustomFormsTable
                     }),
 
                 EditAction::make(),
-                DeleteAction::make(),
-                RestoreAction::make(),
-                ForceDeleteAction::make(),
+                DeleteAction::make()
+                    ->using(fn (Model $record): ?bool => $record->forceDelete()),
             ])
             ->bulkActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                    RestoreBulkAction::make(),
-                    ForceDeleteBulkAction::make(),
+                    DeleteBulkAction::make()
+                        ->fetchSelectedRecords()
+                        ->using(function (DeleteBulkAction $action, EloquentCollection | Collection | LazyCollection $records): void {
+                            $records->each(function (Model $record) use ($action): void {
+                                $record->forceDelete() || $action->reportBulkProcessingFailure();
+                            });
+                        }),
                 ]),
             ]);
     }
