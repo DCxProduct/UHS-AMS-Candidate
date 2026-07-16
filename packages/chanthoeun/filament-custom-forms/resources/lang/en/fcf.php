@@ -1,5 +1,5 @@
 <?php
- 
+
  return [
      'admin' => [
          'parent_container' => 'Parent Container',
@@ -7,12 +7,17 @@
          'columns' => 'Columns',
          'select_options' => 'Select Options',
          'field_input' => 'Field Input',
+         'field_action' => 'Action',
+         'creating_action' => 'Creating Action',
          'field_label_section' => 'Field Label',
          'label_english' => 'English Label',
          'label_khmer' => 'Khmer Label',
          'text_format' => 'Text Format',
          'dynamic_form_type_field' => 'Dynamic Form Type Field',
+         'creating_tab' => 'Creating',
          'multiple_creating_selection_field' => 'Multiple Creating Selection Field',
+         'selection_action' => 'Selection Action',
+         'selection_tab' => 'Selection',
          'select_field' => 'Select Field',
          'key' => 'Key',
          'choice_rows_help' => 'Key is saved to database. English and Khmer are display labels.',
