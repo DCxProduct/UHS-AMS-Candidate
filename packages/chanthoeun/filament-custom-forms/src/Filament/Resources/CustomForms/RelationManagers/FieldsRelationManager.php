@@ -46,6 +46,20 @@ class FieldsRelationManager extends RelationManager
                     ->columns(2)
                     ->columnSpanFull()
                     ->components([
+                        \Filament\Forms\Components\ToggleButtons::make('creation_mode')
+                            ->hiddenLabel()
+                            ->options([
+                                'creating' => __('filament-custom-forms::fcf.admin.creating_tab'),
+                                'selection' => __('filament-custom-forms::fcf.admin.selection_tab'),
+                            ])
+                            ->default('creating')
+                            ->inline()
+                            ->grouped()
+                            ->live()
+                            ->dehydrated(false)
+                            ->columnSpanFull()
+                            ->hidden(fn (?object $record = null): bool => filled($record)),
+
                         \Filament\Forms\Components\Select::make('parent_id')
                             ->label(__('filament-custom-forms::fcf.admin.parent_container'))
                             ->options(function ($livewire) {
@@ -54,12 +68,13 @@ class FieldsRelationManager extends RelationManager
                                     ->orderBy('sort')
                                     ->get()
                                     ->mapWithKeys(fn ($field) => [
-                                        $field->id => self::englishText($field->label ?? $field->name),
+                                        $field->id => self::localeText($field->label ?? $field->name),
                                     ]);
                             })
                             ->searchable()
                             ->preload()
-                            ->nullable(),
+                            ->nullable()
+                            ->visible(fn ($get, ?object $record = null): bool => filled($record) || self::isCreatingMode($get)),
 
                         \Filament\Forms\Components\TextInput::make('name')
                             ->label(__('filament-custom-forms::fcf.field.name'))
@@ -67,7 +82,9 @@ class FieldsRelationManager extends RelationManager
                                 ignoreRecord: true,
                                 modifyRuleUsing: fn (\Illuminate\Validation\Rules\Unique $rule, $livewire) => $rule->where('custom_form_id', $livewire->getOwnerRecord()->id)
                             )
-                            ->helperText(__('filament-custom-forms::fcf.builder.fields.name_help')),
+                            ->helperText(__('filament-custom-forms::fcf.builder.fields.name_help'))
+                            ->required(fn ($get, ?object $record = null): bool => filled($record) || self::isCreatingMode($get))
+                            ->visible(fn ($get, ?object $record = null): bool => filled($record) || self::isCreatingMode($get)),
 
                         \Filament\Forms\Components\Select::make('type')
                             ->label(__('filament-custom-forms::fcf.field.type'))
@@ -103,52 +120,50 @@ class FieldsRelationManager extends RelationManager
                             ->default('text_input')
                             ->native()
                             ->columnSpan(2)
-                            ->live(),
+                            ->live()
+                            ->required(fn ($get, ?object $record = null): bool => filled($record) || self::isCreatingMode($get))
+                            ->visible(fn ($get, ?object $record = null): bool => filled($record) || self::isCreatingMode($get)),
 
                         \Filament\Forms\Components\Toggle::make('required')
                             ->label(__('filament-custom-forms::fcf.field.is_required'))
                             ->default(false)
-                            ->visible(fn ($get): bool => ! in_array((string) $get('type'), self::CONTAINER_TYPES, true)),
+                            ->visible(fn ($get, ?object $record = null): bool => (filled($record) || self::isCreatingMode($get))
+                                && ! in_array((string) $get('type'), self::CONTAINER_TYPES, true)),
 
                         \Filament\Forms\Components\Toggle::make('options.is_field_input_enabled')
-                            ->label('Field Input')
+                            ->label(__('filament-custom-forms::fcf.admin.field_input'))
                             ->default(true)
-                            ->visible(fn ($get): bool => ! in_array((string) $get('type'), self::CONTAINER_TYPES, true)
+                            ->visible(fn ($get, ?object $record = null): bool => (filled($record) || self::isCreatingMode($get))
+                                && ! in_array((string) $get('type'), self::CONTAINER_TYPES, true)
                                 && (string) $get('type') !== 'info'),
 
-                        \Filament\Schemas\Components\Section::make('Field Label')
+                        \Filament\Schemas\Components\Section::make(__('filament-custom-forms::fcf.admin.field_label_section'))
                             ->columns(2)
                             ->columnSpanFull()
+                            ->visible(fn ($get, ?object $record = null): bool => filled($record) || self::isCreatingMode($get))
                             ->schema([
                                 \Filament\Forms\Components\TextInput::make('label_en')
-                                    ->label('English Label')
+                                    ->label(__('filament-custom-forms::fcf.admin.label_english'))
+                                    ->required(fn ($get, ?object $record = null): bool => filled($record) || self::isCreatingMode($get))
                                     ->afterStateHydrated(function ($component, $record): void {
                                         $component->state(self::getLangValue($record?->label, 'en'));
                                     }),
 
                                 \Filament\Forms\Components\TextInput::make('label_km')
-                                    ->label('Khmer Label')
+                                    ->label(__('filament-custom-forms::fcf.admin.label_khmer'))
+                                    ->required(fn ($get, ?object $record = null): bool => filled($record) || self::isCreatingMode($get))
                                     ->afterStateHydrated(function ($component, $record): void {
                                         $component->state(self::getLangValue($record?->label, 'km'));
                                     }),
 
                                 \Filament\Forms\Components\Select::make('options.text_format')
-                                    ->label('Text Format')
-                                    ->options([
-                                        'normal' => 'Normal',
-                                        'h1' => 'H1',
-                                        'h2' => 'H2',
-                                        'h3' => 'H3',
-                                        'h4' => 'H4',
-                                        'h5' => 'H5',
-                                        'h6' => 'H6',
-                                        'h7' => 'H7',
-                                    ])
+                                    ->label(__('filament-custom-forms::fcf.admin.text_format'))
+                                    ->options(self::textFormatOptions())
                                     ->default('normal')
                                     ->native(false),
                             ]),
 
-                        \Filament\Schemas\Components\Section::make('Dynamic Form Type Field')
+                        \Filament\Schemas\Components\Section::make(__('filament-custom-forms::fcf.admin.dynamic_form_type_field'))
                             ->columnSpanFull()
                             ->columns(1)
                             ->visible(function ($livewire): bool {
@@ -208,13 +223,13 @@ class FieldsRelationManager extends RelationManager
                                     ->default('='),
                             ]),
 
-                        \Filament\Schemas\Components\Section::make('Multiple Creating Selection Field')
+                        \Filament\Schemas\Components\Section::make(__('filament-custom-forms::fcf.admin.multiple_creating_selection_field'))
                             ->columnSpanFull()
                             ->columns(2)
-                            ->hidden(fn (?object $record = null): bool => filled($record))
+                            ->visible(fn ($get, ?object $record = null): bool => blank($record) && self::isSelectionMode($get))
                             ->components([
                                 \Filament\Forms\Components\Select::make('options.visible_when.fields')
-                                    ->label('Select Field')
+                                    ->label(__('filament-custom-forms::fcf.admin.select_field'))
                                     ->options(function ($livewire): array {
                                         $ownerForm = $livewire->getOwnerRecord();
 
@@ -249,6 +264,7 @@ class FieldsRelationManager extends RelationManager
 
                         \Filament\Schemas\Components\Section::make(__('filament-custom-forms::fcf.admin.configuration'))
                             ->columnSpanFull()
+                            ->visible(fn ($get, ?object $record = null): bool => filled($record) || self::isCreatingMode($get))
                             ->components([
                                 \Filament\Forms\Components\Select::make('options.columns')
                                     ->label(__('filament-custom-forms::fcf.admin.columns'))
@@ -272,15 +288,15 @@ class FieldsRelationManager extends RelationManager
                                     ->columns(3)
                                     ->schema([
                                         \Filament\Forms\Components\TextInput::make('key')
-                                            ->label('Key')
+                                            ->label(__('filament-custom-forms::fcf.admin.key'))
                                             ->required(),
 
                                         \Filament\Forms\Components\TextInput::make('label_en')
-                                            ->label('Label English')
+                                            ->label(__('filament-custom-forms::fcf.admin.label_english'))
                                             ->required(),
 
                                         \Filament\Forms\Components\TextInput::make('label_km')
-                                            ->label('Label Khmer')
+                                            ->label(__('filament-custom-forms::fcf.admin.label_khmer'))
                                             ->required(),
                                     ])
                                     ->afterStateHydrated(function ($component, $state, $record): void {
@@ -294,7 +310,7 @@ class FieldsRelationManager extends RelationManager
                                         $component->state(self::choicesToRows(is_array($choices) ? $choices : []));
                                     })
                                     ->dehydrated(true)
-                                    ->helperText('Key is saved to database. English and Khmer are display labels.'),
+                                    ->helperText(__('filament-custom-forms::fcf.admin.choice_rows_help')),
 
                                 \Filament\Forms\Components\Hidden::make('options.geo_location_type')
                                     ->default(''),
@@ -303,21 +319,9 @@ class FieldsRelationManager extends RelationManager
                                     ->default('id'),
 
                                 \Filament\Forms\Components\Select::make('options.data_source_table')
-                                    ->label('Data Source Table')
-                                    ->placeholder('Select an option')
-                                    ->options([
-                                        '' => 'Not a data source field',
-                                        'geo_province' => 'Geo: Province / Capital',
-                                        'geo_district' => 'Geo: District / Khan',
-                                        'geo_commune' => 'Geo: Commune / Sangkat',
-                                        'geo_village' => 'Geo: Village',
-                                        'academic_levels' => 'Academic Levels',
-                                        'academic_years' => 'Academic Years',
-                                        'countries' => 'Countries',
-                                        'faculties' => 'Faculties',
-                                        'fiscal_years' => 'Fiscal Years',
-                                        'programs' => 'Programs',
-                                    ])
+                                    ->label(__('filament-custom-forms::fcf.admin.data_source_table'))
+                                    ->placeholder(__('filament-custom-forms::fcf.admin.select_an_option'))
+                                    ->options(self::dataSourceTableOptions())
                                     ->default('')
                                     ->native(false)
                                     ->searchable()
@@ -342,36 +346,36 @@ class FieldsRelationManager extends RelationManager
                                             $set('options.geo_location_value_column', 'id');
                                         }
                                     })
-                                    ->helperText('Use Geo or another master table to load options automatically.')
+                                    ->helperText(__('filament-custom-forms::fcf.admin.data_source_helper'))
                                     ->visible(fn ($get): bool => in_array((string) $get('type'), self::CHOICE_TYPES, true)),
 
                                 \Filament\Forms\Components\TextInput::make('options.geo_location_parent_field')
-                                    ->label('Parent Location Field Name')
-                                    ->placeholder('Example: pob_province_id')
+                                    ->label(__('filament-custom-forms::fcf.admin.parent_location_field_name'))
+                                    ->placeholder(__('filament-custom-forms::fcf.admin.parent_location_field_placeholder'))
                                     ->visible(function ($get): bool {
                                         $source = (string) $get('options.data_source_table');
 
                                         return in_array($source, ['geo_district', 'geo_commune', 'geo_village'], true)
                                             || in_array((string) $get('options.geo_location_type'), ['district', 'commune', 'village'], true);
                                     })
-                                    ->helperText('Example: district parent is province, commune parent is district, village parent is commune.'),
+                                    ->helperText(__('filament-custom-forms::fcf.admin.parent_location_field_helper')),
 
                                 \Filament\Forms\Components\TextInput::make('options.geo_location_child_fields')
-                                    ->label('Child Location Field Names')
-                                    ->placeholder('Example: pob_district_id,pob_commune_id,pob_village_id')
+                                    ->label(__('filament-custom-forms::fcf.admin.child_location_field_names'))
+                                    ->placeholder(__('filament-custom-forms::fcf.admin.child_location_field_placeholder'))
                                     ->visible(function ($get): bool {
                                         $source = (string) $get('options.data_source_table');
 
                                         return str_starts_with($source, 'geo_')
                                             || filled($get('options.geo_location_type'));
                                     })
-                                    ->helperText('Optional. When parent changes, these child fields can be reset.'),
+                                    ->helperText(__('filament-custom-forms::fcf.admin.child_location_field_helper')),
 
                                 \Filament\Forms\Components\Select::make('options.data_source_label_column')
-                                    ->label('Data Source Label Column')
-                                    ->placeholder('Select an option')
+                                    ->label(__('filament-custom-forms::fcf.admin.data_source_label_column'))
+                                    ->placeholder(__('filament-custom-forms::fcf.admin.select_an_option'))
                                     ->options([
-                                        '' => 'Auto Label',
+                                        '' => __('filament-custom-forms::fcf.admin.auto_label'),
                                         'name_kh' => 'name_kh',
                                         'name_en' => 'name_en',
                                         'name_khmer' => 'name_khmer',
@@ -383,7 +387,7 @@ class FieldsRelationManager extends RelationManager
                                     ->default('')
                                     ->native(false)
                                     ->searchable()
-                                    ->helperText('Leave Auto Label to use Khmer first, then English.')
+                                    ->helperText(__('filament-custom-forms::fcf.admin.data_source_label_helper'))
                                     ->visible(function ($get): bool {
                                         $source = (string) $get('options.data_source_table');
 
@@ -391,10 +395,10 @@ class FieldsRelationManager extends RelationManager
                                     }),
 
                                 \Filament\Forms\Components\KeyValue::make('options.column_span')
-                                    ->label('Column Span Responsive')
-                                    ->helperText('Key: Breakpoint default, sm, md, lg, xl, 2xl. Value: Columns 1-12 or full.')
-                                    ->keyLabel('Breakpoint')
-                                    ->valueLabel('Columns')
+                                    ->label(__('filament-custom-forms::fcf.admin.column_span_responsive'))
+                                    ->helperText(__('filament-custom-forms::fcf.admin.column_span_responsive_helper'))
+                                    ->keyLabel(__('filament-custom-forms::fcf.admin.breakpoint'))
+                                    ->valueLabel(__('filament-custom-forms::fcf.admin.columns_value'))
                                     ->formatStateUsing(fn ($state) => is_array($state) ? $state : (empty($state) ? [] : ['default' => $state])),
 
                                 \Filament\Forms\Components\Toggle::make('options.column_span_full')
@@ -414,12 +418,12 @@ class FieldsRelationManager extends RelationManager
                                     ->visible(fn ($get): bool => in_array((string) $get('type'), ['text_input', 'email', 'number_input', 'phone'], true)),
 
                                 \Filament\Forms\Components\Toggle::make('options.is_decimal')
-                                    ->label('Allow Decimals')
+                                    ->label(__('filament-custom-forms::fcf.admin.allow_decimals'))
                                     ->visible(fn ($get): bool => in_array((string) $get('type'), ['number_input', 'number', 'money'], true))
                                     ->default(true),
 
                                 \Filament\Forms\Components\Toggle::make('options.is_hidden_label')
-                                    ->label('Hide Label')
+                                    ->label(__('filament-custom-forms::fcf.admin.hide_label'))
                                     ->default(false),
 
                                 \Filament\Forms\Components\Toggle::make('options.is_hidden_on_view')
@@ -427,12 +431,12 @@ class FieldsRelationManager extends RelationManager
                                     ->default(false),
 
                                 \Filament\Forms\Components\Toggle::make('options.is_table')
-                                    ->label('Use Table Layout')
+                                    ->label(__('filament-custom-forms::fcf.admin.use_table_layout'))
                                     ->visible(fn ($get): bool => $get('type') === 'repeater')
                                     ->default(false),
 
                                 \Filament\Forms\Components\Toggle::make('options.is_compact')
-                                    ->label('Compact Mode')
+                                    ->label(__('filament-custom-forms::fcf.admin.compact_mode'))
                                     ->visible(fn ($get): bool => $get('type') === 'repeater')
                                     ->default(false),
                             ]),
@@ -476,7 +480,7 @@ class FieldsRelationManager extends RelationManager
                     )),
 
                 ToggleColumn::make('field_input')
-                    ->label(app()->getLocale() === 'km' ? 'បញ្ចូលទិន្នន័យ' : 'Field Input')
+                    ->label(__('filament-custom-forms::fcf.admin.field_input'))
                     ->state(fn ($record): bool => self::isFieldInputEnabled($record->options ?? []))
                     ->updateStateUsing(function ($record, $state): bool {
                         $options = self::normalizeOptions($record->options ?? []);
@@ -622,7 +626,7 @@ class FieldsRelationManager extends RelationManager
             ->defaultSort('sort', 'asc')
             ->headerActions([
                 CreateAction::make()
-                    ->modalHeading('Create Custom Form Field')
+                    ->modalHeading(__('filament-custom-forms::fcf.admin.create_custom_form_field'))
                     ->using(function (array $data) {
                         $createdRecord = null;
 
@@ -639,7 +643,7 @@ class FieldsRelationManager extends RelationManager
             ])
             ->actions([
                 EditAction::make()
-                    ->modalHeading('Edit Custom Form Field')
+                    ->modalHeading(__('filament-custom-forms::fcf.admin.edit_custom_form_field'))
                     ->using(function ($record, array $data) {
                         $record->update($this->prepareFieldData($data));
 
@@ -802,6 +806,37 @@ class FieldsRelationManager extends RelationManager
         return $data;
     }
 
+    private static function textFormatOptions(): array
+    {
+        return [
+            'normal' => __('filament-custom-forms::fcf.admin.text_format_options.normal'),
+            'h1' => 'H1',
+            'h2' => 'H2',
+            'h3' => 'H3',
+            'h4' => 'H4',
+            'h5' => 'H5',
+            'h6' => 'H6',
+            'h7' => 'H7',
+        ];
+    }
+
+    private static function dataSourceTableOptions(): array
+    {
+        return [
+            '' => __('filament-custom-forms::fcf.admin.not_data_source_field'),
+            'geo_province' => __('filament-custom-forms::fcf.admin.data_source_options.geo_province'),
+            'geo_district' => __('filament-custom-forms::fcf.admin.data_source_options.geo_district'),
+            'geo_commune' => __('filament-custom-forms::fcf.admin.data_source_options.geo_commune'),
+            'geo_village' => __('filament-custom-forms::fcf.admin.data_source_options.geo_village'),
+            'academic_levels' => __('filament-custom-forms::fcf.admin.data_source_options.academic_levels'),
+            'academic_years' => __('filament-custom-forms::fcf.admin.data_source_options.academic_years'),
+            'countries' => __('filament-custom-forms::fcf.admin.data_source_options.countries'),
+            'faculties' => __('filament-custom-forms::fcf.admin.data_source_options.faculties'),
+            'fiscal_years' => __('filament-custom-forms::fcf.admin.data_source_options.fiscal_years'),
+            'programs' => __('filament-custom-forms::fcf.admin.data_source_options.programs'),
+        ];
+    }
+
     private static function normalizeOptions(mixed $options): array
     {
         if (is_array($options)) {
@@ -819,6 +854,16 @@ class FieldsRelationManager extends RelationManager
         }
 
         return [];
+    }
+
+    private static function isCreatingMode(callable $get): bool
+    {
+        return ($get('creation_mode') ?? 'creating') !== 'selection';
+    }
+
+    private static function isSelectionMode(callable $get): bool
+    {
+        return ($get('creation_mode') ?? 'creating') === 'selection';
     }
 
     private static function isFieldInputEnabled(mixed $options): bool
@@ -849,9 +894,9 @@ class FieldsRelationManager extends RelationManager
         if (is_array($value)) {
             return (string) (
                 $value[$locale]
-                ?? $value['en']
                 ?? $value['km']
                 ?? $value['kh']
+                ?? $value['en']
                 ?? collect($value)->first()
                 ?? ''
             );
