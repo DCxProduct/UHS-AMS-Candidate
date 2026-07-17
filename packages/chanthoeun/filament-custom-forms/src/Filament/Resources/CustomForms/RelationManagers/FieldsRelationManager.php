@@ -133,6 +133,13 @@ class FieldsRelationManager extends RelationManager
                         \Filament\Forms\Components\Toggle::make('options.is_field_input_enabled')
                             ->label(__('filament-custom-forms::fcf.admin.field_input'))
                             ->default(true)
+                            ->afterStateHydrated(function ($component, $state, $record): void {
+                                if (! filled($record)) {
+                                    return;
+                                }
+
+                                $component->state(self::isFieldInputEnabled($record->options ?? []));
+                            })
                             ->visible(fn ($get, ?object $record = null): bool => (filled($record) || self::isCreatingMode($get))
                                 && ! in_array((string) $get('type'), self::CONTAINER_TYPES, true)
                                 && (string) $get('type') !== 'info'),
