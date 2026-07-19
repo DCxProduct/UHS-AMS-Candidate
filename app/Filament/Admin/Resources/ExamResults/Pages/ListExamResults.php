@@ -3,9 +3,11 @@
 namespace App\Filament\Admin\Resources\ExamResults\Pages;
 
 use App\Filament\Admin\Resources\ExamResults\ExamResultResource;
+use App\Filament\Admin\Resources\ExamResults\Tables\ExamResultsTable;
 use Carbon\Carbon;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Actions\Action;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Contracts\Support\Htmlable;
 
@@ -26,6 +28,30 @@ class ListExamResults extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('notify_all_students')
+                ->label(__('exam_results.notify_all_students'))
+                ->icon('heroicon-o-bell-alert')
+                ->color('danger')
+                ->requiresConfirmation()
+                ->modalHeading(__('exam_results.notify_all_confirm_title'))
+                ->modalDescription(__('exam_results.notify_all_confirm_description'))
+                ->modalSubmitActionLabel(__('exam_results.send_notification'))
+                ->modalCancelActionLabel(__('app.cancel'))
+                ->visible(fn (): bool => ExamResultsTable::hasUnsentPassedNotifications())
+                ->action(function (): void {
+                    $sentCount = ExamResultsTable::sendPassedNotifications(
+                        CustomFormEntry::query()
+                            ->with(['creator', 'customForm'])
+                            ->where('data->candidate_status', 'passed')
+                            ->get()
+                    );
+
+                    Notification::make()
+                        ->title(__('exam_results.notifications_sent', ['count' => $sentCount]))
+                        ->success()
+                        ->send();
+                }),
+
             Action::make('download_excel')
                 ->label(__('exam_results.download_excel'))
                 ->color('success')

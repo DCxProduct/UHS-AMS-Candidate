@@ -450,12 +450,6 @@ class ReviewApplicationsTable
             ]);
 
         $record->refresh();
-
-        self::notifyStudentReviewResult(
-            record: $record,
-            status: 'passed',
-            note: null,
-        );
     }
 
     protected static function markCandidatePending(CustomFormEntry $record): void
@@ -599,18 +593,22 @@ class ReviewApplicationsTable
         }
     }
 
-    protected static function notifyStudentReviewResult(CustomFormEntry $record, string $status, ?string $note = null): void
+    public static function notifyStudentReviewResult(CustomFormEntry $record, string $status, ?string $note = null): bool
     {
         $student = self::getOwnerStudent($record);
 
         if (! $student) {
-            return;
+            return false;
         }
 
         $data = self::normalizeData($record->data);
         $studentName = self::getStudentName($data, $student->name, $student);
 
         if ($status === 'passed') {
+            if (self::studentAlreadyHasReviewResultNotification($student, $record, $status)) {
+                return false;
+            }
+
             Notification::make()
                 ->title(NotificationLanguage::transForUser(
                     $student,
@@ -625,10 +623,15 @@ class ReviewApplicationsTable
                 ))
                 ->icon('heroicon-o-check-circle')
                 ->iconColor('success')
+                ->viewData(self::reviewResultNotificationData($record, $status))
                 ->success()
                 ->sendToDatabase($student);
 
-            return;
+            return true;
+        }
+
+        if (self::studentAlreadyHasReviewResultNotification($student, $record, $status)) {
+            return false;
         }
 
         Notification::make()
@@ -651,8 +654,44 @@ class ReviewApplicationsTable
             ))
             ->icon('heroicon-o-x-circle')
             ->iconColor('danger')
+            ->viewData(self::reviewResultNotificationData($record, $status))
             ->danger()
             ->sendToDatabase($student);
+
+        return true;
+    }
+
+    public static function hasStudentReviewResultNotification(CustomFormEntry $record, string $status): bool
+    {
+        $student = self::getOwnerStudent($record);
+
+        if (! $student) {
+            return false;
+        }
+
+        return self::studentAlreadyHasReviewResultNotification($student, $record, $status);
+    }
+
+    protected static function studentAlreadyHasReviewResultNotification(User $student, CustomFormEntry $record, string $status): bool
+    {
+        if (! Schema::hasTable('notifications')) {
+            return false;
+        }
+
+        return DB::table('notifications')
+            ->where('notifiable_type', $student->getMorphClass())
+            ->where('notifiable_id', $student->getKey())
+            ->where('data->viewData->review_result_entry_id', (string) $record->getKey())
+            ->where('data->viewData->review_result_status', $status)
+            ->exists();
+    }
+
+    protected static function reviewResultNotificationData(CustomFormEntry $record, string $status): array
+    {
+        return [
+            'review_result_entry_id' => (string) $record->getKey(),
+            'review_result_status' => $status,
+        ];
     }
 
     protected static function getOwnerStudent(CustomFormEntry $record): ?User
