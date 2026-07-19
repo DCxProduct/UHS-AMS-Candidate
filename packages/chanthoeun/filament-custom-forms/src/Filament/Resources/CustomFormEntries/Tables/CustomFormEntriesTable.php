@@ -751,7 +751,7 @@ class CustomFormEntriesTable
                             self::notifyStudentNationalExamResult($record, 'approved', null);
 
                             Notification::make()
-                                ->title('Application approved')
+                                ->title(__('review_applications.notifications.admin_accept_success_title'))
                                 ->success()
                                 ->send();
 
@@ -789,7 +789,7 @@ class CustomFormEntriesTable
                             self::notifyStudentNationalExamResult($record, 'rejected', $data['review_note'] ?? null);
 
                             Notification::make()
-                                ->title('Application rejected')
+                                ->title(__('review_applications.notifications.admin_reject_success_title'))
                                 ->danger()
                                 ->send();
 
@@ -835,7 +835,7 @@ class CustomFormEntriesTable
                     self::notifyStudentNationalExamResult($record, 'approved', null);
 
                     Notification::make()
-                        ->title('Application approved')
+                        ->title(__('review_applications.notifications.admin_accept_success_title'))
                         ->success()
                         ->send();
                 });
@@ -876,7 +876,7 @@ class CustomFormEntriesTable
                     self::notifyStudentNationalExamResult($record, 'rejected', $data['review_note'] ?? null);
 
                     Notification::make()
-                        ->title('Application rejected')
+                        ->title(__('review_applications.notifications.admin_reject_success_title'))
                         ->danger()
                         ->send();
                 });
