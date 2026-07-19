@@ -258,14 +258,22 @@ class StudentProfileSeeder extends Seeder
 
         $this->upsertFields($customFormId, $siblingsRepeater, $siblingFields, $keepNames, $sort);
 
+        $notSingle = [
+            'visible_when' => [
+                'field' => 'married_status',
+                'operator' => 'not_in',
+                'value' => ['single'],
+            ],
+        ];
+
         $spouseFields = [
-            ['name' => 'spouse_children_heading', 'label' => $this->t('B. About Spouse and Children', 'ខ. អំពីប្ដី/ប្រពន្ធ និងកូន'), 'type' => 'info', 'options' => ['content' => $this->t('B. About Spouse and Children', 'ខ. អំពីប្ដី/ប្រពន្ធ និងកូន'), 'column_span_full' => true, 'is_hidden_label' => true]],
-            ['name' => 'spouse_name', 'label' => $this->t('Spouse Name', 'ឈ្មោះប្ដី/ប្រពន្ធ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Spouse Name', 'placeholder_km' => 'បញ្ចូលឈ្មោះប្ដី/ប្រពន្ធ']],
-            ['name' => 'spouse_year_of_birth', 'label' => $this->t('Date of Birth', 'ថ្ងៃខែឆ្នាំកំណើត'), 'type' => 'date_picker', 'options' => ['placeholder_en' => 'Enter Spouse Date of Birth', 'placeholder_km' => 'ជ្រើសរើសថ្ងៃខែឆ្នាំកំណើតប្ដី/ប្រពន្ធ', 'max_date' => 'today']],
-            ['name' => 'spouse_occupation', 'label' => $this->t('Occupation', 'មុខរបរ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Spouse Occupation', 'placeholder_km' => 'បញ្ចូលមុខរបរប្ដី/ប្រពន្ធ']],
-            ['name' => 'number_of_children', 'label' => $this->t('Number of Children', 'ចំនួនកូនសរុប'), 'type' => 'number_input', 'options' => ['placeholder_en' => 'Enter Number of Children', 'placeholder_km' => 'បញ្ចូលចំនួនកូនសរុប']],
-            ['name' => 'number_of_sons', 'label' => $this->t('Number of Sons', 'ចំនួនកូនប្រុស'), 'type' => 'number_input', 'options' => ['placeholder_en' => 'Enter Number of Sons', 'placeholder_km' => 'បញ្ចូលចំនួនកូនប្រុស']],
-            ['name' => 'number_of_daughters', 'label' => $this->t('Number of Daughters', 'ចំនួនកូនស្រី'), 'type' => 'number_input', 'options' => ['placeholder_en' => 'Enter Number of Daughters', 'placeholder_km' => 'បញ្ចូលចំនួនកូនស្រី']],
+            ['name' => 'spouse_children_heading', 'label' => $this->t('B. About Spouse and Children', 'ខ. អំពីប្ដី/ប្រពន្ធ និងកូន'), 'type' => 'info', 'options' => ['content' => $this->t('B. About Spouse and Children', 'ខ. អំពីប្ដី/ប្រពន្ធ និងកូន'), 'column_span_full' => true, 'is_hidden_label' => true, ...$notSingle]],
+            ['name' => 'spouse_name', 'label' => $this->t('Spouse Name', 'ឈ្មោះប្ដី/ប្រពន្ធ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Spouse Name', 'placeholder_km' => 'បញ្ចូលឈ្មោះប្ដី/ប្រពន្ធ', ...$notSingle]],
+            ['name' => 'spouse_year_of_birth', 'label' => $this->t('Date of Birth', 'ថ្ងៃខែឆ្នាំកំណើត'), 'type' => 'date_picker', 'options' => ['placeholder_en' => 'Enter Spouse Date of Birth', 'placeholder_km' => 'ជ្រើសរើសថ្ងៃខែឆ្នាំកំណើតប្ដី/ប្រពន្ធ', 'max_date' => 'today', ...$notSingle]],
+            ['name' => 'spouse_occupation', 'label' => $this->t('Occupation', 'មុខរបរ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Spouse Occupation', 'placeholder_km' => 'បញ្ចូលមុខរបរប្ដី/ប្រពន្ធ', ...$notSingle]],
+            ['name' => 'number_of_children', 'label' => $this->t('Number of Children', 'ចំនួនកូនសរុប'), 'type' => 'number_input', 'options' => ['placeholder_en' => 'Enter Number of Children', 'placeholder_km' => 'បញ្ចូលចំនួនកូនសរុប', ...$notSingle]],
+            ['name' => 'number_of_sons', 'label' => $this->t('Number of Sons', 'ចំនួនកូនប្រុស'), 'type' => 'number_input', 'options' => ['placeholder_en' => 'Enter Number of Sons', 'placeholder_km' => 'បញ្ចូលចំនួនកូនប្រុស', ...$notSingle]],
+            ['name' => 'number_of_daughters', 'label' => $this->t('Number of Daughters', 'ចំនួនកូនស្រី'), 'type' => 'number_input', 'options' => ['placeholder_en' => 'Enter Number of Daughters', 'placeholder_km' => 'បញ្ចូលចំនួនកូនស្រី', ...$notSingle]],
         ];
 
         $this->upsertFields($customFormId, $familySection, $spouseFields, $keepNames, $sort);
