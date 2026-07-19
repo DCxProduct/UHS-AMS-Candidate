@@ -673,7 +673,7 @@ class CustomFormEntriesTable
                         return false;
                     }
 
-                    return self::entryStatus($record) === 'rejected';
+                    return in_array(self::entryStatus($record), ['draft', 'rejected'], true);
                 }),
 
             Action::make('save_draft')
