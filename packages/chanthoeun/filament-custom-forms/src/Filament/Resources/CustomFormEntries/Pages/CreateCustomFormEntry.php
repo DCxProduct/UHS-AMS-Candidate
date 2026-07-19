@@ -125,7 +125,7 @@ class CreateCustomFormEntry extends CreateRecord
     {
         return [
             Action::make('submit')
-                ->label(__('app.save'))
+                ->label(__('app.done'))
                 ->color('primary')
                 ->hidden(fn () => $this->hasWizardOnFirstStep())
                 ->action(function (): void {

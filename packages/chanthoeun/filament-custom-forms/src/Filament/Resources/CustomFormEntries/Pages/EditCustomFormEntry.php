@@ -51,7 +51,7 @@ class EditCustomFormEntry extends EditRecord
 
         if (! $this->isLockedForEditing()) {
             $actions[] = $this->getSaveFormAction()
-                ->label(__('app.save'))
+                ->label(__('app.done'))
                 ->color('primary')
                 ->hidden(fn () => $this->hasWizardOnFirstStep());
         }
