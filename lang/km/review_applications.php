@@ -122,5 +122,5 @@ return [
     'approve_at' => 'បានពិនិត្យ',
     'review_status_result' => 'លទ្ធផលប្រលង',
 
-    'view_pdf' => 'បានពិនិត្យ',
+    'view_pdf' => 'ចូលពិនិត្យ',
 ];
