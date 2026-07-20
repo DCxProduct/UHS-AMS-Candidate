@@ -6,9 +6,9 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Tables\Table;
-use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
@@ -28,6 +28,12 @@ class CustomFormsTable
                 TextColumn::make('slug')
                     ->label(__('filament-custom-forms::fcf.form.slug'))
                     ->searchable(),
+
+                TextColumn::make('display_order')
+                    ->label('#')
+                    ->numeric()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('menu_placement')
                     ->label(__('filament-custom-forms::fcf.form.menu_placement'))
@@ -150,7 +156,10 @@ class CustomFormsTable
                             });
                         }),
                 ]),
-            ]);
+            ])
+            ->reorderable('display_order')
+            ->authorizeReorder(true)
+            ->defaultSort('display_order', 'asc');
     }
 
     private static function templateName(mixed $formName): string

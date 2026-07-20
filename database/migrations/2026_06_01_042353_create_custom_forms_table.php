@@ -17,6 +17,7 @@ return new class extends Migration {
             $table->json('schema')->nullable(); // The component definition
             $table->boolean('is_active')->default(true);
             $table->json('allowed_roles')->nullable();
+            $table->integer('display_order')->default(0);
 
             $table->foreignId('custom_form_id')
                 ->nullable()

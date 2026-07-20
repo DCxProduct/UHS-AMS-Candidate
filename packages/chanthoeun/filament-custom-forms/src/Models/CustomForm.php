@@ -21,16 +21,24 @@ class CustomForm extends Model
         'menu_placement',
         'parent_sidebar',
         'sub_item_type',
+        'display_order',
     ];
 
     protected $casts = [
         'schema' => 'array',
         'is_active' => 'boolean',
         'allowed_roles' => 'array',
+        'display_order' => 'integer',
     ];
 
     protected static function booted(): void
     {
+        static::creating(function (CustomForm $customForm): void {
+            if (blank($customForm->display_order)) {
+                $customForm->display_order = ((int) static::query()->max('display_order')) + 1;
+            }
+        });
+
         static::created(function (CustomForm $customForm): void {
             if ($customForm->menu_placement === 'sidebar' && blank($customForm->custom_form_id)) {
                 $customForm->forceFill([
