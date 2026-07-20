@@ -435,8 +435,8 @@ class ExamResultsTable
     protected static function khmerName($record): string
     {
         $name = trim(collect([
-            data_get($record->data, 'last_name_kh'),
             data_get($record->data, 'first_name_kh'),
+            data_get($record->data, 'last_name_kh'),
         ])->filter()->join(' '));
 
         return filled($name) ? $name : self::entryValue($record, 'name_khmer', $record->creator?->name);
@@ -445,8 +445,8 @@ class ExamResultsTable
     protected static function latinName($record): string
     {
         $name = trim(collect([
-            data_get($record->data, 'last_name_en'),
             data_get($record->data, 'first_name_en'),
+            data_get($record->data, 'last_name_en'),
         ])->filter()->join(' '));
 
         return filled($name) ? strtoupper($name) : self::entryValue($record, 'name_latin', $record->creator?->name_latin);
