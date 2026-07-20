@@ -199,8 +199,8 @@ class AppServiceProvider extends ServiceProvider
     protected function getStudentNameForNotification(array $data, ?string $fallbackName = null): ?string
     {
         $khmerName = trim(implode(' ', array_filter([
-            $data['last_name_kh'] ?? null,
             $data['first_name_kh'] ?? null,
+            $data['last_name_kh'] ?? null,
         ])));
 
         if (filled($khmerName)) {
