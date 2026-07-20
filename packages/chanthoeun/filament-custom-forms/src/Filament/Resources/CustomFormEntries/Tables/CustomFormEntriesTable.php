@@ -213,53 +213,6 @@ class CustomFormEntriesTable
                 $additionalColumns[$key] = $column;
             }
 
-            // Also scan recent entry data keys for any extra/ad-hoc data
-            $dataKeys = \Chanthoeun\FilamentCustomForms\Models\CustomFormEntry::query()
-                ->whereIn('custom_form_id', $targetFormIds)
-                ->latest()
-                ->limit(20)
-                ->get()
-                ->flatMap(fn ($entry) => array_keys(is_array($entry->data) ? $entry->data : []))
-                ->unique();
-
-            foreach ($dataKeys as $key) {
-                if (blank($key) || in_array($key, $processedKeys, true) || in_array($key, $imageFieldKeys, true) || isset($additionalColumns[$key])) {
-                    continue;
-                }
-
-                $label = \Illuminate\Support\Str::headline($key);
-                if ($key === 'last_name_kh') {
-                    $label = app()->getLocale() === 'km' ? 'នាមត្រកូល (ខ្មែរ)' : 'Family Name (Khmer)';
-                } elseif ($key === 'first_name_kh') {
-                    $label = app()->getLocale() === 'km' ? 'នាមខ្លួន (ខ្មែរ)' : 'Given Name (Khmer)';
-                } elseif ($key === 'last_name_en') {
-                    $label = app()->getLocale() === 'km' ? 'អក្សរឡាតាំងនាមខ្លួន' : 'Latin Given Name';
-                } elseif ($key === 'first_name_en') {
-                    $label = app()->getLocale() === 'km' ? 'អក្សរឡាតាំងនាមត្រកូល' : 'Latin Family Name';
-                }
-
-                $column = TextColumn::make("data.{$key}")
-                    ->label($label)
-                    ->placeholder('-')
-                    ->toggleable(isToggledHiddenByDefault: true)
-                    ->wrap();
-
-                // Format if it looks like a date/time string
-                if (str_contains($key, 'date') || str_contains($key, 'period') || str_contains($key, 'dob') || str_contains($key, 'born')) {
-                    $column->formatStateUsing(function (mixed $state): string {
-                        if (blank($state)) {
-                            return '-';
-                        }
-                        try {
-                            return \Carbon\Carbon::parse($state)->format('d-M-Y');
-                        } catch (\Throwable) {
-                            return (string) $state;
-                        }
-                    });
-                }
-
-                $additionalColumns[$key] = $column;
-            }
         }
 
         $columns = [
@@ -290,7 +243,12 @@ class CustomFormEntriesTable
             // 3. Major
             TextColumn::make('major')
                 ->label(app()->getLocale() === 'km' ? 'ផ្នែក/ជំនាញ' : 'Major')
-                ->getStateUsing(fn ($record) => data_get($record->data, 'selected_major') ?? data_get($record->data, 'degree_level_major') ?? '-')
+                ->getStateUsing(function ($record): string {
+                    $key = filled(data_get($record->data, 'selected_major')) ? 'selected_major' : 'degree_level_major';
+                    $state = data_get($record->data, $key);
+
+                    return self::entryOptionLabel($record, $key, $state);
+                })
                 ->placeholder('-')
                 ->searchable(query: function (Builder $query, string $search): Builder {
                     return $query->where(function ($q) use ($search) {
@@ -1203,6 +1161,136 @@ class CustomFormEntriesTable
             'phd' => $locale === 'km' ? 'បណ្ឌិត' : 'PhD',
             default => filled($state) ? ucfirst((string) $state) : '-',
         };
+    }
+
+    protected static function entryOptionLabel($record, string $key, mixed $state): string
+    {
+        if (blank($state)) {
+            return '-';
+        }
+
+        $formIds = array_filter([
+            $record?->custom_form_id,
+            $record?->customForm?->custom_form_id,
+        ]);
+
+        $formIds = self::formIdsForOptionLookup($formIds);
+
+        $field = \Chanthoeun\FilamentCustomForms\Models\CustomFormField::query()
+            ->whereIn('custom_form_id', $formIds)
+            ->where('name', $key)
+            ->whereNotNull('options')
+            ->first();
+
+        return self::fieldOptionLabel($field, $state, $formIds);
+    }
+
+    protected static function fieldOptionLabel($field, mixed $state, array $formIds = []): string
+    {
+        if (blank($state)) {
+            return '-';
+        }
+
+        $choices = $field ? self::fieldChoices($field) : [];
+
+        $labels = collect(self::decodeJsonArray($state))
+            ->map(function (mixed $value) use ($choices, $formIds): string {
+                $stringValue = (string) $value;
+
+                return $choices[$stringValue]
+                    ?? self::optionLabelForValue($formIds, $stringValue)
+                    ?? $stringValue;
+            })
+            ->filter(fn (string $value): bool => filled($value))
+            ->values();
+
+        return $labels->isNotEmpty() ? $labels->join(', ') : '-';
+    }
+
+    protected static function fieldChoices($field): array
+    {
+        $options = is_array($field->options)
+            ? $field->options
+            : json_decode((string) $field->options, true);
+
+        $choices = $options['choices'] ?? [];
+
+        if (! is_array($choices)) {
+            return [];
+        }
+
+        return collect($choices)
+            ->mapWithKeys(function (mixed $label, mixed $value): array {
+                if (is_array($label) && array_key_exists('value', $label)) {
+                    return [
+                        (string) $label['value'] => self::transText($label['label'] ?? $label['value']),
+                    ];
+                }
+
+                return [
+                    (string) $value => self::transText($label),
+                ];
+            })
+            ->toArray();
+    }
+
+    protected static function decodeJsonArray(mixed $state): array
+    {
+        if (is_string($state) && str_starts_with(trim($state), '[')) {
+            $decoded = json_decode($state, true);
+
+            if (is_array($decoded)) {
+                return $decoded;
+            }
+        }
+
+        return [$state];
+    }
+
+    protected static function optionLabelForValue(array $formIds, string $value): ?string
+    {
+        if (empty($formIds)) {
+            return null;
+        }
+
+        $fields = \Chanthoeun\FilamentCustomForms\Models\CustomFormField::query()
+            ->whereIn('custom_form_id', $formIds)
+            ->whereNotNull('options')
+            ->orderBy('sort')
+            ->get();
+
+        foreach ($fields as $field) {
+            $choices = self::fieldChoices($field);
+
+            if (array_key_exists($value, $choices)) {
+                return $choices[$value];
+            }
+        }
+
+        return null;
+    }
+
+    protected static function formIdsForOptionLookup(array $formIds): array
+    {
+        $ids = collect($formIds)
+            ->filter()
+            ->map(fn (mixed $id): int => (int) $id)
+            ->values();
+
+        if ($ids->isEmpty()) {
+            return [];
+        }
+
+        $childIds = \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
+            ->whereIn('custom_form_id', $ids->all())
+            ->pluck('id')
+            ->map(fn (mixed $id): int => (int) $id);
+
+        return $ids
+            ->merge($childIds)
+            ->unique()
+            ->values()
+            ->all();
     }
 
     protected static function isImageFieldType(string $type): bool

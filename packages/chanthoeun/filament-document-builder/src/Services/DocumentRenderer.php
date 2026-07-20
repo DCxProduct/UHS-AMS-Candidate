@@ -166,6 +166,12 @@ class DocumentRenderer
             return '';
         }
 
+        $geoLocationLabel = $this->geoLocationLabelForKey($key, (string) $value, $data);
+
+        if ($geoLocationLabel !== null) {
+            return $geoLocationLabel;
+        }
+
         $choiceLabel = $this->choiceLabelForKey($key, (string) $value, $data);
 
         return $choiceLabel
@@ -190,19 +196,32 @@ class DocumentRenderer
 
     protected function choiceLabelForKey(string $key, string $value, array|object $data): ?string
     {
-        if (! $data instanceof Model || ! Schema::hasTable('custom_form_fields')) {
+        if (! Schema::hasTable('custom_form_fields')) {
             return null;
         }
 
-        $formId = $data->getAttribute('custom_form_id');
+        $entry = $data instanceof Model ? $data : $this->parentModelFromContext($data);
+
+        if (! $entry instanceof Model) {
+            return null;
+        }
+
+        $formId = $entry->getAttribute('custom_form_id');
 
         if (! $formId) {
             return null;
         }
 
+        $fieldKeys = array_values(array_unique([
+            $key,
+            str_contains($key, '.') ? str($key)->afterLast('.')->toString() : $key,
+        ]));
+
+        $formIds = $this->formIdsForEntry((int) $formId);
+
         $field = DB::table('custom_form_fields')
-            ->whereIn('custom_form_id', $this->formIdsForEntry((int) $formId))
-            ->where('name', $key)
+            ->whereIn('custom_form_id', $formIds)
+            ->whereIn('name', $fieldKeys)
             ->whereNotNull('options')
             ->orderBy('sort')
             ->first();
@@ -214,7 +233,7 @@ class DocumentRenderer
         }
 
         $fallbackFields = DB::table('custom_form_fields')
-            ->where('name', $key)
+            ->whereIn('name', $fieldKeys)
             ->whereNotNull('options')
             ->orderBy('custom_form_id')
             ->orderBy('sort')
@@ -225,6 +244,98 @@ class DocumentRenderer
 
             if ($label !== null) {
                 return $label;
+            }
+        }
+
+        $label = $this->choiceLabelFromFormOptions($formIds, $value);
+
+        if ($label !== null) {
+            return $label;
+        }
+
+        return null;
+    }
+
+    protected function geoLocationLabelForKey(string $key, string $value, array|object $data): ?string
+    {
+        if (
+            ! Schema::hasTable('custom_form_fields')
+            || ! Schema::hasTable('geo_locations')
+            || ! is_numeric($value)
+        ) {
+            return null;
+        }
+
+        $entry = $data instanceof Model ? $data : $this->parentModelFromContext($data);
+
+        if (! $entry instanceof Model) {
+            return null;
+        }
+
+        $formId = $entry->getAttribute('custom_form_id');
+
+        if (! $formId) {
+            return null;
+        }
+
+        $fieldKeys = array_values(array_unique([
+            $key,
+            str_contains($key, '.') ? str($key)->afterLast('.')->toString() : $key,
+        ]));
+
+        $field = DB::table('custom_form_fields')
+            ->whereIn('custom_form_id', $this->formIdsForEntry((int) $formId))
+            ->whereIn('name', $fieldKeys)
+            ->whereNotNull('options')
+            ->orderBy('sort')
+            ->first();
+
+        if (! $field || ! $this->isGeoLocationField($field)) {
+            return null;
+        }
+
+        $location = DB::table('geo_locations')
+            ->where('id', $value)
+            ->first(['name_kh', 'name_en']);
+
+        if (! $location) {
+            return null;
+        }
+
+        $locale = $this->renderLocale ?? app()->getLocale();
+
+        return $locale === 'km'
+            ? ($location->name_kh ?: $location->name_en ?: null)
+            : ($location->name_en ?: $location->name_kh ?: null);
+    }
+
+    protected function isGeoLocationField(object $field): bool
+    {
+        $options = $this->normalizeOptions($field->options ?? []);
+
+        if (filled($options['geo_location_type'] ?? null)) {
+            return true;
+        }
+
+        $source = (string) ($options['data_source_table'] ?? '');
+
+        return in_array($source, [
+            'geo_location',
+            'geo_locations',
+            'geo_province',
+            'geo_district',
+            'geo_commune',
+            'geo_village',
+        ], true);
+    }
+
+    protected function parentModelFromContext(mixed $context): ?Model
+    {
+        while (is_array($context) && array_key_exists('_parent', $context)) {
+            $context = $context['_parent'];
+
+            if ($context instanceof Model) {
+                return $context;
             }
         }
 
@@ -239,6 +350,29 @@ class DocumentRenderer
         return array_key_exists($value, $choices)
             ? $this->localizedText($choices[$value])
             : null;
+    }
+
+    protected function choiceLabelFromFormOptions(array $formIds, string $value): ?string
+    {
+        if (empty($formIds)) {
+            return null;
+        }
+
+        $fields = DB::table('custom_form_fields')
+            ->whereIn('custom_form_id', $formIds)
+            ->whereNotNull('options')
+            ->orderBy('sort')
+            ->get();
+
+        foreach ($fields as $field) {
+            $label = $this->choiceLabelFromField($field, $value);
+
+            if ($label !== null) {
+                return $label;
+            }
+        }
+
+        return null;
     }
 
     protected function formIdsForEntry(int $formId): array
