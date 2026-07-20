@@ -209,8 +209,7 @@ class CustomFormEntryResource extends Resource
             }
 
             $query = CustomForm::query()
-                ->whereNotNull('name')
-                ->orderBy('id');
+                ->whereNotNull('name');
 
             if (DatabaseSchema::hasColumn('custom_forms', 'is_active')) {
                 $query->where('is_active', true);
@@ -226,6 +225,12 @@ class CustomFormEntryResource extends Resource
                     $query->where('menu_placement', 'sidebar')
                         ->orWhereNull('menu_placement');
                 });
+            }
+
+            if (DatabaseSchema::hasColumn('custom_forms', 'display_order')) {
+                $query->orderBy('display_order')->orderBy('id');
+            } else {
+                $query->orderBy('id');
             }
 
             $forms = $query->get()
@@ -512,6 +517,15 @@ class CustomFormEntryResource extends Resource
     protected static function getFormSortNumber(CustomForm $form): int
     {
         $slug = (string) ($form->slug ?? '');
+
+        if (
+            DatabaseSchema::hasColumn('custom_forms', 'display_order')
+            && isset($form->display_order)
+            && is_numeric($form->display_order)
+            && (int) $form->display_order > 0
+        ) {
+            return (int) $form->display_order;
+        }
 
         $preferredSort = [
             'profile' => 10,

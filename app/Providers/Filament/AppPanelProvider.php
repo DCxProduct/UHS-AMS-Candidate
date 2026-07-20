@@ -232,8 +232,22 @@ class AppPanelProvider extends PanelProvider
                 });
             }
 
+            $sortColumn = $this->firstExistingColumn($columns, [
+                'display_order',
+                'sort',
+                'sort_order',
+                'order_column',
+                'ordering',
+                'position',
+            ]);
+
+            if ($sortColumn) {
+                $query->orderBy($sortColumn)->orderBy('id');
+            } else {
+                $query->orderBy('id');
+            }
+
             return $query
-                ->orderBy('id')
                 ->get()
                 ->map(function ($form): NavigationItem {
                     $name = (string) (
@@ -480,10 +494,6 @@ class AppPanelProvider extends PanelProvider
             'request-documents' => 40,
         ];
 
-        if (array_key_exists($slug, $preferredSort)) {
-            return $preferredSort[$slug];
-        }
-
         foreach ([
             'display_order',
             'sort',
@@ -492,9 +502,13 @@ class AppPanelProvider extends PanelProvider
             'ordering',
             'position',
         ] as $column) {
-            if (isset($form->{$column}) && is_numeric($form->{$column})) {
+            if (isset($form->{$column}) && is_numeric($form->{$column}) && (int) $form->{$column} > 0) {
                 return (int) $form->{$column};
             }
+        }
+
+        if (array_key_exists($slug, $preferredSort)) {
+            return $preferredSort[$slug];
         }
 
         return (int) ($form->id ?? 100);
