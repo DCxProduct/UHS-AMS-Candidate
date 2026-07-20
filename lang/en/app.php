@@ -274,6 +274,7 @@ return [
     'edit_form' => 'Edit :name',
     'add' => 'Add',
     'print' => 'Print',
+    'done' => 'Done',
     'save' => 'Save',
     'save_changes' => 'Save Changes',
     'cancel' => 'Cancel',

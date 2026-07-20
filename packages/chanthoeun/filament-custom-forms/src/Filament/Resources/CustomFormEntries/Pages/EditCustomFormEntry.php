@@ -36,7 +36,7 @@ class EditCustomFormEntry extends EditRecord
             return $this->studentHasAcceptedNationalExam();
         }
 
-        $status = strtolower((string) ($this->record->review_status ?? 'pending'));
+        $status = $this->entryStatus();
 
         if (in_array($status, ['passed', 'accepted', 'approved', 'pending'], true)) {
             return true;
@@ -51,7 +51,7 @@ class EditCustomFormEntry extends EditRecord
 
         if (! $this->isLockedForEditing()) {
             $actions[] = $this->getSaveFormAction()
-                ->label(__('app.save'))
+                ->label(__('app.done'))
                 ->color('primary')
                 ->hidden(fn () => $this->hasWizardOnFirstStep());
         }
@@ -71,7 +71,7 @@ class EditCustomFormEntry extends EditRecord
             Action::make('save_draft')
                 ->label(__('student_profile.save_as_draft'))
                 ->color('info')
-                ->hidden(fn () => $this->isLockedForEditing() || $this->hasWizardOnFirstStep() || strtolower((string) ($this->record->review_status ?? '')) !== 'draft')
+                ->hidden(fn () => $this->isLockedForEditing() || $this->hasWizardOnFirstStep() || $this->entryStatus() !== 'draft')
                 ->action(function (): void {
                     $data = $this->form->getRawState();
                     $data = $this->mutateFormDataBeforeSave($data);
@@ -112,7 +112,7 @@ class EditCustomFormEntry extends EditRecord
             $this->halt();
         }
 
-        $oldStatus = strtolower((string) ($this->record->review_status ?? ''));
+        $oldStatus = $this->entryStatus();
         $slug = $this->record->customForm?->slug;
 
         if ($slug === 'profile' || in_array($oldStatus, ['rejected', 'failed', 'draft'], true)) {
@@ -286,7 +286,7 @@ class EditCustomFormEntry extends EditRecord
     {
         parent::mount($record);
 
-        $status = strtolower((string) ($this->record->review_status ?? 'pending'));
+        $status = $this->entryStatus();
 
         if (auth()->user()?->registration_type === 'admin') {
             $this->form->disabled();
@@ -330,6 +330,30 @@ class EditCustomFormEntry extends EditRecord
         }
 
         return $wizard->getCurrentStepIndex() === 0;
+    }
+
+    protected function entryStatus(): string
+    {
+        $dataStatus = strtolower((string) data_get($this->record->data, 'registration_status'));
+        $reviewStatus = strtolower((string) ($this->record->review_status ?? 'pending'));
+
+        if ($dataStatus === 'draft' || $reviewStatus === 'draft') {
+            return 'draft';
+        }
+
+        if (in_array($dataStatus, ['rejected', 'failed'], true) || in_array($reviewStatus, ['rejected', 'failed'], true)) {
+            return 'rejected';
+        }
+
+        if (in_array($dataStatus, ['passed', 'accepted', 'approved'], true) || in_array($reviewStatus, ['passed', 'accepted', 'approved'], true)) {
+            return 'approved';
+        }
+
+        if ($dataStatus === 'pending' || $reviewStatus === 'pending') {
+            return 'pending';
+        }
+
+        return $reviewStatus ?: $dataStatus ?: 'pending';
     }
 
     protected function getSavedNotificationTitle(): ?string

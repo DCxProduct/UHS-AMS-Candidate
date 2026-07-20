@@ -13,6 +13,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Utilities\Get;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -172,7 +173,8 @@ class StudentDynamicFormSchema
             'select', 'select_dropdown' => Select::make($name)
                 ->options(fn ($get): array => $this->getSelectOptions($field, $config, $get))
                 ->searchable()
-                ->native(false),
+                ->native(false)
+                ->live(),
             'radio' => Radio::make($name)->options($this->getSelectOptions($field, $config, null)),
             'checkbox' => Checkbox::make($name),
             'toggle' => Toggle::make($name),
@@ -225,6 +227,8 @@ class StudentDynamicFormSchema
             $component->hiddenLabel();
         }
 
+        $this->applyVisibilityRule($component, $config);
+
         if ($forceFullWidth && method_exists($component, 'columnSpanFull')) {
             $component->columnSpanFull();
 
@@ -244,6 +248,35 @@ class StudentDynamicFormSchema
         }
 
         return $component;
+    }
+
+    protected function applyVisibilityRule($component, array $config): void
+    {
+        $rule = $config['visible_when'] ?? null;
+
+        if (! is_array($rule) || ! method_exists($component, 'visible')) {
+            return;
+        }
+
+        $field = (string) ($rule['field'] ?? '');
+        $operator = (string) ($rule['operator'] ?? '=');
+        $expected = $rule['value'] ?? null;
+
+        if ($field === '' || blank($expected) || $expected === false || $expected === 'false') {
+            return;
+        }
+
+        $component->visible(function (Get $get) use ($field, $operator, $expected): bool {
+            $actual = $get($field) ?? data_get($get('data'), $field);
+            $expectedValues = array_map('strval', (array) $expected);
+
+            return match ($operator) {
+                '!=', '<>' => (string) $actual !== (string) $expected,
+                'in' => in_array((string) $actual, $expectedValues, true),
+                'not_in' => ! in_array((string) $actual, $expectedValues, true),
+                default => strtolower((string) $actual) === strtolower((string) $expected),
+            };
+        });
     }
 
     protected function resolveColumnSpan(array $config): int|string|array

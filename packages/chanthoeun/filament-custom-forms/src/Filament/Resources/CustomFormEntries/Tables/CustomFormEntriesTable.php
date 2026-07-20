@@ -134,13 +134,13 @@ class CustomFormEntriesTable
 
                 $label = self::transText($field->label ?: $key);
                 if ($key === 'last_name_kh') {
-                    $label = app()->getLocale() === 'km' ? 'នាមត្រកូល (ខ្មែរ)' : 'Family Name (Khmer)';
+                    $label = app()->getLocale() === 'km' ? 'នាមត្រកូល' : 'First Name';
                 } elseif ($key === 'first_name_kh') {
-                    $label = app()->getLocale() === 'km' ? 'នាមខ្លួន (ខ្មែរ)' : 'Given Name (Khmer)';
+                    $label = app()->getLocale() === 'km' ? 'នាមខ្លួន' : 'Last Name';
                 } elseif ($key === 'last_name_en') {
-                    $label = app()->getLocale() === 'km' ? 'នាមត្រកូល (អង់គ្លេស)' : 'Family Name (English)';
+                    $label = app()->getLocale() === 'km' ? 'អក្សរឡាតាំងនាមខ្លួន' : 'Latin Last Name';
                 } elseif ($key === 'first_name_en') {
-                    $label = app()->getLocale() === 'km' ? 'នាមខ្លួន (អង់គ្លេស)' : 'Given Name (English)';
+                    $label = app()->getLocale() === 'km' ? 'អក្សរឡាតាំងនាមត្រកូល' : 'Latin First Name';
                 }
 
                 $column = TextColumn::make("data.{$key}")
@@ -233,9 +233,9 @@ class CustomFormEntriesTable
                 } elseif ($key === 'first_name_kh') {
                     $label = app()->getLocale() === 'km' ? 'នាមខ្លួន (ខ្មែរ)' : 'Given Name (Khmer)';
                 } elseif ($key === 'last_name_en') {
-                    $label = app()->getLocale() === 'km' ? 'នាមត្រកូល (អង់គ្លេស)' : 'Family Name (English)';
+                    $label = app()->getLocale() === 'km' ? 'អក្សរឡាតាំងនាមខ្លួន' : 'Latin Given Name';
                 } elseif ($key === 'first_name_en') {
-                    $label = app()->getLocale() === 'km' ? 'នាមខ្លួន (អង់គ្លេស)' : 'Given Name (English)';
+                    $label = app()->getLocale() === 'km' ? 'អក្សរឡាតាំងនាមត្រកូល' : 'Latin Family Name';
                 }
 
                 $column = TextColumn::make("data.{$key}")
@@ -673,7 +673,7 @@ class CustomFormEntriesTable
                         return false;
                     }
 
-                    return self::entryStatus($record) === 'rejected';
+                    return in_array(self::entryStatus($record), ['draft', 'rejected'], true);
                 }),
 
             Action::make('save_draft')
@@ -751,7 +751,7 @@ class CustomFormEntriesTable
                             self::notifyStudentNationalExamResult($record, 'approved', null);
 
                             Notification::make()
-                                ->title('Application approved')
+                                ->title(__('review_applications.notifications.admin_accept_success_title'))
                                 ->success()
                                 ->send();
 
@@ -789,7 +789,7 @@ class CustomFormEntriesTable
                             self::notifyStudentNationalExamResult($record, 'rejected', $data['review_note'] ?? null);
 
                             Notification::make()
-                                ->title('Application rejected')
+                                ->title(__('review_applications.notifications.admin_reject_success_title'))
                                 ->danger()
                                 ->send();
 
@@ -835,7 +835,7 @@ class CustomFormEntriesTable
                     self::notifyStudentNationalExamResult($record, 'approved', null);
 
                     Notification::make()
-                        ->title('Application approved')
+                        ->title(__('review_applications.notifications.admin_accept_success_title'))
                         ->success()
                         ->send();
                 });
@@ -876,7 +876,7 @@ class CustomFormEntriesTable
                     self::notifyStudentNationalExamResult($record, 'rejected', $data['review_note'] ?? null);
 
                     Notification::make()
-                        ->title('Application rejected')
+                        ->title(__('review_applications.notifications.admin_reject_success_title'))
                         ->danger()
                         ->send();
                 });

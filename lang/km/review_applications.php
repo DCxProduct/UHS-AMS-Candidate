@@ -16,10 +16,10 @@ return [
     'id' => 'លេខសម្គាល់',
     'student' => 'និស្សិត',
     'student_id' => 'អត្តលេខនិស្សិត',
-    'first_name_en' => 'នាមខ្លួន (អង់គ្លេស)',
-    'last_name_en' => 'នាមត្រកូល (អង់គ្លេស)',
-    'first_name_kh' => 'នាមខ្លួន (ខ្មែរ)',
-    'last_name_kh' => 'នាមត្រកូល (ខ្មែរ)',
+    'first_name_en' => 'អក្សរឡាតាំងនាមត្រកូល',
+    'last_name_en' => 'អក្សរឡាតាំងនាមខ្លួន',
+    'first_name_kh' => 'នាមខ្លួន',
+    'last_name_kh' => 'នាមត្រកូល',
     'review_status' => 'ស្ថានភាពពិនិត្យ',
     'review_note' => 'កំណត់សម្គាល់',
     'review_note_placeholder' => 'បញ្ចូលមូលហេតុបដិសេធ ឬកំណត់សម្គាល់',
@@ -122,5 +122,5 @@ return [
     'approve_at' => 'បានពិនិត្យ',
     'review_status_result' => 'លទ្ធផលប្រលង',
 
-    'view_pdf' => 'បានពិនិត្យ',
+    'view_pdf' => 'ចូលពិនិត្យ',
 ];

@@ -151,10 +151,10 @@ class StudentProfileSeeder extends Seeder
         $personalFields = [
             ['name' => 'personal_note', 'label' => $this->t('Brief Resume', 'ប្រវត្តិរូបសង្ខេប'), 'type' => 'info', 'options' => ['content' => $this->t('Brief Resume', 'ប្រវត្តិរូបសង្ខេប'), 'column_span_full' => true, 'is_hidden_label' => true]],
 
-            ['name' => 'first_name_kh', 'label' => $this->t('First Name (Khmer)', 'នាមត្រកូល (ខ្មែរ)'), 'type' => 'text_input', 'required' => true, 'options' => ['placeholder_en' => 'Enter First Name', 'placeholder_km' => 'បញ្ចូលនាមត្រកូល']],
-            ['name' => 'last_name_kh', 'label' => $this->t('Last Name (Khmer)', 'នាមខ្លួន (ខ្មែរ)'), 'type' => 'text_input', 'required' => true, 'options' => ['placeholder_en' => 'Enter Last Name', 'placeholder_km' => 'បញ្ចូលនាមខ្លួន']],
-            ['name' => 'first_name_en', 'label' => $this->t('First Name (English)', 'នាមត្រកូល (អង់គ្លេស)'), 'type' => 'text_input', 'required' => true, 'options' => ['placeholder_en' => 'Enter First Name', 'placeholder_km' => 'បញ្ចូលនាមត្រកូលជាអង់គ្លេស']],
-            ['name' => 'last_name_en', 'label' => $this->t('Last Name (English)', 'នាមខ្លួន (អង់គ្លេស)'), 'type' => 'text_input', 'required' => true, 'options' => ['placeholder_en' => 'Enter Last Name', 'placeholder_km' => 'បញ្ចូលនាមខ្លួនជាអង់គ្លេស']],
+            ['name' => 'first_name_kh', 'label' => $this->t('First Name', 'នាមត្រកូល'), 'type' => 'text_input', 'required' => true, 'options' => ['placeholder_en' => 'Enter First Name', 'placeholder_km' => 'បញ្ចូលនាមត្រកូល']],
+            ['name' => 'last_name_kh', 'label' => $this->t('Last Name', 'នាមខ្លួន'), 'type' => 'text_input', 'required' => true, 'options' => ['placeholder_en' => 'Enter Last Name', 'placeholder_km' => 'បញ្ចូលនាមខ្លួន']],
+            ['name' => 'first_name_en', 'label' => $this->t('Latin First Name', 'អក្សរឡាតាំងនាមត្រកូល'), 'type' => 'text_input', 'required' => true, 'options' => ['placeholder_en' => 'Enter Latin Family Name', 'placeholder_km' => 'បញ្ចូលអក្សរឡាតាំងនាមត្រកូល']],
+            ['name' => 'last_name_en', 'label' => $this->t('Latin Last Name', 'អក្សរឡាតាំងនាមខ្លួន'), 'type' => 'text_input', 'required' => true, 'options' => ['placeholder_en' => 'Enter Latin Given Name', 'placeholder_km' => 'បញ្ចូលអក្សរឡាតាំងនាមខ្លួន']],
 
             ['name' => 'gender', 'label' => $this->t('Gender', 'ភេទ'), 'type' => 'select_dropdown', 'required' => true, 'options' => ['choices' => $genderOptions]],
             ['name' => 'nationality', 'label' => $this->t('Nationality', 'សញ្ជាតិ'), 'type' => 'select_dropdown', 'required' => true, 'options' => ['choices' => $nationalityOptions]],
@@ -258,14 +258,22 @@ class StudentProfileSeeder extends Seeder
 
         $this->upsertFields($customFormId, $siblingsRepeater, $siblingFields, $keepNames, $sort);
 
+        $notSingle = [
+            'visible_when' => [
+                'field' => 'married_status',
+                'operator' => 'not_in',
+                'value' => ['single'],
+            ],
+        ];
+
         $spouseFields = [
-            ['name' => 'spouse_children_heading', 'label' => $this->t('B. About Spouse and Children', 'ខ. អំពីប្ដី/ប្រពន្ធ និងកូន'), 'type' => 'info', 'options' => ['content' => $this->t('B. About Spouse and Children', 'ខ. អំពីប្ដី/ប្រពន្ធ និងកូន'), 'column_span_full' => true, 'is_hidden_label' => true]],
-            ['name' => 'spouse_name', 'label' => $this->t('Spouse Name', 'ឈ្មោះប្ដី/ប្រពន្ធ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Spouse Name', 'placeholder_km' => 'បញ្ចូលឈ្មោះប្ដី/ប្រពន្ធ']],
-            ['name' => 'spouse_year_of_birth', 'label' => $this->t('Date of Birth', 'ថ្ងៃខែឆ្នាំកំណើត'), 'type' => 'date_picker', 'options' => ['placeholder_en' => 'Enter Spouse Date of Birth', 'placeholder_km' => 'ជ្រើសរើសថ្ងៃខែឆ្នាំកំណើតប្ដី/ប្រពន្ធ', 'max_date' => 'today']],
-            ['name' => 'spouse_occupation', 'label' => $this->t('Occupation', 'មុខរបរ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Spouse Occupation', 'placeholder_km' => 'បញ្ចូលមុខរបរប្ដី/ប្រពន្ធ']],
-            ['name' => 'number_of_children', 'label' => $this->t('Number of Children', 'ចំនួនកូនសរុប'), 'type' => 'number_input', 'options' => ['placeholder_en' => 'Enter Number of Children', 'placeholder_km' => 'បញ្ចូលចំនួនកូនសរុប']],
-            ['name' => 'number_of_sons', 'label' => $this->t('Number of Sons', 'ចំនួនកូនប្រុស'), 'type' => 'number_input', 'options' => ['placeholder_en' => 'Enter Number of Sons', 'placeholder_km' => 'បញ្ចូលចំនួនកូនប្រុស']],
-            ['name' => 'number_of_daughters', 'label' => $this->t('Number of Daughters', 'ចំនួនកូនស្រី'), 'type' => 'number_input', 'options' => ['placeholder_en' => 'Enter Number of Daughters', 'placeholder_km' => 'បញ្ចូលចំនួនកូនស្រី']],
+            ['name' => 'spouse_children_heading', 'label' => $this->t('B. About Spouse and Children', 'ខ. អំពីប្ដី/ប្រពន្ធ និងកូន'), 'type' => 'info', 'options' => ['content' => $this->t('B. About Spouse and Children', 'ខ. អំពីប្ដី/ប្រពន្ធ និងកូន'), 'column_span_full' => true, 'is_hidden_label' => true, ...$notSingle]],
+            ['name' => 'spouse_name', 'label' => $this->t('Spouse Name', 'ឈ្មោះប្ដី/ប្រពន្ធ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Spouse Name', 'placeholder_km' => 'បញ្ចូលឈ្មោះប្ដី/ប្រពន្ធ', ...$notSingle]],
+            ['name' => 'spouse_year_of_birth', 'label' => $this->t('Date of Birth', 'ថ្ងៃខែឆ្នាំកំណើត'), 'type' => 'date_picker', 'options' => ['placeholder_en' => 'Enter Spouse Date of Birth', 'placeholder_km' => 'ជ្រើសរើសថ្ងៃខែឆ្នាំកំណើតប្ដី/ប្រពន្ធ', 'max_date' => 'today', ...$notSingle]],
+            ['name' => 'spouse_occupation', 'label' => $this->t('Occupation', 'មុខរបរ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Spouse Occupation', 'placeholder_km' => 'បញ្ចូលមុខរបរប្ដី/ប្រពន្ធ', ...$notSingle]],
+            ['name' => 'number_of_children', 'label' => $this->t('Number of Children', 'ចំនួនកូនសរុប'), 'type' => 'number_input', 'options' => ['placeholder_en' => 'Enter Number of Children', 'placeholder_km' => 'បញ្ចូលចំនួនកូនសរុប', ...$notSingle]],
+            ['name' => 'number_of_sons', 'label' => $this->t('Number of Sons', 'ចំនួនកូនប្រុស'), 'type' => 'number_input', 'options' => ['placeholder_en' => 'Enter Number of Sons', 'placeholder_km' => 'បញ្ចូលចំនួនកូនប្រុស', ...$notSingle]],
+            ['name' => 'number_of_daughters', 'label' => $this->t('Number of Daughters', 'ចំនួនកូនស្រី'), 'type' => 'number_input', 'options' => ['placeholder_en' => 'Enter Number of Daughters', 'placeholder_km' => 'បញ្ចូលចំនួនកូនស្រី', ...$notSingle]],
         ];
 
         $this->upsertFields($customFormId, $familySection, $spouseFields, $keepNames, $sort);
@@ -626,8 +634,8 @@ class StudentProfileSeeder extends Seeder
         $html .= '<h1 style="text-align:center;">ប្រវត្តិរូប</h1>';
         $html .= '<p><strong>នាមត្រកូល (ខ្មែរ)៖</strong> {{ first_name_kh }}</p>';
         $html .= '<p><strong>នាមខ្លួន (ខ្មែរ)៖</strong> {{ last_name_kh }}</p>';
-        $html .= '<p><strong>នាមត្រកូល (អង់គ្លេស)៖</strong> {{ first_name_en }}</p>';
-        $html .= '<p><strong>នាមខ្លួន (អង់គ្លេស)៖</strong> {{ last_name_en }}</p>';
+        $html .= '<p><strong>អក្សរឡាតាំងនាមត្រកូល៖</strong> {{ first_name_en }}</p>';
+        $html .= '<p><strong>អក្សរឡាតាំងនាមខ្លួន៖</strong> {{ last_name_en }}</p>';
         $html .= '<p><strong>ថ្ងៃខែឆ្នាំកំណើត៖</strong> {{ date_of_birth }}</p>';
         $html .= '<p><strong>ភេទ៖</strong> {{ gender }}</p>';
         $html .= '</div>';
