@@ -55,58 +55,58 @@ class ListExamResults extends ListRecords
             Action::make('download_excel')
                 ->label(__('exam_results.download_excel'))
                 ->color('success')
+                ->alpineClickHandler(<<<'JS'
+                    const table = document.querySelector('.fi-ta');
+                    const tableData = table?._x_dataStack?.find((data) => data.selectedRecords instanceof Set);
+
+                    $wire.downloadExcelFromTableSelection(
+                        tableData ? [...tableData.selectedRecords] : [],
+                        tableData ? tableData.isTrackingDeselectedRecords : false,
+                        tableData ? [...tableData.deselectedRecords] : [],
+                    );
+                JS)
                 ->action(fn () => $this->downloadExcel()),
         ];
     }
 
     protected function downloadExcel()
     {
-        $records = CustomFormEntry::query()
-            ->with('creator')
-            ->where('data->candidate_status', 'passed')
-            ->latest('id')
-            ->get();
+        return $this->downloadExcelFromTableSelection(
+            $this->selectedTableRecords ?? [],
+            $this->isTrackingDeselectedTableRecords,
+            $this->deselectedTableRecords ?? [],
+        );
+    }
 
-        $filename = 'exam-results-' . now()->format('Y-m-d-His') . '.xls';
+    public function downloadExcelFromTableSelection(
+        array $selectedRecordKeys = [],
+        bool $isTrackingDeselectedRecords = false,
+        array $deselectedRecordKeys = [],
+    ) {
+        $selectedRecordKeys = array_values(array_filter($selectedRecordKeys));
+        $deselectedRecordKeys = array_values(array_filter($deselectedRecordKeys));
 
-        return response()->streamDownload(function () use ($records): void {
-            echo '<html><head><meta charset="UTF-8"></head><body>';
-            echo '<table border="1">';
-            echo '<thead><tr>';
+        if ($isTrackingDeselectedRecords) {
+            $query = $this->getTableQueryForExport()
+                ->with('creator');
 
-            foreach ($this->excelHeadings() as $heading) {
-                echo '<th>' . e($heading) . '</th>';
+            if (filled($deselectedRecordKeys)) {
+                $query->whereKeyNot($deselectedRecordKeys);
             }
 
-            echo '</tr></thead><tbody>';
+            $records = $query->get();
+        } elseif (filled($selectedRecordKeys)) {
+            $records = CustomFormEntry::query()
+                ->with('creator')
+                ->whereKey($selectedRecordKeys)
+                ->get();
+        } else {
+            $records = $this->getTableQueryForExport()
+                ->with('creator')
+                ->get();
+        }
 
-            foreach ($records as $index => $record) {
-                $data = is_array($record->data) ? $record->data : [];
-
-                $row = [
-                    $index + 1,
-                    $this->entryValue($record, 'academic_year', $record->creator?->academic_year),
-                    $this->entryValue($record, 'seat_number', $this->entryValue($record, 'list_number', $record->creator?->seat_number)),
-                    $this->khmerName($record),
-                    $this->latinName($record),
-                    $this->genderLabel($this->entryValue($record, 'gender')),
-                    $this->dateValue($this->entryValue($record, 'date_of_birth', $record->creator?->date_of_birth)),
-                ];
-
-                echo '<tr>';
-
-                foreach ($row as $value) {
-                    echo '<td>' . e((string) $value) . '</td>';
-                }
-
-                echo '</tr>';
-            }
-
-            echo '</tbody></table>';
-            echo '</body></html>';
-        }, $filename, [
-            'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
-        ]);
+        return ExamResultsTable::downloadExcel($records);
     }
 
     protected function excelHeadings(): array

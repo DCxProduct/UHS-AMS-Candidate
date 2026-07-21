@@ -25,9 +25,6 @@ class ExamResultsTable
         return $table
             ->recordAction(null)
             ->recordUrl(null)
-            ->checkIfRecordIsSelectableUsing(
-                fn (CustomFormEntry $record): bool => ! ReviewApplicationsTable::hasStudentReviewResultNotification($record, 'passed')
-            )
             ->columns([
                 TextColumn::make('row_number')
                     ->label(__('exam_results.no'))
@@ -165,6 +162,67 @@ class ExamResultsTable
                     }),
             ])
             ->defaultSort('id', 'desc');
+    }
+
+    public static function downloadExcel(iterable $records)
+    {
+        $filename = 'exam-results-' . now()->format('Y-m-d-His') . '.xls';
+
+        return response()->streamDownload(function () use ($records): void {
+            echo '<html><head><meta charset="UTF-8"></head><body>';
+            echo '<table border="1">';
+            echo '<thead><tr>';
+
+            foreach (self::excelHeadings() as $heading) {
+                echo '<th>' . e($heading) . '</th>';
+            }
+
+            echo '</tr></thead><tbody>';
+
+            $rowNumber = 1;
+
+            foreach ($records as $record) {
+                if (! $record instanceof CustomFormEntry) {
+                    continue;
+                }
+
+                $row = [
+                    $rowNumber++,
+                    self::entryValue($record, 'academic_year', $record->creator?->academic_year),
+                    self::entryValue($record, 'seat_number', self::entryValue($record, 'list_number', $record->creator?->seat_number)),
+                    self::khmerName($record),
+                    self::latinName($record),
+                    self::genderLabel(self::entryValue($record, 'gender')),
+                    self::dateValue(self::entryValue($record, 'date_of_birth', $record->creator?->date_of_birth)),
+                ];
+
+                echo '<tr>';
+
+                foreach ($row as $value) {
+                    echo '<td>' . e((string) $value) . '</td>';
+                }
+
+                echo '</tr>';
+            }
+
+            echo '</tbody></table>';
+            echo '</body></html>';
+        }, $filename, [
+            'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
+        ]);
+    }
+
+    protected static function excelHeadings(): array
+    {
+        return [
+            __('exam_results.no'),
+            __('exam_results.academic_year'),
+            __('exam_results.seat_number'),
+            __('exam_results.name_khmer'),
+            __('exam_results.name_latin'),
+            __('exam_results.gender'),
+            __('exam_results.date_of_birth'),
+        ];
     }
 
     public static function sendPassedNotifications(iterable $records): int
