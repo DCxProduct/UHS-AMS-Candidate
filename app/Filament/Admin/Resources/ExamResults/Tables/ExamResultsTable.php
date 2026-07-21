@@ -145,49 +145,104 @@ class ExamResultsTable
 
     public static function downloadExcel(iterable $records)
     {
-        $filename = 'exam-results-' . now()->format('Y-m-d-His') . '.xls';
+        $filename = 'exam-results-' . now()->format('Y-m-d-His') . '.xlsx';
+        $path = storage_path('app/' . uniqid('exam-results-', true) . '.xlsx');
 
-        return response()->streamDownload(function () use ($records): void {
-            echo '<html><head><meta charset="UTF-8"></head><body>';
-            echo '<table border="1">';
-            echo '<thead><tr>';
+        self::writeXlsx($path, self::excelRows($records));
 
-            foreach (self::excelHeadings() as $heading) {
-                echo '<th>' . e($heading) . '</th>';
+        return response()->download($path, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
+
+    protected static function excelRows(iterable $records): array
+    {
+        $rows = [self::excelHeadings()];
+        $rowNumber = 1;
+
+        foreach ($records as $record) {
+            if (! $record instanceof CustomFormEntry) {
+                continue;
             }
 
-            echo '</tr></thead><tbody>';
+            $rows[] = [
+                $rowNumber++,
+                self::entryValue($record, 'academic_year', $record->creator?->academic_year),
+                self::entryValue($record, 'seat_number', self::entryValue($record, 'list_number', $record->creator?->seat_number)),
+                self::khmerName($record),
+                self::latinName($record),
+                self::exportDateValue(self::entryValue($record, 'date_of_birth', $record->creator?->date_of_birth)),
+            ];
+        }
 
-            $rowNumber = 1;
+        return $rows;
+    }
 
-            foreach ($records as $record) {
-                if (! $record instanceof CustomFormEntry) {
-                    continue;
-                }
+    protected static function writeXlsx(string $path, array $rows): void
+    {
+        $zip = new \ZipArchive();
+        $zip->open($path, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
 
-                $row = [
-                    $rowNumber++,
-                    self::entryValue($record, 'academic_year', $record->creator?->academic_year),
-                    self::entryValue($record, 'seat_number', self::entryValue($record, 'list_number', $record->creator?->seat_number)),
-                    self::khmerName($record),
-                    self::latinName($record),
-                    self::exportDateValue(self::entryValue($record, 'date_of_birth', $record->creator?->date_of_birth)),
-                ];
+        $zip->addFromString('[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+            . '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+            . '<Default Extension="xml" ContentType="application/xml"/>'
+            . '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+            . '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+            . '</Types>');
+        $zip->addFromString('_rels/.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            . '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
+            . '</Relationships>');
+        $zip->addFromString('xl/workbook.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+            . '<sheets><sheet name="Exam Results" sheetId="1" r:id="rId1"/></sheets>'
+            . '</workbook>');
+        $zip->addFromString('xl/_rels/workbook.xml.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            . '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'
+            . '</Relationships>');
+        $zip->addFromString('xl/worksheets/sheet1.xml', self::worksheetXml($rows));
+        $zip->close();
+    }
 
-                echo '<tr>';
+    protected static function worksheetXml(array $rows): string
+    {
+        $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+            . '<sheetData>';
 
-                foreach ($row as $value) {
-                    echo '<td>' . e((string) $value) . '</td>';
-                }
+        foreach ($rows as $rowIndex => $row) {
+            $excelRow = $rowIndex + 1;
+            $xml .= '<row r="' . $excelRow . '">';
 
-                echo '</tr>';
+            foreach (array_values($row) as $columnIndex => $value) {
+                $cell = self::columnName($columnIndex + 1) . $excelRow;
+                $xml .= '<c r="' . $cell . '" t="inlineStr"><is><t>' . self::xmlValue($value) . '</t></is></c>';
             }
 
-            echo '</tbody></table>';
-            echo '</body></html>';
-        }, $filename, [
-            'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
-        ]);
+            $xml .= '</row>';
+        }
+
+        return $xml . '</sheetData></worksheet>';
+    }
+
+    protected static function columnName(int $index): string
+    {
+        $name = '';
+
+        while ($index > 0) {
+            $index--;
+            $name = chr(65 + ($index % 26)) . $name;
+            $index = intdiv($index, 26);
+        }
+
+        return $name;
+    }
+
+    protected static function xmlValue(mixed $value): string
+    {
+        return htmlspecialchars((string) $value, ENT_XML1 | ENT_COMPAT, 'UTF-8');
     }
 
     protected static function excelHeadings(): array
