@@ -488,7 +488,7 @@ class CustomFormEntryForm
                         }
                     }
 
-                    if ($required) {
+                    if ($required && method_exists($component, 'required')) {
                         $component->required();
                     }
 
