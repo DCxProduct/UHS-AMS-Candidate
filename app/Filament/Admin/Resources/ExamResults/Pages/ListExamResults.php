@@ -38,6 +38,7 @@ class ListExamResults extends ListRecords
 
                     $wire.mountAction('notify_all_students', {
                         selectedRecordKeys: tableData ? [...tableData.selectedRecords] : [],
+                        selectedRecordsCount: tableData ? tableData.getSelectedRecordsCount() : 0,
                         isTrackingDeselectedRecords: tableData ? tableData.isTrackingDeselectedRecords : false,
                         deselectedRecordKeys: tableData ? [...tableData.deselectedRecords] : [],
                     });
@@ -50,6 +51,7 @@ class ListExamResults extends ListRecords
                 ->visible(fn (): bool => ExamResultsTable::hasUnsentPassedNotifications())
                 ->action(fn (array $arguments) => $this->sendNotificationsFromTableSelection(
                     selectedRecordKeys: $arguments['selectedRecordKeys'] ?? [],
+                    selectedRecordsCount: (int) ($arguments['selectedRecordsCount'] ?? 0),
                     isTrackingDeselectedRecords: (bool) ($arguments['isTrackingDeselectedRecords'] ?? false),
                     deselectedRecordKeys: $arguments['deselectedRecordKeys'] ?? [],
                 )),
@@ -113,13 +115,20 @@ class ListExamResults extends ListRecords
 
     public function sendNotificationsFromTableSelection(
         array $selectedRecordKeys = [],
+        int $selectedRecordsCount = 0,
         bool $isTrackingDeselectedRecords = false,
         array $deselectedRecordKeys = [],
     ): void {
         $selectedRecordKeys = array_values(array_filter($selectedRecordKeys));
         $deselectedRecordKeys = array_values(array_filter($deselectedRecordKeys));
 
-        if ($isTrackingDeselectedRecords) {
+        if ($selectedRecordsCount < 1) {
+            $records = CustomFormEntry::query()
+                ->with(['creator', 'customForm'])
+                ->where('data->candidate_status', 'passed')
+                ->get()
+                ->reject(fn (CustomFormEntry $record): bool => ExamResultsTable::hasStudentPassedNotification($record));
+        } elseif ($isTrackingDeselectedRecords) {
             $query = $this->getTableQueryForExport()
                 ->with(['creator', 'customForm']);
 

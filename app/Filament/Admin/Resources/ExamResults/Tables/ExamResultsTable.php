@@ -244,7 +244,12 @@ class ExamResultsTable
             ->with(['creator', 'customForm'])
             ->where('data->candidate_status', 'passed')
             ->get()
-            ->contains(fn (CustomFormEntry $record): bool => ! ReviewApplicationsTable::hasStudentReviewResultNotification($record, 'passed'));
+            ->contains(fn (CustomFormEntry $record): bool => ! self::hasStudentPassedNotification($record));
+    }
+
+    public static function hasStudentPassedNotification(CustomFormEntry $record): bool
+    {
+        return ReviewApplicationsTable::hasStudentReviewResultNotification($record, 'passed');
     }
 
     protected static function dynamicPassedYears(): array
