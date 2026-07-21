@@ -79,6 +79,7 @@ class EditCustomFormEntry extends EditRecord
                     $data['review_status'] = 'draft';
                     $data['data'] = $data['data'] ?? [];
                     $data['data']['registration_status'] = 'draft';
+                    unset($data['data']['candidate_reviewed_at']);
 
                     if (Schema::hasColumn('custom_form_entries', 'status')) {
                         $data['status'] = 'draft';
@@ -128,6 +129,8 @@ class EditCustomFormEntry extends EditRecord
 
             $data['data'] = $data['data'] ?? [];
             $data['data']['registration_status'] = 'pending';
+            $data['data']['candidate_status'] = 'pending';
+            unset($data['data']['candidate_reviewed_at']);
 
             if (Schema::hasColumn('custom_form_entries', 'reviewed_by')) {
                 $data['reviewed_by'] = null;
@@ -153,6 +156,8 @@ class EditCustomFormEntry extends EditRecord
 
         $data = is_array($data) ? $data : [];
         $data['registration_status'] = 'pending';
+        $data['candidate_status'] = 'pending';
+        unset($data['candidate_reviewed_at']);
 
         $update = [
             'data' => $data,
