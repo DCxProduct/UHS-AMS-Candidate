@@ -94,6 +94,9 @@ class ReviewApplicationsTable
 
                 TextColumn::make('data.candidate_reviewed_at')
                     ->label(__('review_applications.reviewed_at'))
+                    ->getStateUsing(fn (CustomFormEntry $record): ?string => data_get($record->data, 'candidate_status') === 'passed'
+                        ? data_get($record->data, 'candidate_reviewed_at')
+                        : null)
                     ->formatStateUsing(fn ($state) => filled($state)
                         ? Carbon::parse($state)->format('d M Y H:i')
                         : '-')
