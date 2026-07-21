@@ -730,10 +730,18 @@ class FieldsRelationManager extends RelationManager
 
         $selectedValues = data_get($data, 'options.visible_when.values');
         if (is_array($selectedValues)) {
-            $selectedType = head(array_filter(
+            $selectedTypes = array_values(array_filter(
                 $selectedValues,
                 fn ($val) => filled($val) && $val !== false && $val !== 'false'
             ));
+
+            $selectedType = collect($selectedTypes)
+                ->first(function ($selectedType) use ($ownerForm): bool {
+                    $targetForm = self::formTargetFromValue($selectedType);
+
+                    return $targetForm && (string) $targetForm->id !== (string) $ownerForm->id;
+                }) ?? head($selectedTypes);
+
             data_forget($data, 'options.visible_when.values');
         } else {
             $selectedType = data_get($data, 'options.visible_when.value');
