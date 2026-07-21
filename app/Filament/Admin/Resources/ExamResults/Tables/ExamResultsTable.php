@@ -65,10 +65,6 @@ class ExamResultsTable
                         ->where('data->first_name_en', 'like', "%{$search}%")
                         ->orWhere('data->last_name_en', 'like', "%{$search}%")),
 
-                TextColumn::make('gender')
-                    ->label(__('exam_results.gender'))
-                    ->getStateUsing(fn ($record): string => self::genderLabel(self::entryValue($record, 'gender'))),
-
                 TextColumn::make('date_of_birth')
                     ->label(__('exam_results.date_of_birth'))
                     ->getStateUsing(fn ($record): string => self::dateValue(self::entryValue($record, 'date_of_birth', $record->creator?->date_of_birth))),
@@ -192,8 +188,7 @@ class ExamResultsTable
                     self::entryValue($record, 'seat_number', self::entryValue($record, 'list_number', $record->creator?->seat_number)),
                     self::khmerName($record),
                     self::latinName($record),
-                    self::genderLabel(self::entryValue($record, 'gender')),
-                    self::dateValue(self::entryValue($record, 'date_of_birth', $record->creator?->date_of_birth)),
+                    self::exportDateValue(self::entryValue($record, 'date_of_birth', $record->creator?->date_of_birth)),
                 ];
 
                 echo '<tr>';
@@ -215,14 +210,26 @@ class ExamResultsTable
     protected static function excelHeadings(): array
     {
         return [
-            __('exam_results.no'),
-            __('exam_results.academic_year'),
-            __('exam_results.seat_number'),
-            __('exam_results.name_khmer'),
-            __('exam_results.name_latin'),
-            __('exam_results.gender'),
-            __('exam_results.date_of_birth'),
+            'id',
+            'academic_year',
+            'seat_number',
+            'name_khmer',
+            'name_latin',
+            'date_of_birth',
         ];
+    }
+
+    protected static function exportDateValue(mixed $state): string
+    {
+        if (blank($state) || $state === '-') {
+            return '-';
+        }
+
+        try {
+            return Carbon::parse($state)->format('Y-m-d');
+        } catch (\Throwable) {
+            return (string) $state;
+        }
     }
 
     public static function sendPassedNotifications(iterable $records): int
