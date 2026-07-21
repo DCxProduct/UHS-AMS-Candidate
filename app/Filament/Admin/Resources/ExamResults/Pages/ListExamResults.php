@@ -32,25 +32,27 @@ class ListExamResults extends ListRecords
                 ->label(__('exam_results.notify_all_students'))
                 ->icon('heroicon-o-bell-alert')
                 ->color('danger')
+                ->alpineClickHandler(<<<'JS'
+                    const table = document.querySelector('.fi-ta');
+                    const tableData = table?._x_dataStack?.find((data) => data.selectedRecords instanceof Set);
+
+                    $wire.mountAction('notify_all_students', {
+                        selectedRecordKeys: tableData ? [...tableData.selectedRecords] : [],
+                        isTrackingDeselectedRecords: tableData ? tableData.isTrackingDeselectedRecords : false,
+                        deselectedRecordKeys: tableData ? [...tableData.deselectedRecords] : [],
+                    });
+                JS)
                 ->requiresConfirmation()
                 ->modalHeading(__('exam_results.notify_all_confirm_title'))
                 ->modalDescription(__('exam_results.notify_all_confirm_description'))
                 ->modalSubmitActionLabel(__('exam_results.send_notification'))
                 ->modalCancelActionLabel(__('app.cancel'))
                 ->visible(fn (): bool => ExamResultsTable::hasUnsentPassedNotifications())
-                ->action(function (): void {
-                    $sentCount = ExamResultsTable::sendPassedNotifications(
-                        CustomFormEntry::query()
-                            ->with(['creator', 'customForm'])
-                            ->where('data->candidate_status', 'passed')
-                            ->get()
-                    );
-
-                    Notification::make()
-                        ->title(__('exam_results.notifications_sent', ['count' => $sentCount]))
-                        ->success()
-                        ->send();
-                }),
+                ->action(fn (array $arguments) => $this->sendNotificationsFromTableSelection(
+                    selectedRecordKeys: $arguments['selectedRecordKeys'] ?? [],
+                    isTrackingDeselectedRecords: (bool) ($arguments['isTrackingDeselectedRecords'] ?? false),
+                    deselectedRecordKeys: $arguments['deselectedRecordKeys'] ?? [],
+                )),
 
             Action::make('download_excel')
                 ->label(__('exam_results.download_excel'))
@@ -107,6 +109,52 @@ class ListExamResults extends ListRecords
         }
 
         return ExamResultsTable::downloadExcel($records);
+    }
+
+    public function sendNotificationsFromTableSelection(
+        array $selectedRecordKeys = [],
+        bool $isTrackingDeselectedRecords = false,
+        array $deselectedRecordKeys = [],
+    ): void {
+        $selectedRecordKeys = array_values(array_filter($selectedRecordKeys));
+        $deselectedRecordKeys = array_values(array_filter($deselectedRecordKeys));
+
+        if ($isTrackingDeselectedRecords) {
+            $query = $this->getTableQueryForExport()
+                ->with(['creator', 'customForm']);
+
+            if (filled($deselectedRecordKeys)) {
+                $query->whereKeyNot($deselectedRecordKeys);
+            }
+
+            $records = $query->get();
+        } elseif (filled($selectedRecordKeys)) {
+            $records = CustomFormEntry::query()
+                ->with(['creator', 'customForm'])
+                ->whereKey($selectedRecordKeys)
+                ->where('data->candidate_status', 'passed')
+                ->get();
+        } else {
+            Notification::make()
+                ->title(__('exam_results.no_selected_students'))
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $sentCount = ExamResultsTable::sendPassedNotifications($records);
+
+        $this->selectedTableRecords = [];
+        $this->deselectedTableRecords = [];
+        $this->isTrackingDeselectedTableRecords = false;
+        $this->flushCachedTableRecords();
+        $this->dispatch('$refresh');
+
+        Notification::make()
+            ->title(__('exam_results.notifications_sent', ['count' => $sentCount]))
+            ->success()
+            ->send();
     }
 
     protected function excelHeadings(): array

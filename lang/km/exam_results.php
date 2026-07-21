@@ -21,6 +21,7 @@ return [
     'notification_sent' => 'បានផ្ញើការជូនដំណឹង។',
     'notification_already_sent' => 'បានផ្ញើការជូនដំណឹងរួចហើយ។',
     'notifications_sent' => 'បានផ្ញើការជូនដំណឹង :count។',
+    'no_selected_students' => 'សូមជ្រើសរើសនិស្សិតយ៉ាងហោចណាស់ម្នាក់។',
     'no' => 'ល.រ',
     'academic_year' => 'ឆ្នាំសិក្សា',
     'seat_number' => 'លេខតុ',
