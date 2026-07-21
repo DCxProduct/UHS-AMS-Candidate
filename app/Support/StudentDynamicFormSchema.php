@@ -103,7 +103,7 @@ class StudentDynamicFormSchema
             $fields = $allFields;
         }
 
-        return $fields
+        return $this->uniqueFieldsForRender($fields)
             ->map(fn ($field) => $this->makeComponent($field, $allFields, $parentColumn))
             ->filter()
             ->values()
@@ -139,7 +139,7 @@ class StudentDynamicFormSchema
         }
 
         if ($type === 'repeater') {
-            $children = $this->getChildren($field, $allFields, $parentColumn);
+            $children = $this->uniqueFieldsForRender($this->getChildren($field, $allFields, $parentColumn));
 
             $component = Repeater::make($name)
                 ->label($label)
@@ -411,6 +411,21 @@ class StudentDynamicFormSchema
 
         return $allFields
             ->filter(fn ($child): bool => (int) ($child->{$parentColumn} ?? 0) === (int) $field->id)
+            ->values();
+    }
+
+    protected function uniqueFieldsForRender($fields): Collection
+    {
+        return collect($fields)
+            ->unique(function ($field): string {
+                $name = trim((string) ($field->name ?? ''));
+
+                if ($name !== '') {
+                    return 'name:' . strtolower($name);
+                }
+
+                return 'id:' . (string) ($field->id ?? spl_object_id($field));
+            })
             ->values();
     }
 

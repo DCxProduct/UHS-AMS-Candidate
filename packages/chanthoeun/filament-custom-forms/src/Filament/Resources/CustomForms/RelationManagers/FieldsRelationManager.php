@@ -711,6 +711,7 @@ class FieldsRelationManager extends RelationManager
             return;
         }
 
+        $originalName = (string) $record->getOriginal('name');
         $currentFormId = (string) $record->custom_form_id;
         $currentData = $preparedByFormId[$currentFormId] ?? reset($preparedByFormId);
 
@@ -722,17 +723,21 @@ class FieldsRelationManager extends RelationManager
                 continue;
             }
 
-            $existingField = \Chanthoeun\FilamentCustomForms\Models\CustomFormField::query()
+            $matchingNames = array_values(array_unique(array_filter([
+                (string) ($fieldData['name'] ?? ''),
+                $originalName,
+            ], fn (string $name): bool => $name !== '')));
+
+            $existingFields = \Chanthoeun\FilamentCustomForms\Models\CustomFormField::query()
                 ->where('custom_form_id', $fieldData['custom_form_id'])
                 ->whereKeyNot($record->getKey())
-                ->where(function ($query) use ($fieldData, $record): void {
-                    $query->where('name', $fieldData['name'])
-                        ->orWhere('name', $record->getOriginal('name'));
-                })
-                ->first();
+                ->whereIn('name', $matchingNames)
+                ->get();
 
-            if ($existingField) {
-                $existingField->update($fieldData);
+            if ($existingFields->isNotEmpty()) {
+                foreach ($existingFields as $existingField) {
+                    $existingField->update($fieldData);
+                }
 
                 continue;
             }

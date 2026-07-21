@@ -70,7 +70,9 @@ class CustomFormEntryForm
                         return [];
                     }
 
-                    $rootFields = $customForm->fields()->roots()->orderBy('sort')->get();
+                    $rootFields = self::uniqueFieldsForRender(
+                        $customForm->fields()->roots()->orderBy('sort')->get()
+                    );
 
                     $isLocked = method_exists($livewire, 'isLockedForEditing')
                         && $livewire->isLockedForEditing();
@@ -202,7 +204,9 @@ class CustomFormEntryForm
         $applicationSchema = [];
 
         foreach ($childForms as $childForm) {
-            $childRootFields = $childForm->fields()->roots()->orderBy('sort')->get();
+            $childRootFields = self::uniqueFieldsForRender(
+                $childForm->fields()->roots()->orderBy('sort')->get()
+            );
 
             if ($childRootFields->isEmpty()) {
                 continue;
@@ -262,11 +266,26 @@ class CustomFormEntryForm
             ->toArray();
     }
 
+    protected static function uniqueFieldsForRender($fields): Collection
+    {
+        return collect($fields)
+            ->unique(function ($field): string {
+                $name = trim((string) ($field->name ?? ''));
+
+                if ($name !== '') {
+                    return 'name:' . strtolower($name);
+                }
+
+                return 'id:' . (string) ($field->id ?? spl_object_id($field));
+            })
+            ->values();
+    }
+
     protected static function getFields($fields, bool $isLocked = false, array $hiddenFieldNames = []): array
     {
         $components = [];
 
-        foreach ($fields as $fieldModel) {
+        foreach (self::uniqueFieldsForRender($fields) as $fieldModel) {
             $name = (string) $fieldModel->name;
             $type = (string) $fieldModel->type;
 
@@ -281,19 +300,19 @@ class CustomFormEntryForm
 
             if ($type === 'section') {
                 $component = Section::make($isHiddenLabel ? null : $label)
-                    ->schema(self::getFields($fieldModel->children()->orderBy('sort')->get(), $isLocked, $hiddenFieldNames))
+                    ->schema(self::getFields(self::uniqueFieldsForRender($fieldModel->children()->orderBy('sort')->get()), $isLocked, $hiddenFieldNames))
                     ->columns($options['columns'] ?? 2);
             } elseif ($type === 'grid') {
                 $component = Grid::make($options['columns'] ?? 2)
-                    ->schema(self::getFields($fieldModel->children()->orderBy('sort')->get(), $isLocked, $hiddenFieldNames));
+                    ->schema(self::getFields(self::uniqueFieldsForRender($fieldModel->children()->orderBy('sort')->get()), $isLocked, $hiddenFieldNames));
             } elseif ($type === 'fieldset') {
                 $component = Fieldset::make($isHiddenLabel ? null : $label)
-                    ->schema(self::getFields($fieldModel->children()->orderBy('sort')->get(), $isLocked, $hiddenFieldNames))
+                    ->schema(self::getFields(self::uniqueFieldsForRender($fieldModel->children()->orderBy('sort')->get()), $isLocked, $hiddenFieldNames))
                     ->columns($options['columns'] ?? 2);
             } elseif ($type === 'wizard') {
                 $steps = [];
 
-                foreach ($fieldModel->children()->orderBy('sort')->get() as $child) {
+                foreach (self::uniqueFieldsForRender($fieldModel->children()->orderBy('sort')->get()) as $child) {
                     $stepFields = self::getFields(collect([$child]), $isLocked, $hiddenFieldNames);
 
                     if (empty($stepFields)) {
@@ -309,7 +328,7 @@ class CustomFormEntryForm
 
                 $component = Wizard::make($steps);
             } elseif ($type === 'repeater') {
-                $children = self::getFields($fieldModel->children()->orderBy('sort')->get(), $isLocked, $hiddenFieldNames);
+                $children = self::getFields(self::uniqueFieldsForRender($fieldModel->children()->orderBy('sort')->get()), $isLocked, $hiddenFieldNames);
 
                 if (empty($children)) {
                     continue;
