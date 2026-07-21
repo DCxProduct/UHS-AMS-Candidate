@@ -71,4 +71,6 @@ return [
 
     "my_submission_trend" => 'My Submission Trend',
     "my_submission_trend_description" => 'A view of your submission history over time.',
+    'my_sidebar_form_submissions' => 'Form Submissions',
+    'my_sidebar_form_submissions_description' => 'Submitted forms from your sidebar menu',
 ];

@@ -64,11 +64,6 @@ class StudentStatsOverview extends StatsOverviewWidget
                     ->description(__('dashboard.exam_result_description'))
                     ->descriptionIcon($examPassed ? 'heroicon-m-check-circle' : ($examStatus === 'failed' ? 'heroicon-m-x-circle' : 'heroicon-m-clock'))
                     ->color($examPassed ? 'success' : ($examStatus === 'failed' ? 'danger' : 'gray')),
-
-                Stat::make(__('dashboard.overall_progress'), $progress . '%')
-                    ->description(__('dashboard.workflow_progress_description'))
-                    ->descriptionIcon('heroicon-m-chart-bar')
-                    ->color($progress >= 100 ? 'success' : 'info'),
         ];
     }
 

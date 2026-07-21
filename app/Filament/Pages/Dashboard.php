@@ -77,8 +77,8 @@ class Dashboard extends BaseDashboard
             |--------------------------------------------------------------------------
             */
             StudentStatsOverview::class,
-            StudentProgressChart::class,
             StudentSubmissionTrendChart::class,
+            StudentProgressChart::class,
             StudentCompletionDoughnutChart::class,
         ];
     }
