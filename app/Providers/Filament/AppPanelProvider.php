@@ -158,7 +158,7 @@ class AppPanelProvider extends PanelProvider
                     ->group(fn (): string => __('sync.navigation_group'))
                     ->url(fn (): string => SyncPage::getUrl())
                     ->sort(90)
-                    ->visible(fn (): bool => $this->isAdmin())
+                    ->visible(false)
                     ->isActiveWhen(fn (): bool => request()->is('sync*')),
             ])
 
