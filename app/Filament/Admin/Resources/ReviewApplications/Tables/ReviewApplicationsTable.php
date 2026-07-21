@@ -211,6 +211,7 @@ class ReviewApplicationsTable
                     ->modalCancelActionLabel(__('review_applications.pending_modal.cancel'))
                     ->visible(fn (CustomFormEntry $record): bool =>
                         strtolower((string) data_get($record->data, 'candidate_status', 'pending')) === 'passed'
+                        && ! self::hasStudentReviewResultNotification($record, 'passed')
                     )
                     ->action(function (CustomFormEntry $record): void {
                         self::markCandidatePending($record);
