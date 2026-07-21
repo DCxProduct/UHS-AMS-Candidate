@@ -5,6 +5,7 @@ namespace App\Filament\Widgets;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Widgets\ChartWidget;
+use Illuminate\Support\Facades\Schema;
 
 class AdminSubmissionsByFormChart extends ChartWidget
 {
@@ -35,44 +36,103 @@ class AdminSubmissionsByFormChart extends ChartWidget
 
     protected function getData(): array
     {
-        $nationalExamFormId = CustomForm::query()
-            ->where('slug', 'national-examination-registration')
-            ->value('id');
-
-        $labels = [
-            __('dashboard.form_types.associate'),
-            __('dashboard.form_types.bachelor'),
-            __('dashboard.form_types.master'),
-            __('dashboard.form_types.phd'),
-        ];
-        $keys = ['associate', 'bachelor', 'master', 'phd'];
-
-        $data = collect($keys)->map(function (string $key) use ($nationalExamFormId): int {
-            if (! $nationalExamFormId) {
-                return 0;
-            }
-
-            return CustomFormEntry::query()
-                ->where('custom_form_id', $nationalExamFormId)
-                ->where('review_status', '!=', 'draft')
-                ->where('data->registration_status', '!=', 'draft')
-                ->where('data->form_selection', $key)
-                ->count();
-        })->values()->all();
+        $forms = $this->sidebarForms();
 
         return [
             'datasets' => [
                 [
                     'label' => __('dashboard.submissions'),
-                    'data' => $data,
+                    'data' => $forms
+                        ->map(fn (CustomForm $form): int => $this->submissionCount($form))
+                        ->values()
+                        ->all(),
                     'backgroundColor' => 'rgba(16, 185, 129, 0.75)',
                     'borderColor' => '#10b981',
                     'borderWidth' => 1,
                     'borderRadius' => 8,
                 ],
             ],
-            'labels' => $labels,
+            'labels' => $forms
+                ->map(fn (CustomForm $form): string => $this->localizedText($form->name))
+                ->values()
+                ->all(),
         ];
+    }
+
+    private function sidebarForms()
+    {
+        $query = CustomForm::query()
+            ->where(function ($query): void {
+                $query->whereNull('slug')
+                    ->orWhere('slug', '!=', 'profile');
+            });
+
+        if (Schema::hasColumn('custom_forms', 'is_active')) {
+            $query->where('is_active', true);
+        }
+
+        if (Schema::hasColumn('custom_forms', 'menu_placement')) {
+            $query->where('menu_placement', 'sidebar');
+        }
+
+        if (Schema::hasColumn('custom_forms', 'display_order')) {
+            $query->orderBy('display_order');
+        }
+
+        return $query
+            ->orderBy('id')
+            ->get();
+    }
+
+    private function submissionCount(CustomForm $form): int
+    {
+        $formIds = CustomForm::query()
+            ->where('id', $form->id)
+            ->orWhere('custom_form_id', $form->id)
+            ->pluck('id')
+            ->all();
+
+        return CustomFormEntry::query()
+            ->whereIn('custom_form_id', $formIds)
+            ->where(function ($query): void {
+                $query->whereNull('review_status')
+                    ->orWhere('review_status', '!=', 'draft');
+            })
+            ->where(function ($query): void {
+                $query->whereNull('data->registration_status')
+                    ->orWhere('data->registration_status', '!=', 'draft');
+            })
+            ->count();
+    }
+
+    private function localizedText(mixed $value): string
+    {
+        if (is_string($value) && str_starts_with(trim($value), '{')) {
+            $decoded = json_decode($value, true);
+
+            if (is_array($decoded)) {
+                $value = $decoded;
+            }
+        }
+
+        if (is_object($value)) {
+            $value = json_decode(json_encode($value), true);
+        }
+
+        if (is_array($value)) {
+            $locale = app()->getLocale();
+
+            return (string) (
+                $value[$locale]
+                ?? $value['km']
+                ?? $value['kh']
+                ?? $value['en']
+                ?? collect($value)->first()
+                ?? ''
+            );
+        }
+
+        return (string) $value;
     }
 
     protected function getType(): string

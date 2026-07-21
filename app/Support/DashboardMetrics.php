@@ -355,10 +355,10 @@ class DashboardMetrics
                     'slug' => $form['slug'],
                     'name' => $form['name'],
 
-                    'completed' => static::studentHasEntryForForm(
+                    'completed' => static::studentSubmissionCountForFormTree(
                         $userId,
                         $form['id']
-                    ),
+                    ) > 0,
                 ];
             })
             ->values()
@@ -412,6 +412,37 @@ class DashboardMetrics
         int $userId,
         int $formId,
     ): bool {
+        return static::studentSubmissionCountForForms($userId, [$formId]) > 0;
+    }
+
+    public static function studentSubmissionCountForFormTree(
+        int $userId,
+        int $formId,
+    ): int {
+        $formIds = [$formId];
+
+        if (
+            Schema::hasTable('custom_forms')
+            && Schema::hasColumn('custom_forms', 'custom_form_id')
+        ) {
+            $formIds = DB::table('custom_forms')
+                ->where('id', $formId)
+                ->orWhere('custom_form_id', $formId)
+                ->pluck('id')
+                ->map(fn ($id): int => (int) $id)
+                ->push($formId)
+                ->unique()
+                ->values()
+                ->all();
+        }
+
+        return static::studentSubmissionCountForForms($userId, $formIds);
+    }
+
+    private static function studentSubmissionCountForForms(
+        int $userId,
+        array $formIds,
+    ): int {
         if (
             ! Schema::hasTable('custom_form_entries')
             || ! Schema::hasColumn(
@@ -425,15 +456,15 @@ class DashboardMetrics
         $ownerColumns = static::entryOwnerColumns();
 
         if (empty($ownerColumns)) {
-            return false;
+            return 0;
         }
 
         $query = DB::table('custom_form_entries')
-            ->where('custom_form_id', $formId);
+            ->whereIn('custom_form_id', array_values(array_unique($formIds)));
 
         static::applyStudentOwnerFilter($query, $userId);
 
-        return $query->exists();
+        return $query->count();
     }
 
     public static function studentLatestStatus(int $userId): string
@@ -482,8 +513,7 @@ class DashboardMetrics
         }
 
         $query = DB::table('custom_forms')
-            ->whereNotNull('name')
-            ->orderBy('id');
+            ->whereNotNull('name');
 
         if (Schema::hasColumn('custom_forms', 'is_active')) {
             $query->where('is_active', true);
@@ -491,66 +521,37 @@ class DashboardMetrics
             $query->where('active', true);
         }
 
-        $forms = $query->get();
+        if (Schema::hasColumn('custom_forms', 'menu_placement')) {
+            $query->where('menu_placement', 'sidebar');
+        }
 
-        $profileForm = $forms->first(
-            fn ($form): bool => (string) ($form->slug ?? '') === 'profile'
-        );
+        if (Schema::hasColumn('custom_forms', 'display_order')) {
+            $query->orderBy('display_order');
+        }
 
-        $profileFormId = $profileForm
-            ? (int) $profileForm->id
-            : null;
-
-        $profileCompleted = $profileFormId
-            ? static::studentHasEntryForForm($userId, $profileFormId)
-            : true;
-
-        $profileWorkflow = $profileFormId
-            ? static::formWorkflow($profileFormId)
-            : [
-                'can_see_form' => true,
-                'show_contact' => false,
-            ];
-
-        $profileCanBeSeen = (bool) (
-            $profileWorkflow['can_see_form'] ?? true
-        );
-
-        $profileShowsContact = (bool) (
-            $profileWorkflow['show_contact'] ?? false
-        );
+        $forms = $query
+            ->orderBy('id')
+            ->get();
 
         return $forms
-            ->filter(function ($form) use (
-                $profileCompleted,
-                $profileCanBeSeen,
-                $profileShowsContact,
-            ): bool {
+            ->filter(function ($form): bool {
                 if (! static::formAllowsStudent($form)) {
                     return false;
                 }
 
                 $slug = (string) ($form->slug ?? '');
 
+                if ($slug === 'profile') {
+                    return false;
+                }
+
+                if (! static::formHasClosingDateRule($form)) {
+                    return false;
+                }
+
                 $workflow = static::formWorkflow((int) $form->id);
 
-                if (! ($workflow['can_see_form'] ?? true)) {
-                    return false;
-                }
-
-                if ($slug === 'profile') {
-                    return true;
-                }
-
-                if (! $profileCanBeSeen) {
-                    return false;
-                }
-
-                if ($profileShowsContact) {
-                    return false;
-                }
-
-                return $profileCompleted;
+                return ($workflow['state'] ?? 'open') === 'open';
             })
             ->map(function ($form): array {
                 return [
@@ -695,6 +696,35 @@ class DashboardMetrics
         ];
     }
 
+    private static function formHasClosingDateRule(object $form): bool
+    {
+        if (! Schema::hasTable('closing_dates')) {
+            return false;
+        }
+
+        $formId = (int) ($form->id ?? 0);
+        $name = (string) ($form->name ?? '');
+        $slug = (string) ($form->slug ?? '');
+
+        return DB::table('closing_dates')
+            ->whereNull('deleted_at')
+            ->where(function ($query) use ($formId, $name, $slug): void {
+                $query
+                    ->whereIn('type', array_filter([
+                        'custom_form_' . $formId,
+                        'custom_form:' . $formId,
+                        (string) $formId,
+                        $name,
+                        $slug,
+                        \Illuminate\Support\Str::slug($name),
+                    ]))
+                    ->orWhere('name', $name)
+                    ->orWhere('name', $slug)
+                    ->orWhere('name', \Illuminate\Support\Str::slug($name));
+            })
+            ->exists();
+    }
+
     private static function formAllowsStudent(object $form): bool
     {
         if (! property_exists($form, 'allowed_roles')) {
@@ -710,9 +740,13 @@ class DashboardMetrics
         if (is_string($roles)) {
             $decoded = json_decode($roles, true);
 
+            if (is_string($decoded)) {
+                $decoded = json_decode($decoded, true);
+            }
+
             $roles = is_array($decoded)
                 ? $decoded
-                : explode(',', $roles);
+                : explode(',', trim($roles, " \t\n\r\0\x0B\"'[]"));
         }
 
         if (! is_array($roles)) {
@@ -722,7 +756,7 @@ class DashboardMetrics
         $roles = collect($roles)
             ->map(
                 fn ($role): string => strtolower(
-                    trim((string) $role)
+                    trim((string) $role, " \t\n\r\0\x0B\"'")
                 )
             )
             ->filter()

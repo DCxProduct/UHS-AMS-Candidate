@@ -71,4 +71,6 @@ return [
 
     'my_submission_trend' => 'និន្នាការការដាក់ស្នើ',
     'my_submission_trend_description' => 'ចំនួនការដាក់ស្នើក្នុងមួយខែ',
+    'my_sidebar_form_submissions' => 'ការដាក់ស្នើទម្រង់',
+    'my_sidebar_form_submissions_description' => 'ទម្រង់ដែលបានដាក់ស្នើពីម៉ឺនុយចំហៀងរបស់អ្នក',
 ];
