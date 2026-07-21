@@ -652,7 +652,7 @@ class FieldsRelationManager extends RelationManager
                 EditAction::make()
                     ->modalHeading(__('filament-custom-forms::fcf.admin.edit_custom_form_field'))
                     ->using(function ($record, array $data) {
-                        $record->update($this->prepareFieldData($data));
+                        $this->syncFieldDataAcrossSelectedForms($record, $data);
 
                         return $record;
                     }),
@@ -664,6 +664,81 @@ class FieldsRelationManager extends RelationManager
                     DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    private function syncFieldDataAcrossSelectedForms(object $record, array $data): void
+    {
+        $selectedTypes = data_get($data, 'options.visible_when.values', []);
+
+        if (! is_array($selectedTypes)) {
+            $selectedTypes = filled($selectedTypes) ? [$selectedTypes] : [];
+        }
+
+        $selectedTypes = array_values(array_unique(array_filter(
+            $selectedTypes,
+            fn ($value): bool => filled($value) && $value !== false && $value !== 'false'
+        )));
+
+        if (count($selectedTypes) <= 1) {
+            $record->update($this->prepareFieldData($data));
+
+            return;
+        }
+
+        $preparedByFormId = [];
+
+        foreach ($selectedTypes as $selectedType) {
+            $copy = $data;
+
+            data_set($copy, 'options.visible_when.field', 'form_selection');
+            data_set($copy, 'options.visible_when.operator', '=');
+            data_set($copy, 'options.visible_when.value', $selectedType);
+            data_forget($copy, 'options.visible_when.values');
+
+            $prepared = $this->prepareFieldData($copy);
+            $targetFormId = $prepared['custom_form_id'] ?? null;
+
+            if (blank($targetFormId)) {
+                continue;
+            }
+
+            $preparedByFormId[(string) $targetFormId] = $prepared;
+        }
+
+        if (empty($preparedByFormId)) {
+            $record->update($this->prepareFieldData($data));
+
+            return;
+        }
+
+        $currentFormId = (string) $record->custom_form_id;
+        $currentData = $preparedByFormId[$currentFormId] ?? reset($preparedByFormId);
+
+        $record->update($currentData);
+        $currentFormId = (string) ($record->custom_form_id ?? ($currentData['custom_form_id'] ?? $currentFormId));
+
+        foreach ($preparedByFormId as $targetFormId => $fieldData) {
+            if ($targetFormId === $currentFormId) {
+                continue;
+            }
+
+            $existingField = \Chanthoeun\FilamentCustomForms\Models\CustomFormField::query()
+                ->where('custom_form_id', $fieldData['custom_form_id'])
+                ->whereKeyNot($record->getKey())
+                ->where(function ($query) use ($fieldData, $record): void {
+                    $query->where('name', $fieldData['name'])
+                        ->orWhere('name', $record->getOriginal('name'));
+                })
+                ->first();
+
+            if ($existingField) {
+                $existingField->update($fieldData);
+
+                continue;
+            }
+
+            \Chanthoeun\FilamentCustomForms\Models\CustomFormField::create($fieldData);
+        }
     }
 
     private function prepareFieldData(array $data): array
@@ -735,13 +810,7 @@ class FieldsRelationManager extends RelationManager
                 fn ($val) => filled($val) && $val !== false && $val !== 'false'
             ));
 
-            $selectedType = collect($selectedTypes)
-                ->first(function ($selectedType) use ($ownerForm): bool {
-                    $targetForm = self::formTargetFromValue($selectedType);
-
-                    return $targetForm && (string) $targetForm->id !== (string) $ownerForm->id;
-                }) ?? head($selectedTypes);
-
+            $selectedType = head($selectedTypes);
             data_forget($data, 'options.visible_when.values');
         } else {
             $selectedType = data_get($data, 'options.visible_when.value');
