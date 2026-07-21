@@ -455,6 +455,7 @@ class FieldsRelationManager extends RelationManager
     {
         return $table
             ->recordTitleAttribute('name')
+            ->modifyQueryUsing(fn (\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder => $this->hideDuplicateFieldNames($query))
             ->defaultSort('sort')
             ->columns([
                 TextColumn::make('name')
@@ -664,6 +665,24 @@ class FieldsRelationManager extends RelationManager
                     DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    private function hideDuplicateFieldNames(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    {
+        return $query->where(function (\Illuminate\Database\Eloquent\Builder $query): void {
+            $query
+                ->whereNull('name')
+                ->orWhere('name', '')
+                ->orWhereIn('id', function ($subQuery): void {
+                    $subQuery
+                        ->selectRaw('MIN(id)')
+                        ->from('custom_form_fields')
+                        ->where('custom_form_id', $this->getOwnerRecord()->id)
+                        ->whereNotNull('name')
+                        ->where('name', '!=', '')
+                        ->groupByRaw('LOWER(name)');
+                });
+        });
     }
 
     private function syncFieldDataAcrossSelectedForms(object $record, array $data): void
