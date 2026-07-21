@@ -7,7 +7,6 @@ use Carbon\Carbon;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Actions\Action;
-use Filament\Actions\BulkAction;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
@@ -15,7 +14,6 @@ use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
 use Illuminate\Support\HtmlString;
 
 class ExamResultsTable
@@ -25,6 +23,7 @@ class ExamResultsTable
         return $table
             ->recordAction(null)
             ->recordUrl(null)
+            ->selectable()
             ->columns([
                 TextColumn::make('row_number')
                     ->label(__('exam_results.no'))
@@ -118,7 +117,7 @@ class ExamResultsTable
                     ->modalSubmitActionLabel(__('exam_results.send_notification'))
                     ->modalCancelActionLabel(__('app.cancel'))
                     ->visible(fn (CustomFormEntry $record): bool => ! ReviewApplicationsTable::hasStudentReviewResultNotification($record, 'passed'))
-                    ->action(function (CustomFormEntry $record): void {
+                    ->action(function (CustomFormEntry $record, $livewire): void {
                         $sent = ReviewApplicationsTable::notifyStudentReviewResult(
                             record: $record,
                             status: 'passed',
@@ -133,28 +132,12 @@ class ExamResultsTable
                             : $notification->warning();
 
                         $notification->send();
-                    }),
-            ])
-            ->toolbarActions([
-                BulkAction::make('notify_selected_students')
-                    ->label(__('exam_results.notify_selected_students'))
-                    ->icon('heroicon-o-bell-alert')
-                    ->color('danger')
-                    ->button()
-                    ->requiresConfirmation()
-                    ->modalHeading(__('exam_results.notify_selected_confirm_title'))
-                    ->modalDescription(__('exam_results.notify_selected_confirm_description'))
-                    ->modalSubmitActionLabel(__('exam_results.send_notification'))
-                    ->modalCancelActionLabel(__('app.cancel'))
-                    ->visible(fn (): bool => self::hasUnsentPassedNotifications())
-                    ->deselectRecordsAfterCompletion()
-                    ->action(function (Collection $records): void {
-                        $sentCount = self::sendPassedNotifications($records);
 
-                        Notification::make()
-                            ->title(__('exam_results.notifications_sent', ['count' => $sentCount]))
-                            ->success()
-                            ->send();
+                        if (method_exists($livewire, 'flushCachedTableRecords')) {
+                            $livewire->flushCachedTableRecords();
+                        }
+
+                        $livewire->dispatch('$refresh');
                     }),
             ])
             ->defaultSort('id', 'desc');
@@ -261,7 +244,12 @@ class ExamResultsTable
             ->with(['creator', 'customForm'])
             ->where('data->candidate_status', 'passed')
             ->get()
-            ->contains(fn (CustomFormEntry $record): bool => ! ReviewApplicationsTable::hasStudentReviewResultNotification($record, 'passed'));
+            ->contains(fn (CustomFormEntry $record): bool => ! self::hasStudentPassedNotification($record));
+    }
+
+    public static function hasStudentPassedNotification(CustomFormEntry $record): bool
+    {
+        return ReviewApplicationsTable::hasStudentReviewResultNotification($record, 'passed');
     }
 
     protected static function dynamicPassedYears(): array

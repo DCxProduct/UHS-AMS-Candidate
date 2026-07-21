@@ -684,7 +684,11 @@ class ReviewApplicationsTable
         return DB::table('notifications')
             ->where('notifiable_type', $student->getMorphClass())
             ->where('notifiable_id', $student->getKey())
-            ->where('data->viewData->review_result_entry_id', (string) $record->getKey())
+            ->where(function ($query) use ($record): void {
+                $query
+                    ->where('data->viewData->review_result_entry_id', (string) $record->getKey())
+                    ->orWhere('data->viewData->review_result_entry_id', (int) $record->getKey());
+            })
             ->where('data->viewData->review_result_status', $status)
             ->exists();
     }
