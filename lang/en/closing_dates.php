@@ -10,11 +10,11 @@ return [
     'plural_model_label' => 'Closing Dates',
 
     'breadcrumb_list' => 'List',
-    'breadcrumb_create' => 'Create',
+    'breadcrumb_create' => 'Create New',
     'breadcrumb_edit' => 'Edit',
 
     'list_title' => 'Closing Dates',
-    'create_title' => 'Create Closing Date',
+    'create_title' => 'Create New Closing Date',
     'edit_title' => 'Edit Closing Date',
 
     'closing_date_information' => 'Closing Date Information',
@@ -44,8 +44,8 @@ return [
         'closed' => 'Closed',
     ],
 
-    'new' => 'New',
-    'create' => 'Create',
+    'new' => 'Create New',
+    'create' => 'Create New',
     'edit' => 'Edit',
     'delete' => 'Delete',
     'save' => 'Save',
