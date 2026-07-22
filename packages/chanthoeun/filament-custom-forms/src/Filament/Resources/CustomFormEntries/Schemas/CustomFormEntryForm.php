@@ -345,7 +345,13 @@ class CustomFormEntryForm
                     ->columns($options['columns'] ?? 1);
 
                 if ((string) $fieldModel->name === 'siblings') {
-                    $component->addActionLabel(app()->getLocale() === 'km' ? 'បន្ថែមលើ ខ. អំពីបងប្អូន' : 'Add to B. About Siblings');
+                    $component
+                        ->maxItems((int) ($options['max_items'] ?? 3))
+                        ->addActionLabel(
+                            app()->getLocale() === 'km'
+                                ? ((string) ($options['add_action_label_km'] ?? 'បន្ថែមបងប្អូន'))
+                                : ((string) ($options['add_action_label_en'] ?? 'Add Sibling'))
+                        );
                 }
 
                 if (! empty($options['is_compact']) && method_exists($component, 'compact')) {

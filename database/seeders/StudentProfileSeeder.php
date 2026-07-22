@@ -242,7 +242,13 @@ class StudentProfileSeeder extends Seeder
             $this->t('A. About Siblings', 'ក. អំពីបងប្អូន'),
             'repeater',
             false,
-            ['columns' => 2, 'column_span_full' => true],
+            [
+                'columns' => 2,
+                'column_span_full' => true,
+                'max_items' => 3,
+                'add_action_label_en' => 'Add Sibling',
+                'add_action_label_km' => 'បន្ថែមបងប្អូន',
+            ],
             $familySection,
             $sort++,
         );
