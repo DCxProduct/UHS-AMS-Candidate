@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'dashboard' => 'ផ្ទាំងគ្រប់គ្រង',
+    'dashboard' => 'ផ្ទាំងព័ត៌មាន',
 
     'groups' => [
         'form_entry' => 'ពាក្យស្នើសុំបេក្ខជន',
