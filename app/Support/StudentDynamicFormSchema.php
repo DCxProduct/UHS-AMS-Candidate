@@ -154,6 +154,10 @@ class StudentDynamicFormSchema
                 ->defaultItems((int) ($config['default_items'] ?? 0))
                 ->addActionLabel($this->getRepeaterAddActionLabel($config, $label));
 
+            if ((int) ($config['max_items'] ?? 0) > 0) {
+                $component->maxItems((int) $config['max_items']);
+            }
+
             return $this->applyCommonConfig($component, $field, $config, true);
         }
 
