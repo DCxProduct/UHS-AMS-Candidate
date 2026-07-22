@@ -14,8 +14,7 @@ class ListGeoLocations extends ListRecords
     {
         return [
             CreateAction::make()
-                ->label(__('geo_locations.actions.new'))
-                ->icon('heroicon-o-plus'),
+                ->label(__('geo_locations.actions.new')),
         ];
     }
 }

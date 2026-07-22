@@ -29,7 +29,7 @@ return [
     'notifications' => [
 
         'created' => [
-            'title' => 'បានបង្កើត :label បានជោគជ័យ',
+            'title' => 'បានបង្កើតដោយជោគជ័យ',
         ],
 
     ],
