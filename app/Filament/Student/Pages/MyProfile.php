@@ -100,6 +100,7 @@ class MyProfile extends Page implements HasForms
 
                             FileUpload::make('avatar')
                                 ->label(__('student_profile.avatar'))
+                                ->placeholder(__('student_profile.choose_image'))
                                 ->image()
                                 ->disk('public')
                                 ->directory('avatars')

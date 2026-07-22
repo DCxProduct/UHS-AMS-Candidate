@@ -9,6 +9,7 @@ return [
     'email_address' => 'Email Address',
     'phone_number' => 'Phone Number',
     'avatar' => 'Avatar',
+    'choose_image' => 'Choose Image',
     'change_password' => 'Change Password',
     'change_password_description' => 'Leave password fields empty if you do not want to change your password.',
     'new_password' => 'New Password',

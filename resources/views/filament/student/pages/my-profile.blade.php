@@ -7,7 +7,6 @@
         <div class="flex justify-end">
             <x-filament::button
                 type="submit"
-                icon="heroicon-o-check-circle"
                 color="warning"
             >
                 {{ __('student_profile.save_changes') }}
