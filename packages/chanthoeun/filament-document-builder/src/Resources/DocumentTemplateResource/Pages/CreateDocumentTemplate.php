@@ -26,16 +26,16 @@ class CreateDocumentTemplate extends CreateRecord
     {
         return [
             Action::make('load_example_layout')
-                ->label('Load Example Layout')
+                ->label(__('filament-document-builder::document-builder.labels.load_example_layout'))
                 ->icon('heroicon-o-document-text')
                 ->color('info')
                 ->requiresConfirmation()
-                ->modalHeading('Load Example Layout')
-                ->modalDescription('Warning: This will overwrite any existing content in your Document Designer.')
-                ->modalSubmitActionLabel('Load Layout')
+                ->modalHeading(__('filament-document-builder::document-builder.labels.load_example_layout'))
+                ->modalDescription(__('filament-document-builder::document-builder.labels.load_example_layout_warning'))
+                ->modalSubmitActionLabel(__('filament-document-builder::document-builder.labels.load_layout'))
                 ->form([
                     Select::make('layout')
-                        ->label('Select a Layout')
+                        ->label(__('filament-document-builder::document-builder.labels.select_layout'))
                         ->options(LayoutTemplates::getOptions())
                         ->required(),
                 ])
@@ -50,7 +50,7 @@ class CreateDocumentTemplate extends CreateRecord
                     }
 
                     Notification::make()
-                        ->title('Layout Loaded')
+                        ->title(__('filament-document-builder::document-builder.labels.layout_loaded'))
                         ->success()
                         ->send();
                 }),

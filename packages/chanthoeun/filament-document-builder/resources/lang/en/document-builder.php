@@ -2,6 +2,8 @@
 
 return [
     'labels' => [
+        'document_template' => 'Document Template',
+        'document_templates' => 'Document Templates',
         'template_details' => 'Template Details',
         'template_name' => 'Template Name',
         'template_type' => 'Document Type',
@@ -27,5 +29,13 @@ return [
         'last_updated' => 'Last Updated',
         'no_model_linked' => 'No model linked',
         'model_prefix' => 'Model: ',
+        'load_example_layout' => 'Load Example Layout',
+        'load_example_layout_warning' => 'Warning: This will overwrite any existing content in your Document Designer.',
+        'load_layout' => 'Load Layout',
+        'select_layout' => 'Select a Layout',
+        'layout_loaded' => 'Layout Loaded',
+        'preview_pdf' => 'Preview PDF',
+        'invalid_model_title' => 'Invalid Model',
+        'invalid_model_body' => 'The model :model does not exist.',
     ],
 ];

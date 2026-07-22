@@ -1,8 +1,8 @@
 <?php
 
 return [
-    'navigation_label' => 'ផ្ទាំងគ្រប់គ្រង',
-    'title' => 'ផ្ទាំងគ្រប់គ្រង',
+    'navigation_label' => 'ផ្ទាំងព័ត៌មាន',
+    'title' => 'ផ្ទាំងព័ត៌មាន',
     'welcome' => 'សូមស្វាគមន៍, :name',
 
     'admin_subheading' => 'តាមដានគណនីនិស្សិត ការដាក់ស្នើ និងការពិនិត្យពាក្យ។',
@@ -23,7 +23,7 @@ return [
     'review_status_description' => 'ពាក្យរង់ចាំ អនុម័ត បដិសេធ និងជាប់',
 
     'profile' => 'ប្រវត្តិរូប',
-    'national_examination' => 'ការប្រឡងថ្នាក់ជាតិ',
+    'national_examination' => 'ការស្នើប្រឡងថ្នាក់ជាតិ',
     'exam_result' => 'បេក្ខជនជាប់',
     'overall_progress' => 'វឌ្ឍនភាពសរុប',
 

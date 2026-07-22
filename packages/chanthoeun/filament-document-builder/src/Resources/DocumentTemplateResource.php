@@ -14,6 +14,16 @@ use Filament\Tables\Table;
 
 class DocumentTemplateResource extends Resource
 {
+    public static function getModelLabel(): string
+    {
+        return __('filament-document-builder::document-builder.labels.document_template');
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return __('filament-document-builder::document-builder.labels.document_templates');
+    }
+
     public static function getNavigationLabel(): string
     {
         return __('navigation.document_templates');

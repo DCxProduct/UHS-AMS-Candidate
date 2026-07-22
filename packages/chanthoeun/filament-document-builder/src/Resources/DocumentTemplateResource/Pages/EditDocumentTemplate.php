@@ -29,16 +29,16 @@ class EditDocumentTemplate extends EditRecord
     {
         return [
             Action::make('load_example_layout')
-                ->label('Load Example Layout')
+                ->label(__('filament-document-builder::document-builder.labels.load_example_layout'))
                 ->icon('heroicon-o-document-text')
                 ->color('info')
                 ->requiresConfirmation()
-                ->modalHeading('Load Example Layout')
-                ->modalDescription('Warning: This will overwrite any existing content in your Document Designer.')
-                ->modalSubmitActionLabel('Load Layout')
+                ->modalHeading(__('filament-document-builder::document-builder.labels.load_example_layout'))
+                ->modalDescription(__('filament-document-builder::document-builder.labels.load_example_layout_warning'))
+                ->modalSubmitActionLabel(__('filament-document-builder::document-builder.labels.load_layout'))
                 ->form([
                     Select::make('layout')
-                        ->label('Select a Layout')
+                        ->label(__('filament-document-builder::document-builder.labels.select_layout'))
                         ->options(LayoutTemplates::getOptions())
                         ->required(),
                 ])
@@ -54,12 +54,12 @@ class EditDocumentTemplate extends EditRecord
                     }
 
                     Notification::make()
-                        ->title('Layout Loaded')
+                        ->title(__('filament-document-builder::document-builder.labels.layout_loaded'))
                         ->success()
                         ->send();
                 }),
             Action::make('preview_pdf')
-                ->label('Preview PDF')
+                ->label(__('filament-document-builder::document-builder.labels.preview_pdf'))
                 ->icon('heroicon-o-document-magnifying-glass')
                 ->color('success')
                 ->action(function () {
@@ -69,8 +69,8 @@ class EditDocumentTemplate extends EditRecord
 
                     if (empty($record->model_class)) {
                         Notification::make()
-                            ->title('No Database Model Selected')
-                            ->body('You must select a Database Model in the Template Details and click Save before you can preview.')
+                            ->title(__('filament-document-builder::document-builder.labels.no_model_selected_title'))
+                            ->body(__('filament-document-builder::document-builder.labels.no_model_selected_body'))
                             ->warning()
                             ->send();
 
@@ -84,8 +84,8 @@ class EditDocumentTemplate extends EditRecord
                             $data = $sampleRecord;
                         } else {
                             Notification::make()
-                                ->title('No Records Found')
-                                ->body("There are no records in the {$record->model_class} table to preview with.")
+                                ->title(__('filament-document-builder::document-builder.labels.no_records_found_title'))
+                                ->body(__('filament-document-builder::document-builder.labels.no_records_found_body', ['model' => $record->model_class]))
                                 ->warning()
                                 ->send();
 
@@ -93,8 +93,8 @@ class EditDocumentTemplate extends EditRecord
                         }
                     } else {
                         Notification::make()
-                            ->title('Invalid Model')
-                            ->body("The model {$record->model_class} does not exist.")
+                            ->title(__('filament-document-builder::document-builder.labels.invalid_model_title'))
+                            ->body(__('filament-document-builder::document-builder.labels.invalid_model_body', ['model' => $record->model_class]))
                             ->danger()
                             ->send();
 
