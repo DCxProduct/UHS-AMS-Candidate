@@ -1,9 +1,31 @@
+@import url('https://fonts.googleapis.com/css2?family=Battambang:wght@400;700;900&family=Inter:wght@400;500;600;700;800&family=Kantumruy+Pro:wght@400;500;600;700;800&display=swap');
 @import 'tailwindcss';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+}
+
+:root {
+    --app-font-sans: 'Inter', 'Kantumruy Pro', system-ui, sans-serif;
+}
+
+html[lang='km'] {
+    --app-font-sans: 'Battambang', 'Kantumruy Pro', 'Inter', system-ui, sans-serif;
+}
+
+html,
+body {
+    font-family: var(--app-font-sans);
+    letter-spacing: 0;
+}
+
+button,
+input,
+select,
+textarea {
+    font: inherit;
 }
