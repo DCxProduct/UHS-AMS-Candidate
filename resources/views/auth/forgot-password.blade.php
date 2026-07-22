@@ -5,8 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ __('app.forgot_password') }}</title>
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Battambang:wght@400;700;900&family=Inter:wght@400;500;600;700;800&family=Kantumruy+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    @vite(['resources/css/app.css'])
 
     <script>
         (function () {
@@ -81,8 +80,6 @@
             min-height: 100vh;
             background: var(--page-bg);
             color: var(--text-main);
-            /* Updated font-family to Battambang */
-            font-family: 'Battambang', 'Kantumruy Pro', 'Inter', system-ui, sans-serif;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -126,7 +123,6 @@
             line-height: 1.4;
             text-align: center;
             color: var(--text-main);
-            font-family: 'Battambang', 'Kantumruy Pro', 'Inter', sans-serif;
         }
 
         .description {
