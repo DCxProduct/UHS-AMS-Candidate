@@ -15,8 +15,7 @@ class ListSystemUsers extends ListRecords
     {
         return [
             Actions\CreateAction::make()
-                ->label(__('system_users.actions.new'))
-                ->icon('heroicon-o-plus'),
+                ->label(__('system_users.actions.new')),
         ];
     }
 }

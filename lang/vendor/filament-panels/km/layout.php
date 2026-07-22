@@ -11,7 +11,7 @@ return [
         ],
 
         'logout' => [
-            'label' => 'ចាកចេញ',
+            'label' => 'ចាកចេញពីកម្មវិធីប្រព័ន្ធ',
         ],
 
         'open_database_notifications' => [

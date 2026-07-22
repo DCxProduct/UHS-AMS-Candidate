@@ -14,8 +14,7 @@ class ListClosingDates extends ListRecords
     {
         return [
             CreateAction::make()
-                ->label(__('closing_dates.create'))
-                ->icon('heroicon-o-plus'),
+                ->label(__('closing_dates.create')),
         ];
     }
 }
