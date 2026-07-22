@@ -17,7 +17,7 @@ return [
     'custom_forms' => 'បង្កើតទម្រង់បំពេញ',
     'document_templates' => 'បង្កើតគំរូឯកសារ',
     'closing_date' => 'កាលបរិច្ឆេទបិទ',
-    'system_users' => 'អ្នកប្រើប្រាស់ប្រព័ន្ធ',
+    'system_users' => 'សិទ្ធអ្នកប្រើប្រាស់',
 
     'forms' => [
         'profile' => 'ប្រវត្តិរូប',

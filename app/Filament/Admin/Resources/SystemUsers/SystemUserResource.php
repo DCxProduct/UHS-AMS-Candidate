@@ -29,6 +29,8 @@ class SystemUserResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'name';
 
+    protected static ?string $slug = 'users';
+
     public static function getNavigationLabel(): string
     {
         return __('navigation.system_users');

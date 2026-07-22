@@ -2,9 +2,9 @@
 
 return [
     'navigation_group' => 'Authentication',
-    'navigation_label' => 'System Users',
-    'resource_label' => 'System User',
-    'resource_plural_label' => 'System Users',
+    'navigation_label' => 'Users',
+    'resource_label' => 'User',
+    'resource_plural_label' => 'Users',
 
     'search' => 'Search',
 

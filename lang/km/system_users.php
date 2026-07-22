@@ -2,9 +2,9 @@
 
 return [
     'navigation_group' => 'ការផ្ទៀងផ្ទាត់',
-    'navigation_label' => 'អ្នកប្រើប្រាស់ប្រព័ន្ធ',
-    'resource_label' => 'អ្នកប្រើប្រាស់ប្រព័ន្ធ',
-    'resource_plural_label' => 'អ្នកប្រើប្រាស់ប្រព័ន្ធ',
+    'navigation_label' => 'សិទ្ធអ្នកប្រើប្រាស់',
+    'resource_label' => 'សិទ្ធអ្នកប្រើប្រាស់',
+    'resource_plural_label' => 'សិទ្ធអ្នកប្រើប្រាស់',
 
     'search' => 'ស្វែងរក',
 
