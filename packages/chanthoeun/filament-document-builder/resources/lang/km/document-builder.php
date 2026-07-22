@@ -3,7 +3,7 @@
 return [
     'labels' => [
         'document_template' => 'គំរូឯកសារ',
-        'document_templates' => 'គំរូឯកសារ',
+        'document_templates' => 'បញ្ជីគំរូឯកសារទាំងអស់',
         'template_details' => 'ព័ត៌មានលម្អិតនៃទម្រង់',
         'template_name' => 'ឈ្មោះទម្រង់',
         'template_type' => 'ប្រភេទឯកសារ',
