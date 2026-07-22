@@ -166,7 +166,7 @@ class StudentProfileSeeder extends Seeder
 
             ['name' => 'place_of_birth_heading', 'label' => $this->t('Place of Birth', 'ទីកន្លែងកំណើត'), 'type' => 'info', 'options' => ['content' => $this->t('Place of Birth', 'ទីកន្លែងកំណើត'), 'column_span_full' => true, 'is_hidden_label' => true]],
             ['name' => 'birth_province_city', 'label' => $this->t('Province / City', 'រាជធានី / ខេត្ត'), 'type' => 'select_dropdown', 'required' => true, 'options' => $this->geoLocationOptions('province')],
-            ['name' => 'birth_district_khan', 'label' => $this->t('District / Khan', 'ស្រុក / ខណ្ឌ'), 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('district', 'birth_province_city')],
+            ['name' => 'birth_district_khan', 'label' => $this->t('District / Khan', 'ក្រុង /ស្រុក / ខណ្ឌ'), 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('district', 'birth_province_city')],
             ['name' => 'birth_commune_sangkat', 'label' => $this->t('Commune / Sangkat', 'ឃុំ / សង្កាត់'), 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('commune', 'birth_district_khan')],
             ['name' => 'birth_village', 'label' => $this->t('Village', 'ភូមិ'), 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('village', 'birth_commune_sangkat')],
 
@@ -174,7 +174,7 @@ class StudentProfileSeeder extends Seeder
             ['name' => 'current_house_number', 'label' => $this->t('House Number', 'លេខផ្ទះ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter House Number', 'placeholder_km' => 'បញ្ចូលលេខផ្ទះ']],
             ['name' => 'current_street_number', 'label' => $this->t('Street Number', 'លេខផ្លូវ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Street Number', 'placeholder_km' => 'បញ្ចូលលេខផ្លូវ']],
             ['name' => 'current_capital_province', 'label' => $this->t('Province / City', 'រាជធានី / ខេត្ត'), 'type' => 'select_dropdown', 'required' => true, 'options' => $this->geoLocationOptions('province')],
-            ['name' => 'current_district_khan', 'label' => $this->t('District / Khan', 'ស្រុក / ខណ្ឌ'), 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('district', 'current_capital_province')],
+            ['name' => 'current_district_khan', 'label' => $this->t('District / Khan', 'ក្រុង /ស្រុក / ខណ្ឌ'), 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('district', 'current_capital_province')],
             ['name' => 'current_commune_sangkat', 'label' => $this->t('Commune / Sangkat', 'ឃុំ / សង្កាត់'), 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('commune', 'current_district_khan')],
             ['name' => 'current_village', 'label' => $this->t('Village', 'ភូមិ'), 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('village', 'current_commune_sangkat')],
 
@@ -209,7 +209,7 @@ class StudentProfileSeeder extends Seeder
             ['name' => 'father_status', 'label' => $this->t("Father's Status", 'ស្ថានភាពឪពុក'), 'type' => 'select_dropdown', 'options' => ['choices' => $parentStatusOptions]],
             ['name' => 'father_occupation', 'label' => $this->t("Father's Occupation", 'មុខរបរឪពុក'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Father Occupation', 'placeholder_km' => 'បញ្ចូលមុខរបរឪពុក']],
             ['name' => 'father_place_of_work', 'label' => $this->t("Father's Place of Work", 'ទីកន្លែងធ្វើការឪពុក'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Father Place of Work', 'placeholder_km' => 'បញ្ចូលទីកន្លែងធ្វើការឪពុក']],
-            ['name' => 'father_phone_number', 'label' => $this->t("Father's Phone Number", 'លេខទូរស័ព្ទឪពុក'), 'type' => 'phone', 'options' => ['placeholder_en' => 'Enter Father Phone Number', 'placeholder_km' => 'បញ្ចូលលេខទូរស័ព្ទឪពុក']],
+            ['name' => 'father_phone_number', 'label' => $this->t("Father's Phone Number", 'លេខទូរស័ព្ទឪពុក'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Father Phone Number', 'placeholder_km' => 'បញ្ចូលលេខទូរស័ព្ទឪពុក']],
 
             ['name' => 'mother_name', 'label' => $this->t("Mother's Name", 'ឈ្មោះម្ដាយ'), 'type' => 'text_input', 'required' => true, 'options' => ['placeholder_en' => 'Enter Mother Name', 'placeholder_km' => 'បញ្ចូលឈ្មោះម្ដាយ']],
             ['name' => 'mother_date_of_birth', 'label' => $this->t("Mother's Date of Birth", 'ថ្ងៃខែឆ្នាំកំណើតម្ដាយ'), 'type' => 'date_picker', 'options' => ['placeholder_en' => 'Enter Mother Date of Birth', 'placeholder_km' => 'ជ្រើសរើសថ្ងៃខែឆ្នាំកំណើតម្ដាយ', 'max_date' => 'today']],
@@ -218,20 +218,20 @@ class StudentProfileSeeder extends Seeder
             ['name' => 'mother_status', 'label' => $this->t("Mother's Status", 'ស្ថានភាពម្ដាយ'), 'type' => 'select_dropdown', 'options' => ['choices' => $parentStatusOptions]],
             ['name' => 'mother_occupation', 'label' => $this->t("Mother's Occupation", 'មុខរបរម្ដាយ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Mother Occupation', 'placeholder_km' => 'បញ្ចូលមុខរបរម្ដាយ']],
             ['name' => 'mother_place_of_work', 'label' => $this->t("Mother's Place of Work", 'ទីកន្លែងធ្វើការម្ដាយ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Mother Place of Work', 'placeholder_km' => 'បញ្ចូលទីកន្លែងធ្វើការម្ដាយ']],
-            ['name' => 'mother_phone_number', 'label' => $this->t("Mother's Phone Number", 'លេខទូរស័ព្ទម្ដាយ'), 'type' => 'phone', 'options' => ['placeholder_en' => 'Enter Mother Phone Number', 'placeholder_km' => 'បញ្ចូលលេខទូរស័ព្ទម្ដាយ']],
+            ['name' => 'mother_phone_number', 'label' => $this->t("Mother's Phone Number", 'លេខទូរស័ព្ទម្ដាយ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Mother Phone Number', 'placeholder_km' => 'បញ្ចូលលេខទូរស័ព្ទម្ដាយ']],
 
             ['name' => 'parents_current_address_heading', 'label' => $this->t('Parents Current Address', 'អាសយដ្ឋានបច្ចុប្បន្នរបស់ឪពុកម្ដាយ'), 'type' => 'info', 'options' => ['content' => $this->t('Parents Current Address', 'អាសយដ្ឋានបច្ចុប្បន្នរបស់ឪពុកម្ដាយ'), 'column_span_full' => true, 'is_hidden_label' => true]],
             ['name' => 'parents_house_number', 'label' => $this->t('House Number', 'លេខផ្ទះ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter House Number', 'placeholder_km' => 'បញ្ចូលលេខផ្ទះ']],
             ['name' => 'parents_street_number', 'label' => $this->t('Street Number', 'លេខផ្លូវ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Street Number', 'placeholder_km' => 'បញ្ចូលលេខផ្លូវ']],
             ['name' => 'parents_capital_province', 'label' => $this->t('Province / City', 'រាជធានី / ខេត្ត'), 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('province')],
-            ['name' => 'parents_district_khan', 'label' => $this->t('District / Khan', 'ស្រុក / ខណ្ឌ'), 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('district', 'parents_capital_province')],
+            ['name' => 'parents_district_khan', 'label' => $this->t('District / Khan', 'ក្រុង / ស្រុក / ខណ្ឌ'), 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('district', 'parents_capital_province')],
             ['name' => 'parents_commune_sangkat', 'label' => $this->t('Commune / Sangkat', 'ឃុំ / សង្កាត់'), 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('commune', 'parents_district_khan')],
             ['name' => 'parents_village', 'label' => $this->t('Village', 'ភូមិ'), 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('village', 'parents_commune_sangkat')],
 
             ['name' => 'guardian_heading', 'label' => $this->t('Guardian Information', 'ព័ត៌មានអាណាព្យាបាល'), 'type' => 'info', 'options' => ['content' => $this->t('Guardian Information', 'ព័ត៌មានអាណាព្យាបាល'), 'column_span_full' => true, 'is_hidden_label' => true]],
             ['name' => 'guardian_name', 'label' => $this->t("Guardian's Name", 'ឈ្មោះអាណាព្យាបាល'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Guardian Name', 'placeholder_km' => 'បញ្ចូលឈ្មោះអាណាព្យាបាល']],
-            ['name' => 'guardian_relationship', 'label' => $this->t('Guardian Relationship', 'ទំនាក់ទំនងជាមួយអាណាព្យាបាល'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Guardian Relationship', 'placeholder_km' => 'បញ្ចូលទំនាក់ទំនងជាមួយអាណាព្យាបាល']],
-            ['name' => 'guardian_phone_number', 'label' => $this->t('Guardian Phone Number', 'លេខទូរស័ព្ទអាណាព្យាបាល'), 'type' => 'phone', 'options' => ['placeholder_en' => 'Enter Guardian Phone Number', 'placeholder_km' => 'បញ្ចូលលេខទូរស័ព្ទអាណាព្យាបាល']],
+            ['name' => 'guardian_relationship', 'label' => $this->t('Guardian Relationship', 'ត្រូវជា (ឪពុក, ម្តាយ, បង, ប្អូន, ពូ, មីង,...)'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Guardian Relationship', 'placeholder_km' => 'បញ្ចូលទំនាក់ទំនងជាមួយអាណាព្យាបាល']],
+            ['name' => 'guardian_phone_number', 'label' => $this->t('Guardian Phone Number', 'លេខទូរស័ព្ទអាណាព្យាបាល'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Guardian Phone Number', 'placeholder_km' => 'បញ្ចូលលេខទូរស័ព្ទអាណាព្យាបាល']],
         ];
 
         $this->upsertFields($customFormId, $familySection, $familyFields, $keepNames, $sort);
