@@ -352,6 +352,22 @@ class CustomFormEntryForm
                                 ? ((string) ($options['add_action_label_km'] ?? 'បន្ថែមបងប្អូន'))
                                 : ((string) ($options['add_action_label_en'] ?? 'Add Sibling'))
                         );
+                } elseif ((string) $fieldModel->name === 'educations') {
+                    $component
+                        ->maxItems((int) ($options['max_items'] ?? 3))
+                        ->addActionLabel(
+                            app()->getLocale() === 'km'
+                                ? ((string) ($options['add_action_label_km'] ?? 'បន្ថែមការអប់រំ'))
+                                : ((string) ($options['add_action_label_en'] ?? 'Add Education'))
+                        );
+                } elseif ((string) $fieldModel->name === 'cv_work_history') {
+                    $component
+                        ->maxItems((int) ($options['max_items'] ?? 3))
+                        ->addActionLabel(
+                            app()->getLocale() === 'km'
+                                ? ((string) ($options['add_action_label_km'] ?? 'បន្ថែមប្រវត្តិការងារ'))
+                                : ((string) ($options['add_action_label_en'] ?? 'Add Work History'))
+                        );
                 }
 
                 if (! empty($options['is_compact']) && method_exists($component, 'compact')) {
