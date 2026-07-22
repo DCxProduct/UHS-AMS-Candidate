@@ -2,6 +2,8 @@
 
 return [
     'labels' => [
+        'document_template' => 'គំរូឯកសារ',
+        'document_templates' => 'គំរូឯកសារ',
         'template_details' => 'ព័ត៌មានលម្អិតនៃទម្រង់',
         'template_name' => 'ឈ្មោះទម្រង់',
         'template_type' => 'ប្រភេទឯកសារ',
@@ -27,5 +29,13 @@ return [
         'last_updated' => 'បានធ្វើបច្ចុប្បន្នភាពចុងក្រោយ',
         'no_model_linked' => 'គ្មានទិន្នន័យភ្ជាប់ទេ',
         'model_prefix' => 'ម៉ូដែល: ',
+        'load_example_layout' => 'ផ្ទុកប្លង់គំរូ',
+        'load_example_layout_warning' => 'ប្រុងប្រយ័ត្ន៖ វានឹងសរសេរជាន់លើមាតិកាដែលមានស្រាប់នៅក្នុងអ្នករចនាឯកសារ។',
+        'load_layout' => 'ផ្ទុកប្លង់',
+        'select_layout' => 'ជ្រើសរើសប្លង់',
+        'layout_loaded' => 'បានផ្ទុកប្លង់រួចរាល់',
+        'preview_pdf' => 'មើល PDF ជាមុន',
+        'invalid_model_title' => 'ម៉ូដែលមិនត្រឹមត្រូវ',
+        'invalid_model_body' => 'មិនមានម៉ូដែល :model ទេ។',
     ],
 ];
