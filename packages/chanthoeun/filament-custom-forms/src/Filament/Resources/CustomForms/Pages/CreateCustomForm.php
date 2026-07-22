@@ -9,5 +9,9 @@ class CreateCustomForm extends CreateRecord
 {
     protected static string $resource = CustomFormResource::class;
 
+    public function getBreadcrumbs(): array
+    {
+        return [];
+    }
 
 }

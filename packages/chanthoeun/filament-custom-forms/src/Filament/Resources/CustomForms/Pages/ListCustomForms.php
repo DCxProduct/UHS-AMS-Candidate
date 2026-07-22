@@ -10,7 +10,10 @@ class ListCustomForms extends ListRecords
 {
     protected static string $resource = CustomFormResource::class;
 
-
+    public function getBreadcrumbs(): array
+    {
+        return [];
+    }
 
     protected function getHeaderActions(): array
     {
