@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable implements FilamentUser, HasAvatar
@@ -62,15 +63,71 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
 
     public function getFilamentAvatarUrl(): ?string
     {
-        if (blank($this->avatar)) {
+        $avatar = $this->normalizeAvatarPath($this->avatar);
+
+        if (blank($avatar)) {
             return null;
         }
 
-        return Storage::disk('public')->url($this->avatar);
+        if (Str::startsWith($avatar, ['http://', 'https://'])) {
+            return $avatar;
+        }
+
+        if (! Storage::disk('public')->exists($avatar)) {
+            return null;
+        }
+
+        return Storage::disk('public')->url($avatar);
     }
 
     public function studentUser(): HasOne
     {
         return $this->hasOne(\App\Models\SystemUser::class);
+    }
+
+    private function normalizeAvatarPath(mixed $avatar): ?string
+    {
+        if (blank($avatar)) {
+            return null;
+        }
+
+        if (is_string($avatar) && Str::startsWith(trim($avatar), ['[', '{'])) {
+            $decoded = json_decode($avatar, true);
+
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $avatar = $decoded;
+            }
+        }
+
+        if (is_array($avatar)) {
+            $avatar = collect($avatar)
+                ->flatten()
+                ->filter()
+                ->first();
+        }
+
+        $avatar = trim((string) $avatar);
+
+        if ($avatar === '' || $avatar === 'Array') {
+            return null;
+        }
+
+        if (Str::startsWith($avatar, ['http://', 'https://'])) {
+            $path = parse_url($avatar, PHP_URL_PATH);
+
+            if (! is_string($path) || ! Str::startsWith($path, ['/storage/', '/public/'])) {
+                return $avatar;
+            }
+
+            $avatar = $path;
+        }
+
+        return Str::of($avatar)
+            ->replaceStart('/storage/', '')
+            ->replaceStart('storage/', '')
+            ->replaceStart('/public/', '')
+            ->replaceStart('public/', '')
+            ->replaceStart('/', '')
+            ->toString();
     }
 }

@@ -59,6 +59,7 @@ class MyProfile extends Page implements HasForms
     {
         return $schema
             ->statePath('data')
+            ->model(Auth::user())
             ->columns(12)
             ->components([
                 Section::make(__('student_profile.profile_information'))
@@ -165,6 +166,8 @@ class MyProfile extends Page implements HasForms
 
         $freshUser = $user->fresh();
 
+        Auth::setUser($freshUser);
+
         $this->form->fill([
             'name' => $freshUser->name,
             'username' => $freshUser->username,
@@ -179,6 +182,8 @@ class MyProfile extends Page implements HasForms
             ->title(NotificationLanguage::trans('student_profile.updated_successfully'))
             ->success()
             ->send();
+
+        $this->redirect(static::getUrl(), navigate: false);
     }
 
     private function normalizeAvatar(mixed $avatar): ?string
@@ -203,6 +208,14 @@ class MyProfile extends Page implements HasForms
 
         if ($avatar === '' || $avatar === 'Array') {
             return null;
+        }
+
+        if (str_starts_with($avatar, 'http://') || str_starts_with($avatar, 'https://')) {
+            $path = parse_url($avatar, PHP_URL_PATH);
+
+            if (is_string($path) && $path !== '') {
+                $avatar = $path;
+            }
         }
 
         return str($avatar)
