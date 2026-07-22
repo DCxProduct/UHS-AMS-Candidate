@@ -1,5 +1,5 @@
 <?php
- 
+
  return [
      'admin' => [
          'parent_container' => 'ធុងផ្ទុកមេ',
@@ -18,6 +18,7 @@
          'multiple_creating_selection_field' => 'វាលជ្រើសរើសសម្រាប់បង្កើតច្រើន',
          'selection_action' => 'សកម្មភាពជ្រើសរើស',
          'selection_tab' => 'ជ្រើសរើស',
+         'selection_form' => 'ជ្រើសរើសប្រភេទទម្រង់',
          'select_field' => 'ជ្រើសរើសវាល',
          'key' => 'គន្លឹះ',
          'choice_rows_help' => 'Key ត្រូវបានរក្សាទុកក្នុង database។ English និង Khmer គឺជាស្លាកបង្ហាញ។',

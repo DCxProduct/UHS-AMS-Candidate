@@ -37,6 +37,7 @@ class FieldsRelationManager extends RelationManager
 
     private const PARENT_FORM_TYPE = '__parent_form';
     private const FORM_TARGET_PREFIX = 'form:';
+    private const SOURCE_FIELD_PREFIX = 'field:';
 
     public function form(Schema $schema): Schema
     {
@@ -235,27 +236,53 @@ class FieldsRelationManager extends RelationManager
                             ->columns(2)
                             ->visible(fn ($get, ?object $record = null): bool => blank($record) && self::isSelectionMode($get))
                             ->components([
+                                \Filament\Forms\Components\Select::make('selection_source_forms')
+                                    ->label(__('filament-custom-forms::fcf.admin.selection_form'))
+                                    ->options(fn (): array => self::selectionSourceFormOptions())
+                                    ->searchable()
+                                    ->preload()
+                                    ->native(false)
+                                    ->live()
+                                    ->dehydrated(false)
+                                    ->columnSpanFull(),
+
                                 \Filament\Forms\Components\Select::make('options.visible_when.fields')
                                     ->label(__('filament-custom-forms::fcf.admin.select_field'))
-                                    ->options(function ($livewire): array {
-                                        $ownerForm = $livewire->getOwnerRecord();
+                                    ->key(function ($get): string {
+                                        $selectedFormId = $get('selection_source_forms');
+                                        $selectedFields = $get('options.visible_when.fields');
 
-                                        $existingNames = $ownerForm
-                                            ? $ownerForm->fields()->pluck('name')->filter()->toArray()
-                                            : [];
+                                        if (! is_array($selectedFields)) {
+                                            $selectedFields = filled($selectedFields) ? [$selectedFields] : [];
+                                        }
 
-                                        return \Chanthoeun\FilamentCustomForms\Models\CustomFormField::query()
-                                            ->whereNotIn('type', self::CONTAINER_TYPES)
-                                            ->whereNotIn('name', $existingNames)
-                                            ->whereNotNull('name')
-                                            ->where('name', '!=', '')
-                                            ->orderBy('custom_form_id')
-                                            ->orderBy('sort')
-                                            ->get()
-                                            ->unique('name')
-                                            ->mapWithKeys(fn ($field) => [
-                                                $field->name => $field->name . ' - ' . self::localeText($field->label ?? $field->name),
-                                            ])
+                                        sort($selectedFields);
+
+                                        return 'selection-fields-'
+                                            . md5(json_encode([
+                                                'form' => $selectedFormId,
+                                                'fields' => $selectedFields,
+                                            ]));
+                                    })
+                                    ->options(function ($get): array {
+                                        $selectedFormIds = $get('selection_source_forms');
+                                        $selectedFields = $get('options.visible_when.fields');
+                                        $ownerFormId = $this->getOwnerRecord()?->id;
+
+                                        $selectedFormIds = filled($selectedFormIds) ? [$selectedFormIds] : [];
+                                        $selectedFields = is_array($selectedFields)
+                                            ? $selectedFields
+                                            : (filled($selectedFields) ? [$selectedFields] : []);
+
+                                        return self::selectionSourceFieldOptions($selectedFormIds, $selectedFields, $ownerFormId);
+                                    })
+                                    ->getOptionLabelsUsing(function (array $values, $get): array {
+                                        $selectedFormIds = $get('selection_source_forms');
+                                        $ownerFormId = $this->getOwnerRecord()?->id;
+                                        $selectedFormIds = filled($selectedFormIds) ? [$selectedFormIds] : [];
+
+                                        return collect(self::selectionSourceFieldOptions($selectedFormIds, [], $ownerFormId))
+                                            ->only($values)
                                             ->toArray();
                                     })
                                     ->searchable()
@@ -1121,13 +1148,7 @@ class FieldsRelationManager extends RelationManager
 
         if (! empty($selectedFields) && blank($data['name'] ?? null)) {
             $ownerForm = $this->getOwnerRecord();
-            $sourceFields = \Chanthoeun\FilamentCustomForms\Models\CustomFormField::query()
-                ->whereIn('name', $selectedFields)
-                ->whereNotIn('type', self::CONTAINER_TYPES)
-                ->orderBy('sort')
-                ->get()
-                ->unique('name')
-                ->keyBy('name');
+            $sourceFields = $this->resolveSelectionSourceFields($selectedFields);
 
             $targetForms = empty($selectedTypes)
                 ? collect([$ownerForm])
@@ -1141,16 +1162,13 @@ class FieldsRelationManager extends RelationManager
                 $existingNames = $targetForm->fields()
                     ->pluck('name')
                     ->filter()
+                    ->map(fn ($name): string => self::normalizeFieldName((string) $name))
                     ->toArray();
 
-                foreach ($selectedFields as $selectedField) {
-                    if (in_array($selectedField, $existingNames, true)) {
-                        continue;
-                    }
+                foreach ($sourceFields as $field) {
+                    $fieldName = self::normalizeFieldName((string) $field->name);
 
-                    $field = $sourceFields->get($selectedField);
-
-                    if (! $field) {
+                    if ($fieldName === '' || in_array($fieldName, $existingNames, true)) {
                         continue;
                     }
 
@@ -1170,7 +1188,7 @@ class FieldsRelationManager extends RelationManager
                     }
 
                     $items[] = $copy;
-                    $existingNames[] = $selectedField;
+                    $existingNames[] = $fieldName;
                 }
             }
 
@@ -1202,5 +1220,154 @@ class FieldsRelationManager extends RelationManager
     private static function localeText(mixed $value): string
     {
         return self::getLangValue($value, app()->getLocale());
+    }
+
+    private static function selectionSourceFieldOptions(
+        array $selectedFormIds = [],
+        array $excludeFieldValues = [],
+        ?int $ownerFormId = null
+    ): array {
+        $existingNames = self::existingOwnerFieldNames($ownerFormId);
+
+        return self::availableSelectionSourceFields($selectedFormIds)
+            ->reject(fn ($field): bool => in_array(
+                self::normalizeFieldName((string) $field->name),
+                $existingNames,
+                true
+            ))
+            ->mapWithKeys(fn ($field): array => [
+                self::sourceFieldValue((int) $field->id) => self::selectionSourceFieldLabel($field),
+            ])
+            ->except($excludeFieldValues)
+            ->toArray();
+    }
+
+    private static function selectionSourceFormOptions(): array
+    {
+        return \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
+            ->where('is_active', true)
+            ->orderBy('display_order')
+            ->orderBy('id')
+            ->get(['id', 'name'])
+            ->mapWithKeys(fn ($form): array => [
+                (string) $form->id => self::localeText($form->name),
+            ])
+            ->toArray();
+    }
+
+    private static function existingOwnerFieldNames(?int $ownerFormId = null): array
+    {
+        if (! $ownerFormId) {
+            return [];
+        }
+
+        return \Chanthoeun\FilamentCustomForms\Models\CustomFormField::query()
+            ->where('custom_form_id', $ownerFormId)
+            ->whereNotNull('name')
+            ->where('name', '!=', '')
+            ->pluck('name')
+            ->map(fn ($name): string => self::normalizeFieldName((string) $name))
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private static function availableSelectionSourceFields(
+        array $selectedFormIds = []
+    ): \Illuminate\Support\Collection {
+        $query = \Chanthoeun\FilamentCustomForms\Models\CustomFormField::query()
+            ->select('custom_form_fields.*')
+            ->join('custom_forms', 'custom_forms.id', '=', 'custom_form_fields.custom_form_id')
+            ->where('custom_forms.is_active', true)
+            ->whereNotNull('custom_form_fields.name')
+            ->where('custom_form_fields.name', '!=', '')
+            ->with('form')
+            ->orderBy('custom_forms.display_order')
+            ->orderBy('custom_forms.id')
+            ->orderBy('custom_form_fields.sort')
+            ->orderBy('custom_form_fields.id');
+
+        $selectedFormIds = array_values(array_filter(
+            array_map('intval', $selectedFormIds),
+            fn (int $id): bool => $id > 0
+        ));
+
+        if ($selectedFormIds !== []) {
+            $query->whereIn('custom_form_fields.custom_form_id', $selectedFormIds);
+        }
+
+        return $query->get()->values();
+    }
+
+    private static function selectionSourceFieldLabel(object $field): string
+    {
+        $fieldName = (string) ($field->name ?? '');
+        $fieldLabel = self::localeText($field->label ?? $fieldName);
+        $formName = self::localeText($field->form?->name ?? '');
+
+        if ($formName === '') {
+            return $fieldName . ' - ' . $fieldLabel;
+        }
+
+        return $fieldName . ' - ' . $fieldLabel . ' (' . $formName . ')';
+    }
+
+    private static function normalizeFieldName(string $name): string
+    {
+        return strtolower(trim($name));
+    }
+
+    private static function sourceFieldValue(int $fieldId): string
+    {
+        return self::SOURCE_FIELD_PREFIX . $fieldId;
+    }
+
+    private static function sourceFieldFromValue(mixed $value): ?\Chanthoeun\FilamentCustomForms\Models\CustomFormField
+    {
+        if (! is_string($value) || ! str_starts_with($value, self::SOURCE_FIELD_PREFIX)) {
+            return null;
+        }
+
+        $fieldId = (int) substr($value, strlen(self::SOURCE_FIELD_PREFIX));
+
+        if ($fieldId <= 0) {
+            return null;
+        }
+
+        return \Chanthoeun\FilamentCustomForms\Models\CustomFormField::query()
+            ->with('form')
+            ->find($fieldId);
+    }
+
+    private function resolveSelectionSourceFields(
+        array $selectedFields
+    ): \Illuminate\Support\Collection {
+        $availableFields = self::availableSelectionSourceFields()->keyBy('id');
+        $fallbackByName = $availableFields
+            ->groupBy(fn ($field): string => self::normalizeFieldName((string) $field->name));
+
+        $resolved = collect();
+
+        foreach ($selectedFields as $selectedField) {
+            $field = self::sourceFieldFromValue($selectedField);
+
+            if ($field && $availableFields->has($field->id)) {
+                $resolved->push($availableFields->get($field->id));
+
+                continue;
+            }
+
+            $fallbackField = $fallbackByName
+                ->get(self::normalizeFieldName((string) $selectedField))
+                ?->first();
+
+            if ($fallbackField) {
+                $resolved->push($fallbackField);
+            }
+        }
+
+        return $resolved
+            ->unique(fn ($field): string => (string) $field->id)
+            ->values();
     }
 }

@@ -18,6 +18,7 @@
          'multiple_creating_selection_field' => 'Multiple Creating Selection Field',
          'selection_action' => 'Selection Action',
          'selection_tab' => 'Selection',
+         'selection_form' => 'Selection Form Builder',
          'select_field' => 'Select Field',
          'key' => 'Key',
          'choice_rows_help' => 'Key is saved to database. English and Khmer are display labels.',
