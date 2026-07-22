@@ -1,23 +1,23 @@
 <?php
 
 return [
-    'resource_label' => 'កាលបរិច្ឆេទបិទ',
-    'resource_plural_label' => 'កាលបរិច្ឆេទបិទ',
-    'navigation_label' => 'កាលបរិច្ឆេទបិទ',
+    'resource_label' => 'បិទ/បើក ទទួលពាក្យ',
+    'resource_plural_label' => 'បិទ/បើក ទទួលពាក្យ',
+    'navigation_label' => 'បិទ/បើក ទទួលពាក្យ',
     'navigation_group' => 'ការកំណត់',
 
-    'model_label' => 'កាលបរិច្ឆេទបិទ',
-    'plural_model_label' => 'កាលបរិច្ឆេទបិទ',
+    'model_label' => 'បិទ/បើក ទទួលពាក្យ',
+    'plural_model_label' => 'បិទ/បើក ទទួលពាក្យ',
 
     'breadcrumb_list' => 'បញ្ជី',
     'breadcrumb_create' => 'បង្កើត',
     'breadcrumb_edit' => 'កែប្រែ',
 
-    'list_title' => 'កាលបរិច្ឆេទបិទ',
-    'create_title' => 'បង្កើតកាលបរិច្ឆេទបិទ',
-    'edit_title' => 'កែប្រែកាលបរិច្ឆេទបិទ',
+    'list_title' => 'បិទ/បើក ទទួលពាក្យ',
+    'create_title' => 'បង្កើត បិទ/បើក ទទួលពាក្យ',
+    'edit_title' => 'កែប្រែ បិទ/បើក ទទួលពាក្យ',
 
-    'closing_date_information' => 'ព័ត៌មានកាលបរិច្ឆេទបិទ',
+    'closing_date_information' => 'ព័ត៌មានបិទ/បើក ទទួលពាក្យ',
     'closing_date_information_description' => 'គ្រប់គ្រងថ្ងៃចាប់ផ្តើម និងថ្ងៃបញ្ចប់ សម្រាប់ទម្រង់នីមួយៗ។',
 
     'name' => 'ឈ្មោះ',

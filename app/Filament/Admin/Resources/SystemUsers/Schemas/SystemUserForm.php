@@ -99,6 +99,7 @@ class SystemUserForm
 
                                 FileUpload::make('avatar')
                                     ->label(__('system_users.fields.avatar'))
+                                    ->placeholder(__('system_users.placeholders.choose_image'))
                                     ->image()
                                     ->imageEditor()
                                     ->disk('public')

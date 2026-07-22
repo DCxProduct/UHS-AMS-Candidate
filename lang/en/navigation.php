@@ -17,7 +17,7 @@ return [
     'custom_forms' => 'Custom Forms',
     'document_templates' => 'Document Templates',
     'closing_date' => 'Closing Date',
-    'system_users' => 'System Users',
+    'system_users' => 'Users',
 
     'forms' => [
         'profile' => 'Profile',

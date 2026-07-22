@@ -22,21 +22,6 @@ class DocumentTemplateTable
                     ->sortable()
                     ->weight('bold'),
 
-                Tables\Columns\TextColumn::make('customForm.name')
-                    ->label(__('filament-document-builder::document-builder.labels.form_field'))
-                    ->default('—')
-                    ->badge()
-                    ->formatStateUsing(fn ($state): string => self::localeText($state))
-                    ->color('primary')
-                    ->alignCenter()
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('model_class')
-                    ->label(__('filament-document-builder::document-builder.labels.database_model'))
-                    ->searchable()
-                    ->sortable()
-                    ->formatStateUsing(fn (?string $state): string => $state ? class_basename($state) : __('filament-document-builder::document-builder.labels.no_model_linked')),
-
                 Tables\Columns\TextColumn::make('type')
                     ->label(__('filament-document-builder::document-builder.labels.template_type'))
                     ->searchable()

@@ -56,6 +56,20 @@ body,
     line-height: 1.7 !important;
 }
 
+.fi-breadcrumbs {
+    display: none !important;
+}
+
+.fi-header.fi-header-has-breadcrumbs .fi-header-actions-ctn {
+    margin-top: 0 !important;
+}
+
+.fi-page-header-main-ctn {
+    padding-top: 2rem !important;
+    padding-bottom: 2rem !important;
+    gap: 2rem !important;
+}
+
 .fi-sidebar-item-label {
     font-family: 'Battambang', 'Inter', system-ui, sans-serif !important;
     font-size: 14px !important;

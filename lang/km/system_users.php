@@ -2,9 +2,9 @@
 
 return [
     'navigation_group' => 'ការផ្ទៀងផ្ទាត់',
-    'navigation_label' => 'អ្នកប្រើប្រាស់ប្រព័ន្ធ',
-    'resource_label' => 'អ្នកប្រើប្រាស់ប្រព័ន្ធ',
-    'resource_plural_label' => 'អ្នកប្រើប្រាស់ប្រព័ន្ធ',
+    'navigation_label' => 'សិទ្ធអ្នកប្រើប្រាស់',
+    'resource_label' => 'សិទ្ធអ្នកប្រើប្រាស់',
+    'resource_plural_label' => 'សិទ្ធអ្នកប្រើប្រាស់',
 
     'search' => 'ស្វែងរក',
 
@@ -33,6 +33,7 @@ return [
         'email' => 'បញ្ចូលអាសយដ្ឋានអ៊ីមែល',
         'phone' => 'បញ្ចូលលេខទូរស័ព្ទ',
         'username' => 'បញ្ចូលឈ្មោះអ្នកប្រើប្រាស់',
+        'choose_image' => 'ជ្រើសរើសរូបភាព',
         'password_create' => 'បញ្ចូលពាក្យសម្ងាត់',
         'password_edit' => 'ទុកទទេ ប្រសិនបើមិនចង់ប្តូរពាក្យសម្ងាត់ចាស់',
         'password_confirmation_create' => 'បញ្ជាក់ពាក្យសម្ងាត់',

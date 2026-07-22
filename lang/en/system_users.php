@@ -2,9 +2,9 @@
 
 return [
     'navigation_group' => 'Authentication',
-    'navigation_label' => 'System Users',
-    'resource_label' => 'System User',
-    'resource_plural_label' => 'System Users',
+    'navigation_label' => 'Users',
+    'resource_label' => 'User',
+    'resource_plural_label' => 'Users',
 
     'search' => 'Search',
 
@@ -33,6 +33,7 @@ return [
         'email' => 'Enter email address',
         'phone' => 'Enter phone number',
         'username' => 'Enter username',
+        'choose_image' => 'Choose Image',
         'password_create' => 'Enter password',
         'password_edit' => 'Leave blank to keep old password',
         'password_confirmation_create' => 'Confirm password',
