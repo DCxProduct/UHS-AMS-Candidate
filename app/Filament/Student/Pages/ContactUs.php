@@ -9,7 +9,6 @@ use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
-use Illuminate\Support\Str;
 
 class ContactUs extends Page
 {
@@ -19,14 +18,14 @@ class ContactUs extends Page
 
     protected static bool $shouldRegisterNavigation = false;
 
-    protected static string | BackedEnum | null $navigationIcon = Heroicon::OutlinedPhone;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedPhone;
 
-    public function getTitle(): string | Htmlable
+    public function getTitle(): string|Htmlable
     {
         return $this->getFormTitle();
     }
 
-    public function getHeading(): string | Htmlable
+    public function getHeading(): string|Htmlable
     {
         return $this->getFormTitle();
     }
@@ -147,25 +146,100 @@ class ContactUs extends Page
 
     protected function getTranslatedFormName(CustomForm $form): string
     {
-        $slug = (string) ($form->slug ?? Str::slug((string) $form->name));
-
-        $key = 'app.forms_nav.' . $slug;
-
-        $translated = __($key);
-
-        if ($translated !== $key) {
-            return $translated;
-        }
-
         $locale = app()->getLocale();
 
-        $localizedName = $form->{'name_' . $locale} ?? null;
+        /*
+        |--------------------------------------------------------------------------
+        | First: check translation key using the saved form slug
+        |--------------------------------------------------------------------------
+        */
+        $slug = trim((string) ($form->slug ?? ''));
 
-        if (filled($localizedName)) {
-            return (string) $localizedName;
+        if ($slug !== '') {
+            $key = 'app.forms_nav.' . $slug;
+
+            $translated = __($key);
+
+            if ($translated !== $key) {
+                return $translated;
+            }
         }
 
-        return (string) $form->name;
+        /*
+        |--------------------------------------------------------------------------
+        | Second: check separate language columns
+        |--------------------------------------------------------------------------
+        | Supports name_en, name_km and name_kh.
+        |--------------------------------------------------------------------------
+        */
+        $languageColumns = match ($locale) {
+            'km', 'kh' => ['name_km', 'name_kh', 'name_en'],
+            default => ['name_en', 'name_km', 'name_kh'],
+        };
+
+        foreach ($languageColumns as $column) {
+            $localizedName = $form->{$column} ?? null;
+
+            if (filled($localizedName)) {
+                return (string) $localizedName;
+            }
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Third: decode the JSON stored in the name column
+        |--------------------------------------------------------------------------
+        | Example:
+        | {"en":"Testing Form","km":"ទម្រង់តេស្ត","kh":"ទម្រង់តេស្ត"}
+        |--------------------------------------------------------------------------
+        */
+        $name = $form->name;
+
+        if (is_array($name)) {
+            return $this->getNameFromTranslations($name);
+        }
+
+        if (is_object($name)) {
+            return $this->getNameFromTranslations(
+                json_decode(json_encode($name), true) ?: []
+            );
+        }
+
+        if (is_string($name)) {
+            $decoded = json_decode($name, true);
+
+            if (
+                json_last_error() === JSON_ERROR_NONE
+                && is_array($decoded)
+            ) {
+                return $this->getNameFromTranslations($decoded);
+            }
+
+            return $name;
+        }
+
+        return __('app.this_form');
+    }
+
+    protected function getNameFromTranslations(array $translations): string
+    {
+        $locale = app()->getLocale();
+
+        if (in_array($locale, ['km', 'kh'], true)) {
+            return (string) (
+                $translations['km']
+                ?? $translations['kh']
+                ?? $translations['en']
+                ?? __('app.this_form')
+            );
+        }
+
+        return (string) (
+            $translations['en']
+            ?? $translations['km']
+            ?? $translations['kh']
+            ?? __('app.this_form')
+        );
     }
 
     protected function formatDate(mixed $date): ?string

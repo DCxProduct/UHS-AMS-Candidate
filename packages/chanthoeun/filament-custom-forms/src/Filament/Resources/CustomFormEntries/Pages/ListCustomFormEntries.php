@@ -25,42 +25,85 @@ class ListCustomFormEntries extends ListRecords
             ?? data_get(request()->query('tableFilters'), 'custom_form_id.value')
             ?? request()->query('form_id');
 
-        if (auth()->user()?->registration_type === 'student' && $this->activeFormId) {
-            $customForm = CustomForm::find($this->activeFormId);
+        if (
+            auth()->user()?->registration_type !== 'student'
+            || ! $this->activeFormId
+        ) {
+            return;
+        }
 
-            if (
-                $customForm
-                && $customForm->slug !== 'profile'
-                && ! ClosingDate::isCustomFormOpen($customForm->id)
-            ) {
-                abort(403, 'This application is not open.');
-            }
+        $customForm = CustomForm::find($this->activeFormId);
 
-            if ($customForm?->slug === 'profile') {
-                $entry = $this->studentCurrentFormEntry();
+        if (! $customForm) {
+            return;
+        }
 
-                if ($entry) {
-                    if ($this->isDraftEntry($entry)) {
-                        $this->redirect(CustomFormEntryResource::getUrl('create', [
+        /*
+        |--------------------------------------------------------------------------
+        | Closed Form
+        |--------------------------------------------------------------------------
+        | Keep the sidebar menu visible and redirect the student to Contact Us.
+        |--------------------------------------------------------------------------
+        */
+        if (ClosingDate::shouldShowContact($customForm->id)) {
+            $this->redirect(
+                url('/contact-us?form_id=' . $customForm->id)
+            );
+
+            return;
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Not Open Form
+        |--------------------------------------------------------------------------
+        | Keep the old workflow: block direct access.
+        |--------------------------------------------------------------------------
+        */
+        if (
+            $customForm->slug !== 'profile'
+            && ! ClosingDate::isCustomFormOpen($customForm->id)
+        ) {
+            abort(403, 'This application is not open.');
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Existing Profile Workflow
+        |--------------------------------------------------------------------------
+        | Keep the old profile create/edit/draft behavior unchanged.
+        |--------------------------------------------------------------------------
+        */
+        if ($customForm->slug === 'profile') {
+            $entry = $this->studentCurrentFormEntry();
+
+            if ($entry) {
+                if ($this->isDraftEntry($entry)) {
+                    $this->redirect(
+                        CustomFormEntryResource::getUrl('create', [
                             'form_id' => $this->activeFormId,
-                        ]));
-
-                        return;
-                    }
-
-                    $this->redirect(CustomFormEntryResource::getUrl('edit', [
-                        'record' => $entry->id,
-                    ]));
+                        ])
+                    );
 
                     return;
                 }
 
-                $this->redirect(CustomFormEntryResource::getUrl('create', [
-                    'form_id' => $this->activeFormId,
-                ]));
+                $this->redirect(
+                    CustomFormEntryResource::getUrl('edit', [
+                        'record' => $entry->id,
+                    ])
+                );
 
                 return;
             }
+
+            $this->redirect(
+                CustomFormEntryResource::getUrl('create', [
+                    'form_id' => $this->activeFormId,
+                ])
+            );
+
+            return;
         }
     }
 
@@ -93,7 +136,10 @@ class ListCustomFormEntries extends ListRecords
 
     public function updatedTableFilters(): void
     {
-        $filterFormId = data_get($this->tableFilters, 'custom_form_id.value');
+        $filterFormId = data_get(
+            $this->tableFilters,
+            'custom_form_id.value'
+        );
 
         if (filled($filterFormId)) {
             $this->activeFormId = $filterFormId;
@@ -101,8 +147,13 @@ class ListCustomFormEntries extends ListRecords
             return;
         }
 
-        $this->activeFormId = request()->input('tableFilters.custom_form_id.value')
-            ?? data_get(request()->query('tableFilters'), 'custom_form_id.value')
+        $this->activeFormId = request()->input(
+            'tableFilters.custom_form_id.value'
+        )
+            ?? data_get(
+            request()->query('tableFilters'),
+            'custom_form_id.value'
+        )
             ?? request()->query('form_id')
             ?? $this->activeFormId;
     }
@@ -113,12 +164,19 @@ class ListCustomFormEntries extends ListRecords
             $customForm = CustomForm::find($this->activeFormId);
 
             if ($customForm) {
-                $slug = strtolower(trim((string) ($customForm->slug ?? '')));
+                $slug = strtolower(
+                    trim((string) ($customForm->slug ?? ''))
+                );
 
                 return match ($slug) {
                     'profile' => __('navigation.forms.profile'),
-                    'national-examination-registration' => __('navigation.national_examination_registration'),
-                    default => $customForm->display_name ?: __('navigation.forms.untitled'),
+
+                    'national-examination-registration' =>
+                    __('navigation.national_examination_registration'),
+
+                    default =>
+                    $customForm->display_name
+                        ?: __('navigation.forms.untitled'),
                 };
             }
         }
@@ -141,13 +199,19 @@ class ListCustomFormEntries extends ListRecords
         return [
             Actions\CreateAction::make()
                 ->label($this->getCreateLabel())
-                ->url(fn () => CustomFormEntryResource::getUrl('create', [
-                    'form_id' => $this->activeFormId,
-                ]))
-                ->visible(fn (): bool =>
-                    auth()->user()?->registration_type === 'student'
-                    && $this->activeFormId
-                    && ! $this->studentHasAnyCurrentFormEntry()
+                ->url(
+                    fn () => CustomFormEntryResource::getUrl(
+                        'create',
+                        [
+                            'form_id' => $this->activeFormId,
+                        ]
+                    )
+                )
+                ->visible(
+                    fn (): bool =>
+                        auth()->user()?->registration_type === 'student'
+                        && $this->activeFormId
+                        && ! $this->studentHasAnyCurrentFormEntry()
                 ),
         ];
     }
@@ -160,11 +224,16 @@ class ListCustomFormEntries extends ListRecords
             $customForm = CustomForm::find($this->activeFormId);
 
             if ($customForm) {
-                $slug = strtolower(trim((string) ($customForm->slug ?? '')));
+                $slug = strtolower(
+                    trim((string) ($customForm->slug ?? ''))
+                );
 
                 $translated = match ($slug) {
                     'profile' => __('navigation.forms.profile'),
-                    'national-examination-registration' => __('navigation.national_examination_registration'),
+
+                    'national-examination-registration' =>
+                    __('navigation.national_examination_registration'),
+
                     default => $customForm->display_name,
                 };
 
@@ -205,7 +274,10 @@ class ListCustomFormEntries extends ListRecords
                 }
             })
             ->get()
-            ->contains(fn (CustomFormEntry $entry): bool => ! $this->isDraftEntry($entry));
+            ->contains(
+                fn (CustomFormEntry $entry): bool =>
+                ! $this->isDraftEntry($entry)
+            );
     }
 
     protected function studentHasAnyCurrentFormEntry(): bool
@@ -259,9 +331,15 @@ class ListCustomFormEntries extends ListRecords
             ? $entry->data
             : json_decode((string) $entry->data, true);
 
-        $dataStatus = strtolower((string) data_get($data, 'registration_status'));
-        $reviewStatus = strtolower((string) ($entry->review_status ?? ''));
+        $dataStatus = strtolower(
+            (string) data_get($data, 'registration_status')
+        );
 
-        return $dataStatus === 'draft' || $reviewStatus === 'draft';
+        $reviewStatus = strtolower(
+            (string) ($entry->review_status ?? '')
+        );
+
+        return $dataStatus === 'draft'
+            || $reviewStatus === 'draft';
     }
 }
