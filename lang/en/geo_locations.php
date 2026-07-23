@@ -8,7 +8,7 @@ return [
     'resource_plural_label' => 'Geo Locations',
 
     'actions' => [
-        'new' => 'New',
+        'new' => 'Create New',
         'edit' => 'Edit',
         'delete' => 'Delete',
         'actions' => 'Actions',

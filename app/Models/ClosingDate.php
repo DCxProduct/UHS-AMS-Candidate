@@ -37,6 +37,28 @@ class ClosingDate extends Model
     public const STATUS_OPEN = 'open';
     public const STATUS_CLOSED = 'closed';
 
+    /*
+    |--------------------------------------------------------------------------
+    | Automatically force expired records to Closed when saving
+    |--------------------------------------------------------------------------
+    */
+    protected static function booted(): void
+    {
+        static::saving(function (ClosingDate $closingDate): void {
+            if (! $closingDate->end_date) {
+                return;
+            }
+
+            if (
+                now()->startOfDay()->gt(
+                    $closingDate->end_date->copy()->startOfDay()
+                )
+            ) {
+                $closingDate->status = self::STATUS_CLOSED;
+            }
+        });
+    }
+
     public static function customFormTypeKey(int|string $customFormId): string
     {
         return self::TYPE_PREFIX_CUSTOM_FORM . $customFormId;
@@ -69,28 +91,43 @@ class ClosingDate extends Model
 
         $forms = $query
             ->orderBy('id')
-            ->get(['id', 'custom_form_id', 'name', 'menu_placement', 'sub_item_type']);
+            ->get([
+                'id',
+                'custom_form_id',
+                'name',
+                'menu_placement',
+                'sub_item_type',
+            ]);
 
         $parentNames = $forms
             ->keyBy('id')
-            ->map(fn ($form): string => self::displayFormName($form->name))
+            ->map(
+                fn ($form): string =>
+                self::displayFormName($form->name)
+            )
             ->toArray();
 
         return $forms
             ->mapWithKeys(fn ($form): array => [
-                self::customFormTypeKey($form->id) => self::displayTypeOptionLabel($form, $parentNames),
+                self::customFormTypeKey($form->id) =>
+                    self::displayTypeOptionLabel($form, $parentNames),
             ])
             ->toArray();
     }
 
-    protected static function displayTypeOptionLabel(object $form, array $parentNames): string
-    {
+    protected static function displayTypeOptionLabel(
+        object $form,
+        array $parentNames
+    ): string {
         $formName = self::displayFormName($form->name);
 
         if (($form->menu_placement ?? null) === 'sub_item') {
-            $parentName = $parentNames[(int) ($form->custom_form_id ?? 0)] ?? __('closing_dates.parent_form');
+            $parentName = $parentNames[
+            (int) ($form->custom_form_id ?? 0)
+            ] ?? __('closing_dates.parent_form');
 
-            return __('closing_dates.sub_form') . ": {$parentName} → {$formName}";
+            return __('closing_dates.sub_form')
+                . ": {$parentName} → {$formName}";
         }
 
         return __('closing_dates.parent_form') . ": {$formName}";
@@ -100,7 +137,10 @@ class ClosingDate extends Model
     {
         $locale = app()->getLocale();
 
-        if (is_string($value) && str_starts_with(trim($value), '{')) {
+        if (
+            is_string($value)
+            && str_starts_with(trim($value), '{')
+        ) {
             $decoded = json_decode($value, true);
 
             if (is_array($decoded)) {
@@ -129,57 +169,106 @@ class ClosingDate extends Model
         return (string) $value;
     }
 
-    public static function getDeadlineByCustomFormId(int|string|null $customFormId): ?self
-    {
+    public static function getDeadlineByCustomFormId(
+        int|string|null $customFormId
+    ): ?self {
         if (blank($customFormId)) {
             return null;
         }
 
         return self::query()
-            ->where('type', self::customFormTypeKey($customFormId))
+            ->where(
+                'type',
+                self::customFormTypeKey($customFormId)
+            )
             ->latest('id')
             ->first();
     }
 
-    public static function isCustomFormOpen(int|string|null $customFormId): bool
-    {
-        $deadline = self::getDeadlineByCustomFormId($customFormId);
+    public static function isCustomFormOpen(
+        int|string|null $customFormId
+    ): bool {
+        $deadline = self::getDeadlineByCustomFormId(
+            $customFormId
+        );
 
         if (! $deadline) {
             return false;
         }
 
         return $deadline->status === self::STATUS_OPEN
-            && now()->toDateString() >= $deadline->start_date?->toDateString()
-            && now()->toDateString() <= $deadline->end_date?->toDateString();
+            && now()->toDateString()
+            >= $deadline->start_date?->toDateString()
+            && now()->toDateString()
+            <= $deadline->end_date?->toDateString();
     }
 
-    public static function shouldShowCustomForm(int|string|null $customFormId): bool
-    {
+    public static function shouldShowCustomForm(
+        int|string|null $customFormId
+    ): bool {
         return self::isCustomFormOpen($customFormId);
     }
 
-    public static function shouldShowContact(int|string|null $customFormId): bool
-    {
-        $deadline = self::getDeadlineByCustomFormId($customFormId);
-
-        return $deadline?->status === self::STATUS_CLOSED;
-    }
-
-    public static function isCustomFormClosed(int|string|null $customFormId): bool
-    {
-        $deadline = self::getDeadlineByCustomFormId($customFormId);
+    public static function shouldShowContact(
+        int|string|null $customFormId
+    ): bool {
+        $deadline = self::getDeadlineByCustomFormId(
+            $customFormId
+        );
 
         if (! $deadline) {
             return false;
         }
 
-        return $deadline->status === self::STATUS_CLOSED;
+        /*
+        |--------------------------------------------------------------------------
+        | Manually Closed
+        |--------------------------------------------------------------------------
+        */
+        if ($deadline->status === self::STATUS_CLOSED) {
+            return true;
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Automatically expired
+        |--------------------------------------------------------------------------
+        | The form remains open during its complete end date.
+        |--------------------------------------------------------------------------
+        */
+        return $deadline->end_date
+            && now()->startOfDay()->gt(
+                $deadline->end_date->copy()->startOfDay()
+            );
+    }
+
+    public static function isCustomFormClosed(
+        int|string|null $customFormId
+    ): bool {
+        $deadline = self::getDeadlineByCustomFormId(
+            $customFormId
+        );
+
+        if (! $deadline) {
+            return false;
+        }
+
+        if ($deadline->status === self::STATUS_CLOSED) {
+            return true;
+        }
+
+        return $deadline->end_date
+            && now()->startOfDay()->gt(
+                $deadline->end_date->copy()->startOfDay()
+            );
     }
 
     public static function getOpenDynamicForms()
     {
-        if (! Schema::hasTable('custom_forms') || ! Schema::hasTable('closing_dates')) {
+        if (
+            ! Schema::hasTable('custom_forms')
+            || ! Schema::hasTable('closing_dates')
+        ) {
             return collect();
         }
 
@@ -187,7 +276,10 @@ class ClosingDate extends Model
             ->where('is_active', true)
             ->whereNotNull('name')
             ->whereIn('id', function ($query) {
-                $query->selectRaw("CAST(REPLACE(type, 'custom_form:', '') AS UNSIGNED)")
+                $query
+                    ->selectRaw(
+                        "CAST(REPLACE(type, 'custom_form:', '') AS UNSIGNED)"
+                    )
                     ->from('closing_dates')
                     ->whereNull('deleted_at')
                     ->where('status', self::STATUS_OPEN);
@@ -208,6 +300,7 @@ class ClosingDate extends Model
 
     public function getStatusLabelAttribute(): string
     {
-        return self::statusOptions()[$this->status] ?? 'Not Open';
+        return self::statusOptions()[$this->status]
+            ?? 'Not Open';
     }
 }

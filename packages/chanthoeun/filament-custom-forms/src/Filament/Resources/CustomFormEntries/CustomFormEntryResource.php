@@ -48,6 +48,18 @@ class CustomFormEntryResource extends Resource
             return false;
         }
 
+        /*
+        |--------------------------------------------------------------------------
+        | Contact Us page
+        |--------------------------------------------------------------------------
+        | The form_id on Contact Us is only used to display the closed-form
+        | information. It must not disable the Custom Form navigation items.
+        |--------------------------------------------------------------------------
+        */
+        if (request()->is('contact-us*')) {
+            return true;
+        }
+
         $formId = request()->input('tableFilters.custom_form_id.value')
             ?? data_get(request()->query('tableFilters'), 'custom_form_id.value')
             ?? request()->query('form_id')
@@ -67,9 +79,21 @@ class CustomFormEntryResource extends Resource
             return false;
         }
 
-        $workflow = ClosingDateWorkflow::checkByCustomFormId((int) $form->id);
+        $workflow = ClosingDateWorkflow::checkByCustomFormId(
+            (int) $form->id
+        );
 
-        if (! ($workflow['can_open_form'] ?? $workflow['can_submit'] ?? $workflow['can_see_form'] ?? true)) {
+        /*
+        |--------------------------------------------------------------------------
+        | Prevent opening closed/not-open forms directly
+        |--------------------------------------------------------------------------
+        */
+        if (! (
+            $workflow['can_open_form']
+            ?? $workflow['can_submit']
+            ?? $workflow['can_see_form']
+            ?? true
+        )) {
             return false;
         }
 
@@ -77,7 +101,10 @@ class CustomFormEntryResource extends Resource
             return true;
         }
 
-        if (static::profileFeatureIsHidden() || static::profileFeatureShowsContact()) {
+        if (
+            static::profileFeatureIsHidden()
+            || static::profileFeatureShowsContact()
+        ) {
             return false;
         }
 
@@ -481,7 +508,8 @@ class CustomFormEntryResource extends Resource
             return true;
         }
 
-        return ClosingDate::shouldShowCustomForm($formId);
+        return ClosingDate::shouldShowCustomForm($formId)
+            || ClosingDate::shouldShowContact($formId);
     }
 
     protected static function formShouldShowContact(int $formId): bool

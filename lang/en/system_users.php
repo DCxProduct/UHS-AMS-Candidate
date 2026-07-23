@@ -59,7 +59,7 @@ return [
     ],
 
     'actions' => [
-        'new' => 'New',
+        'new' => 'Create New',
         'edit' => 'Edit',
         'delete' => 'Delete',
         'actions' => 'Actions',

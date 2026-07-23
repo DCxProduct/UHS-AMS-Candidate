@@ -73,6 +73,8 @@ class SystemUsersTable
                     ->falseLabel(__('system_users.filters.inactive'))
                     ->native(false),
             ])
+            ->deferFilters(false)
+            ->filtersApplyAction(fn (Action $action): Action => $action->hidden())
             ->recordActions([
                 ActionGroup::make([
                     EditAction::make()

@@ -92,8 +92,6 @@ class DocumentTemplateTable
                             echo $pdf->output();
                         }, 'preview.pdf');
                     }),
-
-                Actions\EditAction::make(),
                 Actions\DeleteAction::make(),
             ])
             ->bulkActions([
