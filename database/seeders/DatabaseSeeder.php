@@ -19,10 +19,6 @@ class DatabaseSeeder extends Seeder
             StudentProfileSeeder::class,
             StudentUsersSeeder::class,
             GeoLocationsSeeder::class,
-            NationalExaminationRegistrationSeeder::class,
-            BachelorTransferFormFieldsSeeder::class,
-            MasterFormFieldsSeeder::class,
-            PhdFormFieldsSeeder::class,
             RolesAndPermissionsSeeder::class,
         ]);
     }
