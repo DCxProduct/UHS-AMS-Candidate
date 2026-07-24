@@ -5,20 +5,25 @@ namespace App\Filament\Pages\Auth;
 use App\Models\SystemUser;
 use App\Models\User;
 use Carbon\Carbon;
+use Filament\Auth\Events\Registered;
+use Filament\Auth\Http\Responses\Contracts\RegistrationResponse;
 use Filament\Auth\Pages\Register as BaseRegister;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Schemas\Schema;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rule;
+use Livewire\Features\SupportRedirects\Redirector;
 
 class Register extends BaseRegister
 {
@@ -231,16 +236,6 @@ class Register extends BaseRegister
                     ->minLength(7)
                     ->maxLength(7)
                     ->prefixIcon('heroicon-o-shield-check')
-                    ->rules([
-                        function (): \Closure {
-                            return function (string $attribute, mixed $value, \Closure $fail): void {
-                                if (trim((string) $value) !== (string) session('register_captcha_answer')) {
-                                    $this->refreshCaptchaChallenge();
-                                    $fail(__('app.captcha_invalid'));
-                                }
-                            };
-                        },
-                    ])
                     ->validationMessages([
                         'required' => __('app.captcha_required'),
                         'min' => __('app.captcha_length'),
@@ -253,7 +248,7 @@ class Register extends BaseRegister
     protected function mutateFormDataBeforeRegister(array $data): array
     {
         if (trim((string) ($data['captcha_answer'] ?? '')) !== (string) session('register_captcha_answer')) {
-            $this->refreshCaptchaChallenge();
+            $this->refreshCaptchaChallengeForForm();
 
             throw ValidationException::withMessages([
                 'data.captcha_answer' => __('app.captcha_invalid'),
@@ -262,9 +257,54 @@ class Register extends BaseRegister
 
         unset($data['captcha_answer']);
 
-        $this->refreshCaptchaChallenge();
+        $this->refreshCaptchaChallengeForForm();
 
         return $data;
+    }
+
+    public function register(): ?RegistrationResponse
+    {
+        if ($this->isRegisterRateLimited($this->data['email'] ?? '')) {
+            return null;
+        }
+
+        $user = $this->wrapInDatabaseTransaction(function (): Model {
+            $this->callHook('beforeValidate');
+
+            $data = $this->form->getState();
+
+            $this->callHook('afterValidate');
+
+            $data = $this->mutateFormDataBeforeRegister($data);
+
+            $this->callHook('beforeRegister');
+
+            $user = $this->handleRegistration($data);
+
+            $this->form->model($user)->saveRelationships();
+
+            $this->callHook('afterRegister');
+
+            return $user;
+        });
+
+        event(new Registered($user));
+
+        $this->sendEmailVerificationNotification($user);
+
+        Notification::make()
+            ->title(__('app.register_success_title'))
+            ->body(__('app.register_success_body'))
+            ->success()
+            ->send();
+
+        return new class implements RegistrationResponse
+        {
+            public function toResponse($request): RedirectResponse | Redirector
+            {
+                return redirect()->route('filament.app.auth.login');
+            }
+        };
     }
 
     protected function handleRegistration(array $data): Model
