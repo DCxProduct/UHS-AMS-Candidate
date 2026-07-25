@@ -414,3 +414,306 @@ form button[type="submit"].fi-btn:hover,
     font-weight: 700 !important;
     line-height: 1 !important;
 }
+
+/* =====================================================
+   ADMIN DASHBOARD
+===================================================== */
+
+.fi-page:has(.uhs-admin-overview) .fi-page-header-main-ctn {
+    margin-bottom: 0.5rem !important;
+}
+
+.fi-page:has(.uhs-admin-overview) .fi-header-heading {
+    font-size: 2.15rem !important;
+    line-height: 1.2 !important;
+    font-weight: 800 !important;
+}
+
+.fi-page:has(.uhs-admin-overview) .fi-header-subheading {
+    max-width: 52rem;
+    color: #64748b !important;
+    font-size: 1rem !important;
+    line-height: 1.75 !important;
+}
+
+.uhs-admin-overview {
+    display: grid;
+    gap: 1.25rem;
+}
+
+.uhs-admin-overview__hero {
+    position: relative;
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+    gap: 1rem;
+    padding: 1.5rem;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 24px;
+    background:
+        linear-gradient(180deg, #ffffff, #f8fafc 72%, #f1f5f9);
+    box-shadow: 0 14px 28px rgba(15, 23, 42, 0.06);
+}
+
+.uhs-admin-overview__eyebrow {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    padding: 0.42rem 0.72rem;
+    border-radius: 9999px;
+    background: #e2e8f0;
+    color: #334155;
+    font-size: 0.78rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.uhs-admin-overview__title {
+    margin: 0.9rem 0 0;
+    font-size: 1.7rem;
+    font-weight: 800;
+    line-height: 1.25;
+    color: #0f172a;
+}
+
+.uhs-admin-overview__description {
+    margin: 0.75rem 0 0;
+    max-width: 42rem;
+    color: #475569;
+    font-size: 0.98rem;
+    line-height: 1.8;
+}
+
+.uhs-admin-overview__highlights {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.85rem;
+    align-self: stretch;
+}
+
+.uhs-admin-overview__highlight {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 112px;
+    padding: 1rem;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 18px;
+    background: #ffffff;
+}
+
+.uhs-admin-overview__highlight-label {
+    color: #64748b;
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1.6;
+}
+
+.uhs-admin-overview__highlight-value {
+    color: #0f172a;
+    font-size: 1.8rem;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.uhs-admin-overview__grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.uhs-admin-overview__card {
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 215px;
+    padding: 1.15rem;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 20px;
+    text-decoration: none;
+    color: inherit;
+    background: #ffffff;
+    box-shadow: 0 10px 22px rgba(15, 23, 42, 0.05);
+    transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+
+.uhs-admin-overview__card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 28px rgba(15, 23, 42, 0.08);
+    border-color: rgba(100, 116, 139, 0.28);
+}
+
+.uhs-admin-overview__card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.uhs-admin-overview__icon-wrap {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.9rem;
+    height: 2.9rem;
+    border-radius: 14px;
+    background: #f8fafc;
+    box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.18);
+}
+
+.uhs-admin-overview__icon {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+.uhs-admin-overview__action {
+    color: #334155;
+    font-size: 0.8rem;
+    font-weight: 700;
+    line-height: 1.5;
+    text-align: right;
+}
+
+.uhs-admin-overview__metric {
+    margin-top: 1.35rem;
+    color: #0f172a;
+    font-size: 2.2rem;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.uhs-admin-overview__copy {
+    margin-top: auto;
+    padding-top: 1.1rem;
+}
+
+.uhs-admin-overview__card-title {
+    margin: 0;
+    color: #0f172a;
+    font-size: 1rem;
+    font-weight: 800;
+    line-height: 1.55;
+}
+
+.uhs-admin-overview__card-description {
+    margin: 0.45rem 0 0;
+    color: #475569;
+    font-size: 0.88rem;
+    line-height: 1.7;
+}
+
+.uhs-admin-overview__card--sky .uhs-admin-overview__icon-wrap {
+    color: #1d4ed8;
+    background: #eff6ff;
+}
+
+.uhs-admin-overview__card--violet .uhs-admin-overview__icon-wrap {
+    color: #475569;
+    background: #f1f5f9;
+}
+
+.uhs-admin-overview__card--emerald .uhs-admin-overview__icon-wrap {
+    color: #047857;
+    background: #ecfdf5;
+}
+
+.uhs-admin-overview__card--amber .uhs-admin-overview__icon-wrap {
+    color: #b45309;
+    background: #fffbeb;
+}
+
+.uhs-admin-overview__card--rose .uhs-admin-overview__icon-wrap {
+    color: #be123c;
+    background: #fff1f2;
+}
+
+.uhs-admin-overview__card--indigo .uhs-admin-overview__icon-wrap {
+    color: #4338ca;
+    background: #eef2ff;
+}
+
+.uhs-admin-overview__card--slate .uhs-admin-overview__icon-wrap {
+    color: #334155;
+    background: #f1f5f9;
+}
+
+.uhs-admin-stat-card {
+    border-radius: 20px !important;
+    border: 1px solid rgba(148, 163, 184, 0.18) !important;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05) !important;
+    transition: transform 0.18s ease, box-shadow 0.18s ease !important;
+}
+
+.uhs-admin-stat-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 28px rgba(15, 23, 42, 0.07) !important;
+}
+
+.uhs-admin-stat-card--primary {
+    background: linear-gradient(180deg, #ffffff, #f8fafc) !important;
+}
+
+.uhs-admin-stat-card--success {
+    background: linear-gradient(180deg, #ffffff, #f8fafc) !important;
+}
+
+.uhs-admin-stat-card--danger {
+    background: linear-gradient(180deg, #ffffff, #f8fafc) !important;
+}
+
+.uhs-admin-stat-card--warning {
+    background: linear-gradient(180deg, #ffffff, #f8fafc) !important;
+}
+
+@media (max-width: 1280px) {
+    .uhs-admin-overview__hero,
+    .uhs-admin-overview__grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .uhs-admin-overview__hero,
+    .uhs-admin-overview__highlights,
+    .uhs-admin-overview__grid {
+        grid-template-columns: 1fr;
+    }
+
+    .uhs-admin-overview__hero {
+        padding: 1.2rem;
+    }
+}
+
+.fi-page .fi-ta-table tbody tr.uhs-sidebar-form-row {
+    transition: background-color 0.16s ease;
+}
+
+.fi-page .fi-ta-table tbody tr.uhs-sidebar-form-row:hover {
+    background: #f8fafc;
+}
+
+.fi-page .uhs-sidebar-form-name-cell {
+    padding-top: 1rem !important;
+    padding-bottom: 1rem !important;
+}
+
+.fi-page .uhs-sidebar-form-name-cell .fi-ta-text-item-label {
+    font-size: 0.98rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.fi-page .uhs-sidebar-form-name-cell .fi-ta-text-item-description {
+    margin-top: 0.3rem;
+    font-size: 0.82rem;
+    line-height: 1.55;
+    color: #64748b;
+}
+
+.fi-page .uhs-sidebar-form-count-cell .fi-badge {
+    min-width: 3rem;
+    justify-content: center;
+    border-radius: 9999px;
+    font-weight: 700;
+}
