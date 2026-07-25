@@ -6,8 +6,6 @@ use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
 class AdminStatsOverview extends StatsOverviewWidget
 {
@@ -28,23 +26,6 @@ class AdminStatsOverview extends StatsOverviewWidget
             ->where('slug', 'national-examination-registration')
             ->value('id');
 
-        $totalStudents = DB::table('users')
-            ->where('registration_type', 'student')
-            ->count();
-
-        $activeStudents = DB::table('users')
-            ->where('registration_type', 'student')
-            ->where(function ($query): void {
-                if (Schema::hasColumn('users', 'is_active')) {
-                    $query->where('is_active', true);
-                }
-            })
-            ->count();
-
-        if (! Schema::hasColumn('users', 'is_active')) {
-            $activeStudents = $totalStudents;
-        }
-
         $totalSubmissions = $nationalExamFormId
             ? CustomFormEntry::query()
                 ->where('custom_form_id', $nationalExamFormId)
@@ -59,29 +40,92 @@ class AdminStatsOverview extends StatsOverviewWidget
                 ->count()
             : 0;
 
-        $pendingReviews = $nationalExamFormId
+        $reviewedSubmissions = $nationalExamFormId
             ? CustomFormEntry::query()
                 ->where('custom_form_id', $nationalExamFormId)
-                ->where('review_status', 'pending')
+                ->whereIn('review_status', ['accepted', 'approved', 'passed'])
                 ->count()
             : 0;
 
+        $returnedSubmissions = $nationalExamFormId
+            ? CustomFormEntry::query()
+                ->where('custom_form_id', $nationalExamFormId)
+                ->whereIn('review_status', ['rejected', 'send_back', 'returned', 'failed'])
+                ->count()
+            : 0;
+
+        $pendingReviews = $nationalExamFormId
+            ? CustomFormEntry::query()
+                ->where('custom_form_id', $nationalExamFormId)
+                ->where(function ($query): void {
+                    $query->whereNull('review_status')
+                        ->orWhere('review_status', '')
+                        ->orWhere('review_status', 'pending');
+                })
+                ->count()
+            : 0;
+
+        $totalForRatios = max($totalSubmissions, 1);
+        $reviewedRate = (int) round(($reviewedSubmissions / $totalForRatios) * 100);
+        $returnedRate = (int) round(($returnedSubmissions / $totalForRatios) * 100);
+        $pendingRate = (int) round(($pendingReviews / $totalForRatios) * 100);
+
         return [
-            Stat::make(__('dashboard.total_students'), number_format($totalStudents))
-                ->icon('heroicon-m-user-group')
-                ->color('info'),
-
-            Stat::make(__('dashboard.active_students'), number_format($activeStudents))
-                ->icon('heroicon-m-check-circle')
-                ->color('success'),
-
-            Stat::make(__('dashboard.national_examination_requests'), number_format($totalSubmissions))
+            Stat::make(__('dashboard.total_requests'), number_format($totalSubmissions))
                 ->icon('heroicon-m-document-text')
-                ->color('primary'),
+                ->description(__('dashboard.total_requests_hint'))
+                ->chart([
+                    max($totalSubmissions - $pendingReviews, 0),
+                    $reviewedSubmissions,
+                    $returnedSubmissions,
+                    $pendingReviews,
+                ])
+                ->color('info')
+                ->extraAttributes([
+                    'class' => 'uhs-admin-stat-card uhs-admin-stat-card--primary',
+                ]),
 
-            Stat::make(__('dashboard.pending_reviews'), number_format($pendingReviews))
+            Stat::make(__('dashboard.reviewed_requests'), number_format($reviewedSubmissions))
+                ->icon('heroicon-m-check-circle')
+                ->description(__('dashboard.reviewed_requests_hint', ['percent' => $reviewedRate]))
+                ->chart([
+                    0,
+                    max($reviewedSubmissions - 1, 0),
+                    $reviewedSubmissions,
+                    $reviewedSubmissions,
+                ])
+                ->color('success')
+                ->extraAttributes([
+                    'class' => 'uhs-admin-stat-card uhs-admin-stat-card--success',
+                ]),
+
+            Stat::make(__('dashboard.returned_requests'), number_format($returnedSubmissions))
+                ->icon('heroicon-m-arrow-uturn-left')
+                ->description(__('dashboard.returned_requests_hint', ['percent' => $returnedRate]))
+                ->chart([
+                    0,
+                    $returnedSubmissions,
+                    max($returnedSubmissions - 1, 0),
+                    $returnedSubmissions,
+                ])
+                ->color('danger')
+                ->extraAttributes([
+                    'class' => 'uhs-admin-stat-card uhs-admin-stat-card--danger',
+                ]),
+
+            Stat::make(__('dashboard.in_review_requests'), number_format($pendingReviews))
                 ->icon('heroicon-m-clock')
-                ->color('warning'),
+                ->description(__('dashboard.in_review_requests_hint', ['percent' => $pendingRate]))
+                ->chart([
+                    max($pendingReviews - 2, 0),
+                    max($pendingReviews - 1, 0),
+                    $pendingReviews,
+                    $pendingReviews,
+                ])
+                ->color('warning')
+                ->extraAttributes([
+                    'class' => 'uhs-admin-stat-card uhs-admin-stat-card--warning',
+                ]),
         ];
     }
 }
