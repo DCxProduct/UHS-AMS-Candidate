@@ -2,21 +2,21 @@
 
 namespace App\Support;
 
-use App\Models\CandidateType;
+use App\Models\UserType;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Spatie\Permission\Models\Role;
 
-class CandidateTypeOptions
+class UserTypeOptions
 {
     public const BASE_ROLE = 'student';
     public const DEFAULT_KEY = 'candidate';
 
     public static function customQuery()
     {
-        static::ensureDefaultCandidateType();
+        static::ensureDefaultUserType();
 
-        return CandidateType::query()
+        return UserType::query()
             ->where('is_active', true)
             ->orderBy('display_order')
             ->orderBy('id');
@@ -24,19 +24,19 @@ class CandidateTypeOptions
 
     public static function allQuery()
     {
-        static::ensureDefaultCandidateType();
+        static::ensureDefaultUserType();
 
-        return CandidateType::query()
+        return UserType::query()
             ->orderBy('display_order')
             ->orderBy('id');
     }
 
     public static function options(): array
     {
-        if (Schema::hasTable('candidate_types')) {
+        if (Schema::hasTable('user_types')) {
             $options = static::customQuery()
                 ->get()
-                ->mapWithKeys(fn (CandidateType $candidateType): array => [
+                ->mapWithKeys(fn (UserType $candidateType): array => [
                     $candidateType->key => $candidateType->getLocalizedLabel(),
                 ])
                 ->all();
@@ -51,10 +51,10 @@ class CandidateTypeOptions
 
     public static function colors(): array
     {
-        if (Schema::hasTable('candidate_types')) {
+        if (Schema::hasTable('user_types')) {
             $colors = static::customQuery()
                 ->get()
-                ->mapWithKeys(fn (CandidateType $candidateType): array => [
+                ->mapWithKeys(fn (UserType $candidateType): array => [
                     $candidateType->key => static::normalizeColor($candidateType->color),
                 ])
                 ->all();
@@ -108,15 +108,15 @@ class CandidateTypeOptions
         return static::formatLabel($roleName);
     }
 
-    public static function findByKey(?string $key): ?CandidateType
+    public static function findByKey(?string $key): ?UserType
     {
-        if (blank($key) || ! Schema::hasTable('candidate_types')) {
+        if (blank($key) || ! Schema::hasTable('user_types')) {
             return null;
         }
 
-        static::ensureDefaultCandidateType();
+        static::ensureDefaultUserType();
 
-        return CandidateType::query()
+        return UserType::query()
             ->where('key', $key)
             ->first();
     }
@@ -154,11 +154,11 @@ class CandidateTypeOptions
     public static function colorOptions(): array
     {
         return [
-            'blue' => __('candidate_types.colors.blue'),
-            'green' => __('candidate_types.colors.green'),
-            'orange' => __('candidate_types.colors.orange'),
-            'red' => __('candidate_types.colors.red'),
-            'black' => __('candidate_types.colors.black'),
+            'blue' => __('user_types.colors.blue'),
+            'green' => __('user_types.colors.green'),
+            'orange' => __('user_types.colors.orange'),
+            'red' => __('user_types.colors.red'),
+            'black' => __('user_types.colors.black'),
         ];
     }
 
@@ -193,13 +193,13 @@ class CandidateTypeOptions
         ];
     }
 
-    protected static function ensureDefaultCandidateType(): void
+    protected static function ensureDefaultUserType(): void
     {
-        if (! Schema::hasTable('candidate_types')) {
+        if (! Schema::hasTable('user_types')) {
             return;
         }
 
-        CandidateType::query()->firstOrCreate(
+        UserType::query()->firstOrCreate(
             ['key' => self::DEFAULT_KEY],
             [
                 'label_en' => 'Candidate',

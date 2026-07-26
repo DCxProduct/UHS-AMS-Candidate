@@ -1,10 +1,10 @@
 <?php
 
 return [
-    'navigation_label' => 'Candidate Types',
-    'resource_label' => 'Candidate Type',
-    'resource_plural_label' => 'Candidate Types',
-    'search' => 'Search candidate types',
+    'navigation_label' => 'User Types',
+    'resource_label' => 'User Type',
+    'resource_plural_label' => 'User Types',
+    'search' => 'Search user types',
 
     'fields' => [
         'key' => 'Key',
@@ -18,7 +18,7 @@ return [
     'table' => [
         'no' => 'No',
         'key' => 'Role Key',
-        'preview' => 'Candidate Type',
+        'preview' => 'User Type',
         'label_en' => 'Label English',
         'label_kh' => 'Label Khmer',
         'color' => 'Color',
@@ -34,14 +34,14 @@ return [
     ],
 
     'form' => [
-        'section_title' => 'Candidate Type Information',
-        'section_description' => 'These records control the selectable candidate-type options on the register form.',
+        'section_title' => 'User Type Information',
+        'section_description' => 'These records control the selectable user-type options on the register form.',
         'name_helper' => 'Use a stable English key with lowercase letters, numbers, underscores, or hyphens.',
     ],
 
     'validation' => [
-        'name_required' => 'Candidate type key is required.',
-        'name_unique' => 'This candidate type already exists.',
+        'name_required' => 'User type key is required.',
+        'name_unique' => 'This user type already exists.',
         'label_en_required' => 'English label is required.',
         'label_kh_required' => 'Khmer label is required.',
         'color_required' => 'Color is required.',

@@ -25,7 +25,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rule;
 use Livewire\Features\SupportRedirects\Redirector;
-use App\Support\CandidateTypeOptions;
+use App\Support\UserTypeOptions;
 
 class Register extends BaseRegister
 {
@@ -59,13 +59,13 @@ class Register extends BaseRegister
             ->components([
                 ToggleButtons::make('student_role')
                     ->label(__('app.candidate_type'))
-                    ->options($this->getCandidateTypeOptions())
-                    ->colors($this->getCandidateTypeColors())
-                    ->default($this->getDefaultCandidateTypeRole())
+                    ->options($this->getUserTypeOptions())
+                    ->colors($this->getUserTypeColors())
+                    ->default($this->getDefaultUserTypeRole())
                     ->required()
                     ->inline()
                     ->live()
-                    ->dehydrateStateUsing(fn (?string $state): string => $this->resolveSelectedCandidateTypeRole($state))
+                    ->dehydrateStateUsing(fn (?string $state): string => $this->resolveSelectedUserTypeRole($state))
                     ->validationMessages([
                         'required' => __('app.candidate_type_required'),
                     ])
@@ -328,7 +328,7 @@ class Register extends BaseRegister
     protected function handleRegistration(array $data): Model
     {
         $username = Str::lower(trim((string) ($data['username'] ?? '')));
-        $studentRole = CandidateTypeOptions::resolve($data['student_role'] ?? null);
+        $studentRole = UserTypeOptions::resolve($data['student_role'] ?? null);
 
         $phone = blank($data['phone'] ?? null)
             ? null
@@ -371,7 +371,7 @@ class Register extends BaseRegister
                 'is_active' => true,
             ]);
 
-            $webRoles = CandidateTypeOptions::assignableWebRoles($studentRole);
+            $webRoles = UserTypeOptions::assignableWebRoles($studentRole);
 
             if ($webRoles !== []) {
                 $user->syncRoles($webRoles);
@@ -389,7 +389,7 @@ class Register extends BaseRegister
                 'phone' => $phone,
                 'password' => $hashedPassword,
                 'avatar' => null,
-                'roles' => CandidateTypeOptions::assignableSystemRoles($studentRole),
+                'roles' => UserTypeOptions::assignableSystemRoles($studentRole),
                 'permissions' => null,
                 'is_active' => true,
                 'email_verified_at' => now(),
@@ -428,24 +428,24 @@ class Register extends BaseRegister
         data_set($this->data, 'captcha_answer', null);
     }
 
-    protected function getCandidateTypeOptions(): array
+    protected function getUserTypeOptions(): array
     {
-        return CandidateTypeOptions::options();
+        return UserTypeOptions::options();
     }
 
-    protected function getDefaultCandidateTypeRole(): string
+    protected function getDefaultUserTypeRole(): string
     {
-        return array_key_first($this->getCandidateTypeOptions()) ?? 'student';
+        return array_key_first($this->getUserTypeOptions()) ?? 'student';
     }
 
-    protected function getCandidateTypeColors(): array
+    protected function getUserTypeColors(): array
     {
-        return CandidateTypeOptions::colors();
+        return UserTypeOptions::colors();
     }
 
-    protected function resolveSelectedCandidateTypeRole(?string $roleName): string
+    protected function resolveSelectedUserTypeRole(?string $roleName): string
     {
-        return CandidateTypeOptions::resolve($roleName);
+        return UserTypeOptions::resolve($roleName);
     }
 
     protected function captchaPreviewHtml(): string

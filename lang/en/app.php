@@ -12,8 +12,8 @@ return [
     'already_have_account' => 'Already have an account?',
     'student_type' => 'Student type',
     'student_type_required' => 'Please select a student type.',
-    'candidate_type' => 'Candidate type',
-    'candidate_type_required' => 'Please select a candidate type.',
+    'candidate_type' => 'User type',
+    'candidate_type_required' => 'Please select a user type.',
 
     'national_examination' => 'National Examination',
 

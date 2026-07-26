@@ -3,7 +3,7 @@
 namespace App\Filament\Admin\Resources\SystemUsers\Schemas;
 
 use App\Models\SystemUser;
-use App\Support\CandidateTypeOptions;
+use App\Support\UserTypeOptions;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -73,12 +73,9 @@ class SystemUserForm
 
                                 Select::make('candidate_type')
                                     ->label(__('system_users.fields.candidate_type'))
-                                    ->options(fn (): array => [
-                                        CandidateTypeOptions::BASE_ROLE => __('app.candidate'),
-                                        ...CandidateTypeOptions::options(),
-                                    ])
-                                    ->default(CandidateTypeOptions::BASE_ROLE)
-                                    ->getOptionLabelUsing(fn (string $value): string => CandidateTypeOptions::formatLabel($value))
+                                    ->options(fn (): array => UserTypeOptions::options())
+                                    ->default(UserTypeOptions::BASE_ROLE)
+                                    ->getOptionLabelUsing(fn (string $value): string => UserTypeOptions::formatLabel($value))
                                     ->required()
                                     ->native(false)
                                     ->searchable()

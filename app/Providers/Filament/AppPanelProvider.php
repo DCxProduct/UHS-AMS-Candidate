@@ -3,6 +3,7 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Pages\Auth\Login;
+use App\Filament\Pages\DatabaseBackup;
 use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use App\Filament\Pages\Auth\Register;
 use App\Filament\Pages\Dashboard as AppDashboard;
@@ -111,6 +112,7 @@ class AppPanelProvider extends PanelProvider
 
             ->pages([
                 AppDashboard::class,
+                DatabaseBackup::class,
                 ContactUs::class,
                 MyProfile::class,
                 SyncPage::class,
