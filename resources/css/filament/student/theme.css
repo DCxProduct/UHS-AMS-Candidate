@@ -308,9 +308,27 @@ html.dark .uhs-brand-logo-en,
     text-align: center !important;
 }
 
+/* =====================================================
+   DATABASE BACKUP ACTIONS
+===================================================== */
+.uhs-backup-actions {
+    display: flex !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: 1rem !important;
+    margin-top: 1.5rem !important;
+    padding-right: 0.5rem !important;
+}
+
 @media (max-width: 640px) {
     .uhs-register-type-wrapper .fi-fo-toggle-buttons.fi-inline {
         grid-template-columns: 1fr !important;
+    }
+
+    .uhs-backup-actions {
+        justify-content: flex-start !important;
+        padding-right: 0 !important;
     }
 }
 
