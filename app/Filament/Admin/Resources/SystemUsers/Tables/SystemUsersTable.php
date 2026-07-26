@@ -2,6 +2,9 @@
 
 namespace App\Filament\Admin\Resources\SystemUsers\Tables;
 
+use App\Models\SystemUser;
+use App\Models\User;
+use App\Support\CandidateTypeOptions;
 use App\Support\NotificationLanguage;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -44,11 +47,46 @@ class SystemUsersTable
                     ->searchable()
                     ->sortable(),
 
-                TextColumn::make('email_verified_at')
-                    ->label(__('system_users.fields.email_verified_at'))
-                    ->dateTime('M d, Y H:i:s')
-                    ->placeholder('-')
-                    ->sortable(),
+                TextColumn::make('candidate_type')
+                    ->label(__('system_users.fields.candidate_type'))
+                    ->getStateUsing(function (SystemUser $record): string {
+                        $candidateRole = static::resolveCandidateRole($record);
+
+                        if (! $candidateRole) {
+                            return '-';
+                        }
+
+                        if ($candidateRole === CandidateTypeOptions::BASE_ROLE) {
+                            return CandidateTypeOptions::formatLabel($candidateRole);
+                        }
+
+                        $candidateType = CandidateTypeOptions::findByKey((string) $candidateRole);
+
+                        if (! $candidateType) {
+                            return '-';
+                        }
+
+                        return $candidateType->getLocalizedLabel();
+                    })
+                    ->badge()
+                    ->sortable(query: fn ($query, string $direction) => $query->orderBy('roles', $direction))
+                    ->color(function (SystemUser $record): string {
+                        $candidateRole = static::resolveCandidateRole($record);
+
+                        if (! $candidateRole) {
+                            return 'gray';
+                        }
+
+                        if ($candidateRole === CandidateTypeOptions::BASE_ROLE) {
+                            return CandidateTypeOptions::normalizeColor('blue');
+                        }
+
+                        $candidateType = CandidateTypeOptions::findByKey((string) $candidateRole);
+
+                        return $candidateType
+                            ? CandidateTypeOptions::normalizeColor($candidateType->color)
+                            : 'gray';
+                    }),
 
                 IconColumn::make('is_active')
                     ->label(__('system_users.fields.is_active'))
@@ -58,12 +96,12 @@ class SystemUsersTable
 
                 TextColumn::make('created_at')
                     ->label(__('system_users.fields.created_at'))
-                    ->dateTime('M d, Y H:i:s')
+                    ->date('M d, Y')
                     ->sortable(),
 
                 TextColumn::make('updated_at')
                     ->label(__('system_users.fields.updated_at'))
-                    ->dateTime('M d, Y H:i:s')
+                    ->date('M d, Y')
                     ->sortable(),
             ])
             ->filters([
@@ -122,5 +160,50 @@ class SystemUsersTable
                     ->color('warning')
                     ->tooltip(__('system_users.actions.actions')),
             ]);
+    }
+
+    protected static function resolveCandidateRole(SystemUser $record): ?string
+    {
+        $roles = $record->roles;
+
+        if (is_string($roles)) {
+            $decoded = json_decode($roles, true);
+            $roles = is_array($decoded) ? $decoded : [$roles];
+        }
+
+        if (is_array($roles)) {
+            $roleCollection = collect($roles)
+                ->filter(fn ($role): bool => filled($role))
+                ->map(fn ($role): string => trim((string) $role))
+                ->values();
+
+            $candidateRole = $roleCollection
+                ->first(fn (string $role): bool => strcasecmp($role, 'Student') !== 0);
+
+            if ($candidateRole) {
+                return $candidateRole;
+            }
+
+            if ($roleCollection->contains(fn (string $role): bool => strcasecmp($role, 'Student') === 0)) {
+                return CandidateTypeOptions::BASE_ROLE;
+            }
+        }
+
+        $loginUser = static::findLinkedLoginUser($record);
+
+        if ($loginUser?->registration_type === 'student') {
+            return CandidateTypeOptions::BASE_ROLE;
+        }
+
+        return null;
+    }
+
+    protected static function findLinkedLoginUser(SystemUser $record): ?User
+    {
+        return User::query()
+            ->when(filled($record->username), fn ($query) => $query->orWhere('username', $record->username))
+            ->when(filled($record->email), fn ($query) => $query->orWhere('email', $record->email))
+            ->when(filled($record->phone), fn ($query) => $query->orWhere('phone', $record->phone))
+            ->first();
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\SystemUsers\Pages;
 
 use App\Filament\Admin\Resources\SystemUsers\SystemUserResource;
+use App\Support\CandidateTypeOptions;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Support\Enums\Width;
 
@@ -22,9 +23,12 @@ class CreateSystemUser extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        $data['roles'] = ['Student'];
+        $candidateType = CandidateTypeOptions::resolve($data['candidate_type'] ?? null);
+
+        $data['roles'] = CandidateTypeOptions::assignableSystemRoles($candidateType);
 
         unset($data['role_ids']);
+        unset($data['candidate_type']);
 
         $data['name'] = blank($data['name'] ?? null)
             ? trim((string) ($data['username'] ?? 'Student'))

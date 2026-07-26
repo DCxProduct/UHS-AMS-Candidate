@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\SystemUsers\Schemas;
 
 use App\Models\SystemUser;
+use App\Support\CandidateTypeOptions;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -49,7 +50,6 @@ class SystemUserForm
                                     ->required()
                                     ->minLength(9)
                                     ->maxLength(10)
-                                    ->columnSpanFull()
                                     ->unique(SystemUser::class, 'phone', ignoreRecord: true)
                                     ->placeholder(__('system_users.placeholders.phone'))
                                     ->rules([
@@ -70,6 +70,22 @@ class SystemUserForm
                                         ? null
                                         : preg_replace('/[^0-9]/', '', (string) $state)
                                     ),
+
+                                Select::make('candidate_type')
+                                    ->label(__('system_users.fields.candidate_type'))
+                                    ->options(fn (): array => [
+                                        CandidateTypeOptions::BASE_ROLE => __('app.candidate'),
+                                        ...CandidateTypeOptions::options(),
+                                    ])
+                                    ->default(CandidateTypeOptions::BASE_ROLE)
+                                    ->getOptionLabelUsing(fn (string $value): string => CandidateTypeOptions::formatLabel($value))
+                                    ->required()
+                                    ->native(false)
+                                    ->searchable()
+                                    ->placeholder(__('system_users.placeholders.candidate_type'))
+                                    ->validationMessages([
+                                        'required' => __('system_users.validation.candidate_type_required'),
+                                    ]),
 
                                 TextInput::make('password')
                                     ->label(__('system_users.fields.password'))

@@ -278,38 +278,40 @@ html.dark .uhs-brand-logo-en,
     width: 100% !important;
 }
 
-.uhs-register-type-wrapper .fi-fo-toggle-buttons>div,
-.uhs-register-type-wrapper .fi-toggle-buttons>div {
-    display: flex !important;
-    justify-content: center !important;
-    gap: 16px !important;
-    width: 100% !important;
-}
-
 .uhs-register-type-box-center div[class*="flex"] {
     justify-content: center !important;
 }
 
-.uhs-register-type-box-center .fi-fo-toggle-buttons-inline {
-    justify-content: center !important;
-}
-
-.uhs-register-type-wrapper .fi-fo-toggle-buttons-inline {
-    display: flex !important;
+.uhs-register-type-wrapper .fi-fo-toggle-buttons.fi-inline {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
     width: 100% !important;
-    gap: 16px !important;
+    gap: 12px !important;
+    align-items: stretch !important;
+    justify-content: stretch !important;
 }
 
-.uhs-register-type-wrapper .fi-fo-toggle-buttons-inline>* {
-    flex: 1 1 0% !important;
+.uhs-register-type-wrapper .fi-fo-toggle-buttons.fi-inline .fi-fo-toggle-buttons-btn-ctn {
+    width: 100% !important;
     min-width: 0 !important;
 }
 
-.uhs-register-type-wrapper .fi-fo-toggle-buttons-inline label,
-.uhs-register-type-wrapper .fi-fo-toggle-buttons-inline button {
+.uhs-register-type-wrapper .fi-fo-toggle-buttons.fi-inline .fi-btn,
+.uhs-register-type-wrapper .fi-fo-toggle-buttons.fi-inline label {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
     width: 100% !important;
     max-width: 100% !important;
-    padding: 4px !important;
+    min-height: 40px !important;
+    padding: 8px 12px !important;
+    text-align: center !important;
+}
+
+@media (max-width: 640px) {
+    .uhs-register-type-wrapper .fi-fo-toggle-buttons.fi-inline {
+        grid-template-columns: 1fr !important;
+    }
 }
 
 /* Form Buttons */
