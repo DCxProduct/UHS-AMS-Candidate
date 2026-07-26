@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\SystemUsers\Pages;
 
 use App\Filament\Admin\Resources\SystemUsers\SystemUserResource;
+use App\Support\CandidateTypeOptions;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Enums\Width;
@@ -31,18 +32,33 @@ class EditSystemUser extends EditRecord
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
-        // Hide role in form, but always keep Student role
-        $data['roles'] = ['Student'];
+        $roles = $data['roles'] ?? [];
+
+        if (is_string($roles)) {
+            $decoded = json_decode($roles, true);
+            $roles = is_array($decoded) ? $decoded : [$roles];
+        }
+
+        $candidateType = collect(is_array($roles) ? $roles : [])
+            ->filter(fn ($role): bool => filled($role))
+            ->map(fn ($role): string => trim((string) $role))
+            ->first(fn (string $role): bool => strcasecmp($role, 'Student') !== 0);
+
+        $data['candidate_type'] = $candidateType
+            ? CandidateTypeOptions::resolve($candidateType)
+            : CandidateTypeOptions::BASE_ROLE;
 
         return $data;
     }
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        // Force role to Student only
-        $data['roles'] = ['Student'];
+        $candidateType = CandidateTypeOptions::resolve($data['candidate_type'] ?? null);
+
+        $data['roles'] = CandidateTypeOptions::assignableSystemRoles($candidateType);
 
         unset($data['role_ids']);
+        unset($data['candidate_type']);
 
         $data['name'] = blank($data['name'] ?? null)
             ? trim((string) ($data['username'] ?? 'Student'))

@@ -10,6 +10,10 @@ return [
     'sign_up' => 'Sign up',
     'sign_up_new_account' => 'Sign up for a new account',
     'already_have_account' => 'Already have an account?',
+    'student_type' => 'Student type',
+    'student_type_required' => 'Please select a student type.',
+    'candidate_type' => 'Candidate type',
+    'candidate_type_required' => 'Please select a candidate type.',
 
     'national_examination' => 'National Examination',
 
@@ -95,6 +99,7 @@ return [
 
     'dashboard' => 'Dashboard',
     'student' => 'Student',
+    'candidate' => 'Candidate',
     'welcome_back' => 'Welcome back',
 
     'dashboard_description' => 'Track your enrollment for the current academic year. One student can submit enrollment only one time per academic year.',

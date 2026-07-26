@@ -12,6 +12,7 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Schema;
 use Illuminate\Contracts\Support\Htmlable;
@@ -24,6 +25,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rule;
 use Livewire\Features\SupportRedirects\Redirector;
+use App\Support\CandidateTypeOptions;
 
 class Register extends BaseRegister
 {
@@ -55,6 +57,22 @@ class Register extends BaseRegister
 
         return $schema
             ->components([
+                ToggleButtons::make('student_role')
+                    ->label(__('app.candidate_type'))
+                    ->options($this->getCandidateTypeOptions())
+                    ->colors($this->getCandidateTypeColors())
+                    ->default($this->getDefaultCandidateTypeRole())
+                    ->required()
+                    ->inline()
+                    ->live()
+                    ->dehydrateStateUsing(fn (?string $state): string => $this->resolveSelectedCandidateTypeRole($state))
+                    ->validationMessages([
+                        'required' => __('app.candidate_type_required'),
+                    ])
+                    ->extraFieldWrapperAttributes([
+                        'class' => 'uhs-register-type-wrapper uhs-register-type-box-center',
+                    ]),
+
                 Hidden::make('registration_type')
                     ->default('student')
                     ->dehydrated(true),
@@ -310,6 +328,7 @@ class Register extends BaseRegister
     protected function handleRegistration(array $data): Model
     {
         $username = Str::lower(trim((string) ($data['username'] ?? '')));
+        $studentRole = CandidateTypeOptions::resolve($data['student_role'] ?? null);
 
         $phone = blank($data['phone'] ?? null)
             ? null
@@ -323,6 +342,7 @@ class Register extends BaseRegister
 
         return DB::transaction(function () use (
             $username,
+            $studentRole,
             $phone,
             $email,
             $dateOfBirth,
@@ -351,6 +371,12 @@ class Register extends BaseRegister
                 'is_active' => true,
             ]);
 
+            $webRoles = CandidateTypeOptions::assignableWebRoles($studentRole);
+
+            if ($webRoles !== []) {
+                $user->syncRoles($webRoles);
+            }
+
             /*
             |--------------------------------------------------------------------------
             | Store student in system_users table
@@ -363,9 +389,7 @@ class Register extends BaseRegister
                 'phone' => $phone,
                 'password' => $hashedPassword,
                 'avatar' => null,
-                'roles' => [
-                    'Student',
-                ],
+                'roles' => CandidateTypeOptions::assignableSystemRoles($studentRole),
                 'permissions' => null,
                 'is_active' => true,
                 'email_verified_at' => now(),
@@ -402,6 +426,26 @@ class Register extends BaseRegister
         $this->refreshCaptchaChallenge();
 
         data_set($this->data, 'captcha_answer', null);
+    }
+
+    protected function getCandidateTypeOptions(): array
+    {
+        return CandidateTypeOptions::options();
+    }
+
+    protected function getDefaultCandidateTypeRole(): string
+    {
+        return array_key_first($this->getCandidateTypeOptions()) ?? 'student';
+    }
+
+    protected function getCandidateTypeColors(): array
+    {
+        return CandidateTypeOptions::colors();
+    }
+
+    protected function resolveSelectedCandidateTypeRole(?string $roleName): string
+    {
+        return CandidateTypeOptions::resolve($roleName);
     }
 
     protected function captchaPreviewHtml(): string
