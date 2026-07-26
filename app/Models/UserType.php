@@ -2,14 +2,14 @@
 
 namespace App\Models;
 
-use App\Support\CandidateTypeOptions;
+use App\Support\UserTypeOptions;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use Spatie\Permission\Models\Role;
 
-class CandidateType extends Model
+class UserType extends Model
 {
-    protected $table = 'candidate_types';
+    protected $table = 'user_types';
 
     protected $fillable = [
         'key',
@@ -30,12 +30,12 @@ class CandidateType extends Model
 
     protected static function booted(): void
     {
-        static::saving(function (CandidateType $candidateType): void {
-            $candidateType->color = CandidateTypeOptions::canonicalColor($candidateType->color);
+        static::saving(function (UserType $candidateType): void {
+            $candidateType->color = UserTypeOptions::canonicalColor($candidateType->color);
         });
 
-        static::deleting(function (CandidateType $candidateType): void {
-            static::removeCandidateTypeFromSystemUsers($candidateType->key);
+        static::deleting(function (UserType $candidateType): void {
+            static::removeUserTypeFromSystemUsers($candidateType->key);
 
             Role::query()
                 ->where('guard_name', 'web')
@@ -43,7 +43,7 @@ class CandidateType extends Model
                 ->delete();
         });
 
-        static::saved(function (CandidateType $candidateType): void {
+        static::saved(function (UserType $candidateType): void {
             $originalKey = $candidateType->getOriginal('key');
 
             $role = null;
@@ -91,7 +91,7 @@ class CandidateType extends Model
             ->title();
     }
 
-    protected static function removeCandidateTypeFromSystemUsers(string $candidateTypeKey): void
+    protected static function removeUserTypeFromSystemUsers(string $candidateTypeKey): void
     {
         SystemUser::query()
             ->whereNotNull('roles')

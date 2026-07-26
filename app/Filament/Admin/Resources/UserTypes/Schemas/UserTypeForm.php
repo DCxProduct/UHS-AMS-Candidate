@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Filament\Admin\Resources\CandidateTypes\Schemas;
+namespace App\Filament\Admin\Resources\UserTypes\Schemas;
 
-use App\Support\CandidateTypeOptions;
+use App\Support\UserTypeOptions;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -12,15 +12,15 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Str;
 
-class CandidateTypeForm
+class UserTypeForm
 {
     public static function configure(Schema $schema): Schema
     {
         return $schema
             ->columns(1)
             ->components([
-                Section::make(__('candidate_types.form.section_title'))
-                    ->description(__('candidate_types.form.section_description'))
+                Section::make(__('user_types.form.section_title'))
+                    ->description(__('user_types.form.section_description'))
                     ->schema([
                         Grid::make([
                             'default' => 1,
@@ -28,9 +28,9 @@ class CandidateTypeForm
                         ])
                             ->schema([
                                 TextInput::make('key')
-                                    ->label(__('candidate_types.fields.key'))
-                                    ->placeholder(__('candidate_types.placeholders.key'))
-                                    ->helperText(__('candidate_types.form.name_helper'))
+                                    ->label(__('user_types.fields.key'))
+                                    ->placeholder(__('user_types.placeholders.key'))
+                                    ->helperText(__('user_types.form.name_helper'))
                                     ->required()
                                     ->maxLength(255)
                                     ->unique(column: 'key', ignoreRecord: true)
@@ -52,34 +52,34 @@ class CandidateTypeForm
                                             return function (string $attribute, mixed $value, \Closure $fail): void {
                                                 $name = Str::lower(trim((string) $value));
 
-                                                if ($name === CandidateTypeOptions::BASE_ROLE) {
-                                                    $fail(__('candidate_types.validation.base_role_reserved'));
+                                                if ($name === UserTypeOptions::BASE_ROLE) {
+                                                    $fail(__('user_types.validation.base_role_reserved'));
                                                 }
                                             };
                                         },
                                     ])
                                     ->validationMessages([
-                                        'required' => __('candidate_types.validation.name_required'),
-                                        'unique' => __('candidate_types.validation.name_unique'),
-                                        'regex' => __('candidate_types.validation.key_format'),
+                                        'required' => __('user_types.validation.name_required'),
+                                        'unique' => __('user_types.validation.name_unique'),
+                                        'regex' => __('user_types.validation.key_format'),
                                     ]),
 
                                 TextInput::make('label_en')
-                                    ->label(__('candidate_types.fields.label_en'))
-                                    ->placeholder(__('candidate_types.placeholders.label_en'))
+                                    ->label(__('user_types.fields.label_en'))
+                                    ->placeholder(__('user_types.placeholders.label_en'))
                                     ->required()
                                     ->maxLength(255)
                                     ->validationMessages([
-                                        'required' => __('candidate_types.validation.label_en_required'),
+                                        'required' => __('user_types.validation.label_en_required'),
                                     ]),
 
                                 TextInput::make('label_kh')
-                                    ->label(__('candidate_types.fields.label_kh'))
-                                    ->placeholder(__('candidate_types.placeholders.label_kh'))
+                                    ->label(__('user_types.fields.label_kh'))
+                                    ->placeholder(__('user_types.placeholders.label_kh'))
                                     ->required()
                                     ->maxLength(255)
                                     ->validationMessages([
-                                        'required' => __('candidate_types.validation.label_kh_required'),
+                                        'required' => __('user_types.validation.label_kh_required'),
                                     ]),
                             ]),
 
@@ -89,33 +89,33 @@ class CandidateTypeForm
                         ])
                             ->schema([
                                 Select::make('color')
-                                    ->label(__('candidate_types.fields.color'))
-                                    ->options(CandidateTypeOptions::colorOptions())
+                                    ->label(__('user_types.fields.color'))
+                                    ->options(UserTypeOptions::colorOptions())
                                     ->default('blue')
                                     ->required()
                                     ->native(false)
                                     ->afterStateHydrated(function ($state, callable $set): void {
-                                        $set('color', CandidateTypeOptions::canonicalColor($state));
+                                        $set('color', UserTypeOptions::canonicalColor($state));
                                     })
-                                    ->dehydrateStateUsing(fn ($state): string => CandidateTypeOptions::canonicalColor($state))
+                                    ->dehydrateStateUsing(fn ($state): string => UserTypeOptions::canonicalColor($state))
                                     ->validationMessages([
-                                        'required' => __('candidate_types.validation.color_required'),
+                                        'required' => __('user_types.validation.color_required'),
                                     ]),
 
                                 Toggle::make('is_active')
-                                    ->label(__('candidate_types.fields.is_active'))
+                                    ->label(__('user_types.fields.is_active'))
                                     ->default(true)
                                     ->required(),
                             ]),
 
                         Placeholder::make('preview')
-                            ->label(__('candidate_types.fields.preview'))
+                            ->label(__('user_types.fields.preview'))
                             ->content(function (callable $get): string {
                                 $labelEn = trim((string) ($get('label_en') ?? ''));
                                 $labelKh = trim((string) ($get('label_kh') ?? ''));
-                                $color = CandidateTypeOptions::canonicalColor($get('color'));
+                                $color = UserTypeOptions::canonicalColor($get('color'));
 
-                                $preview = $labelEn !== '' ? $labelEn : __('candidate_types.preview.empty');
+                                $preview = $labelEn !== '' ? $labelEn : __('user_types.preview.empty');
 
                                 if ($labelKh !== '') {
                                     $preview .= ' / ' . $labelKh;

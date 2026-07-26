@@ -4,7 +4,7 @@ namespace App\Filament\Admin\Resources\SystemUsers\Tables;
 
 use App\Models\SystemUser;
 use App\Models\User;
-use App\Support\CandidateTypeOptions;
+use App\Support\UserTypeOptions;
 use App\Support\NotificationLanguage;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -56,11 +56,11 @@ class SystemUsersTable
                             return '-';
                         }
 
-                        if ($candidateRole === CandidateTypeOptions::BASE_ROLE) {
-                            return CandidateTypeOptions::formatLabel($candidateRole);
+                        if ($candidateRole === UserTypeOptions::BASE_ROLE) {
+                            return UserTypeOptions::formatLabel($candidateRole);
                         }
 
-                        $candidateType = CandidateTypeOptions::findByKey((string) $candidateRole);
+                        $candidateType = UserTypeOptions::findByKey((string) $candidateRole);
 
                         if (! $candidateType) {
                             return '-';
@@ -77,14 +77,14 @@ class SystemUsersTable
                             return 'gray';
                         }
 
-                        if ($candidateRole === CandidateTypeOptions::BASE_ROLE) {
-                            return CandidateTypeOptions::normalizeColor('blue');
+                        if ($candidateRole === UserTypeOptions::BASE_ROLE) {
+                            return UserTypeOptions::normalizeColor('blue');
                         }
 
-                        $candidateType = CandidateTypeOptions::findByKey((string) $candidateRole);
+                        $candidateType = UserTypeOptions::findByKey((string) $candidateRole);
 
                         return $candidateType
-                            ? CandidateTypeOptions::normalizeColor($candidateType->color)
+                            ? UserTypeOptions::normalizeColor($candidateType->color)
                             : 'gray';
                     }),
 
@@ -185,14 +185,14 @@ class SystemUsersTable
             }
 
             if ($roleCollection->contains(fn (string $role): bool => strcasecmp($role, 'Student') === 0)) {
-                return CandidateTypeOptions::BASE_ROLE;
+                return UserTypeOptions::BASE_ROLE;
             }
         }
 
         $loginUser = static::findLinkedLoginUser($record);
 
         if ($loginUser?->registration_type === 'student') {
-            return CandidateTypeOptions::BASE_ROLE;
+            return UserTypeOptions::BASE_ROLE;
         }
 
         return null;

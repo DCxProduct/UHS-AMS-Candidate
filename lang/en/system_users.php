@@ -18,7 +18,7 @@ return [
         'email' => 'Email Address',
         'phone' => 'Phone Number',
         'username' => 'Username',
-        'candidate_type' => 'Candidate Type',
+        'candidate_type' => 'User Type',
         'roles' => 'Roles',
         'password' => 'Password',
         'password_confirmation' => 'Confirm Password',
@@ -34,7 +34,7 @@ return [
         'email' => 'Enter email address',
         'phone' => 'Enter phone number',
         'username' => 'Enter username',
-        'candidate_type' => 'Select candidate type',
+        'candidate_type' => 'Select user type',
         'choose_image' => 'Choose Image',
         'password_create' => 'Enter password',
         'password_edit' => 'Leave blank to keep old password',
@@ -43,7 +43,7 @@ return [
     ],
 
     'validation' => [
-        'candidate_type_required' => 'Candidate type is required.',
+        'candidate_type_required' => 'User type is required.',
         'phone_required' => 'Phone number is required.',
         'phone_regex' => 'Phone number must contain only numbers and be between 9 to 10 digits.',
         'phone_min' => 'Phone number must be at least 9 digits.',

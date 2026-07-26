@@ -3,7 +3,7 @@
 namespace App\Filament\Admin\Resources\SystemUsers\Pages;
 
 use App\Filament\Admin\Resources\SystemUsers\SystemUserResource;
-use App\Support\CandidateTypeOptions;
+use App\Support\UserTypeOptions;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Enums\Width;
@@ -45,17 +45,17 @@ class EditSystemUser extends EditRecord
             ->first(fn (string $role): bool => strcasecmp($role, 'Student') !== 0);
 
         $data['candidate_type'] = $candidateType
-            ? CandidateTypeOptions::resolve($candidateType)
-            : CandidateTypeOptions::BASE_ROLE;
+            ? UserTypeOptions::resolve($candidateType)
+            : UserTypeOptions::BASE_ROLE;
 
         return $data;
     }
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        $candidateType = CandidateTypeOptions::resolve($data['candidate_type'] ?? null);
+        $candidateType = UserTypeOptions::resolve($data['candidate_type'] ?? null);
 
-        $data['roles'] = CandidateTypeOptions::assignableSystemRoles($candidateType);
+        $data['roles'] = UserTypeOptions::assignableSystemRoles($candidateType);
 
         unset($data['role_ids']);
         unset($data['candidate_type']);

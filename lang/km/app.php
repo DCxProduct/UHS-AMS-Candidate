@@ -12,8 +12,8 @@ return [
     'already_have_account' => 'មានគណនីរួចហើយ?',
     'student_type' => 'ប្រភេទនិស្សិត',
     'student_type_required' => 'សូមជ្រើសរើសប្រភេទនិស្សិត។',
-    'candidate_type' => 'ប្រភេទបេក្ខជន',
-    'candidate_type_required' => 'សូមជ្រើសរើសប្រភេទបេក្ខជន។',
+    'candidate_type' => 'ប្រភេទអ្នកប្រើប្រាស់',
+    'candidate_type_required' => 'សូមជ្រើសរើសប្រភេទអ្នកប្រើប្រាស់។',
 
     'national_examination' => 'ប្រឡងថ្នាក់ជាតិ',
 
