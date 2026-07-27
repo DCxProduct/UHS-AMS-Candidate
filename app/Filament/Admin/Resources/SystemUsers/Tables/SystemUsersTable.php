@@ -15,6 +15,7 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\DB;
 
 class SystemUsersTable
 {
@@ -69,7 +70,15 @@ class SystemUsersTable
                         return $candidateType->getLocalizedLabel();
                     })
                     ->badge()
-                    ->sortable(query: fn ($query, string $direction) => $query->orderBy('roles', $direction))
+                    ->sortable(query: function ($query, string $direction) {
+                        $driver = DB::connection()->getDriverName();
+
+                        if ($driver === 'pgsql') {
+                            return $query->orderByRaw("COALESCE(roles::text, '') {$direction}");
+                        }
+
+                        return $query->orderByRaw("COALESCE(CAST(roles AS CHAR), '') {$direction}");
+                    })
                     ->color(function (SystemUser $record): string {
                         $candidateRole = static::resolveCandidateRole($record);
 
