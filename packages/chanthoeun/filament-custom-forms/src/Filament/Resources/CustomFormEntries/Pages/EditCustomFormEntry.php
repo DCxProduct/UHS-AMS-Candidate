@@ -31,12 +31,12 @@ class EditCustomFormEntry extends EditRecord
     public function isLockedForEditing(): bool
     {
         $slug = $this->record->customForm?->slug;
+        $status = $this->entryStatus();
 
         if ($slug === 'profile') {
-            return $this->studentHasAcceptedNationalExam();
+            return in_array($status, ['approved', 'pending'], true)
+                || $this->studentHasAcceptedNationalExam();
         }
-
-        $status = $this->entryStatus();
 
         if (in_array($status, ['passed', 'accepted', 'approved', 'pending'], true)) {
             return true;
@@ -297,9 +297,16 @@ class EditCustomFormEntry extends EditRecord
         parent::mount($record);
 
         $status = $this->entryStatus();
+        $slug = $this->record->customForm?->slug;
 
         if (auth()->user()?->registration_type === 'admin') {
             $this->form->disabled();
+        }
+
+        if ($slug === 'profile' && $this->isLockedForEditing()) {
+            $this->form->disabled();
+
+            return;
         }
 
         if (in_array($status, ['approved', 'accepted', 'passed'], true)) {
