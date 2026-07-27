@@ -544,7 +544,11 @@ class CustomFormEntryResource extends Resource
 
     protected static function getFormSortNumber(CustomForm $form): int
     {
-        $slug = (string) ($form->slug ?? '');
+        $slug = strtolower(trim((string) ($form->slug ?? '')));
+
+        if ($slug === 'profile') {
+            return -1000;
+        }
 
         if (
             DatabaseSchema::hasColumn('custom_forms', 'display_order')

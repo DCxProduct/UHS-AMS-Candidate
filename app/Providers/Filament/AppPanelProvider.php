@@ -488,8 +488,16 @@ class AppPanelProvider extends PanelProvider
 
     protected function getFormSortNumber(object $form, string $slug): int
     {
+        $normalizedSlug = Str::of($slug)
+            ->lower()
+            ->slug()
+            ->value();
+
+        if ($normalizedSlug === 'profile') {
+            return -1000;
+        }
+
         $preferredSort = [
-            'profile' => 10,
             'enrollment' => 20,
             'national-exam' => 30,
             'national-examination' => 30,
@@ -510,8 +518,8 @@ class AppPanelProvider extends PanelProvider
             }
         }
 
-        if (array_key_exists($slug, $preferredSort)) {
-            return $preferredSort[$slug];
+        if (array_key_exists($normalizedSlug, $preferredSort)) {
+            return $preferredSort[$normalizedSlug];
         }
 
         return (int) ($form->id ?? 100);
