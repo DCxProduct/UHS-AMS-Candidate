@@ -351,6 +351,8 @@ return [
     'yes' => 'បាទ/ចាស',
     'no' => 'ទេ',
     'please_input_data_before_save' => 'សូមបញ្ចូលទិន្នន័យមុនពេលរក្សាទុក។',
+    'confirm_submit_data' => 'តើអ្នកពិតជាចង់ដាក់ស្នើទិន្នន័យនេះមែនទេ?',
+    'confirm_submit_data_description' => 'សូមបញ្ជាក់ម្តងទៀត មុនពេលដាក់ស្នើទិន្នន័យទម្រង់នេះ។',
 
     'enrollment_not_in_national_exam_list' => 'ឈ្មោះរបស់អ្នកមិនមាននៅក្នុងបញ្ជីប្រឡងថ្នាក់ជាតិ',
     'already_registered' => 'អ្នកបានចុះឈ្មោះរួចហើយ',

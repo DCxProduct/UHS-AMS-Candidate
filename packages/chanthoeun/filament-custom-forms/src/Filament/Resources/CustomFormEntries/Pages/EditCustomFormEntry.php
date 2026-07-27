@@ -53,6 +53,11 @@ class EditCustomFormEntry extends EditRecord
             $actions[] = $this->getSaveFormAction()
                 ->label(__('app.done'))
                 ->color('primary')
+                ->requiresConfirmation()
+                ->modalHeading(__('app.confirm_submit_data'))
+                ->modalDescription(__('app.confirm_submit_data_description'))
+                ->modalSubmitActionLabel(__('app.yes'))
+                ->modalCancelActionLabel(__('app.no'))
                 ->hidden(fn () => $this->hasWizardOnFirstStep());
         }
 
