@@ -39,6 +39,7 @@ return [
 
     'actions' => [
         'new' => 'Create New',
+        'create_payment' => 'Create Payment',
         'edit' => 'Edit',
         'delete' => 'Delete',
         'actions' => 'Actions',
