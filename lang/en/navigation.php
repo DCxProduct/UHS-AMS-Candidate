@@ -6,6 +6,7 @@ return [
     'groups' => [
         'form_entry' => 'Candidate Applications',
         'candidates' => 'Candidates',
+        'cashier' => 'Cashier',
         'form_builder' => 'Form Builder',
         'settings' => 'Settings',
     ],
@@ -14,6 +15,7 @@ return [
     'national_examination_registration' => 'National Examination Registration',
     'review_applications' => 'Candidate Lists',
     'exam_results' => 'Exam Results',
+    'payments' => 'Payments',
     'custom_forms' => 'Custom Forms',
     'document_templates' => 'Document Templates',
     'closing_date' => 'Closing Date',
