@@ -7,7 +7,7 @@ return [
     'actions' => [
 
         'cancel' => [
-            'label' => 'លុបចោល',
+            'label' => 'បោះបង់',
         ],
 
         'confirm' => [
