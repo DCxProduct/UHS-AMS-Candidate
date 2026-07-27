@@ -125,7 +125,7 @@ return [
             'actions' => [
 
                 'cancel' => [
-                    'label' => 'លុបចោល',
+                    'label' => 'បោះបង់',
                 ],
 
                 'drag_crop' => [

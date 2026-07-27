@@ -61,7 +61,7 @@ return [
     'actions' => [
 
         'cancel' => [
-            'label' => 'លុបចោល',
+            'label' => 'បោះបង់',
         ],
 
     ],
