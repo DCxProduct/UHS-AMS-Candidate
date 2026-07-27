@@ -73,7 +73,7 @@ class AppPanelProvider extends PanelProvider
 
             ->plugins([
                 FilamentShieldPlugin::make()
-                    ->registerNavigation(false)
+                    ->registerNavigation(true)
                     ->navigationGroup(fn (): string => __('navigation.groups.settings'))
                     ->navigationSort(2),
                 CustomFormPlugin::make()
