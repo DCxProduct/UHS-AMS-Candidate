@@ -11,7 +11,7 @@ class UserTypeOptions
 {
     public const BASE_ROLE = 'candidate';
     public const DEFAULT_KEY = 'candidate';
-    private const ALLOWED_ROLE_ORDER = [
+    private const PREFERRED_ROLE_ORDER = [
         'admin',
         'cashier',
         'associate',
@@ -236,19 +236,38 @@ class UserTypeOptions
         $byNormalized = collect($roles)
             ->mapWithKeys(fn (string $role): array => [Str::lower(trim($role)) => $role]);
 
-        $allowed = [];
+        $ordered = [];
 
-        foreach (self::ALLOWED_ROLE_ORDER as $normalizedRole) {
+        foreach (self::PREFERRED_ROLE_ORDER as $normalizedRole) {
             if ($normalizedRole === 'student' && $byNormalized->has('candidate')) {
                 continue;
             }
 
             if ($byNormalized->has($normalizedRole)) {
-                $allowed[] = $byNormalized->get($normalizedRole);
+                $ordered[] = $byNormalized->get($normalizedRole);
             }
         }
 
-        return $allowed;
+        $remaining = collect($roles)
+            ->reject(function (string $role) use ($ordered, $byNormalized): bool {
+                $normalized = Str::lower(trim($role));
+
+                if ($normalized === 'student' && $byNormalized->has('candidate')) {
+                    return true;
+                }
+
+                return collect($ordered)
+                    ->contains(fn (string $orderedRole): bool => strcasecmp($orderedRole, $role) === 0);
+            })
+            ->sortBy(fn (string $role): string => Str::lower(trim($role)))
+            ->values()
+            ->all();
+
+        return collect($ordered)
+            ->merge($remaining)
+            ->unique(fn (string $role): string => Str::lower(trim($role)))
+            ->values()
+            ->all();
     }
 
     protected static function findRoleCaseInsensitive(array $availableRoles, string $needle): ?string

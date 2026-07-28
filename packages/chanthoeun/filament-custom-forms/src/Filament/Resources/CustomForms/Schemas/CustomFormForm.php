@@ -2,6 +2,7 @@
 
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomForms\Schemas;
 
+use App\Support\UserTypeOptions;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormField;
 use Filament\Schemas\Components\Section;
@@ -174,6 +175,59 @@ class CustomFormForm
                             ->required(fn (Get $get): bool =>
                                 $get('menu_placement') === 'sub_item'
                                 && filled($get('parent_sidebar'))
+                            ),
+
+                        Forms\Components\CheckboxList::make('allowed_roles')
+                            ->label(app()->getLocale() === 'km' ? 'តួនាទីអាចប្រើប្រាស់' : 'Allowed Roles')
+                            ->options(fn (): array => UserTypeOptions::options())
+                            ->columns(2)
+                            ->gridDirection('row')
+                            ->bulkToggleable()
+                            ->helperText(app()->getLocale() === 'km'
+                                ? 'ជ្រើសរើសតួនាទីដែលអាចបើក និងដាក់ពាក្យតាមទម្រង់នេះ'
+                                : 'Select the roles that can open and use this form')
+                            ->columnSpanFull()
+                            ->afterStateHydrated(function ($component, $record): void {
+                                $availableRoles = array_keys(UserTypeOptions::options());
+                                $roles = $record?->allowed_roles;
+
+                                if (is_string($roles)) {
+                                    $decoded = json_decode($roles, true);
+                                    $roles = is_array($decoded) ? $decoded : [$roles];
+                                }
+
+                                $component->state(
+                                    collect(is_array($roles) ? $roles : ['admin'])
+                                        ->map(function ($role) use ($availableRoles): ?string {
+                                            $normalized = strtolower(trim((string) $role));
+
+                                            if ($normalized === 'student' && in_array('candidate', $availableRoles, true)) {
+                                                return 'candidate';
+                                            }
+
+                                            return collect($availableRoles)
+                                                ->first(fn (string $availableRole): bool => strcasecmp($availableRole, $normalized) === 0);
+                                        })
+                                        ->filter(fn ($role): bool => filled($role))
+                                        ->unique()
+                                        ->values()
+                                        ->all()
+                                );
+                            })
+                            ->dehydrateStateUsing(fn ($state): array => collect(is_array($state) ? $state : [])
+                                ->map(function ($role): ?string {
+                                    $normalized = strtolower(trim((string) $role));
+
+                                    if ($normalized === 'student') {
+                                        return 'candidate';
+                                    }
+
+                                    return filled($normalized) ? $normalized : null;
+                                })
+                                ->filter(fn ($role): bool => filled($role))
+                                ->unique()
+                                ->values()
+                                ->all()
                             ),
 
                          Toggle::make('is_active')

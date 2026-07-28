@@ -87,12 +87,41 @@ class ClosingDateWorkflow
 
     public static function currentUserIsAdmin(): bool
     {
-        return auth()->user()?->registration_type === 'admin';
+        $user = auth()->user();
+
+        if (! $user) {
+            return false;
+        }
+
+        return method_exists($user, 'hasEffectiveRole')
+            ? $user->hasEffectiveRole('admin')
+            : $user->registration_type === 'admin';
     }
 
     public static function currentUserIsStudent(): bool
     {
-        return auth()->user()?->registration_type === 'student';
+        $user = auth()->user();
+
+        if (! $user || $user->registration_type !== 'student') {
+            return false;
+        }
+
+        if (
+            method_exists($user, 'hasEffectiveRole')
+            && $user->hasEffectiveRole([
+                'admin',
+                'cashier',
+                'finance',
+                'developer',
+                'registrar',
+                'processing',
+                'team uhs',
+            ])
+        ) {
+            return false;
+        }
+
+        return true;
     }
 
     public static function adminCanManage(): bool

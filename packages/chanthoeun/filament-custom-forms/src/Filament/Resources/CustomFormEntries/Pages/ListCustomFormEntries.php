@@ -25,10 +25,7 @@ class ListCustomFormEntries extends ListRecords
             ?? data_get(request()->query('tableFilters'), 'custom_form_id.value')
             ?? request()->query('form_id');
 
-        if (
-            auth()->user()?->registration_type !== 'student'
-            || ! $this->activeFormId
-        ) {
+        if (! $this->activeFormId) {
             return;
         }
 
@@ -74,7 +71,7 @@ class ListCustomFormEntries extends ListRecords
         | Keep the old profile create/edit/draft behavior unchanged.
         |--------------------------------------------------------------------------
         */
-        if ($customForm->slug === 'profile') {
+        if ($customForm->slug === 'profile' && $this->currentUserUsesCandidateFlow()) {
             $entry = $this->studentCurrentFormEntry();
 
             if ($entry) {
@@ -208,12 +205,62 @@ class ListCustomFormEntries extends ListRecords
                     )
                 )
                 ->visible(
-                    fn (): bool =>
-                        auth()->user()?->registration_type === 'student'
-                        && $this->activeFormId
-                        && ! $this->studentHasAnyCurrentFormEntry()
+                    fn (): bool => $this->currentUserCanCreateCurrentForm()
                 ),
         ];
+    }
+
+    protected function currentUserCanCreateCurrentForm(): bool
+    {
+        $user = auth()->user();
+
+        if (! $user || ! $this->activeFormId) {
+            return false;
+        }
+
+        if (! $user->can('Create:CustomFormEntry')) {
+            return false;
+        }
+
+        $customForm = CustomForm::find($this->activeFormId);
+
+        if (! $customForm || ! CustomFormEntryResource::canCurrentUserAccessForm($customForm)) {
+            return false;
+        }
+
+        if (
+            ! $this->currentUserUsesCandidateFlow()
+        ) {
+            return true;
+        }
+
+        return ! $this->studentHasAnyCurrentFormEntry();
+    }
+
+    protected function currentUserUsesCandidateFlow(): bool
+    {
+        $user = auth()->user();
+
+        if (! $user || $user->registration_type !== 'student') {
+            return false;
+        }
+
+        if (
+            method_exists($user, 'hasEffectiveRole')
+            && $user->hasEffectiveRole([
+                'admin',
+                'cashier',
+                'finance',
+                'developer',
+                'registrar',
+                'processing',
+                'team uhs',
+            ])
+        ) {
+            return false;
+        }
+
+        return true;
     }
 
     protected function getCreateLabel(): string

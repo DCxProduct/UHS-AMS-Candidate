@@ -36,7 +36,7 @@ class CustomFormEntryResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return static::currentUserCanAccessAdminResource() || static::currentUserIsStudent();
+        return static::currentUserCanAccessAdminResource() || static::currentUserCanUseDynamicForms();
     }
 
     public static function canAccess(): bool
@@ -45,11 +45,7 @@ class CustomFormEntryResource extends Resource
             return static::currentUserCanAccessAdminResource();
         }
 
-        if (! static::currentUserIsStudent()) {
-            return false;
-        }
-
-        if (! static::currentUserHasStudentFormPermission()) {
+        if (! static::currentUserCanUseDynamicForms()) {
             return false;
         }
 
@@ -102,18 +98,23 @@ class CustomFormEntryResource extends Resource
             return false;
         }
 
-        if ((string) $form->slug === 'profile') {
+        if (static::currentUserIsStudent() && (string) $form->slug === 'profile') {
             return true;
         }
 
         if (
+            static::currentUserIsStudent()
+            && (
             static::profileFeatureIsHidden()
             || static::profileFeatureShowsContact()
+            )
         ) {
             return false;
         }
 
-        return static::studentHasCompletedProfile();
+        return static::currentUserIsStudent()
+            ? static::studentHasCompletedProfile()
+            : true;
     }
 
     protected static function currentUserCanAccessAdminResource(): bool
@@ -172,12 +173,41 @@ class CustomFormEntryResource extends Resource
 
     protected static function currentUserIsAdmin(): bool
     {
-        return auth()->user()?->registration_type === 'admin';
+        $user = auth()->user();
+
+        if (! $user) {
+            return false;
+        }
+
+        return method_exists($user, 'hasEffectiveRole')
+            ? $user->hasEffectiveRole('admin')
+            : $user->registration_type === 'admin';
     }
 
     protected static function currentUserIsStudent(): bool
     {
-        return auth()->user()?->registration_type === 'student';
+        $user = auth()->user();
+
+        if (! $user || $user->registration_type !== 'student') {
+            return false;
+        }
+
+        if (
+            method_exists($user, 'hasEffectiveRole')
+            && $user->hasEffectiveRole([
+                'admin',
+                'cashier',
+                'finance',
+                'developer',
+                'registrar',
+                'processing',
+                'team uhs',
+            ])
+        ) {
+            return false;
+        }
+
+        return true;
     }
 
     public static function getNavigationIcon(): string | BackedEnum | null
@@ -256,7 +286,7 @@ class CustomFormEntryResource extends Resource
 
     public static function getNavigationItems(): array
     {
-        if (! static::currentUserIsAdmin() && ! static::currentUserIsStudent()) {
+        if (! static::currentUserIsAdmin() && ! static::currentUserCanUseDynamicForms()) {
             return [];
         }
 
@@ -295,7 +325,7 @@ class CustomFormEntryResource extends Resource
             $forms = $query->get()
                 ->filter(fn (CustomForm $form): bool => static::canCurrentUserAccessForm($form))
                 ->filter(fn (CustomForm $form): bool => static::formShouldShowFeature((int) $form->id))
-                ->filter(fn (CustomForm $form): bool => static::canShowStudentForm((string) $form->slug))
+                ->filter(fn (CustomForm $form): bool => static::canShowDynamicForm((string) $form->slug))
                 ->values();
 
             foreach ($forms as $form) {
@@ -303,7 +333,7 @@ class CustomFormEntryResource extends Resource
 
                 $formId = (int) $form->id;
 
-                $url = static::currentUserIsStudent() && static::formShouldShowContact($formId)
+                $url = static::formShouldShowContact($formId)
                     ? url('/contact-us?form_id=' . $formId)
                     : static::getUrl('index', [
                         'tableFilters' => [
@@ -350,9 +380,13 @@ class CustomFormEntryResource extends Resource
         return $items;
     }
 
-    protected static function canShowStudentForm(string $slug): bool
+    protected static function canShowDynamicForm(string $slug): bool
     {
         if (static::currentUserIsAdmin()) {
+            return $slug !== 'profile';
+        }
+
+        if (! static::currentUserIsStudent()) {
             return $slug !== 'profile';
         }
 
@@ -483,23 +517,41 @@ class CustomFormEntryResource extends Resource
             ->all();
     }
 
-    protected static function canCurrentUserAccessForm(CustomForm $form): bool
+    public static function canCurrentUserAccessForm(CustomForm $form): bool
     {
         if (static::currentUserIsAdmin()) {
             return true;
         }
 
-        if (! static::currentUserHasStudentFormPermission()) {
+        if (! static::currentUserCanUseDynamicForms()) {
             return false;
         }
 
-        $role = strtolower((string) (auth()->user()?->registration_type ?? ''));
+        $userRoles = static::currentUserFormRoles();
 
-        if (! in_array($role, ['student', 'admin'], true)) {
+        if ($userRoles === []) {
             return false;
         }
 
-        return in_array($role, static::getFormAllowedRoles($form), true);
+        return collect($userRoles)
+            ->intersect(static::getFormAllowedRoles($form))
+            ->isNotEmpty();
+    }
+
+    protected static function currentUserCanUseDynamicForms(): bool
+    {
+        $user = auth()->user();
+
+        if (! $user) {
+            return false;
+        }
+
+        if (static::currentUserIsAdmin()) {
+            return true;
+        }
+
+        return $user->can('ViewAny:CustomFormEntry')
+            || $user->can('Create:CustomFormEntry');
     }
 
     protected static function getFormAllowedRoles(CustomForm $form): array
@@ -529,13 +581,53 @@ class CustomFormEntryResource extends Resource
         }
 
         $roles = collect($roles)
-            ->map(fn ($role): string => strtolower(trim((string) $role)))
+            ->flatMap(fn ($role): array => static::normalizeRoleAliases((string) $role))
             ->filter()
             ->unique()
             ->values()
             ->all();
 
-        return empty($roles) ? ['student', 'admin'] : $roles;
+        return empty($roles) ? ['student', 'candidate', 'admin'] : $roles;
+    }
+
+    protected static function currentUserFormRoles(): array
+    {
+        $user = auth()->user();
+
+        if (! $user) {
+            return [];
+        }
+
+        $roles = method_exists($user, 'effectiveRoleNames')
+            ? $user->effectiveRoleNames()->all()
+            : [];
+
+        if ($user->registration_type === 'student') {
+            $roles[] = 'student';
+            $roles[] = 'candidate';
+        }
+
+        return collect($roles)
+            ->flatMap(fn ($role): array => static::normalizeRoleAliases((string) $role))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    protected static function normalizeRoleAliases(string $role): array
+    {
+        $normalized = strtolower(trim($role));
+
+        if ($normalized === '') {
+            return [];
+        }
+
+        if (in_array($normalized, ['student', 'candidate'], true)) {
+            return ['student', 'candidate'];
+        }
+
+        return [$normalized];
     }
 
     protected static function currentUserHasStudentFormPermission(): bool
