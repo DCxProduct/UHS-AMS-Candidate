@@ -11,9 +11,10 @@ use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
+use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\TernaryFilter;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\DB;
 
@@ -99,12 +100,46 @@ class SystemUsersTable
                     ->sortable(),
             ])
             ->filters([
-                TernaryFilter::make('is_active')
+                SelectFilter::make('roles')
+                    ->label(__('system_users.fields.candidate_type'))
+                    ->options(fn (): array => UserTypeOptions::options())
+                    ->native(false)
+                    ->searchable()
+                    ->preload()
+                    ->query(function ($query, array $data) {
+                        $value = trim((string) ($data['value'] ?? ''));
+
+                        if ($value === '') {
+                            return $query;
+                        }
+
+                        $driver = DB::connection()->getDriverName();
+
+                        if ($driver === 'pgsql') {
+                            return $query->whereRaw('LOWER(COALESCE(roles::text, \'\')) LIKE ?', ['%"' . strtolower($value) . '"%']);
+                        }
+
+                        return $query->whereRaw('LOWER(COALESCE(CAST(roles AS CHAR), \'\')) LIKE ?', ['%"' . strtolower($value) . '"%']);
+                    }),
+
+                SelectFilter::make('is_active')
                     ->label(__('system_users.fields.is_active'))
-                    ->trueLabel(__('system_users.filters.active'))
-                    ->falseLabel(__('system_users.filters.inactive'))
-                    ->native(false),
-            ])
+                    ->options([
+                        '1' => __('system_users.filters.active'),
+                        '0' => __('system_users.filters.inactive'),
+                    ])
+                    ->native(false)
+                    ->query(function ($query, array $data) {
+                        $value = $data['value'] ?? null;
+
+                        if ($value === null || $value === '') {
+                            return $query;
+                        }
+
+                        return $query->where('is_active', (bool) $value);
+                    }),
+            ], layout: FiltersLayout::AboveContent)
+            ->filtersFormColumns(4)
             ->deferFilters(false)
             ->filtersApplyAction(fn (Action $action): Action => $action->hidden())
             ->recordActions([
