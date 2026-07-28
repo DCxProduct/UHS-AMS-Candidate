@@ -37,7 +37,7 @@ class DocumentTemplateTable
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label(__('filament-document-builder::document-builder.labels.created_on'))
-                    ->dateTime('M j, Y h:i A')
+                    ->date('M j, Y')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
 
