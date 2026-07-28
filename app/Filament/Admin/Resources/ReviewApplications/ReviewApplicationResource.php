@@ -5,8 +5,8 @@ namespace App\Filament\Admin\Resources\ReviewApplications;
 use App\Filament\Admin\Resources\ReviewApplications\Pages;
 use App\Filament\Admin\Resources\ReviewApplications\Tables\ReviewApplicationsTable;
 use App\Filament\Concerns\AdminOnly;
+use App\Models\ReviewApplication;
 use BackedEnum;
-use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
@@ -17,10 +17,7 @@ class ReviewApplicationResource extends Resource
 {
     use AdminOnly;
 
-    public static function getModel(): string
-    {
-        return CustomFormEntry::class;
-    }
+    protected static ?string $model = ReviewApplication::class;
 
     protected static ?string $slug = 'candidate-lists';
 

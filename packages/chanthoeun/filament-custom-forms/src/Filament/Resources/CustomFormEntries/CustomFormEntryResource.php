@@ -5,6 +5,7 @@ namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries;
 use App\Models\ClosingDate;
 use App\Support\ClosingDateWorkflow;
 use BackedEnum;
+use BezhanSalleh\FilamentShield\Facades\FilamentShield;
 use Chanthoeun\FilamentCustomForms\CustomFormPlugin;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Schemas\CustomFormEntryForm;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Tables\CustomFormEntriesTable;
@@ -35,16 +36,20 @@ class CustomFormEntryResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return static::currentUserIsAdmin() || static::currentUserIsStudent();
+        return static::currentUserCanAccessAdminResource() || static::currentUserIsStudent();
     }
 
     public static function canAccess(): bool
     {
         if (static::currentUserIsAdmin()) {
-            return true;
+            return static::currentUserCanAccessAdminResource();
         }
 
         if (! static::currentUserIsStudent()) {
+            return false;
+        }
+
+        if (! static::currentUserHasStudentFormPermission()) {
             return false;
         }
 
@@ -109,6 +114,33 @@ class CustomFormEntryResource extends Resource
         }
 
         return static::studentHasCompletedProfile();
+    }
+
+    protected static function currentUserCanAccessAdminResource(): bool
+    {
+        $user = auth()->user();
+
+        if (! $user) {
+            return false;
+        }
+
+        if (! static::currentUserIsAdmin()) {
+            return false;
+        }
+
+        $permissions = FilamentShield::getResourcePermissions(static::class) ?? [];
+
+        if ($permissions === []) {
+            return true;
+        }
+
+        foreach ($permissions as $permission) {
+            if ($user->can($permission)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
@@ -457,6 +489,10 @@ class CustomFormEntryResource extends Resource
             return true;
         }
 
+        if (! static::currentUserHasStudentFormPermission()) {
+            return false;
+        }
+
         $role = strtolower((string) (auth()->user()?->registration_type ?? ''));
 
         if (! in_array($role, ['student', 'admin'], true)) {
@@ -500,6 +536,18 @@ class CustomFormEntryResource extends Resource
             ->all();
 
         return empty($roles) ? ['student', 'admin'] : $roles;
+    }
+
+    protected static function currentUserHasStudentFormPermission(): bool
+    {
+        $user = auth()->user();
+
+        if (! $user) {
+            return false;
+        }
+
+        return $user->can('ViewAny:CustomFormEntry')
+            || $user->can('Create:CustomFormEntry');
     }
 
     protected static function formShouldShowFeature(int $formId): bool

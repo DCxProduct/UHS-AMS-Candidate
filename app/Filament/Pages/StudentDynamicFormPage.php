@@ -46,7 +46,14 @@ class StudentDynamicFormPage extends Page implements HasForms
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->registration_type === 'student';
+        $user = auth()->user();
+
+        if (($user?->registration_type !== 'student')) {
+            return false;
+        }
+
+        return $user->can('ViewAny:CustomFormEntry')
+            || $user->can('Create:CustomFormEntry');
     }
 
     public function mount(string $slug): void

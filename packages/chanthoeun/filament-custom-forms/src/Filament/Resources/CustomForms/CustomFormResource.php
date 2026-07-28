@@ -3,6 +3,7 @@
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomForms;
 
 use BackedEnum;
+use BezhanSalleh\FilamentShield\Facades\FilamentShield;
 use Chanthoeun\FilamentCustomForms\CustomFormPlugin;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomForms\Pages;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomForms\Schemas\CustomFormForm;
@@ -34,17 +35,12 @@ class CustomFormResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return static::isAdmin();
+        return static::currentUserCanAccessResource();
     }
 
     public static function canAccess(): bool
     {
-        return static::isAdmin();
-    }
-
-    protected static function isAdmin(): bool
-    {
-        return auth()->user()?->registration_type === 'admin';
+        return static::currentUserCanAccessResource();
     }
 
     public static function getModelLabel(): string
@@ -86,5 +82,28 @@ class CustomFormResource extends Resource
             'create' => Pages\CreateCustomForm::route('/create'),
             'edit' => Pages\EditCustomForm::route('/{record}/edit'),
         ];
+    }
+
+    protected static function currentUserCanAccessResource(): bool
+    {
+        $user = auth()->user();
+
+        if (! $user) {
+            return false;
+        }
+
+        $permissions = FilamentShield::getResourcePermissions(static::class) ?? [];
+
+        if ($permissions === []) {
+            return static::canViewAny();
+        }
+
+        foreach ($permissions as $permission) {
+            if ($user->can($permission)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

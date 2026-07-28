@@ -1,6 +1,9 @@
 <?php
 
 declare(strict_types=1);
+use App\Filament\Pages\Sync;
+use App\Filament\Student\Pages\ContactUs;
+use App\Filament\Student\Pages\MyProfile;
 use BezhanSalleh\FilamentShield\Resources\Roles\RoleResource;
 use Filament\Pages\Dashboard;
 use Filament\Widgets\AccountWidget;
@@ -197,7 +200,9 @@ return [
         'subject' => 'class',
         'prefix' => 'view',
         'exclude' => [
-            Dashboard::class,
+            Sync::class,
+            ContactUs::class,
+            MyProfile::class,
         ],
     ],
 

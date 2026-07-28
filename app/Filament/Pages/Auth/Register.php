@@ -430,17 +430,43 @@ class Register extends BaseRegister
 
     protected function getUserTypeOptions(): array
     {
-        return UserTypeOptions::options();
+        $options = UserTypeOptions::customQuery()
+            ->get()
+            ->filter(fn ($userType): bool => in_array((string) $userType->key, ['candidate', 'associate'], true))
+            ->mapWithKeys(fn ($userType): array => [
+                $userType->key => $userType->getLocalizedLabel(),
+            ])
+            ->all();
+
+        return $options !== []
+            ? $options
+            : [
+                'candidate' => __('app.candidate'),
+                'associate' => app()->getLocale() === 'km' ? 'បរិញ្ញាបត្ររង' : 'Associate',
+            ];
     }
 
     protected function getDefaultUserTypeRole(): string
     {
-        return array_key_first($this->getUserTypeOptions()) ?? 'student';
+        return array_key_first($this->getUserTypeOptions()) ?? 'candidate';
     }
 
     protected function getUserTypeColors(): array
     {
-        return UserTypeOptions::colors();
+        $colors = UserTypeOptions::customQuery()
+            ->get()
+            ->filter(fn ($userType): bool => in_array((string) $userType->key, ['candidate', 'associate'], true))
+            ->mapWithKeys(fn ($userType): array => [
+                $userType->key => UserTypeOptions::normalizeColor($userType->color),
+            ])
+            ->all();
+
+        return $colors !== []
+            ? $colors
+            : [
+                'candidate' => 'primary',
+                'associate' => 'warning',
+            ];
     }
 
     protected function resolveSelectedUserTypeRole(?string $roleName): string

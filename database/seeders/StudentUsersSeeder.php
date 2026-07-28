@@ -27,7 +27,7 @@ class StudentUsersSeeder extends Seeder
                         'registration_type' => 'student',
                         'academic_year' => '2025-2026',
                         'name' => $username,
-                        'name_latin' => 'STUDENT ' . $i,
+                        'name_latin' => 'CANDIDATE ' . $i,
                         'email' => $email,
                         'phone' => $phone,
                         'date_of_birth' => '2001-01-' . str_pad((string) $i, 2, '0', STR_PAD_LEFT),
@@ -50,7 +50,7 @@ class StudentUsersSeeder extends Seeder
                         'password' => $hashedPassword,
                         'avatar' => null,
                         'roles' => [
-                            'Student',
+                            'candidate',
                         ],
                         'permissions' => null,
                         'is_active' => true,

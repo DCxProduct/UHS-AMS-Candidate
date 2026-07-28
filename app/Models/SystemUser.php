@@ -14,6 +14,9 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 class SystemUser extends Authenticatable implements FilamentUser, HasAvatar, HasName, CanResetPasswordContract
 {
@@ -78,6 +81,8 @@ class SystemUser extends Authenticatable implements FilamentUser, HasAvatar, Has
             'Registrar',
             'Team UHS',
             'Processing',
+            'candidate',
+            'Candidate',
             'Student',
         ]);
     }
@@ -140,7 +145,7 @@ class SystemUser extends Authenticatable implements FilamentUser, HasAvatar, Has
             ->where($lookup)
             ->first();
 
-        User::query()->updateOrCreate(
+        $loginUser = User::query()->updateOrCreate(
             $lookup,
             [
                 'registration_type' => $this->getLoginRegistrationType(),
@@ -160,6 +165,8 @@ class SystemUser extends Authenticatable implements FilamentUser, HasAvatar, Has
                 'is_active' => (bool) $this->is_active,
             ]
         );
+
+        $this->syncLoginUserAuthorizations($loginUser);
     }
 
     protected function getLoginUserLookup(): array
@@ -187,7 +194,67 @@ class SystemUser extends Authenticatable implements FilamentUser, HasAvatar, Has
 
     protected function getLoginRegistrationType(): string
     {
-        return $this->hasJsonRole('Student') ? 'student' : 'admin';
+        $staffRoles = ['admin', 'cashier', 'finance', 'developer', 'registrar', 'processing', 'team uhs'];
+
+        if ($this->hasJsonRole($staffRoles)) {
+            return 'admin';
+        }
+
+        return $this->hasJsonRole(['Student', 'student', 'candidate', 'Candidate']) ? 'student' : 'admin';
+    }
+
+    protected function syncLoginUserAuthorizations(User $loginUser): void
+    {
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $allRoles = Role::query()
+            ->where('guard_name', 'web')
+            ->get();
+
+        $roleNames = collect($this->normalizeStringArray($this->roles))
+            ->map(fn (string $role): ?string => $allRoles
+                ->first(fn (Role $candidate): bool => strcasecmp($candidate->name, $role) === 0)
+                ?->name
+            )
+            ->filter()
+            ->values()
+            ->all();
+
+        $allPermissions = Permission::query()
+            ->where('guard_name', 'web')
+            ->get();
+
+        $permissionNames = collect($this->normalizeStringArray($this->permissions))
+            ->map(fn (string $permission): ?string => $allPermissions
+                ->first(fn (Permission $candidate): bool => strcasecmp($candidate->name, $permission) === 0)
+                ?->name
+            )
+            ->filter()
+            ->values()
+            ->all();
+
+        $loginUser->syncRoles($roleNames);
+        $loginUser->syncPermissions($permissionNames);
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+    }
+
+    protected function normalizeStringArray(mixed $value): array
+    {
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+            $value = is_array($decoded) ? $decoded : [$value];
+        }
+
+        if (! is_array($value)) {
+            return [];
+        }
+
+        return collect($value)
+            ->filter(fn ($item): bool => filled($item))
+            ->map(fn ($item): string => trim((string) $item))
+            ->values()
+            ->all();
     }
 
     public function getFilamentName(): string

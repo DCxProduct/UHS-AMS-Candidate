@@ -42,11 +42,11 @@ class EditSystemUser extends EditRecord
         $candidateType = collect(is_array($roles) ? $roles : [])
             ->filter(fn ($role): bool => filled($role))
             ->map(fn ($role): string => trim((string) $role))
-            ->first(fn (string $role): bool => strcasecmp($role, 'Student') !== 0);
+            ->first(fn (string $role): bool => ! in_array(strtolower($role), ['student', 'candidate'], true));
 
         $data['candidate_type'] = $candidateType
             ? UserTypeOptions::resolve($candidateType)
-            : UserTypeOptions::BASE_ROLE;
+            : UserTypeOptions::DEFAULT_KEY;
 
         return $data;
     }
@@ -61,7 +61,7 @@ class EditSystemUser extends EditRecord
         unset($data['candidate_type']);
 
         $data['name'] = blank($data['name'] ?? null)
-            ? trim((string) ($data['username'] ?? 'Student'))
+            ? trim((string) ($data['username'] ?? 'Candidate'))
             : trim((string) $data['name']);
 
         $data['username'] = blank($data['username'] ?? null)

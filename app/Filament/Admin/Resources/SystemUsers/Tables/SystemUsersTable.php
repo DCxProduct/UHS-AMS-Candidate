@@ -57,17 +57,7 @@ class SystemUsersTable
                             return '-';
                         }
 
-                        if ($candidateRole === UserTypeOptions::BASE_ROLE) {
-                            return UserTypeOptions::formatLabel($candidateRole);
-                        }
-
-                        $candidateType = UserTypeOptions::findByKey((string) $candidateRole);
-
-                        if (! $candidateType) {
-                            return '-';
-                        }
-
-                        return $candidateType->getLocalizedLabel();
+                        return UserTypeOptions::formatLabel((string) $candidateRole);
                     })
                     ->badge()
                     ->sortable(query: function ($query, string $direction) {
@@ -86,15 +76,10 @@ class SystemUsersTable
                             return 'gray';
                         }
 
-                        if ($candidateRole === UserTypeOptions::BASE_ROLE) {
-                            return UserTypeOptions::normalizeColor('blue');
-                        }
-
-                        $candidateType = UserTypeOptions::findByKey((string) $candidateRole);
-
-                        return $candidateType
-                            ? UserTypeOptions::normalizeColor($candidateType->color)
-                            : 'gray';
+                        return UserTypeOptions::colors()[(string) $candidateRole]
+                            ?? (in_array(strtolower((string) $candidateRole), ['student', 'candidate'], true)
+                                ? UserTypeOptions::normalizeColor('blue')
+                                : 'gray');
                     }),
 
                 IconColumn::make('is_active')
@@ -187,13 +172,13 @@ class SystemUsersTable
                 ->values();
 
             $candidateRole = $roleCollection
-                ->first(fn (string $role): bool => strcasecmp($role, 'Student') !== 0);
+                ->first(fn (string $role): bool => ! in_array(strtolower($role), ['student', 'candidate'], true));
 
             if ($candidateRole) {
                 return $candidateRole;
             }
 
-            if ($roleCollection->contains(fn (string $role): bool => strcasecmp($role, 'Student') === 0)) {
+            if ($roleCollection->contains(fn (string $role): bool => in_array(strtolower($role), ['student', 'candidate'], true))) {
                 return UserTypeOptions::BASE_ROLE;
             }
         }

@@ -7,6 +7,7 @@ use App\Filament\Admin\Resources\GeoLocations\Pages\EditGeoLocation;
 use App\Filament\Admin\Resources\GeoLocations\Pages\ListGeoLocations;
 use App\Filament\Admin\Resources\GeoLocations\Schemas\GeoLocationForm;
 use App\Filament\Admin\Resources\GeoLocations\Tables\GeoLocationsTable;
+use App\Filament\Concerns\AdminOnly;
 use App\Models\GeoLocation;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -17,14 +18,11 @@ use UnitEnum;
 
 class GeoLocationResource extends Resource
 {
+    use AdminOnly;
+
     protected static ?string $model = GeoLocation::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedMap;
-
-    public static function shouldRegisterNavigation(): bool
-    {
-        return auth()->user()?->registration_type !== 'student';
-    }
 
     public static function getNavigationLabel(): string
     {

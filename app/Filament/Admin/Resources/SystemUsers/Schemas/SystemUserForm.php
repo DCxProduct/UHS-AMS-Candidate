@@ -74,7 +74,7 @@ class SystemUserForm
                                 Select::make('candidate_type')
                                     ->label(__('system_users.fields.candidate_type'))
                                     ->options(fn (): array => UserTypeOptions::options())
-                                    ->default(UserTypeOptions::BASE_ROLE)
+                                    ->default(UserTypeOptions::DEFAULT_KEY)
                                     ->getOptionLabelUsing(fn (string $value): string => UserTypeOptions::formatLabel($value))
                                     ->required()
                                     ->native(false)

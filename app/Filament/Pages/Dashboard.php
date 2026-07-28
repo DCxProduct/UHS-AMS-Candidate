@@ -43,9 +43,15 @@ class Dashboard extends BaseDashboard
 
     public function getSubheading(): string|Htmlable|null
     {
-        return auth()->user()?->registration_type === 'admin'
-            ? __('dashboard.admin_subheading')
-            : __('dashboard.student_subheading');
+        if ($this->isAdminDashboardUser()) {
+            return __('dashboard.admin_subheading');
+        }
+
+        if ($this->isStudentDashboardUser()) {
+            return __('dashboard.student_subheading');
+        }
+
+        return __('dashboard.staff_subheading');
     }
 
     public function getColumns(): int|array
@@ -59,12 +65,16 @@ class Dashboard extends BaseDashboard
 
     public function getWidgets(): array
     {
-        if (auth()->user()?->registration_type === 'admin') {
+        if ($this->isAdminDashboardUser()) {
             return [
                 AdminStatsOverview::class,
                 AdminMenuOverview::class,
                 AdminSidebarFormsTable::class,
             ];
+        }
+
+        if (! $this->isStudentDashboardUser()) {
+            return [];
         }
 
         return [
@@ -73,5 +83,36 @@ class Dashboard extends BaseDashboard
             StudentProgressChart::class,
             StudentCompletionDoughnutChart::class,
         ];
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->isAdminDashboardUser();
+    }
+
+    public function isStudent(): bool
+    {
+        return $this->isStudentDashboardUser();
+    }
+
+    public function hasDashboardWidgets(): bool
+    {
+        return $this->getWidgets() !== [];
+    }
+
+    protected function isAdminDashboardUser(): bool
+    {
+        return auth()->user()?->hasEffectiveRole('admin') ?? false;
+    }
+
+    protected function isStudentDashboardUser(): bool
+    {
+        $user = auth()->user();
+
+        if (! $user || (string) $user->registration_type !== 'student') {
+            return false;
+        }
+
+        return ! $user->hasEffectiveRole(['admin', 'cashier', 'finance', 'developer', 'registrar', 'processing', 'team uhs']);
     }
 }

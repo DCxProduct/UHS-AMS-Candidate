@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
+use Illuminate\Foundation\Auth\User as AuthUser;
 use App\Models\Payment;
 use Illuminate\Auth\Access\HandlesAuthorization;
-use Illuminate\Foundation\Auth\User as AuthUser;
 
 class PaymentPolicy
 {
     use HandlesAuthorization;
-
+    
     public function viewAny(AuthUser $authUser): bool
     {
         return $authUser->can('ViewAny:Payment');
@@ -47,11 +47,6 @@ class PaymentPolicy
         return $authUser->can('Restore:Payment');
     }
 
-    public function restoreAny(AuthUser $authUser): bool
-    {
-        return $authUser->can('RestoreAny:Payment');
-    }
-
     public function forceDelete(AuthUser $authUser, Payment $payment): bool
     {
         return $authUser->can('ForceDelete:Payment');
@@ -60,6 +55,11 @@ class PaymentPolicy
     public function forceDeleteAny(AuthUser $authUser): bool
     {
         return $authUser->can('ForceDeleteAny:Payment');
+    }
+
+    public function restoreAny(AuthUser $authUser): bool
+    {
+        return $authUser->can('RestoreAny:Payment');
     }
 
     public function replicate(AuthUser $authUser, Payment $payment): bool
@@ -71,4 +71,5 @@ class PaymentPolicy
     {
         return $authUser->can('Reorder:Payment');
     }
+
 }

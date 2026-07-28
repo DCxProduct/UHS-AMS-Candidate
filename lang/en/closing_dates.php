@@ -70,6 +70,9 @@ return [
 
     'start_date_before_or_equal_end_date' => 'Start date must be before or equal to end date.',
     'end_date_after_or_equal_start_date' => 'End date must be after or equal to start date.',
+    'name_required' => 'Name is required.',
+    'type_required' => 'Student application is required.',
+    'status_required' => 'Status is required.',
     'start_date_required' => 'Start date is required.',
     'end_date_required' => 'End date is required.',
     'start_date_valid' => 'Start date must be a valid date.',

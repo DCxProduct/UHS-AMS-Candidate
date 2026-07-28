@@ -98,7 +98,7 @@ return [
     */
 
     'dashboard' => 'Dashboard',
-    'student' => 'Student',
+    'student' => 'Candidate',
     'candidate' => 'Candidate',
     'welcome_back' => 'Welcome back',
 
