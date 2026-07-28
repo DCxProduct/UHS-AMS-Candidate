@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Spatie\Permission\Traits\HasRoles;
@@ -57,8 +58,50 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
             return false;
         }
 
-        return $this->hasAnyRole(['admin', 'student'])
+        if (! $this->is_active) {
+            return false;
+        }
+
+        return $this->roles()->exists()
+            || $this->permissions()->exists()
+            || $this->linkedSystemUser()?->isActiveAccount()
+            || $this->effectiveRoleNames()->isNotEmpty()
             || in_array($this->registration_type, ['admin', 'student'], true);
+    }
+
+    public function hasEffectiveRole(array | string $roles): bool
+    {
+        $roles = collect(is_array($roles) ? $roles : [$roles])
+            ->map(fn ($role): string => Str::lower(trim((string) $role)))
+            ->all();
+
+        return $this->effectiveRoleNames()
+            ->intersect($roles)
+            ->isNotEmpty();
+    }
+
+    public function effectiveRoleNames(): Collection
+    {
+        $loginRoles = $this->getRoleNames()
+            ->map(fn (string $role): string => Str::lower(trim($role)));
+
+        $systemRoles = collect($this->linkedSystemUser()?->roles ?? [])
+            ->when(
+                is_string($this->linkedSystemUser()?->roles),
+                function (Collection $collection): Collection {
+                    $rawRoles = $this->linkedSystemUser()?->roles;
+                    $decoded = json_decode((string) $rawRoles, true);
+
+                    return collect(is_array($decoded) ? $decoded : [$rawRoles]);
+                }
+            )
+            ->filter(fn ($role): bool => filled($role))
+            ->map(fn ($role): string => Str::lower(trim((string) $role)));
+
+        return $loginRoles
+            ->merge($systemRoles)
+            ->unique()
+            ->values();
     }
 
     public function getFilamentAvatarUrl(): ?string
@@ -83,6 +126,15 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
     public function studentUser(): HasOne
     {
         return $this->hasOne(\App\Models\SystemUser::class);
+    }
+
+    public function linkedSystemUser(): ?SystemUser
+    {
+        return SystemUser::query()
+            ->when(filled($this->username), fn ($query) => $query->orWhere('username', $this->username))
+            ->when(filled($this->email), fn ($query) => $query->orWhere('email', $this->email))
+            ->when(filled($this->phone), fn ($query) => $query->orWhere('phone', $this->phone))
+            ->first();
     }
 
     private function normalizeAvatarPath(mixed $avatar): ?string

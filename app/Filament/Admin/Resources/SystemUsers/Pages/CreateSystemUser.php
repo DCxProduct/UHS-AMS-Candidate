@@ -31,7 +31,7 @@ class CreateSystemUser extends CreateRecord
         unset($data['candidate_type']);
 
         $data['name'] = blank($data['name'] ?? null)
-            ? trim((string) ($data['username'] ?? 'Student'))
+            ? trim((string) ($data['username'] ?? 'Candidate'))
             : trim((string) $data['name']);
 
         $data['username'] = blank($data['username'] ?? null)

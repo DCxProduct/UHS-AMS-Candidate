@@ -135,6 +135,9 @@ class Login extends BaseLogin
             ]);
         }
 
+        $user->linkedSystemUser()?->syncLoginUser();
+        $user->refresh();
+
         if (! in_array((string) $user->registration_type, ['admin', 'student'], true)) {
             throw ValidationException::withMessages([
                 'data.login' => __('app.no_panel_permission'),

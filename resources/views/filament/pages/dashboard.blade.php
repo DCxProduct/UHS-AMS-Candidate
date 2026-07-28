@@ -106,4 +106,16 @@
             </div>
         </div>
     @endif
+
+    @if (! $this->hasDashboardWidgets())
+        <div class="rounded-xl border border-dashed border-gray-300 bg-white p-8 text-center shadow-sm dark:border-white/10 dark:bg-gray-900">
+            <h2 class="text-lg font-semibold text-gray-950 dark:text-white">
+                {{ __('dashboard.no_tracking_title') }}
+            </h2>
+
+            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                {{ __('dashboard.no_tracking_description') }}
+            </p>
+        </div>
+    @endif
 </x-filament-panels::page>

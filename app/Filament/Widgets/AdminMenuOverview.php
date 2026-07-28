@@ -28,7 +28,7 @@ class AdminMenuOverview extends Widget
 
     public static function canView(): bool
     {
-        return auth()->user()?->registration_type === 'admin';
+        return auth()->user()?->hasEffectiveRole('admin') ?? false;
     }
 
     protected function getViewData(): array

@@ -3,6 +3,7 @@
 namespace Chanthoeun\FilamentDocumentBuilder\Resources;
 
 use BackedEnum;
+use BezhanSalleh\FilamentShield\Facades\FilamentShield;
 use Chanthoeun\FilamentDocumentBuilder\DocumentBuilderPlugin;
 use Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate;
 use Chanthoeun\FilamentDocumentBuilder\Resources\DocumentTemplateResource\Pages;
@@ -43,17 +44,12 @@ class DocumentTemplateResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return static::isAdmin();
+        return static::currentUserCanAccessResource();
     }
 
     public static function canAccess(): bool
     {
-        return static::isAdmin();
-    }
-
-    protected static function isAdmin(): bool
-    {
-        return auth()->user()?->registration_type === 'admin';
+        return static::currentUserCanAccessResource();
     }
 
     public static function getNavigationIcon(): string | BackedEnum | null
@@ -81,5 +77,28 @@ class DocumentTemplateResource extends Resource
             'create' => Pages\CreateDocumentTemplate::route('/create'),
             'edit' => Pages\EditDocumentTemplate::route('/{record}/edit'),
         ];
+    }
+
+    protected static function currentUserCanAccessResource(): bool
+    {
+        $user = auth()->user();
+
+        if (! $user) {
+            return false;
+        }
+
+        $permissions = FilamentShield::getResourcePermissions(static::class) ?? [];
+
+        if ($permissions === []) {
+            return static::canViewAny();
+        }
+
+        foreach ($permissions as $permission) {
+            if ($user->can($permission)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

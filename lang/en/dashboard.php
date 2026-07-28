@@ -7,6 +7,9 @@ return [
 
     'admin_subheading' => 'Monitor student accounts, submissions, and application reviews.',
     'student_subheading' => 'Track your application forms, submissions, and progress.',
+    'staff_subheading' => 'No dashboard tracking data is available for this role.',
+    'no_tracking_title' => 'No dashboard data',
+    'no_tracking_description' => 'There is no dashboard tracking data for this role.',
 
     'total_students' => 'Total Students',
     'active_students' => 'Active Students',

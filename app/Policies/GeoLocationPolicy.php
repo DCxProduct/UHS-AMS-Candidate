@@ -4,77 +4,72 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
+use Illuminate\Foundation\Auth\User as AuthUser;
 use App\Models\GeoLocation;
 use Illuminate\Auth\Access\HandlesAuthorization;
-use Illuminate\Foundation\Auth\User as AuthUser;
 
 class GeoLocationPolicy
 {
     use HandlesAuthorization;
-
-    private function isAdmin(AuthUser $authUser): bool
-    {
-        return $authUser->registration_type === 'admin'
-            || $authUser->hasRole('admin');
-    }
-
+    
     public function viewAny(AuthUser $authUser): bool
     {
-        return $this->isAdmin($authUser);
+        return $authUser->can('ViewAny:GeoLocation');
     }
 
     public function view(AuthUser $authUser, GeoLocation $geoLocation): bool
     {
-        return $this->isAdmin($authUser);
+        return $authUser->can('View:GeoLocation');
     }
 
     public function create(AuthUser $authUser): bool
     {
-        return $this->isAdmin($authUser);
+        return $authUser->can('Create:GeoLocation');
     }
 
     public function update(AuthUser $authUser, GeoLocation $geoLocation): bool
     {
-        return $this->isAdmin($authUser);
+        return $authUser->can('Update:GeoLocation');
     }
 
     public function delete(AuthUser $authUser, GeoLocation $geoLocation): bool
     {
-        return $this->isAdmin($authUser);
+        return $authUser->can('Delete:GeoLocation');
     }
 
     public function deleteAny(AuthUser $authUser): bool
     {
-        return $this->isAdmin($authUser);
+        return $authUser->can('DeleteAny:GeoLocation');
     }
 
     public function restore(AuthUser $authUser, GeoLocation $geoLocation): bool
     {
-        return $this->isAdmin($authUser);
+        return $authUser->can('Restore:GeoLocation');
     }
 
     public function forceDelete(AuthUser $authUser, GeoLocation $geoLocation): bool
     {
-        return $this->isAdmin($authUser);
+        return $authUser->can('ForceDelete:GeoLocation');
     }
 
     public function forceDeleteAny(AuthUser $authUser): bool
     {
-        return $this->isAdmin($authUser);
+        return $authUser->can('ForceDeleteAny:GeoLocation');
     }
 
     public function restoreAny(AuthUser $authUser): bool
     {
-        return $this->isAdmin($authUser);
+        return $authUser->can('RestoreAny:GeoLocation');
     }
 
     public function replicate(AuthUser $authUser, GeoLocation $geoLocation): bool
     {
-        return $this->isAdmin($authUser);
+        return $authUser->can('Replicate:GeoLocation');
     }
 
     public function reorder(AuthUser $authUser): bool
     {
-        return $this->isAdmin($authUser);
+        return $authUser->can('Reorder:GeoLocation');
     }
+
 }

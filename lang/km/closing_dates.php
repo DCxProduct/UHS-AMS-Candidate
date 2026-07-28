@@ -70,6 +70,9 @@ return [
 
     'start_date_before_or_equal_end_date' => 'ថ្ងៃចាប់ផ្តើមត្រូវតែមុន ឬស្មើថ្ងៃបញ្ចប់។',
     'end_date_after_or_equal_start_date' => 'ថ្ងៃបញ្ចប់ត្រូវតែក្រោយ ឬស្មើថ្ងៃចាប់ផ្តើម។',
+    'name_required' => 'សូមបញ្ចូលឈ្មោះ។',
+    'type_required' => 'សូមជ្រើសរើសទម្រង់ពាក្យស្នើសុំ។',
+    'status_required' => 'សូមជ្រើសរើសស្ថានភាព។',
     'start_date_required' => 'សូមបញ្ចូលថ្ងៃចាប់ផ្តើម។',
     'end_date_required' => 'សូមបញ្ចូលថ្ងៃបញ្ចប់។',
     'start_date_valid' => 'ថ្ងៃចាប់ផ្តើមត្រូវតែជាកាលបរិច្ឆេទត្រឹមត្រូវ។',

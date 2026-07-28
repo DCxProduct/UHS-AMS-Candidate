@@ -5,8 +5,8 @@ namespace App\Filament\Admin\Resources\ExamResults;
 use App\Filament\Admin\Resources\ExamResults\Pages;
 use App\Filament\Admin\Resources\ExamResults\Tables\ExamResultsTable;
 use App\Filament\Concerns\AdminOnly;
+use App\Models\ExamResult;
 use BackedEnum;
-use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
@@ -17,10 +17,7 @@ class ExamResultResource extends Resource
 {
     use AdminOnly;
 
-    public static function getModel(): string
-    {
-        return CustomFormEntry::class;
-    }
+    protected static ?string $model = ExamResult::class;
 
     protected static ?string $slug = 'exam-results';
 

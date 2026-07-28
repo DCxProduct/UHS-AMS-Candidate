@@ -9,8 +9,15 @@ use Spatie\Permission\Models\Role;
 
 class UserTypeOptions
 {
-    public const BASE_ROLE = 'student';
+    public const BASE_ROLE = 'candidate';
     public const DEFAULT_KEY = 'candidate';
+    private const ALLOWED_ROLE_ORDER = [
+        'admin',
+        'cashier',
+        'associate',
+        'candidate',
+        'student',
+    ];
 
     public static function customQuery()
     {
@@ -33,17 +40,12 @@ class UserTypeOptions
 
     public static function options(): array
     {
-        if (Schema::hasTable('user_types')) {
-            $options = static::customQuery()
-                ->get()
-                ->mapWithKeys(fn (UserType $candidateType): array => [
-                    $candidateType->key => $candidateType->getLocalizedLabel(),
-                ])
-                ->all();
+        $roles = static::availableRoleNames();
 
-            if ($options !== []) {
-                return $options;
-            }
+        if ($roles !== []) {
+            return collect($roles)
+                ->mapWithKeys(fn (string $role): array => [$role => static::formatLabel($role)])
+                ->all();
         }
 
         return static::defaultOption();
@@ -51,22 +53,16 @@ class UserTypeOptions
 
     public static function colors(): array
     {
-        if (Schema::hasTable('user_types')) {
-            $colors = static::customQuery()
-                ->get()
-                ->mapWithKeys(fn (UserType $candidateType): array => [
-                    $candidateType->key => static::normalizeColor($candidateType->color),
-                ])
-                ->all();
-
-            if ($colors !== []) {
-                return $colors;
-            }
-        }
-
-        return [
-            self::BASE_ROLE => 'primary',
-        ];
+        return collect(static::options())
+            ->mapWithKeys(fn (string $_label, string $role): array => [
+                $role => match (Str::lower($role)) {
+                    'admin' => 'danger',
+                    'cashier' => 'success',
+                    'associate' => 'warning',
+                    default => 'primary',
+                },
+            ])
+            ->all();
     }
 
     public static function resolve(?string $roleName): string
@@ -77,17 +73,36 @@ class UserTypeOptions
             return $roleName;
         }
 
+        if (is_string($roleName)) {
+            $matched = collect(array_keys($options))
+                ->first(fn (string $option): bool => strcasecmp($option, $roleName) === 0);
+
+            if ($matched) {
+                return $matched;
+            }
+        }
+
         return array_key_first($options) ?? self::BASE_ROLE;
     }
 
     public static function formatLabel(string $roleName): string
     {
-        if (strcasecmp($roleName, self::BASE_ROLE) === 0) {
+        $normalized = Str::lower(trim($roleName));
+
+        if (in_array($normalized, ['student', 'candidate'], true)) {
             return __('app.candidate');
         }
 
-        if ($candidateType = static::findByKey($roleName)) {
-            return $candidateType->getLocalizedLabel();
+        if ($normalized === 'admin') {
+            return __('system_users.roles.admin');
+        }
+
+        if ($normalized === 'cashier') {
+            return __('system_users.roles.cashier');
+        }
+
+        if ($normalized === 'associate') {
+            return app()->getLocale() === 'km' ? 'បរិញ្ញាបត្ររង' : 'Associate';
         }
 
         return (string) Str::of($roleName)
@@ -97,14 +112,6 @@ class UserTypeOptions
 
     public static function formatPreviewLabel(string $roleName): string
     {
-        if (strcasecmp($roleName, self::BASE_ROLE) === 0) {
-            return __('app.candidate');
-        }
-
-        if ($candidateType = static::findByKey($roleName)) {
-            return $candidateType->getLocalizedLabel();
-        }
-
         return static::formatLabel($roleName);
     }
 
@@ -128,9 +135,16 @@ class UserTypeOptions
             ->pluck('name')
             ->all();
 
+        $selectedRole = static::resolve($selectedRole);
+        $normalized = Str::lower(trim($selectedRole));
+        $selectedStoredRole = in_array($normalized, ['student', 'candidate'], true)
+            ? (static::findRoleCaseInsensitive($availableRoles, 'candidate')
+                ?? static::findRoleCaseInsensitive($availableRoles, 'student')
+                ?? self::BASE_ROLE)
+            : static::findRoleCaseInsensitive($availableRoles, $selectedRole);
+
         return collect([
-            self::BASE_ROLE,
-            $selectedRole !== self::BASE_ROLE ? $selectedRole : null,
+            $selectedStoredRole,
         ])
             ->filter(fn (?string $role): bool => filled($role))
             ->filter(fn (string $role): bool => in_array($role, $availableRoles, true))
@@ -141,9 +155,21 @@ class UserTypeOptions
 
     public static function assignableSystemRoles(string $selectedRole): array
     {
+        $availableRoles = Role::query()
+            ->where('guard_name', 'web')
+            ->pluck('name')
+            ->all();
+
+        $selectedRole = static::resolve($selectedRole);
+        $normalized = Str::lower(trim($selectedRole));
+        $selectedStoredRole = in_array($normalized, ['student', 'candidate'], true)
+            ? (static::findRoleCaseInsensitive($availableRoles, 'candidate')
+                ?? static::findRoleCaseInsensitive($availableRoles, 'student')
+                ?? self::BASE_ROLE)
+            : static::findRoleCaseInsensitive($availableRoles, $selectedRole);
+
         return collect([
-            'Student',
-            $selectedRole !== self::BASE_ROLE ? $selectedRole : null,
+            $selectedStoredRole,
         ])
             ->filter(fn (?string $role): bool => filled($role))
             ->unique(fn (string $role): string => Str::lower($role))
@@ -189,8 +215,46 @@ class UserTypeOptions
     protected static function defaultOption(): array
     {
         return [
-            self::BASE_ROLE => __('app.candidate'),
+            'admin' => __('system_users.roles.admin'),
+            'cashier' => __('system_users.roles.cashier'),
+            'associate' => app()->getLocale() === 'km' ? 'បរិញ្ញាបត្ររង' : 'Associate',
+            self::DEFAULT_KEY => __('app.candidate'),
         ];
+    }
+
+    protected static function availableRoleNames(): array
+    {
+        $roles = Role::query()
+            ->where('guard_name', 'web')
+            ->pluck('name')
+            ->all();
+
+        if ($roles === []) {
+            return [];
+        }
+
+        $byNormalized = collect($roles)
+            ->mapWithKeys(fn (string $role): array => [Str::lower(trim($role)) => $role]);
+
+        $allowed = [];
+
+        foreach (self::ALLOWED_ROLE_ORDER as $normalizedRole) {
+            if ($normalizedRole === 'student' && $byNormalized->has('candidate')) {
+                continue;
+            }
+
+            if ($byNormalized->has($normalizedRole)) {
+                $allowed[] = $byNormalized->get($normalizedRole);
+            }
+        }
+
+        return $allowed;
+    }
+
+    protected static function findRoleCaseInsensitive(array $availableRoles, string $needle): ?string
+    {
+        return collect($availableRoles)
+            ->first(fn (string $role): bool => strcasecmp($role, $needle) === 0);
     }
 
     protected static function ensureDefaultUserType(): void

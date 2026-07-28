@@ -7,6 +7,9 @@ return [
 
     'admin_subheading' => 'តាមដានគណនីនិស្សិត ការដាក់ស្នើ និងការពិនិត្យពាក្យ។',
     'student_subheading' => 'តាមដានទម្រង់ ការដាក់ស្នើ និងវឌ្ឍនភាពរបស់អ្នក។',
+    'staff_subheading' => 'មិនមានទិន្នន័យតាមដានលើ Dashboard សម្រាប់តួនាទីនេះទេ។',
+    'no_tracking_title' => 'មិនមានទិន្នន័យលើ Dashboard',
+    'no_tracking_description' => 'មិនមានទិន្នន័យតាមដានលើ Dashboard សម្រាប់តួនាទីនេះទេ។',
 
     'total_students' => 'និស្សិតសរុប',
     'active_students' => 'និស្សិតសកម្ម',

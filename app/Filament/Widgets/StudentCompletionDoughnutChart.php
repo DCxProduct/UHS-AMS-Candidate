@@ -21,7 +21,13 @@ class StudentCompletionDoughnutChart extends ChartWidget
 
     public static function canView(): bool
     {
-        return auth()->user()?->registration_type === 'student';
+        $user = auth()->user();
+
+        if (! $user || (string) $user->registration_type !== 'student') {
+            return false;
+        }
+
+        return ! $user->hasEffectiveRole(['admin', 'cashier', 'finance', 'developer', 'registrar', 'processing', 'team uhs']);
     }
 
     public function getHeading(): ?string
