@@ -39,6 +39,7 @@ return [
 
     'actions' => [
         'new' => 'បង្កើតថ្មី',
+        'create_payment' => 'បង្កើតការទូទាត់',
         'edit' => 'កែប្រែ',
         'delete' => 'លុប',
         'actions' => 'សកម្មភាព',

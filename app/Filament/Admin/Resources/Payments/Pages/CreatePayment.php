@@ -12,7 +12,12 @@ class CreatePayment extends CreateRecord
 
     public function getTitle(): string | Htmlable
     {
-        return __('payments.actions.new');
+        return __('payments.actions.create_payment');
+    }
+
+    public function getBreadcrumb(): string
+    {
+        return __('payments.actions.create_payment');
     }
 
     protected function getRedirectUrl(): string
