@@ -6,7 +6,7 @@ return [
     'groups' => [
         'form_entry' => 'ពាក្យស្នើសុំបេក្ខជន',
         'candidates' => 'បេក្ខជន',
-        'cashier' => 'បេឡា',
+        'cashier' => 'មន្ត្រីគណនី',
         'form_builder' => 'ការបង្កើតទម្រង់បំពេញ និងគំរូឯកសារ',
         'settings' => 'ការកំណត់',
     ],
