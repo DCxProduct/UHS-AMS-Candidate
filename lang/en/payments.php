@@ -1,9 +1,9 @@
 <?php
 
 return [
-    'navigation_label' => 'Payments',
-    'resource_label' => 'Payment',
-    'resource_plural_label' => 'Payments',
+    'navigation_label' => 'Payment Records',
+    'resource_label' => 'Payment Record',
+    'resource_plural_label' => 'Payment Records',
     'search' => 'Search payments',
 
     'sections' => [

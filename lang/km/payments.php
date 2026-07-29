@@ -1,9 +1,9 @@
 <?php
 
 return [
-    'navigation_label' => 'ការទូទាត់',
-    'resource_label' => 'ការទូទាត់',
-    'resource_plural_label' => 'ការទូទាត់',
+    'navigation_label' => 'បញ្ជីឈ្មោះបេក្ខជនបង់លុយ',
+    'resource_label' => 'បញ្ជីឈ្មោះបេក្ខជនបង់លុយ',
+    'resource_plural_label' => 'បញ្ជីឈ្មោះបេក្ខជនបង់លុយ',
     'search' => 'ស្វែងរកការទូទាត់',
 
     'sections' => [
