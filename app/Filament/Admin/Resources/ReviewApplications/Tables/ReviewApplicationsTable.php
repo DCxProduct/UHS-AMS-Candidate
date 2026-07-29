@@ -35,7 +35,8 @@ class ReviewApplicationsTable
                 TextColumn::make('row_number')
                     ->label(__('exam_results.no'))
                     ->rowIndex()
-                    ->alignCenter(),
+                    ->alignCenter()
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('form_type')
                     ->label(__('review_applications.form_type'))
@@ -48,7 +49,8 @@ class ReviewApplicationsTable
                     ->label(__('exam_results.academic_year'))
                     ->getStateUsing(fn ($record): string => self::entryValue($record, 'academic_year', $record->creator?->academic_year))
                     ->searchable(query: fn (Builder $query, string $search): Builder => $query->where('data->academic_year', 'like', "%{$search}%"))
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('user_type')
                     ->label(app()->getLocale() === 'km' ? 'ប្រភេទអ្នកប្រើ' : 'User Type')
@@ -62,32 +64,37 @@ class ReviewApplicationsTable
                     ->searchable(query: fn (Builder $query, string $search): Builder => $query
                         ->where('data->user_type', 'like', "%{$search}%")
                         ->orWhere('data->candidate_type', 'like', "%{$search}%")
-                        ->orWhere('data->degree_level', 'like', "%{$search}%")),
+                        ->orWhere('data->degree_level', 'like', "%{$search}%"))
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('seat_number')
                     ->label(__('exam_results.seat_number'))
                     ->getStateUsing(fn ($record): string => self::entryValue($record, 'seat_number', self::entryValue($record, 'list_number', $record->creator?->seat_number)))
                     ->searchable(query: fn (Builder $query, string $search): Builder => $query
                         ->where('data->seat_number', 'like', "%{$search}%")
-                        ->orWhere('data->list_number', 'like', "%{$search}%")),
+                        ->orWhere('data->list_number', 'like', "%{$search}%"))
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('name_khmer')
                     ->label(__('exam_results.name_khmer'))
                     ->getStateUsing(fn ($record): string => self::khmerName($record))
                     ->searchable(query: fn (Builder $query, string $search): Builder => $query
                         ->where('data->first_name_kh', 'like', "%{$search}%")
-                        ->orWhere('data->last_name_kh', 'like', "%{$search}%")),
+                        ->orWhere('data->last_name_kh', 'like', "%{$search}%"))
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('name_latin')
                     ->label(__('exam_results.name_latin'))
                     ->getStateUsing(fn ($record): string => self::latinName($record))
                     ->searchable(query: fn (Builder $query, string $search): Builder => $query
                         ->where('data->first_name_en', 'like', "%{$search}%")
-                        ->orWhere('data->last_name_en', 'like', "%{$search}%")),
+                        ->orWhere('data->last_name_en', 'like', "%{$search}%"))
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('gender')
                     ->label(__('exam_results.gender'))
-                    ->getStateUsing(fn ($record): string => self::genderLabel(self::entryValue($record, 'gender'))),
+                    ->getStateUsing(fn ($record): string => self::genderLabel(self::entryValue($record, 'gender')))
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('major')
                     ->label(app()->getLocale() === 'km' ? 'ផ្នែក/ជំនាញ' : 'Major')
@@ -97,11 +104,13 @@ class ReviewApplicationsTable
                     ))
                     ->searchable(query: fn (Builder $query, string $search): Builder => $query
                         ->where('data->selected_major', 'like', "%{$search}%")
-                        ->orWhere('data->degree_level_major', 'like', "%{$search}%")),
+                        ->orWhere('data->degree_level_major', 'like', "%{$search}%"))
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('date_of_birth')
                     ->label(__('exam_results.date_of_birth'))
-                    ->getStateUsing(fn ($record): string => self::dateValue(self::entryValue($record, 'date_of_birth', $record->creator?->date_of_birth))),
+                    ->getStateUsing(fn ($record): string => self::dateValue(self::entryValue($record, 'date_of_birth', $record->creator?->date_of_birth)))
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('data.candidate_status')
                     ->label(__('review_applications.review_status_result'))
@@ -114,7 +123,8 @@ class ReviewApplicationsTable
                     ->color(fn (?string $state) => match ($state) {
                         'passed' => 'success',
                         default => 'warning',
-                    }),
+                    })
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('data.candidate_reviewed_at')
                     ->label(__('review_applications.reviewed_at'))
@@ -125,7 +135,8 @@ class ReviewApplicationsTable
                         ? Carbon::parse($state)->format('d M Y H:i')
                         : '-')
                     ->color('info')
-                    ->sortable(false),
+                    ->sortable(false)
+                    ->toggleable(isToggledHiddenByDefault: false),
             ])
             ->filters([
                 Filter::make('application_review_filters')
