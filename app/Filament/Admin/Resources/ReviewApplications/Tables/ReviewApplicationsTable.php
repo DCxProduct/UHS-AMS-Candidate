@@ -50,6 +50,20 @@ class ReviewApplicationsTable
                     ->searchable(query: fn (Builder $query, string $search): Builder => $query->where('data->academic_year', 'like', "%{$search}%"))
                     ->sortable(),
 
+                TextColumn::make('user_type')
+                    ->label(app()->getLocale() === 'km' ? 'ប្រភេទអ្នកប្រើ' : 'User Type')
+                    ->getStateUsing(fn ($record): string => self::userTypeLabel(
+                        data_get($record->data, 'user_type')
+                            ?? data_get($record->data, 'candidate_type')
+                            ?? data_get($record->data, 'degree_level')
+                    ))
+                    ->badge()
+                    ->color('gray')
+                    ->searchable(query: fn (Builder $query, string $search): Builder => $query
+                        ->where('data->user_type', 'like', "%{$search}%")
+                        ->orWhere('data->candidate_type', 'like', "%{$search}%")
+                        ->orWhere('data->degree_level', 'like', "%{$search}%")),
+
                 TextColumn::make('seat_number')
                     ->label(__('exam_results.seat_number'))
                     ->getStateUsing(fn ($record): string => self::entryValue($record, 'seat_number', self::entryValue($record, 'list_number', $record->creator?->seat_number)))
@@ -74,6 +88,16 @@ class ReviewApplicationsTable
                 TextColumn::make('gender')
                     ->label(__('exam_results.gender'))
                     ->getStateUsing(fn ($record): string => self::genderLabel(self::entryValue($record, 'gender'))),
+
+                TextColumn::make('major')
+                    ->label(app()->getLocale() === 'km' ? 'ផ្នែក/ជំនាញ' : 'Major')
+                    ->getStateUsing(fn ($record): string => self::entryValue(
+                        $record,
+                        filled(data_get($record->data, 'selected_major')) ? 'selected_major' : 'degree_level_major'
+                    ))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => $query
+                        ->where('data->selected_major', 'like', "%{$search}%")
+                        ->orWhere('data->degree_level_major', 'like', "%{$search}%")),
 
                 TextColumn::make('date_of_birth')
                     ->label(__('exam_results.date_of_birth'))
@@ -122,6 +146,20 @@ class ReviewApplicationsTable
                             ->native(false)
                             ->live(),
 
+                        Select::make('user_type')
+                            ->label(app()->getLocale() === 'km' ? 'ប្រភេទអ្នកប្រើ' : 'User Type')
+                            ->options(fn (): array => self::dynamicUserTypeOptions())
+                            ->native(false)
+                            ->searchable()
+                            ->live(),
+
+                        Select::make('major')
+                            ->label(app()->getLocale() === 'km' ? 'ផ្នែក/ជំនាញ' : 'Major')
+                            ->options(fn (): array => self::dynamicMajorOptions())
+                            ->native(false)
+                            ->searchable()
+                            ->live(),
+
                         Select::make('reviewed_year')
                             ->label(__('review_applications.reviewed_year'))
                             ->options(fn (): array => self::dynamicRequestReviewedYears())
@@ -155,6 +193,21 @@ class ReviewApplicationsTable
                                         default => $query,
                                     };
                                 }
+                            )
+                            ->when(
+                                filled($data['user_type'] ?? null),
+                                fn (Builder $query): Builder => $query->where(function (Builder $query) use ($data): void {
+                                    $query->where('data->user_type', $data['user_type'])
+                                        ->orWhere('data->candidate_type', $data['user_type'])
+                                        ->orWhere('data->degree_level', $data['user_type']);
+                                })
+                            )
+                            ->when(
+                                filled($data['major'] ?? null),
+                                fn (Builder $query): Builder => $query->where(function (Builder $query) use ($data): void {
+                                    $query->where('data->selected_major', $data['major'])
+                                        ->orWhere('data->degree_level_major', $data['major']);
+                                })
                             )
                             ->when(
                                 filled($data['reviewed_year'] ?? null),
@@ -284,6 +337,43 @@ class ReviewApplicationsTable
             ->unique()
             ->sort()
             ->mapWithKeys(fn ($year): array => [(string) $year => (string) $year])
+            ->toArray();
+    }
+
+    protected static function dynamicUserTypeOptions(): array
+    {
+        return CustomFormEntry::query()
+            ->get(['data'])
+            ->flatMap(function (CustomFormEntry $entry): array {
+                return array_filter([
+                    data_get($entry->data, 'user_type'),
+                    data_get($entry->data, 'candidate_type'),
+                    data_get($entry->data, 'degree_level'),
+                ], fn ($value): bool => filled($value));
+            })
+            ->map(fn ($value): string => strtolower(trim((string) $value)))
+            ->filter()
+            ->unique()
+            ->sort()
+            ->mapWithKeys(fn (string $value): array => [$value => self::userTypeLabel($value)])
+            ->toArray();
+    }
+
+    protected static function dynamicMajorOptions(): array
+    {
+        return CustomFormEntry::query()
+            ->get(['data'])
+            ->flatMap(function (CustomFormEntry $entry): array {
+                return array_filter([
+                    data_get($entry->data, 'selected_major'),
+                    data_get($entry->data, 'degree_level_major'),
+                ], fn ($value): bool => filled($value));
+            })
+            ->map(fn ($value): string => trim((string) $value))
+            ->filter()
+            ->unique()
+            ->sort()
+            ->mapWithKeys(fn (string $value): array => [$value => $value])
             ->toArray();
     }
 
