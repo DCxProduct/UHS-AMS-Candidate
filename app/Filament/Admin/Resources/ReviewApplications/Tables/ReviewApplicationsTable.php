@@ -629,6 +629,22 @@ class ReviewApplicationsTable
         };
     }
 
+    protected static function userTypeLabel(?string $state): string
+    {
+        if (blank($state)) {
+            return '-';
+        }
+
+        return match (strtolower((string) $state)) {
+            'candidate' => app()->getLocale() === 'km' ? 'បេក្ខជន' : 'Candidate',
+            'associate' => app()->getLocale() === 'km' ? 'បរិញ្ញាបត្ររង' : 'Associate',
+            'bachelor' => app()->getLocale() === 'km' ? 'បរិញ្ញាបត្រ' : 'Bachelor',
+            'master' => app()->getLocale() === 'km' ? 'អនុបណ្ឌិត' : 'Master',
+            'phd' => app()->getLocale() === 'km' ? 'បណ្ឌិត' : 'PhD',
+            default => filled($state) ? ucfirst((string) $state) : '-',
+        };
+    }
+
     protected static function statusLabel(?string $state): string
     {
         return match ($state) {
