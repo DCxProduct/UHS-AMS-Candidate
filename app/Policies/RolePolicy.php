@@ -11,7 +11,12 @@ use Illuminate\Auth\Access\HandlesAuthorization;
 class RolePolicy
 {
     use HandlesAuthorization;
-    
+
+    protected function isProtectedRole(Role $role): bool
+    {
+        return strtolower((string) $role->name) === 'admin';
+    }
+
     public function viewAny(AuthUser $authUser): bool
     {
         return $authUser->can('ViewAny:Role');
@@ -29,11 +34,19 @@ class RolePolicy
 
     public function update(AuthUser $authUser, Role $role): bool
     {
+        if ($this->isProtectedRole($role)) {
+            return false;
+        }
+
         return $authUser->can('Update:Role');
     }
 
     public function delete(AuthUser $authUser, Role $role): bool
     {
+        if ($this->isProtectedRole($role)) {
+            return false;
+        }
+
         return $authUser->can('Delete:Role');
     }
 
@@ -44,11 +57,19 @@ class RolePolicy
 
     public function restore(AuthUser $authUser, Role $role): bool
     {
+        if ($this->isProtectedRole($role)) {
+            return false;
+        }
+
         return $authUser->can('Restore:Role');
     }
 
     public function forceDelete(AuthUser $authUser, Role $role): bool
     {
+        if ($this->isProtectedRole($role)) {
+            return false;
+        }
+
         return $authUser->can('ForceDelete:Role');
     }
 
@@ -64,6 +85,10 @@ class RolePolicy
 
     public function replicate(AuthUser $authUser, Role $role): bool
     {
+        if ($this->isProtectedRole($role)) {
+            return false;
+        }
+
         return $authUser->can('Replicate:Role');
     }
 

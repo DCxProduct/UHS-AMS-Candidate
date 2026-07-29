@@ -35,6 +35,10 @@ class ListCustomFormEntries extends ListRecords
             return;
         }
 
+        if ($this->currentUserIsAdmin()) {
+            return;
+        }
+
         /*
         |--------------------------------------------------------------------------
         | Closed Form
@@ -102,6 +106,19 @@ class ListCustomFormEntries extends ListRecords
 
             return;
         }
+    }
+
+    protected function currentUserIsAdmin(): bool
+    {
+        $user = auth()->user();
+
+        if (! $user) {
+            return false;
+        }
+
+        return method_exists($user, 'hasEffectiveRole')
+            ? $user->hasEffectiveRole('admin')
+            : $user->registration_type === 'admin';
     }
 
     protected function studentCurrentFormEntry(): ?CustomFormEntry
