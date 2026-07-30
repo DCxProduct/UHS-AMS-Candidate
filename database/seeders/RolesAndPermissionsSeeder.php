@@ -40,10 +40,14 @@ class RolesAndPermissionsSeeder extends Seeder
             'guard_name' => 'web',
         ]);
 
+        $adminExcludedPermissions = [
+            'Create:CustomFormEntry',
+        ];
+
         $admin->syncPermissions(
             Permission::query()
                 ->where('guard_name', 'web')
-                ->where('name', '!=', 'Create:CustomFormEntry')
+                ->whereNotIn('name', $adminExcludedPermissions)
                 ->get()
         );
         $cashier->syncPermissions(

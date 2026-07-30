@@ -29,6 +29,7 @@ class PaymentForm
                             ->schema([
                                 Select::make('users_id')
                                     ->label(__('payments.fields.user'))
+                                    ->placeholder(__('payments.placeholders.user'))
                                     ->options(fn (): array => User::query()
                                         ->orderBy('name')
                                         ->get()
@@ -36,6 +37,7 @@ class PaymentForm
                                             $user->id => trim((string) ($user->name ?: $user->username ?: $user->email ?: $user->phone ?: '-')),
                                         ])
                                         ->toArray())
+                                    ->default(fn (): ?int => request()->integer('users_id') ?: null)
                                     ->searchable()
                                     ->native(false)
                                     ->preload()
@@ -46,6 +48,7 @@ class PaymentForm
 
                                 Select::make('form_id')
                                     ->label(__('payments.fields.form'))
+                                    ->placeholder(__('payments.placeholders.form'))
                                     ->options(fn (): array => CustomForm::query()
                                         ->whereNotNull('name')
                                         ->where('slug', '!=', 'profile')
@@ -55,6 +58,7 @@ class PaymentForm
                                             $form->id => (string) ($form->display_name ?: $form->name),
                                         ])
                                         ->toArray())
+                                    ->default(fn (): ?int => request()->integer('form_id') ?: null)
                                     ->searchable()
                                     ->native(false)
                                     ->preload()
@@ -62,6 +66,7 @@ class PaymentForm
 
                                 TextInput::make('receipt_number')
                                     ->label(__('payments.fields.receipt_number'))
+                                    ->placeholder(__('payments.placeholders.receipt_number'))
                                     ->required()
                                     ->maxLength(255)
                                     ->validationMessages([
@@ -70,6 +75,7 @@ class PaymentForm
 
                                 Select::make('type_payment')
                                     ->label(__('payments.fields.type_payment'))
+                                    ->placeholder(__('payments.placeholders.type_payment'))
                                     ->options([
                                         'aba' => __('payments.options.type_payment.aba'),
                                         'wing' => __('payments.options.type_payment.wing'),
@@ -85,6 +91,7 @@ class PaymentForm
 
                                 Select::make('status_payt')
                                     ->label(__('payments.fields.status_payt'))
+                                    ->placeholder(__('payments.placeholders.status_payt'))
                                     ->options([
                                         'paid' => __('payments.options.status_payt.paid'),
                                         'return' => __('payments.options.status_payt.return'),
@@ -99,12 +106,14 @@ class PaymentForm
 
                                 DateTimePicker::make('datetime_pay')
                                     ->label(__('payments.fields.datetime_pay'))
+                                    ->placeholder(__('payments.placeholders.datetime_pay'))
                                     ->seconds(false)
                                     ->native(false)
                                     ->nullable(),
 
                                 TextInput::make('amount_usd')
                                     ->label(__('payments.fields.amount_usd'))
+                                    ->placeholder(__('payments.placeholders.amount_usd'))
                                     ->numeric()
                                     ->prefix('$')
                                     ->inputMode('decimal')
@@ -112,6 +121,7 @@ class PaymentForm
 
                                 TextInput::make('amount_kh')
                                     ->label(__('payments.fields.amount_kh'))
+                                    ->placeholder(__('payments.placeholders.amount_kh'))
                                     ->numeric()
                                     ->suffix('KHR')
                                     ->inputMode('decimal')
@@ -125,6 +135,7 @@ class PaymentForm
 
                         Textarea::make('description')
                             ->label(__('payments.fields.description'))
+                            ->placeholder(__('payments.placeholders.description'))
                             ->rows(4)
                             ->columnSpanFull(),
                     ]),
