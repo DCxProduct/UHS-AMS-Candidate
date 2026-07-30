@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Admin\Resources\SystemUsers\Tables;
+namespace App\Filament\Admin\Resources\Users\Tables;
 
 use App\Models\SystemUser;
 use App\Models\User;
@@ -18,7 +18,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\DB;
 
-class SystemUsersTable
+class UsersTable
 {
     public static function configure(Table $table): Table
     {

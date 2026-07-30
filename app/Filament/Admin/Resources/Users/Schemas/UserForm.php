@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Admin\Resources\SystemUsers\Schemas;
+namespace App\Filament\Admin\Resources\Users\Schemas;
 
 use App\Models\SystemUser;
 use App\Support\UserTypeOptions;
@@ -13,7 +13,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Hash;
 
-class SystemUserForm
+class UserForm
 {
     public static function configure(Schema $schema): Schema
     {
