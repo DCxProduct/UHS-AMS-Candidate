@@ -93,7 +93,7 @@ class AdminMenuOverview extends Widget
                 'count' => SystemUser::query()->count(),
                 'action_label' => __('dashboard.manage_system_users'),
                 'icon' => 'heroicon-o-user-group',
-                'url' => UserResource::getUrl('index'),
+                'url' => SystemUserResource::getUrl('index'),
                 'tone' => 'slate',
                 'description' => __('dashboard.system_users_description'),
             ],
