@@ -24,6 +24,19 @@ class SystemUsersTable
     {
         return $table
             ->searchPlaceholder(__('system_users.search'))
+            ->modifyQueryUsing(function ($query) {
+                $driver = DB::connection()->getDriverName();
+
+                if ($driver === 'pgsql') {
+                    return $query
+                        ->orderByRaw("CASE WHEN LOWER(COALESCE(roles::text, '')) LIKE '%\"admin\"%' THEN 0 ELSE 1 END")
+                        ->orderByDesc('id');
+                }
+
+                return $query
+                    ->orderByRaw("CASE WHEN LOWER(COALESCE(CAST(roles AS CHAR), '')) LIKE '%\"admin\"%' THEN 0 ELSE 1 END")
+                    ->orderByDesc('id');
+            })
             ->columns([
                 TextColumn::make('row_number')
                     ->label(__('system_users.fields.no'))
