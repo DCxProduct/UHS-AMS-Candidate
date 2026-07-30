@@ -6,6 +6,7 @@ use Filament\Models\Contracts\FilamentUser;
 use Filament\Models\Contracts\HasAvatar;
 use Filament\Models\Contracts\HasName;
 use Filament\Panel;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Auth\Passwords\CanResetPassword;
 use Illuminate\Contracts\Auth\CanResetPassword as CanResetPasswordContract;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -255,6 +256,72 @@ class SystemUser extends Authenticatable implements FilamentUser, HasAvatar, Has
             ->map(fn ($item): string => trim((string) $item))
             ->values()
             ->all();
+    }
+
+    public static function syncStaffLoginUsers(): void
+    {
+        User::query()
+            ->where('registration_type', 'admin')
+            ->when(
+                method_exists(User::class, 'getDeletedAtColumn'),
+                fn ($query) => $query->whereNull((new User)->getQualifiedDeletedAtColumn())
+            )
+            ->get()
+            ->each(function (User $loginUser): void {
+                $lookup = static::loginUserLookup($loginUser);
+
+                if ($lookup === []) {
+                    return;
+                }
+
+                $roles = $loginUser->getRoleNames()
+                    ->filter(fn (string $role): bool => filled($role))
+                    ->values()
+                    ->all();
+
+                if ($roles === []) {
+                    $roles = ['admin'];
+                }
+
+                $permissions = $loginUser->getDirectPermissions()
+                    ->pluck('name')
+                    ->filter(fn (string $permission): bool => filled($permission))
+                    ->values()
+                    ->all();
+
+                static::query()->updateOrCreate(
+                    $lookup,
+                    [
+                        'name' => $loginUser->name ?: $loginUser->username ?: $loginUser->email ?: 'System User',
+                        'username' => $loginUser->username,
+                        'email' => $loginUser->email,
+                        'phone' => $loginUser->phone,
+                        'password' => $loginUser->password,
+                        'avatar' => $loginUser->avatar,
+                        'roles' => $roles,
+                        'permissions' => $permissions,
+                        'is_active' => (bool) $loginUser->is_active,
+                        'email_verified_at' => $loginUser->email_verified_at ?? now(),
+                    ]
+                );
+            });
+    }
+
+    protected static function loginUserLookup(User $loginUser): array
+    {
+        if (filled($loginUser->username)) {
+            return ['username' => $loginUser->username];
+        }
+
+        if (filled($loginUser->email)) {
+            return ['email' => $loginUser->email];
+        }
+
+        if (filled($loginUser->phone)) {
+            return ['phone' => $loginUser->phone];
+        }
+
+        return [];
     }
 
     public function getFilamentName(): string
