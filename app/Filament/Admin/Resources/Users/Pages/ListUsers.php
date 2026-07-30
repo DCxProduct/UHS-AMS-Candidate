@@ -15,7 +15,7 @@ class ListUsers extends ListRecords
     {
         return [
             Actions\CreateAction::make()
-                ->label(__('system_users.actions.new')),
+                ->label(__('users.actions.new')),
         ];
     }
 }

@@ -5,7 +5,7 @@ namespace App\Filament\Widgets;
 use App\Filament\Admin\Resources\ClosingDates\ClosingDateResource;
 use App\Filament\Admin\Resources\ExamResults\ExamResultResource;
 use App\Filament\Admin\Resources\ReviewApplications\ReviewApplicationResource;
-use App\Filament\Admin\Resources\Users\UserResource;
+use App\Filament\Admin\Resources\SystemUsers\SystemUserResource;
 use App\Models\ClosingDate;
 use App\Models\SystemUser;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;

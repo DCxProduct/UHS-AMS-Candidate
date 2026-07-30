@@ -14,6 +14,8 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 use UnitEnum;
 
 class UserResource extends Resource
@@ -33,7 +35,7 @@ class UserResource extends Resource
 
     public static function getNavigationLabel(): string
     {
-        return __('navigation.system_users');
+        return __('navigation.users');
     }
 
     public static function getNavigationGroup(): ?string
@@ -48,12 +50,12 @@ class UserResource extends Resource
 
     public static function getModelLabel(): string
     {
-        return __('system_users.resource_label');
+        return __('users.resource_label');
     }
 
     public static function getPluralModelLabel(): string
     {
-        return __('system_users.resource_plural_label');
+        return __('users.resource_plural_label');
     }
 
     public static function form(Schema $schema): Schema
@@ -69,6 +71,26 @@ class UserResource extends Resource
     public static function getRelations(): array
     {
         return [];
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+        $driver = DB::connection()->getDriverName();
+
+        if ($driver === 'pgsql') {
+            return $query->where(function (Builder $query): void {
+                $query
+                    ->whereRaw("LOWER(COALESCE(roles::text, '')) LIKE ?", ['%"candidate"%'])
+                    ->orWhereRaw("LOWER(COALESCE(roles::text, '')) LIKE ?", ['%"student"%']);
+            });
+        }
+
+        return $query->where(function (Builder $query): void {
+            $query
+                ->whereRaw("LOWER(COALESCE(CAST(roles AS CHAR), '')) LIKE ?", ['%"candidate"%'])
+                ->orWhereRaw("LOWER(COALESCE(CAST(roles AS CHAR), '')) LIKE ?", ['%"student"%']);
+        });
     }
 
     public static function getPages(): array

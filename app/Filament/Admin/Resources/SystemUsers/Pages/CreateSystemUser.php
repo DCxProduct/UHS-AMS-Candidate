@@ -1,19 +1,19 @@
 <?php
 
-namespace App\Filament\Admin\Resources\Users\Pages;
+namespace App\Filament\Admin\Resources\SystemUsers\Pages;
 
-use App\Filament\Admin\Resources\Users\UserResource;
+use App\Filament\Admin\Resources\SystemUsers\SystemUserResource;
 use App\Support\UserTypeOptions;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Support\Enums\Width;
 
-class CreateUser extends CreateRecord
+class CreateSystemUser extends CreateRecord
 {
-    protected static string $resource = UserResource::class;
+    protected static string $resource = SystemUserResource::class;
 
     protected function getRedirectUrl(): string
     {
-        return UserResource::getUrl('index');
+        return SystemUserResource::getUrl('index');
     }
 
     public function getMaxContentWidth(): Width | string | null
@@ -23,7 +23,7 @@ class CreateUser extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        $candidateType = UserTypeOptions::BASE_ROLE;
+        $candidateType = UserTypeOptions::resolveSystemRole($data['candidate_type'] ?? null);
 
         $data['roles'] = UserTypeOptions::assignableSystemRoles($candidateType);
 
@@ -31,7 +31,7 @@ class CreateUser extends CreateRecord
         unset($data['candidate_type']);
 
         $data['name'] = blank($data['name'] ?? null)
-            ? trim((string) ($data['username'] ?? 'Candidate'))
+            ? trim((string) ($data['username'] ?? 'System User'))
             : trim((string) $data['name']);
 
         $data['username'] = blank($data['username'] ?? null)
