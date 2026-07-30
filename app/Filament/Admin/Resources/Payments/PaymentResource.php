@@ -21,7 +21,7 @@ class PaymentResource extends Resource
 
     protected static ?string $model = Payment::class;
 
-    protected static ?string $slug = 'payments';
+    protected static ?string $slug = 'payment-records';
 
     protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-banknotes';
 

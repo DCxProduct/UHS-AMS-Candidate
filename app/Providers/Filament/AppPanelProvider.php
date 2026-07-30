@@ -142,11 +142,11 @@ class AppPanelProvider extends PanelProvider
                     ->collapsible(),
 
                 NavigationGroup::make()
-                    ->label(fn (): string => __('navigation.groups.candidates'))
+                    ->label(fn (): string => __('navigation.groups.cashier'))
                     ->collapsible(),
 
                 NavigationGroup::make()
-                    ->label(fn (): string => __('navigation.groups.cashier'))
+                    ->label(fn (): string => __('navigation.groups.candidates'))
                     ->collapsible(),
 
                 NavigationGroup::make()

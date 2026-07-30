@@ -3,7 +3,7 @@
 namespace App\Filament\Admin\Resources\Payments\Pages;
 
 use App\Filament\Admin\Resources\Payments\PaymentResource;
-use Filament\Actions;
+use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 
 class ListPayments extends ListRecords
@@ -13,8 +13,8 @@ class ListPayments extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make()
-                ->label(__('payments.actions.new')),
+            CreateAction::make()
+                ->label(__('payments.actions.create_payment')),
         ];
     }
 }

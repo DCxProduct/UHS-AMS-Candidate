@@ -111,13 +111,11 @@ class CustomFormEntriesTable
 
             $processedKeys = [
                 'form_selection',
-                'list_number',
                 'selected_major',
                 'degree_level_major',
                 'gender',
                 'phone_number',
                 'academic_year',
-                'class',
                 'registration_status',
                 'candidate_status',
             ];
@@ -223,23 +221,6 @@ class CustomFormEntriesTable
                 ->alignCenter()
                 ->width('60px'),
 
-            // 1. Form Type
-            TextColumn::make('data.form_selection')
-                ->label(app()->getLocale() === 'km' ? 'ប្រភេទទម្រង់' : 'Form Type')
-                ->badge()
-                ->sortable()
-                ->formatStateUsing(fn (?string $state, $record): string => self::formTypeLabel($state, $record?->custom_form_id))
-                ->color('info')
-                ->toggleable(isToggledHiddenByDefault: false),
-
-            // 2. List Number
-            TextColumn::make('data.list_number')
-                ->label(app()->getLocale() === 'km' ? 'លេខបញ្ជី' : 'List Number')
-                ->placeholder('-')
-                ->searchable()
-                ->sortable()
-                ->toggleable(isToggledHiddenByDefault: false),
-
             // 3. Major
             TextColumn::make('major')
                 ->label(app()->getLocale() === 'km' ? 'ផ្នែក/ជំនាញ' : 'Major')
@@ -287,13 +268,6 @@ class CustomFormEntriesTable
                 ->sortable()
                 ->toggleable(isToggledHiddenByDefault: false),
 
-            // 7. Class
-            TextColumn::make('data.class')
-                ->label(app()->getLocale() === 'km' ? 'ថ្នាក់' : 'Class')
-                ->placeholder('-')
-                ->searchable()
-                ->sortable()
-                ->toggleable(isToggledHiddenByDefault: false),
         ];
 
         foreach ($additionalColumns as $column) {
