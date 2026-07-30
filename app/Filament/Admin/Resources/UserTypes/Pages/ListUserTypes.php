@@ -14,7 +14,7 @@ class ListUserTypes extends ListRecords
     {
         return [
             Actions\CreateAction::make()
-                ->label(__('user_types.actions.new')),
+                ->label(__('user_types.actions.create_user_types')),
         ];
     }
 }

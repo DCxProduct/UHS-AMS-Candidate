@@ -125,8 +125,8 @@ class UserTypeOptions
     {
         $normalized = Str::lower(trim($roleName));
 
-        if (in_array($normalized, ['student', 'candidate'], true)) {
-            return __('app.candidate');
+        if ($userType = static::findByNormalizedKey($normalized)) {
+            return $userType->getLocalizedLabel();
         }
 
         if ($normalized === 'admin') {
@@ -331,6 +331,19 @@ class UserTypeOptions
     {
         return collect($availableRoles)
             ->first(fn (string $role): bool => strcasecmp($role, $needle) === 0);
+    }
+
+    protected static function findByNormalizedKey(string $normalizedKey): ?UserType
+    {
+        if ($normalizedKey === '' || ! Schema::hasTable('user_types')) {
+            return null;
+        }
+
+        static::ensureDefaultUserType();
+
+        return UserType::query()
+            ->whereRaw('LOWER(key) = ?', [$normalizedKey])
+            ->first();
     }
 
     protected static function ensureDefaultUserType(): void
