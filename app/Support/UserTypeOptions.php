@@ -51,6 +51,22 @@ class UserTypeOptions
         return static::defaultOption();
     }
 
+    public static function systemOptions(): array
+    {
+        $roles = static::availableSystemRoleNames();
+
+        if ($roles !== []) {
+            return collect($roles)
+                ->mapWithKeys(fn (string $role): array => [$role => static::formatLabel($role)])
+                ->all();
+        }
+
+        return [
+            'admin' => __('system_users.roles.admin'),
+            'cashier' => __('system_users.roles.cashier'),
+        ];
+    }
+
     public static function colors(): array
     {
         return collect(static::options())
@@ -83,6 +99,26 @@ class UserTypeOptions
         }
 
         return array_key_first($options) ?? self::BASE_ROLE;
+    }
+
+    public static function resolveSystemRole(?string $roleName): string
+    {
+        $options = static::systemOptions();
+
+        if (is_string($roleName) && array_key_exists($roleName, $options)) {
+            return $roleName;
+        }
+
+        if (is_string($roleName)) {
+            $matched = collect(array_keys($options))
+                ->first(fn (string $option): bool => strcasecmp($option, $roleName) === 0);
+
+            if ($matched) {
+                return $matched;
+            }
+        }
+
+        return array_key_first($options) ?? 'admin';
     }
 
     public static function formatLabel(string $roleName): string
@@ -266,6 +302,27 @@ class UserTypeOptions
         return collect($ordered)
             ->merge($remaining)
             ->unique(fn (string $role): string => Str::lower(trim($role)))
+            ->values()
+            ->all();
+    }
+
+    protected static function availableSystemRoleNames(): array
+    {
+        $roles = collect(static::availableRoleNames());
+        $userTypeKeys = Schema::hasTable('user_types')
+            ? UserType::query()->pluck('key')->map(fn (string $key): string => Str::lower(trim($key)))->all()
+            : [];
+
+        return $roles
+            ->reject(function (string $role) use ($userTypeKeys): bool {
+                $normalized = Str::lower(trim($role));
+
+                if (in_array($normalized, ['candidate', 'student'], true)) {
+                    return true;
+                }
+
+                return in_array($normalized, $userTypeKeys, true);
+            })
             ->values()
             ->all();
     }

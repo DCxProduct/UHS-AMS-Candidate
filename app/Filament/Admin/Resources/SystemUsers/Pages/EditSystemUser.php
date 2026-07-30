@@ -1,20 +1,20 @@
 <?php
 
-namespace App\Filament\Admin\Resources\Users\Pages;
+namespace App\Filament\Admin\Resources\SystemUsers\Pages;
 
-use App\Filament\Admin\Resources\Users\UserResource;
+use App\Filament\Admin\Resources\SystemUsers\SystemUserResource;
 use App\Support\UserTypeOptions;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Enums\Width;
 
-class EditUser extends EditRecord
+class EditSystemUser extends EditRecord
 {
-    protected static string $resource = UserResource::class;
+    protected static string $resource = SystemUserResource::class;
 
     protected function getRedirectUrl(): string
     {
-        return UserResource::getUrl('index');
+        return SystemUserResource::getUrl('index');
     }
 
     public function getMaxContentWidth(): Width | string | null
@@ -26,20 +26,34 @@ class EditUser extends EditRecord
     {
         return [
             Actions\DeleteAction::make()
-                ->label(__('users.actions.delete')),
+                ->label(__('system_users.actions.delete')),
         ];
     }
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
-        $data['candidate_type'] = UserTypeOptions::BASE_ROLE;
+        $roles = $data['roles'] ?? [];
+
+        if (is_string($roles)) {
+            $decoded = json_decode($roles, true);
+            $roles = is_array($decoded) ? $decoded : [$roles];
+        }
+
+        $candidateType = collect(is_array($roles) ? $roles : [])
+            ->filter(fn ($role): bool => filled($role))
+            ->map(fn ($role): string => trim((string) $role))
+            ->first(fn (string $role): bool => ! in_array(strtolower($role), ['student', 'candidate'], true));
+
+        $data['candidate_type'] = $candidateType
+            ? UserTypeOptions::resolveSystemRole($candidateType)
+            : UserTypeOptions::resolveSystemRole(null);
 
         return $data;
     }
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        $candidateType = UserTypeOptions::BASE_ROLE;
+        $candidateType = UserTypeOptions::resolveSystemRole($data['candidate_type'] ?? null);
 
         $data['roles'] = UserTypeOptions::assignableSystemRoles($candidateType);
 
@@ -47,7 +61,7 @@ class EditUser extends EditRecord
         unset($data['candidate_type']);
 
         $data['name'] = blank($data['name'] ?? null)
-            ? trim((string) ($data['username'] ?? 'Candidate'))
+            ? trim((string) ($data['username'] ?? 'System User'))
             : trim((string) $data['name']);
 
         $data['username'] = blank($data['username'] ?? null)
