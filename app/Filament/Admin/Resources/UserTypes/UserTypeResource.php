@@ -25,7 +25,12 @@ class UserTypeResource extends Resource
 
     protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-user';
 
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 61;
+
+    public static function getNavigationSort(): ?int
+    {
+        return 2;
+    }
 
     public static function getNavigationLabel(): string
     {

@@ -45,7 +45,7 @@ class UserResource extends Resource
 
     public static function getNavigationSort(): ?int
     {
-        return 1;
+        return 4;
     }
 
     public static function getModelLabel(): string
