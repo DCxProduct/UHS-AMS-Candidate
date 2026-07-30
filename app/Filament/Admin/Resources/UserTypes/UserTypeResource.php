@@ -23,7 +23,7 @@ class UserTypeResource extends Resource
 
     protected static ?string $model = UserType::class;
 
-    protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-academic-cap';
+    protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-user';
 
     protected static ?int $navigationSort = 4;
 
