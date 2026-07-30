@@ -7,6 +7,7 @@ use App\Models\CandidatePaymentList;
 use App\Models\Payment;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Filament\Actions\Action;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -128,6 +129,13 @@ class CandidatePaymentListsTable
                             ->native(false)
                             ->searchable()
                             ->live(),
+
+                        Select::make('academic_year')
+                            ->label(__('candidate_payment_lists.columns.academic_year'))
+                            ->options(fn (): array => self::dynamicAcademicYearOptions())
+                            ->native(false)
+                            ->searchable()
+                            ->live(),
                     ])
                     ->columns(4)
                     ->columnSpanFull()
@@ -142,6 +150,13 @@ class CandidatePaymentListsTable
                                 fn (Builder $query): Builder => $query->where(function (Builder $majorQuery) use ($data): void {
                                     $majorQuery->where('data->selected_major', $data['major'])
                                         ->orWhere('data->degree_level_major', $data['major']);
+                                })
+                            )
+                            ->when(
+                                filled($data['academic_year'] ?? null),
+                                fn (Builder $query): Builder => $query->where(function (Builder $academicYearQuery) use ($data): void {
+                                    $academicYearQuery->where('data->academic_year', $data['academic_year'])
+                                        ->orWhereHas('creator', fn (Builder $creatorQuery): Builder => $creatorQuery->where('academic_year', $data['academic_year']));
                                 })
                             );
                     }),
@@ -234,6 +249,10 @@ class CandidatePaymentListsTable
                             ->send();
                     })
                     ->visible(fn (CandidatePaymentList $record): bool => self::latestPaymentRecord($record) === null),
+            ])
+            ->toolbarActions([
+                DeleteBulkAction::make()
+                    ->label(__('system_users.actions.delete')),
             ]);
     }
 
@@ -437,6 +456,24 @@ class CandidatePaymentListsTable
                 return array_filter([
                     data_get($record->data, 'selected_major'),
                     data_get($record->data, 'degree_level_major'),
+                ], fn ($value): bool => filled($value));
+            })
+            ->map(fn ($value): string => trim((string) $value))
+            ->filter()
+            ->unique()
+            ->sort()
+            ->mapWithKeys(fn (string $value): array => [$value => $value])
+            ->toArray();
+    }
+
+    protected static function dynamicAcademicYearOptions(): array
+    {
+        return CandidatePaymentListResource::getEloquentQuery()
+            ->get()
+            ->flatMap(function (CandidatePaymentList $record): array {
+                return array_filter([
+                    data_get($record->data, 'academic_year'),
+                    $record->creator?->academic_year,
                 ], fn ($value): bool => filled($value));
             })
             ->map(fn ($value): string => trim((string) $value))
