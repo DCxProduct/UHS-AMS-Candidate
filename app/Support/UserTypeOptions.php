@@ -352,13 +352,13 @@ class UserTypeOptions
             return;
         }
 
-        UserType::query()->firstOrCreate(
-            ['key' => self::DEFAULT_KEY],
+        UserType::query()->updateOrCreate(
+            ['key' => 'master'],
             [
-                'label_en' => 'Candidate',
-                'label_kh' => 'បេក្ខជន',
+                'label_en' => 'Master',
+                'label_kh' => 'អនុបណ្ឌិត',
                 'color' => 'blue',
-                'display_order' => 0,
+                'display_order' => 1,
                 'is_active' => true,
             ],
         );
