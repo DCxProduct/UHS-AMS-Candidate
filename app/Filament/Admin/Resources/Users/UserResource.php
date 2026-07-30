@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Filament\Admin\Resources\SystemUsers;
+namespace App\Filament\Admin\Resources\Users;
 
-use App\Filament\Admin\Resources\SystemUsers\Pages\CreateSystemUser;
-use App\Filament\Admin\Resources\SystemUsers\Pages\EditSystemUser;
-use App\Filament\Admin\Resources\SystemUsers\Pages\ListSystemUsers;
-use App\Filament\Admin\Resources\SystemUsers\Schemas\SystemUserForm;
-use App\Filament\Admin\Resources\SystemUsers\Tables\SystemUsersTable;
+use App\Filament\Admin\Resources\Users\Pages\CreateUser;
+use App\Filament\Admin\Resources\Users\Pages\EditUser;
+use App\Filament\Admin\Resources\Users\Pages\ListUsers;
+use App\Filament\Admin\Resources\Users\Schemas\UserForm;
+use App\Filament\Admin\Resources\Users\Tables\UsersTable;
 use App\Filament\Concerns\AdminOnly;
 use App\Models\SystemUser;
 use BackedEnum;
@@ -16,7 +16,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use UnitEnum;
 
-class SystemUserResource extends Resource
+class UserResource extends Resource
 {
     use AdminOnly;
 
@@ -58,12 +58,12 @@ class SystemUserResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return SystemUserForm::configure($schema);
+        return UserForm::configure($schema);
     }
 
     public static function table(Table $table): Table
     {
-        return SystemUsersTable::configure($table);
+        return UsersTable::configure($table);
     }
 
     public static function getRelations(): array
@@ -74,9 +74,9 @@ class SystemUserResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => ListSystemUsers::route('/'),
-            'create' => CreateSystemUser::route('/create'),
-            'edit' => EditSystemUser::route('/{record}/edit'),
+            'index' => ListUsers::route('/'),
+            'create' => CreateUser::route('/create'),
+            'edit' => EditUser::route('/{record}/edit'),
         ];
     }
 }

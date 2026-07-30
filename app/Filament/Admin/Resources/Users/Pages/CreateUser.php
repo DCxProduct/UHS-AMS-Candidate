@@ -1,19 +1,19 @@
 <?php
 
-namespace App\Filament\Admin\Resources\SystemUsers\Pages;
+namespace App\Filament\Admin\Resources\Users\Pages;
 
-use App\Filament\Admin\Resources\SystemUsers\SystemUserResource;
+use App\Filament\Admin\Resources\Users\UserResource;
 use App\Support\UserTypeOptions;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Support\Enums\Width;
 
-class CreateSystemUser extends CreateRecord
+class CreateUser extends CreateRecord
 {
-    protected static string $resource = SystemUserResource::class;
+    protected static string $resource = UserResource::class;
 
     protected function getRedirectUrl(): string
     {
-        return SystemUserResource::getUrl('index');
+        return UserResource::getUrl('index');
     }
 
     public function getMaxContentWidth(): Width | string | null

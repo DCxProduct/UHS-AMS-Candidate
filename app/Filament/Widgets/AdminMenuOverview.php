@@ -5,7 +5,7 @@ namespace App\Filament\Widgets;
 use App\Filament\Admin\Resources\ClosingDates\ClosingDateResource;
 use App\Filament\Admin\Resources\ExamResults\ExamResultResource;
 use App\Filament\Admin\Resources\ReviewApplications\ReviewApplicationResource;
-use App\Filament\Admin\Resources\SystemUsers\SystemUserResource;
+use App\Filament\Admin\Resources\Users\UserResource;
 use App\Models\ClosingDate;
 use App\Models\SystemUser;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
@@ -93,7 +93,7 @@ class AdminMenuOverview extends Widget
                 'count' => SystemUser::query()->count(),
                 'action_label' => __('dashboard.manage_system_users'),
                 'icon' => 'heroicon-o-user-group',
-                'url' => SystemUserResource::getUrl('index'),
+                'url' => UserResource::getUrl('index'),
                 'tone' => 'slate',
                 'description' => __('dashboard.system_users_description'),
             ],
