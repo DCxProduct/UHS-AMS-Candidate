@@ -28,15 +28,13 @@ return [
     ],
 
     'placeholders' => [
-        'key' => 'Example: new_candidate',
-        'label_en' => 'Example: New Candidate',
-        'label_kh' => 'Example: បេក្ខជនថ្មី',
+        'key' => 'Enter role key',
+        'label_en' => 'Enter English label',
+        'label_kh' => 'Enter Khmer label',
     ],
 
     'form' => [
         'section_title' => 'User Type Information',
-        'section_description' => 'These records control the selectable user-type options on the register form.',
-        'name_helper' => 'Use a stable English key with lowercase letters, numbers, underscores, or hyphens.',
     ],
 
     'validation' => [
@@ -62,7 +60,8 @@ return [
     ],
 
     'actions' => [
-        'new' => 'Create New',
+        'new' => 'Create User Types',
+        'create_user_types' => 'Create New',
         'edit' => 'Edit',
         'delete' => 'Delete',
         'actions' => 'Actions',

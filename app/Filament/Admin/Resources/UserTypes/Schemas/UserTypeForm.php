@@ -3,8 +3,7 @@
 namespace App\Filament\Admin\Resources\UserTypes\Schemas;
 
 use App\Support\UserTypeOptions;
-use Filament\Forms\Components\Placeholder;
-use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
@@ -20,7 +19,6 @@ class UserTypeForm
             ->columns(1)
             ->components([
                 Section::make(__('user_types.form.section_title'))
-                    ->description(__('user_types.form.section_description'))
                     ->schema([
                         Grid::make([
                             'default' => 1,
@@ -30,7 +28,6 @@ class UserTypeForm
                                 TextInput::make('key')
                                     ->label(__('user_types.fields.key'))
                                     ->placeholder(__('user_types.placeholders.key'))
-                                    ->helperText(__('user_types.form.name_helper'))
                                     ->required()
                                     ->maxLength(255)
                                     ->unique(column: 'key', ignoreRecord: true)
@@ -88,42 +85,16 @@ class UserTypeForm
                             'lg' => 2,
                         ])
                             ->schema([
-                                Select::make('color')
-                                    ->label(__('user_types.fields.color'))
-                                    ->options(UserTypeOptions::colorOptions())
+                                Hidden::make('color')
                                     ->default('blue')
-                                    ->required()
-                                    ->native(false)
-                                    ->afterStateHydrated(function ($state, callable $set): void {
-                                        $set('color', UserTypeOptions::canonicalColor($state));
-                                    })
-                                    ->dehydrateStateUsing(fn ($state): string => UserTypeOptions::canonicalColor($state))
-                                    ->validationMessages([
-                                        'required' => __('user_types.validation.color_required'),
-                                    ]),
+                                    ->afterStateHydrated(fn ($state, callable $set): mixed => $set('color', 'blue'))
+                                    ->dehydrateStateUsing(fn (): string => 'blue'),
 
                                 Toggle::make('is_active')
                                     ->label(__('user_types.fields.is_active'))
                                     ->default(true)
                                     ->required(),
                             ]),
-
-                        Placeholder::make('preview')
-                            ->label(__('user_types.fields.preview'))
-                            ->content(function (callable $get): string {
-                                $labelEn = trim((string) ($get('label_en') ?? ''));
-                                $labelKh = trim((string) ($get('label_kh') ?? ''));
-                                $color = UserTypeOptions::canonicalColor($get('color'));
-
-                                $preview = $labelEn !== '' ? $labelEn : __('user_types.preview.empty');
-
-                                if ($labelKh !== '') {
-                                    $preview .= ' / ' . $labelKh;
-                                }
-
-                                return '[' . Str::upper($color) . '] ' . $preview;
-                            })
-                            ->columnSpanFull(),
                     ])
                     ->columns(1),
             ]);

@@ -8,4 +8,9 @@ use Filament\Resources\Pages\EditRecord;
 class EditUserType extends EditRecord
 {
     protected static string $resource = UserTypeResource::class;
+
+    protected function getRedirectUrl(): string
+    {
+        return static::getResource()::getUrl('index');
+    }
 }

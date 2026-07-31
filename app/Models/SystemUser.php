@@ -59,6 +59,21 @@ class SystemUser extends Authenticatable implements FilamentUser, HasAvatar, Has
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::deleting(function (SystemUser $systemUser): void {
+            $linkedLoginUser = $systemUser->findLinkedLoginUser();
+
+            if (! $linkedLoginUser || $linkedLoginUser->trashed()) {
+                return;
+            }
+
+            if ($linkedLoginUser->registration_type === 'admin') {
+                $linkedLoginUser->delete();
+            }
+        });
+    }
+
     public function students(): HasMany
     {
         return $this->hasMany(Student::class, 'system_user_id');
@@ -258,6 +273,15 @@ class SystemUser extends Authenticatable implements FilamentUser, HasAvatar, Has
             ->all();
     }
 
+    public function findLinkedLoginUser(): ?User
+    {
+        return User::query()
+            ->when(filled($this->username), fn ($query) => $query->orWhere('username', $this->username))
+            ->when(filled($this->email), fn ($query) => $query->orWhere('email', $this->email))
+            ->when(filled($this->phone), fn ($query) => $query->orWhere('phone', $this->phone))
+            ->first();
+    }
+
     public static function syncStaffLoginUsers(): void
     {
         User::query()
@@ -289,21 +313,26 @@ class SystemUser extends Authenticatable implements FilamentUser, HasAvatar, Has
                     ->values()
                     ->all();
 
-                static::query()->updateOrCreate(
-                    $lookup,
-                    [
-                        'name' => $loginUser->name ?: $loginUser->username ?: $loginUser->email ?: 'System User',
-                        'username' => $loginUser->username,
-                        'email' => $loginUser->email,
-                        'phone' => $loginUser->phone,
-                        'password' => $loginUser->password,
-                        'avatar' => $loginUser->avatar,
-                        'roles' => $roles,
-                        'permissions' => $permissions,
-                        'is_active' => (bool) $loginUser->is_active,
-                        'email_verified_at' => $loginUser->email_verified_at ?? now(),
-                    ]
-                );
+                $systemUser = static::withTrashed()->firstOrNew($lookup);
+
+                $systemUser->fill([
+                    'name' => $loginUser->name ?: $loginUser->username ?: $loginUser->email ?: 'System User',
+                    'username' => $loginUser->username,
+                    'email' => $loginUser->email,
+                    'phone' => $loginUser->phone,
+                    'password' => $loginUser->password,
+                    'avatar' => $loginUser->avatar,
+                    'roles' => $roles,
+                    'permissions' => $permissions,
+                    'is_active' => (bool) $loginUser->is_active,
+                    'email_verified_at' => $loginUser->email_verified_at ?? now(),
+                ]);
+
+                if ($systemUser->trashed()) {
+                    $systemUser->restore();
+                }
+
+                $systemUser->save();
             });
     }
 

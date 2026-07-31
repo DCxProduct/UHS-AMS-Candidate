@@ -7,12 +7,12 @@ return [
 
     'or' => 'or',
     'sign_in' => 'Sign in',
-    'sign_up' => 'Sign up',
+    'sign_up' => 'Register',
     'sign_up_new_account' => 'Sign up for a new account',
     'already_have_account' => 'Already have an account?',
     'student_type' => 'Student type',
     'student_type_required' => 'Please select a student type.',
-    'candidate_type' => 'User type',
+    'candidate_type' => 'As a Candidate',
     'candidate_type_required' => 'Please select a user type.',
 
     'national_examination' => 'National Examination',

@@ -11,8 +11,8 @@ use Filament\Auth\Pages\Register as BaseRegister;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\ToggleButtons;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Schema;
 use Illuminate\Contracts\Support\Htmlable;
@@ -57,14 +57,15 @@ class Register extends BaseRegister
 
         return $schema
             ->components([
-                ToggleButtons::make('student_role')
+                Select::make('student_role')
                     ->label(__('app.candidate_type'))
                     ->options($this->getUserTypeOptions())
-                    ->colors($this->getUserTypeColors())
                     ->default($this->getDefaultUserTypeRole())
+                    ->placeholder(__('app.candidate_type'))
                     ->required()
-                    ->inline()
                     ->live()
+                    ->native(false)
+                    ->searchable(false)
                     ->dehydrateStateUsing(fn (?string $state): string => $this->resolveSelectedUserTypeRole($state))
                     ->validationMessages([
                         'required' => __('app.candidate_type_required'),
@@ -430,20 +431,12 @@ class Register extends BaseRegister
 
     protected function getUserTypeOptions(): array
     {
-        $options = UserTypeOptions::customQuery()
+        return UserTypeOptions::customQuery()
             ->get()
-            ->filter(fn ($userType): bool => in_array((string) $userType->key, ['candidate', 'associate'], true))
             ->mapWithKeys(fn ($userType): array => [
                 $userType->key => $userType->getLocalizedLabel(),
             ])
             ->all();
-
-        return $options !== []
-            ? $options
-            : [
-                'candidate' => __('app.candidate'),
-                'associate' => app()->getLocale() === 'km' ? 'បរិញ្ញាបត្ររង' : 'Associate',
-            ];
     }
 
     protected function getDefaultUserTypeRole(): string
@@ -453,20 +446,12 @@ class Register extends BaseRegister
 
     protected function getUserTypeColors(): array
     {
-        $colors = UserTypeOptions::customQuery()
+        return UserTypeOptions::customQuery()
             ->get()
-            ->filter(fn ($userType): bool => in_array((string) $userType->key, ['candidate', 'associate'], true))
             ->mapWithKeys(fn ($userType): array => [
                 $userType->key => UserTypeOptions::normalizeColor($userType->color),
             ])
             ->all();
-
-        return $colors !== []
-            ? $colors
-            : [
-                'candidate' => 'primary',
-                'associate' => 'warning',
-            ];
     }
 
     protected function resolveSelectedUserTypeRole(?string $roleName): string

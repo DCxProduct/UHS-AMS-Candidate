@@ -125,8 +125,8 @@ class UserTypeOptions
     {
         $normalized = Str::lower(trim($roleName));
 
-        if (in_array($normalized, ['student', 'candidate'], true)) {
-            return __('app.candidate');
+        if ($userType = static::findByNormalizedKey($normalized)) {
+            return $userType->getLocalizedLabel();
         }
 
         if ($normalized === 'admin') {
@@ -333,19 +333,32 @@ class UserTypeOptions
             ->first(fn (string $role): bool => strcasecmp($role, $needle) === 0);
     }
 
+    protected static function findByNormalizedKey(string $normalizedKey): ?UserType
+    {
+        if ($normalizedKey === '' || ! Schema::hasTable('user_types')) {
+            return null;
+        }
+
+        static::ensureDefaultUserType();
+
+        return UserType::query()
+            ->whereRaw('LOWER(key) = ?', [$normalizedKey])
+            ->first();
+    }
+
     protected static function ensureDefaultUserType(): void
     {
         if (! Schema::hasTable('user_types')) {
             return;
         }
 
-        UserType::query()->firstOrCreate(
-            ['key' => self::DEFAULT_KEY],
+        UserType::query()->updateOrCreate(
+            ['key' => 'master'],
             [
-                'label_en' => 'Candidate',
-                'label_kh' => 'បេក្ខជន',
+                'label_en' => 'Master',
+                'label_kh' => 'អនុបណ្ឌិត',
                 'color' => 'blue',
-                'display_order' => 0,
+                'display_order' => 1,
                 'is_active' => true,
             ],
         );

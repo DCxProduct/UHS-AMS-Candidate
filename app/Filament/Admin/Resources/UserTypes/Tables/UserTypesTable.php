@@ -17,8 +17,6 @@ class UserTypesTable
     {
         return $table
             ->searchPlaceholder(__('user_types.search'))
-            ->defaultSort('display_order')
-            ->reorderable('display_order')
             ->columns([
                 TextColumn::make('row_number')
                     ->label(__('user_types.table.no'))
@@ -26,39 +24,23 @@ class UserTypesTable
                     ->alignCenter()
                     ->width('60px'),
 
-                TextColumn::make('key')
-                    ->label(__('user_types.table.key'))
-                    ->searchable()
-                    ->sortable(),
-
                 TextColumn::make('preview')
                     ->label(__('user_types.table.preview'))
                     ->getStateUsing(fn (UserType $record): string => UserTypeOptions::formatPreviewLabel($record->key))
-                    ->searchable(['label_en', 'label_kh', 'key'])
-                    ->sortable(query: fn ($query, string $direction) => $query->orderBy('label_en', $direction)),
-
-                TextColumn::make('color')
-                    ->label(__('user_types.table.color'))
-                    ->badge()
-                    ->formatStateUsing(fn (?string $state): string => UserTypeOptions::colorOptions()[UserTypeOptions::canonicalColor($state)] ?? ($state ?? '-'))
-                    ->color(fn (UserType $record): string => UserTypeOptions::normalizeColor($record->color))
-                    ->sortable(),
+                    ->searchable(['label_en', 'label_kh', 'key']),
 
                 IconColumn::make('is_active')
                     ->label(__('user_types.table.is_active'))
                     ->boolean()
-                    ->alignCenter()
-                    ->sortable(),
+                    ->alignCenter(),
 
                 TextColumn::make('created_at')
                     ->label(__('user_types.table.created_at'))
-                    ->date('M d, Y')
-                    ->sortable(),
+                    ->date('M d, Y'),
 
                 TextColumn::make('updated_at')
                     ->label(__('user_types.table.updated_at'))
-                    ->date('M d, Y')
-                    ->sortable(),
+                    ->date('M d, Y'),
             ])
             ->recordActions([
                 ActionGroup::make([
