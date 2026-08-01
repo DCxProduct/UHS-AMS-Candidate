@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use Illuminate\Contracts\Auth\Authenticatable;
 use App\Models\UserType;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -40,44 +41,49 @@ class UserTypeOptions
 
     public static function options(): array
     {
-        $roles = static::availableRoleNames();
+        $options = static::customQuery()
+            ->get()
+            ->mapWithKeys(fn (UserType $userType): array => [
+                $userType->key => $userType->getLocalizedLabel(),
+            ])
+            ->all();
 
-        if ($roles !== []) {
-            return collect($roles)
-                ->mapWithKeys(fn (string $role): array => [$role => static::formatLabel($role)])
-                ->all();
+        if ($options !== []) {
+            return $options;
         }
 
         return static::defaultOption();
+    }
+
+    public static function colors(): array
+    {
+        $colors = static::customQuery()
+            ->get()
+            ->mapWithKeys(fn (UserType $userType): array => [
+                $userType->key => static::normalizeColor($userType->color),
+            ])
+            ->all();
+
+        if ($colors !== []) {
+            return $colors;
+        }
+
+        return collect(static::defaultOption())
+            ->mapWithKeys(fn (string $_label, string $role): array => [
+                $role => match (Str::lower($role)) {
+                    'associate' => 'warning',
+                    default => 'primary',
+                },
+            ])
+                ->all();
     }
 
     public static function systemOptions(): array
     {
         $roles = static::availableSystemRoleNames();
 
-        if ($roles !== []) {
-            return collect($roles)
-                ->mapWithKeys(fn (string $role): array => [$role => static::formatLabel($role)])
-                ->all();
-        }
-
-        return [
-            'admin' => __('system_users.roles.admin'),
-            'cashier' => __('system_users.roles.cashier'),
-        ];
-    }
-
-    public static function colors(): array
-    {
-        return collect(static::options())
-            ->mapWithKeys(fn (string $_label, string $role): array => [
-                $role => match (Str::lower($role)) {
-                    'admin' => 'danger',
-                    'cashier' => 'success',
-                    'associate' => 'warning',
-                    default => 'primary',
-                },
-            ])
+        return collect($roles)
+            ->mapWithKeys(fn (string $role): array => [$role => static::formatLabel($role)])
             ->all();
     }
 
@@ -171,9 +177,17 @@ class UserTypeOptions
             ->pluck('name')
             ->all();
 
-        $selectedRole = static::resolve($selectedRole);
         $normalized = Str::lower(trim($selectedRole));
-        $selectedStoredRole = in_array($normalized, ['student', 'candidate'], true)
+
+        if (in_array($normalized, ['student', 'candidate'], true) || static::findByNormalizedKey($normalized)) {
+            $selectedRole = static::resolve($selectedRole);
+            $normalized = Str::lower(trim($selectedRole));
+        } else {
+            $selectedRole = static::resolveSystemRole($selectedRole);
+            $normalized = Str::lower(trim($selectedRole));
+        }
+
+        $selectedStoredRole = in_array($normalized, ['student', 'candidate'], true) || static::findByNormalizedKey($normalized)
             ? (static::findRoleCaseInsensitive($availableRoles, 'candidate')
                 ?? static::findRoleCaseInsensitive($availableRoles, 'student')
                 ?? self::BASE_ROLE)
@@ -189,26 +203,76 @@ class UserTypeOptions
             ->all();
     }
 
+    public static function assignableUserRoles(string $selectedRole): array
+    {
+        $selectedRole = static::resolve($selectedRole);
+
+        return collect([$selectedRole])
+            ->filter(fn (?string $role): bool => filled($role))
+            ->unique(fn (string $role): string => Str::lower($role))
+            ->values()
+            ->all();
+    }
+
     public static function assignableSystemRoles(string $selectedRole): array
     {
-        $availableRoles = Role::query()
-            ->where('guard_name', 'web')
-            ->pluck('name')
-            ->all();
-
-        $selectedRole = static::resolve($selectedRole);
+        $availableRoles = static::availableSystemRoleNames();
+        $selectedRole = static::resolveSystemRole($selectedRole);
         $normalized = Str::lower(trim($selectedRole));
         $selectedStoredRole = in_array($normalized, ['student', 'candidate'], true)
             ? (static::findRoleCaseInsensitive($availableRoles, 'candidate')
                 ?? static::findRoleCaseInsensitive($availableRoles, 'student')
                 ?? self::BASE_ROLE)
-            : static::findRoleCaseInsensitive($availableRoles, $selectedRole);
+            : (static::findByNormalizedKey($normalized)?->key
+                ?? static::findRoleCaseInsensitive($availableRoles, $selectedRole));
 
         return collect([
             $selectedStoredRole,
         ])
             ->filter(fn (?string $role): bool => filled($role))
             ->unique(fn (string $role): string => Str::lower($role))
+            ->values()
+            ->all();
+    }
+
+    public static function isCandidateManagedRole(?string $role): bool
+    {
+        if (! is_string($role) || trim($role) === '') {
+            return false;
+        }
+
+        return in_array(Str::lower(trim($role)), static::candidateManagedRoleKeys(), true);
+    }
+
+    public static function userHasCandidateBasePermission(?Authenticatable $user, string $permission): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        if (method_exists($user, 'can') && $user->can($permission)) {
+            return true;
+        }
+
+        if (($user->registration_type ?? null) !== 'student') {
+            return false;
+        }
+
+        $candidateRole = Role::query()
+            ->where('guard_name', 'web')
+            ->whereRaw('LOWER(name) = ?', [self::BASE_ROLE])
+            ->first();
+
+        return $candidateRole?->hasPermissionTo($permission) ?? false;
+    }
+
+    public static function candidateManagedRoleKeys(): array
+    {
+        return static::customQuery()
+            ->pluck('key')
+            ->map(fn (string $key): string => Str::lower(trim($key)))
+            ->push('candidate', 'student')
+            ->unique()
             ->values()
             ->all();
     }
@@ -251,9 +315,6 @@ class UserTypeOptions
     protected static function defaultOption(): array
     {
         return [
-            'admin' => __('system_users.roles.admin'),
-            'cashier' => __('system_users.roles.cashier'),
-            'associate' => app()->getLocale() === 'km' ? 'បរិញ្ញាបត្ររង' : 'Associate',
             self::DEFAULT_KEY => __('app.candidate'),
         ];
     }
@@ -308,21 +369,19 @@ class UserTypeOptions
 
     protected static function availableSystemRoleNames(): array
     {
-        $roles = collect(static::availableRoleNames());
-        $userTypeKeys = Schema::hasTable('user_types')
-            ? UserType::query()->pluck('key')->map(fn (string $key): string => Str::lower(trim($key)))->all()
-            : [];
+        $candidateManagedRoles = static::candidateManagedRoleKeys();
 
-        return $roles
-            ->reject(function (string $role) use ($userTypeKeys): bool {
-                $normalized = Str::lower(trim($role));
-
-                if (in_array($normalized, ['candidate', 'student'], true)) {
-                    return true;
-                }
-
-                return in_array($normalized, $userTypeKeys, true);
-            })
+        return collect(Role::query()
+            ->where('guard_name', 'web')
+            ->when(
+                $candidateManagedRoles !== [],
+                fn ($query) => $query->whereNotIn('name', $candidateManagedRoles),
+            )
+            ->pluck('name')
+            ->all())
+            ->map(fn (string $role): string => trim($role))
+            ->unique(fn (string $role): string => Str::lower($role))
+            ->sortBy(fn (string $role): string => Str::lower($role))
             ->values()
             ->all();
     }

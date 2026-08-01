@@ -1,0 +1,88 @@
+{
+    "name": "bezhansalleh/filament-language-switch",
+    "description": "Zero config Language Switch(Changer/Localizer) plugin for filamentphp admin",
+    "keywords": [
+        "bezhanSalleh",
+        "laravel",
+        "filament-language-switch",
+        "filament-language-changer",
+        "filament-locale-changer",
+        "filament-localizer",
+        "filament-plugin",
+        "filamentphp"
+    ],
+    "homepage": "https://github.com/bezhansalleh/filament-language-switch",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Bezhan Salleh",
+            "email": "bezhan_salleh@yahoo.com",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "filament/filament": "^4.0|^5.0",
+        "illuminate/contracts": "^11.28|^12.0|^13.0",
+        "illuminate/support": "^11.28|^12.0|^13.0",
+        "spatie/laravel-package-tools": "^1.9"
+    },
+    "require-dev": {
+        "larastan/larastan": "^3.0",
+        "laravel/pint": "^1.0",
+        "nunomaduro/collision": "^8.0",
+        "orchestra/testbench": "^9.0|^10.0|^11.0",
+        "pestphp/pest": "^3.8|^4.0",
+        "pestphp/pest-plugin-laravel": "^3.2|^4.0",
+        "pestphp/pest-plugin-livewire": "^3.0|^4.0",
+        "pestphp/pest-plugin-type-coverage": "^3.6|^4.0",
+        "phpstan/extension-installer": "^1.4",
+        "phpstan/phpstan": "^2.1",
+        "phpstan/phpstan-deprecation-rules": "^2.0",
+        "phpstan/phpstan-phpunit": "^2.0",
+        "phpunit/phpunit": "^11.0|^12.0",
+        "rector/jack": "^0.4.0",
+        "rector/rector": "^2.2",
+        "spatie/laravel-ray": "^1.43"
+    },
+    "autoload": {
+        "psr-4": {
+            "BezhanSalleh\\LanguageSwitch\\": "src"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "BezhanSalleh\\LanguageSwitch\\Tests\\": "tests"
+        }
+    },
+    "scripts": {
+        "analyse": "vendor/bin/phpstan analyse",
+        "test": "vendor/bin/pest --no-coverage",
+        "test:type": "vendor/bin/pest --type-coverage",
+        "lint": "vendor/bin/pint",
+        "refactor": "vendor/bin/rector",
+        "finalize": [
+            "@refactor",
+            "@lint",
+            "@test:type",
+            "@test"
+        ]
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "composer/package-versions-deprecated": true,
+            "pestphp/pest-plugin": true,
+            "phpstan/extension-installer": true
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "BezhanSalleh\\LanguageSwitch\\LanguageSwitchServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}

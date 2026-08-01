@@ -5,13 +5,14 @@ namespace App\Filament\Admin\Resources\Users\Schemas;
 use App\Models\SystemUser;
 use App\Support\UserTypeOptions;
 use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class UserForm
 {
@@ -33,7 +34,20 @@ class UserForm
                                     ->maxLength(100)
                                     ->unique(SystemUser::class, 'username', ignoreRecord: true)
                                     ->placeholder(__('users.placeholders.username'))
-                                    ->dehydrateStateUsing(fn ($state): ?string => blank($state) ? null : trim((string) $state)),
+                                    ->rules([
+                                        'required',
+                                        'regex:/^[a-z0-9_]+$/',
+                                    ])
+                                    ->validationMessages([
+                                        'required' => __('users.validation.username_required'),
+                                        'regex' => __('users.validation.username_regex'),
+                                    ])
+                                    ->extraInputAttributes([
+                                        'autocapitalize' => 'none',
+                                        'autocomplete' => 'off',
+                                        'oninput' => "this.value = this.value.toLowerCase().replace(/[^a-z0-9_]/g, '')",
+                                    ])
+                                    ->dehydrateStateUsing(fn ($state): ?string => blank($state) ? null : Str::lower(trim((string) $state))),
 
                                 TextInput::make('email')
                                     ->label(__('users.fields.email'))
@@ -71,9 +85,16 @@ class UserForm
                                         : preg_replace('/[^0-9]/', '', (string) $state)
                                     ),
 
-                                Hidden::make('candidate_type')
-                                    ->default(UserTypeOptions::BASE_ROLE)
-                                    ->dehydrated(true),
+                                Select::make('candidate_type')
+                                    ->label(__('users.fields.candidate_type'))
+                                    ->options(UserTypeOptions::options())
+                                    ->required()
+                                    ->searchable()
+                                    ->native(false)
+                                    ->placeholder(__('users.placeholders.candidate_type'))
+                                    ->validationMessages([
+                                        'required' => __('users.validation.candidate_type_required'),
+                                    ]),
 
                                 TextInput::make('password')
                                     ->label(__('users.fields.password'))

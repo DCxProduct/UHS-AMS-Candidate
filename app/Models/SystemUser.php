@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\UserTypeOptions;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Models\Contracts\HasAvatar;
 use Filament\Models\Contracts\HasName;
@@ -97,9 +98,7 @@ class SystemUser extends Authenticatable implements FilamentUser, HasAvatar, Has
             'Registrar',
             'Team UHS',
             'Processing',
-            'candidate',
-            'Candidate',
-            'Student',
+            ...UserTypeOptions::candidateManagedRoleKeys(),
         ]);
     }
 
@@ -216,22 +215,15 @@ class SystemUser extends Authenticatable implements FilamentUser, HasAvatar, Has
             return 'admin';
         }
 
-        return $this->hasJsonRole(['Student', 'student', 'candidate', 'Candidate']) ? 'student' : 'admin';
+        return $this->hasJsonRole(UserTypeOptions::candidateManagedRoleKeys()) ? 'student' : 'admin';
     }
 
     protected function syncLoginUserAuthorizations(User $loginUser): void
     {
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-        $allRoles = Role::query()
-            ->where('guard_name', 'web')
-            ->get();
-
         $roleNames = collect($this->normalizeStringArray($this->roles))
-            ->map(fn (string $role): ?string => $allRoles
-                ->first(fn (Role $candidate): bool => strcasecmp($candidate->name, $role) === 0)
-                ?->name
-            )
+            ->flatMap(fn (string $role): array => UserTypeOptions::assignableWebRoles($role))
             ->filter()
             ->values()
             ->all();

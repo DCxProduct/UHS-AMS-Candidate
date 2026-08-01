@@ -60,8 +60,7 @@ class Register extends BaseRegister
                 Select::make('student_role')
                     ->label(__('app.candidate_type'))
                     ->options($this->getUserTypeOptions())
-                    ->default($this->getDefaultUserTypeRole())
-                    ->placeholder(__('app.candidate_type'))
+                    ->placeholder(__('app.select_candidate_type'))
                     ->required()
                     ->live()
                     ->native(false)
@@ -383,14 +382,20 @@ class Register extends BaseRegister
             | Store student in system_users table
             |--------------------------------------------------------------------------
             */
-            SystemUser::query()->create([
+            $systemUserLookup = filled($username)
+                ? ['username' => $username]
+                : (filled($email)
+                    ? ['email' => $email]
+                    : ['phone' => $phone]);
+
+            SystemUser::query()->updateOrCreate($systemUserLookup, [
                 'name' => $username,
                 'username' => $username,
                 'email' => $email,
                 'phone' => $phone,
                 'password' => $hashedPassword,
                 'avatar' => null,
-                'roles' => UserTypeOptions::assignableSystemRoles($studentRole),
+                'roles' => UserTypeOptions::assignableUserRoles($studentRole),
                 'permissions' => null,
                 'is_active' => true,
                 'email_verified_at' => now(),

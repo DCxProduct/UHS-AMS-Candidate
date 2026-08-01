@@ -7,6 +7,7 @@ use App\Support\UserTypeOptions;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Enums\Width;
+use Illuminate\Support\Str;
 
 class EditSystemUser extends EditRecord
 {
@@ -66,7 +67,7 @@ class EditSystemUser extends EditRecord
 
         $data['username'] = blank($data['username'] ?? null)
             ? null
-            : trim((string) $data['username']);
+            : Str::lower(trim((string) $data['username']));
 
         $data['email'] = blank($data['email'] ?? null)
             ? null

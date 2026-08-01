@@ -28,6 +28,7 @@ return [
         'email' => 'Enter email address',
         'phone' => 'Enter phone number',
         'username' => 'Enter username',
+        'candidate_type' => 'Select role',
         'choose_image' => 'Choose Image',
         'password_create' => 'Enter password',
         'password_edit' => 'Leave blank to keep old password',
@@ -36,6 +37,8 @@ return [
     ],
 
     'validation' => [
+        'username_required' => 'Username is required.',
+        'username_regex' => 'Username must use lowercase English letters, numbers, and underscores only.',
         'phone_required' => 'Phone number is required.',
         'phone_regex' => 'Phone number must contain only numbers and be between 9 to 10 digits.',
         'phone_min' => 'Phone number must be at least 9 digits.',

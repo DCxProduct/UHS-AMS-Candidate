@@ -74,6 +74,7 @@
          'name' => 'Name',
          'slug' => 'Slug',
          'is_active' => 'Is Active',
+         'allowed_roles' => 'Allowed Roles',
          'details' => 'Form Details',
          'names' => [],
      ],

@@ -50,7 +50,7 @@ class StudentUsersSeeder extends Seeder
                         'password' => $hashedPassword,
                         'avatar' => null,
                         'roles' => [
-                            'candidate',
+                            'master',
                         ],
                         'permissions' => null,
                         'is_active' => true,

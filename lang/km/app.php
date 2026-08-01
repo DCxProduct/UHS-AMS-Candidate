@@ -13,6 +13,7 @@ return [
     'student_type' => 'ប្រភេទនិស្សិត',
     'student_type_required' => 'សូមជ្រើសរើសប្រភេទនិស្សិត។',
     'candidate_type' => 'ជាបេក្ខជន',
+    'select_candidate_type' => 'សូមជ្រើសរើសតួនាទី',
     'candidate_type_required' => 'សូមជ្រើសរើសប្រភេទអ្នកប្រើប្រាស់។',
 
     'national_examination' => 'ប្រឡងថ្នាក់ជាតិ',

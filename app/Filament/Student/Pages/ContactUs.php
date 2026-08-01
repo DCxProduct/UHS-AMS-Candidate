@@ -20,6 +20,17 @@ class ContactUs extends Page
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedPhone;
 
+    public static function canAccess(): bool
+    {
+        $user = auth()->user();
+
+        if (! $user) {
+            return false;
+        }
+
+        return in_array($user->registration_type, ['admin', 'student'], true);
+    }
+
     public function getTitle(): string|Htmlable
     {
         return $this->getFormTitle();

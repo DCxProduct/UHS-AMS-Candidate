@@ -6,6 +6,7 @@ use App\Filament\Admin\Resources\SystemUsers\SystemUserResource;
 use App\Support\UserTypeOptions;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Support\Enums\Width;
+use Illuminate\Support\Str;
 
 class CreateSystemUser extends CreateRecord
 {
@@ -36,7 +37,7 @@ class CreateSystemUser extends CreateRecord
 
         $data['username'] = blank($data['username'] ?? null)
             ? null
-            : trim((string) $data['username']);
+            : Str::lower(trim((string) $data['username']));
 
         $data['email'] = blank($data['email'] ?? null)
             ? null

@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\SystemUser;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -25,20 +24,28 @@ class RolesAndPermissionsSeeder extends Seeder
             '--no-interaction' => true,
         ]);
 
-        $admin = Role::firstOrCreate([
-            'name' => 'admin',
-            'guard_name' => 'web',
+        $systemAdminRoles = collect([
+            'admin',
+            'cashier',
+        ])->mapWithKeys(fn (string $role): array => [
+            $role => Role::firstOrCreate([
+                'name' => $role,
+                'guard_name' => 'web',
+            ]),
         ]);
 
-        $candidate = Role::firstOrCreate([
-            'name' => 'candidate',
-            'guard_name' => 'web',
+        $userRoles = collect([
+            'candidate',
+        ])->mapWithKeys(fn (string $role): array => [
+            $role => Role::firstOrCreate([
+                'name' => $role,
+                'guard_name' => 'web',
+            ]),
         ]);
 
-        $cashier = Role::firstOrCreate([
-            'name' => 'cashier',
-            'guard_name' => 'web',
-        ]);
+        $admin = $systemAdminRoles['admin'];
+        $cashier = $systemAdminRoles['cashier'];
+        $candidate = $userRoles['candidate'];
 
         $adminExcludedPermissions = [
             'Create:CustomFormEntry',
@@ -88,22 +95,6 @@ class RolesAndPermissionsSeeder extends Seeder
         );
 
         $studentUser->syncRoles(['candidate']);
-
-        $cashierSystemUser = SystemUser::query()->updateOrCreate(
-            ['username' => 'cashier'],
-            [
-                'name' => 'Cashier',
-                'email' => 'cashier@gmail.com',
-                'phone' => '010000098',
-                'password' => Hash::make('1234567a'),
-                'roles' => ['cashier'],
-                'permissions' => null,
-                'is_active' => true,
-                'email_verified_at' => now(),
-            ]
-        );
-
-        $cashierSystemUser->syncLoginUser();
 
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
     }
