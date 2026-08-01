@@ -19,7 +19,7 @@ class AdminSubmissionsTrendChart extends ChartWidget
 
     public static function canView(): bool
     {
-        return auth()->user()?->registration_type === 'admin';
+        return auth()->user()?->hasEffectiveRole('admin') ?? false;
     }
 
     public function getHeading(): ?string

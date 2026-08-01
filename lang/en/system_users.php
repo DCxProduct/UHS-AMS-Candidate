@@ -44,6 +44,8 @@ return [
 
     'validation' => [
         'candidate_type_required' => 'Role is required.',
+        'username_required' => 'Username is required.',
+        'username_regex' => 'Username must use lowercase English letters, numbers, and underscores only.',
         'phone_required' => 'Phone number is required.',
         'phone_regex' => 'Phone number must contain only numbers and be between 9 to 10 digits.',
         'phone_min' => 'Phone number must be at least 9 digits.',
@@ -79,5 +81,19 @@ return [
     'notifications' => [
         'activated' => 'Account activated successfully.',
         'deactivated' => 'Account deactivated successfully.',
+    ],
+
+    'role_menu' => [
+        'type' => 'Role Type',
+        'type_placeholder' => 'Select role type',
+        'name_placeholder' => 'Enter role name',
+        'help_user' => 'Use this for candidate or student-facing roles.',
+        'help_system_admin' => 'Use this for admin, cashier, finance, registrar, developer, and other staff roles.',
+        'name_help_user' => 'Examples: candidate, master, associate.',
+        'name_help_system_admin' => 'Examples: admin, cashier, finance, registrar.',
+        'options' => [
+            'user' => 'User',
+            'system_admin' => 'Staff',
+        ],
     ],
 ];

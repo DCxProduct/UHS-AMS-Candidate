@@ -217,7 +217,7 @@ class SystemUsersTable
                 ->values();
 
             $candidateRole = $roleCollection
-                ->first(fn (string $role): bool => ! in_array(strtolower($role), ['student', 'candidate'], true));
+                ->first(fn (string $role): bool => ! UserTypeOptions::isCandidateManagedRole($role));
 
             if ($candidateRole) {
                 return $candidateRole;

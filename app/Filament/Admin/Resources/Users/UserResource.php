@@ -9,6 +9,7 @@ use App\Filament\Admin\Resources\Users\Schemas\UserForm;
 use App\Filament\Admin\Resources\Users\Tables\UsersTable;
 use App\Filament\Concerns\AdminOnly;
 use App\Models\SystemUser;
+use App\Support\UserTypeOptions;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -77,19 +78,48 @@ class UserResource extends Resource
     {
         $query = parent::getEloquentQuery();
         $driver = DB::connection()->getDriverName();
+        $candidateRoles = UserTypeOptions::candidateManagedRoleKeys();
+
+        if ($candidateRoles === []) {
+            return $query;
+        }
 
         if ($driver === 'pgsql') {
-            return $query->where(function (Builder $query): void {
-                $query
-                    ->whereRaw("LOWER(COALESCE(roles::text, '')) LIKE ?", ['%"candidate"%'])
-                    ->orWhereRaw("LOWER(COALESCE(roles::text, '')) LIKE ?", ['%"student"%']);
+            return $query->where(function (Builder $query) use ($candidateRoles): void {
+                foreach ($candidateRoles as $role) {
+                    $query->orWhereRaw("LOWER(COALESCE(roles::text, '')) LIKE ?", ['%"' . $role . '"%']);
+                }
+            })->whereNotExists(function ($subQuery): void {
+                $subQuery
+                    ->selectRaw('1')
+                    ->from('users')
+                    ->whereNull('users.deleted_at')
+                    ->where('users.registration_type', 'admin')
+                    ->where(function ($match): void {
+                        $match
+                            ->whereColumn('users.username', 'system_users.username')
+                            ->orWhereColumn('users.email', 'system_users.email')
+                            ->orWhereColumn('users.phone', 'system_users.phone');
+                    });
             });
         }
 
-        return $query->where(function (Builder $query): void {
-            $query
-                ->whereRaw("LOWER(COALESCE(CAST(roles AS CHAR), '')) LIKE ?", ['%"candidate"%'])
-                ->orWhereRaw("LOWER(COALESCE(CAST(roles AS CHAR), '')) LIKE ?", ['%"student"%']);
+        return $query->where(function (Builder $query) use ($candidateRoles): void {
+            foreach ($candidateRoles as $role) {
+                $query->orWhereRaw("LOWER(COALESCE(CAST(roles AS CHAR), '')) LIKE ?", ['%"' . $role . '"%']);
+            }
+        })->whereNotExists(function ($subQuery): void {
+            $subQuery
+                ->selectRaw('1')
+                ->from('users')
+                ->whereNull('users.deleted_at')
+                ->where('users.registration_type', 'admin')
+                ->where(function ($match): void {
+                    $match
+                        ->whereColumn('users.username', 'system_users.username')
+                        ->orWhereColumn('users.email', 'system_users.email')
+                        ->orWhereColumn('users.phone', 'system_users.phone');
+                });
         });
     }
 

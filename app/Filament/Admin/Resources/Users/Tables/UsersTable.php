@@ -13,6 +13,8 @@ use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\FiltersLayout;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\DB;
 
@@ -97,6 +99,49 @@ class UsersTable
                     ->date('M d, Y')
                     ->sortable(),
             ])
+            ->filters([
+                SelectFilter::make('roles')
+                    ->label(__('users.fields.candidate_type'))
+                    ->options(fn (): array => UserTypeOptions::options())
+                    ->native(false)
+                    ->searchable()
+                    ->preload()
+                    ->query(function ($query, array $data) {
+                        $value = trim((string) ($data['value'] ?? ''));
+
+                        if ($value === '') {
+                            return $query;
+                        }
+
+                        $driver = DB::connection()->getDriverName();
+
+                        if ($driver === 'pgsql') {
+                            return $query->whereRaw('LOWER(COALESCE(roles::text, \'\')) LIKE ?', ['%"' . strtolower($value) . '"%']);
+                        }
+
+                        return $query->whereRaw('LOWER(COALESCE(CAST(roles AS CHAR), \'\')) LIKE ?', ['%"' . strtolower($value) . '"%']);
+                    }),
+
+                SelectFilter::make('is_active')
+                    ->label(__('users.fields.is_active'))
+                    ->options([
+                        '1' => __('users.filters.active'),
+                        '0' => __('users.filters.inactive'),
+                    ])
+                    ->native(false)
+                    ->query(function ($query, array $data) {
+                        $value = $data['value'] ?? null;
+
+                        if ($value === null || $value === '') {
+                            return $query;
+                        }
+
+                        return $query->where('is_active', (bool) $value);
+                    }),
+            ], layout: FiltersLayout::AboveContent)
+            ->filtersFormColumns(4)
+            ->deferFilters(false)
+            ->filtersApplyAction(fn (Action $action): Action => $action->hidden())
             ->recordActions([
                 ActionGroup::make([
                     EditAction::make()
@@ -162,14 +207,10 @@ class UsersTable
                 ->values();
 
             $candidateRole = $roleCollection
-                ->first(fn (string $role): bool => ! in_array(strtolower($role), ['student', 'candidate'], true));
+                ->first(fn (string $role): bool => UserTypeOptions::isCandidateManagedRole($role));
 
             if ($candidateRole) {
                 return $candidateRole;
-            }
-
-            if ($roleCollection->contains(fn (string $role): bool => in_array(strtolower($role), ['student', 'candidate'], true))) {
-                return UserTypeOptions::BASE_ROLE;
             }
         }
 

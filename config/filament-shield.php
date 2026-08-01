@@ -202,7 +202,6 @@ return [
         'exclude' => [
             Sync::class,
             ContactUs::class,
-            MyProfile::class,
         ],
     ],
 

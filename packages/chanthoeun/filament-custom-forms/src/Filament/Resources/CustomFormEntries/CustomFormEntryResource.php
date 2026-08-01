@@ -4,6 +4,7 @@ namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries;
 
 use App\Models\ClosingDate;
 use App\Support\ClosingDateWorkflow;
+use App\Support\UserTypeOptions;
 use BackedEnum;
 use BezhanSalleh\FilamentShield\Facades\FilamentShield;
 use Chanthoeun\FilamentCustomForms\CustomFormPlugin;
@@ -533,8 +534,18 @@ class CustomFormEntryResource extends Resource
             return false;
         }
 
+        $allowedRoles = static::getFormAllowedRoles($form);
+
+        if (
+            static::currentUserIsStudent()
+            && strtolower((string) ($form->slug ?? '')) === 'profile'
+            && collect($allowedRoles)->intersect(UserTypeOptions::candidateManagedRoleKeys())->isNotEmpty()
+        ) {
+            return true;
+        }
+
         return collect($userRoles)
-            ->intersect(static::getFormAllowedRoles($form))
+            ->intersect($allowedRoles)
             ->isNotEmpty();
     }
 
@@ -550,16 +561,21 @@ class CustomFormEntryResource extends Resource
             return true;
         }
 
-        return $user->can('ViewAny:CustomFormEntry')
-            || $user->can('Create:CustomFormEntry');
+        return UserTypeOptions::userHasCandidateBasePermission($user, 'ViewAny:CustomFormEntry')
+            || UserTypeOptions::userHasCandidateBasePermission($user, 'Create:CustomFormEntry');
     }
 
     protected static function getFormAllowedRoles(CustomForm $form): array
     {
         $roles = $form->allowed_roles ?? [];
+        $defaultRoles = collect(UserTypeOptions::candidateManagedRoleKeys())
+            ->push('admin')
+            ->unique()
+            ->values()
+            ->all();
 
         if (blank($roles)) {
-            return ['student', 'admin'];
+            return $defaultRoles;
         }
 
         if (is_string($roles)) {
@@ -577,7 +593,7 @@ class CustomFormEntryResource extends Resource
         }
 
         if (! is_array($roles)) {
-            return ['student', 'admin'];
+            return $defaultRoles;
         }
 
         $roles = collect($roles)
@@ -587,7 +603,7 @@ class CustomFormEntryResource extends Resource
             ->values()
             ->all();
 
-        return empty($roles) ? ['student', 'candidate', 'admin'] : $roles;
+        return empty($roles) ? $defaultRoles : $roles;
     }
 
     protected static function currentUserFormRoles(): array

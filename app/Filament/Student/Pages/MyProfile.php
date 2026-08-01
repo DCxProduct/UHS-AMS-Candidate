@@ -4,6 +4,7 @@ namespace App\Filament\Student\Pages;
 
 use App\Models\User;
 use App\Support\NotificationLanguage;
+use BezhanSalleh\FilamentShield\Facades\FilamentShield;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\TextInput;
@@ -37,6 +38,24 @@ class MyProfile extends Page implements HasForms
     public function getHeading(): string
     {
         return __('student_profile.my_profile');
+    }
+
+    public static function canAccess(): bool
+    {
+        $user = auth()->user();
+
+        if (! $user) {
+            return false;
+        }
+
+        $page = FilamentShield::getPages()[static::class] ?? null;
+        $permission = $page ? array_key_first($page['permissions']) : null;
+
+        if ($permission) {
+            return $user->can($permission);
+        }
+
+        return in_array($user->registration_type, ['admin', 'student'], true);
     }
 
     public function mount(): void

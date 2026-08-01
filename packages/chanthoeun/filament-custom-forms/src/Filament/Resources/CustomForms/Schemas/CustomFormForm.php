@@ -178,17 +178,26 @@ class CustomFormForm
                             ),
 
                         Forms\Components\CheckboxList::make('allowed_roles')
-                            ->label(app()->getLocale() === 'km' ? 'តួនាទីអាចប្រើប្រាស់' : 'Allowed Roles')
-                            ->options(fn (): array => UserTypeOptions::options())
+                            ->label(__('filament-custom-forms::fcf.form.allowed_roles'))
+                            ->options(fn (): array => UserTypeOptions::systemOptions() + UserTypeOptions::customQuery()
+                                ->get()
+                                ->mapWithKeys(fn ($userType): array => [
+                                    $userType->key => $userType->getLocalizedLabel(),
+                                ])
+                                ->all())
                             ->columns(2)
                             ->gridDirection('row')
                             ->bulkToggleable()
-                            ->helperText(app()->getLocale() === 'km'
-                                ? 'ជ្រើសរើសតួនាទីដែលអាចបើក និងដាក់ពាក្យតាមទម្រង់នេះ'
-                                : 'Select the roles that can open and use this form')
                             ->columnSpanFull()
                             ->afterStateHydrated(function ($component, $record): void {
-                                $availableRoles = array_keys(UserTypeOptions::options());
+                                $availableRoles = array_keys(
+                                    UserTypeOptions::systemOptions() + UserTypeOptions::customQuery()
+                                        ->get()
+                                        ->mapWithKeys(fn ($userType): array => [
+                                            $userType->key => $userType->getLocalizedLabel(),
+                                        ])
+                                        ->all()
+                                );
                                 $roles = $record?->allowed_roles;
 
                                 if (is_string($roles)) {

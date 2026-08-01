@@ -9,6 +9,7 @@ use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Notifications\Notification;
 use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
@@ -23,6 +24,18 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        Gate::before(function ($user, string $ability): ?bool {
+            if (! $user instanceof User) {
+                return null;
+            }
+
+            if ($user->hasEffectiveRole('admin')) {
+                return true;
+            }
+
+            return null;
+        });
+
         ResetPassword::createUrlUsing(function (User $user, string $token): string {
             return route('student.password.reset', [
                 'token' => $token,

@@ -67,6 +67,8 @@ class UserType extends Model
                     'name' => $candidateType->key,
                 ])->save();
             }
+
+            static::syncCandidatePermissionsToRole($role);
         });
     }
 
@@ -122,5 +124,19 @@ class UserType extends Model
                     'roles' => $updatedRoles,
                 ])->saveQuietly();
             });
+    }
+
+    protected static function syncCandidatePermissionsToRole(Role $role): void
+    {
+        $candidateRole = Role::query()
+            ->where('guard_name', 'web')
+            ->where('name', UserTypeOptions::BASE_ROLE)
+            ->first();
+
+        if (! $candidateRole) {
+            return;
+        }
+
+        $role->syncPermissions($candidateRole->permissions);
     }
 }

@@ -12,6 +12,7 @@ use App\Filament\Student\Pages\ContactUs;
 use App\Filament\Student\Pages\MyProfile;
 use App\Http\Middleware\CheckUserActive;
 use App\Support\ClosingDateWorkflow;
+use App\Support\UserTypeOptions;
 use BezhanSalleh\LanguageSwitch\Http\Middleware\SwitchLanguageLocale;
 use Chanthoeun\FilamentCustomForms\CustomFormPlugin;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource as PackageCustomFormEntryResource;
@@ -133,7 +134,7 @@ class AppPanelProvider extends PanelProvider
                     ->label(fn (): string => __('student_profile.my_profile'))
                     ->icon('heroicon-o-user-circle')
                     ->url(fn (): string => MyProfile::getUrl())
-                    ->visible(fn (): bool => $this->isAdmin() || $this->isStudent()),
+                    ->visible(fn (): bool => MyProfile::canAccess()),
             ])
 
             ->navigationGroups([
@@ -225,8 +226,11 @@ class AppPanelProvider extends PanelProvider
             */
             if (in_array('allowed_roles', $columns, true)) {
                 $driver = DB::connection()->getDriverName();
+                $candidateManagedRoles = $this->isStudent()
+                    ? UserTypeOptions::candidateManagedRoleKeys()
+                    : [];
 
-                $query->where(function ($query) use ($driver, $currentRoles): void {
+                $query->where(function ($query) use ($driver, $currentRoles, $candidateManagedRoles): void {
                     $query->whereNull('allowed_roles');
 
                     if ($driver === 'pgsql') {
@@ -238,6 +242,18 @@ class AppPanelProvider extends PanelProvider
                         foreach ($currentRoles as $role) {
                             $query->orWhereRaw('allowed_roles::text ILIKE ?', ['%"' . $role . '"%']);
                         }
+
+                        if ($candidateManagedRoles !== []) {
+                            $query->orWhere(function ($profileQuery) use ($candidateManagedRoles): void {
+                                $profileQuery
+                                    ->where('slug', 'profile')
+                                    ->where(function ($allowedRoleQuery) use ($candidateManagedRoles): void {
+                                        foreach ($candidateManagedRoles as $role) {
+                                            $allowedRoleQuery->orWhereRaw('allowed_roles::text ILIKE ?', ['%"' . $role . '"%']);
+                                        }
+                                    });
+                            });
+                        }
                     } else {
                         $query
                             ->orWhereRaw("CAST(allowed_roles AS CHAR) = ''")
@@ -246,6 +262,18 @@ class AppPanelProvider extends PanelProvider
 
                         foreach ($currentRoles as $role) {
                             $query->orWhereRaw('CAST(allowed_roles AS CHAR) LIKE ?', ['%"' . $role . '"%']);
+                        }
+
+                        if ($candidateManagedRoles !== []) {
+                            $query->orWhere(function ($profileQuery) use ($candidateManagedRoles): void {
+                                $profileQuery
+                                    ->where('slug', 'profile')
+                                    ->where(function ($allowedRoleQuery) use ($candidateManagedRoles): void {
+                                        foreach ($candidateManagedRoles as $role) {
+                                            $allowedRoleQuery->orWhereRaw('CAST(allowed_roles AS CHAR) LIKE ?', ['%"' . $role . '"%']);
+                                        }
+                                    });
+                            });
                         }
                     }
                 });
@@ -383,8 +411,8 @@ class AppPanelProvider extends PanelProvider
             return true;
         }
 
-        return $user->can('ViewAny:CustomFormEntry')
-            || $user->can('Create:CustomFormEntry');
+        return UserTypeOptions::userHasCandidateBasePermission($user, 'ViewAny:CustomFormEntry')
+            || UserTypeOptions::userHasCandidateBasePermission($user, 'Create:CustomFormEntry');
     }
 
     protected function currentDynamicFormRoles(): array
@@ -457,8 +485,25 @@ class AppPanelProvider extends PanelProvider
             ->values()
             ->all();
 
+        $form = DB::table('custom_forms')
+            ->select(['id', 'slug'])
+            ->where('id', $formId)
+            ->first();
+
+        if (
+            $this->isStudent()
+            && strtolower((string) ($form->slug ?? '')) === 'profile'
+            && collect($allowedRoles)->intersect(UserTypeOptions::candidateManagedRoleKeys())->isNotEmpty()
+        ) {
+            return true;
+        }
+
         if ($allowedRoles === []) {
-            $allowedRoles = ['student', 'candidate', 'admin'];
+            $allowedRoles = collect(UserTypeOptions::candidateManagedRoleKeys())
+                ->push('admin')
+                ->unique()
+                ->values()
+                ->all();
         }
 
         return collect($this->currentDynamicFormRoles())

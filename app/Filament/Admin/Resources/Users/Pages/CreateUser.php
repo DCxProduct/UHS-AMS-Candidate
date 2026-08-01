@@ -6,10 +6,13 @@ use App\Filament\Admin\Resources\Users\UserResource;
 use App\Support\UserTypeOptions;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Support\Enums\Width;
+use Illuminate\Support\Str;
 
 class CreateUser extends CreateRecord
 {
     protected static string $resource = UserResource::class;
+
+    protected ?string $selectedCandidateType = null;
 
     protected function getRedirectUrl(): string
     {
@@ -23,9 +26,10 @@ class CreateUser extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        $candidateType = UserTypeOptions::BASE_ROLE;
+        $candidateType = UserTypeOptions::resolve($data['candidate_type'] ?? null);
+        $this->selectedCandidateType = $candidateType;
 
-        $data['roles'] = UserTypeOptions::assignableSystemRoles($candidateType);
+        $data['roles'] = UserTypeOptions::assignableUserRoles($candidateType);
 
         unset($data['role_ids']);
         unset($data['candidate_type']);
@@ -36,7 +40,7 @@ class CreateUser extends CreateRecord
 
         $data['username'] = blank($data['username'] ?? null)
             ? null
-            : trim((string) $data['username']);
+            : Str::lower(trim((string) $data['username']));
 
         $data['email'] = blank($data['email'] ?? null)
             ? null
@@ -55,6 +59,14 @@ class CreateUser extends CreateRecord
 
     protected function afterCreate(): void
     {
+        if ($this->selectedCandidateType) {
+            $this->record->forceFill([
+                'roles' => UserTypeOptions::assignableUserRoles($this->selectedCandidateType),
+            ])->save();
+
+            $this->record->refresh();
+        }
+
         $this->record->syncLoginUser();
     }
 }

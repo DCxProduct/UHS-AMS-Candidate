@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
+use App\Support\UserTypeOptions;
 use Illuminate\Foundation\Auth\User as AuthUser;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Illuminate\Auth\Access\HandlesAuthorization;
@@ -37,7 +38,7 @@ class CustomFormEntryPolicy
 
         $spatiePermission = $spatiePermissionMap[$permission] ?? 'ViewAny:CustomFormEntry';
 
-        return $authUser->can($spatiePermission);
+        return UserTypeOptions::userHasCandidateBasePermission($authUser, $spatiePermission);
     }
 
     public function viewAny(AuthUser $authUser): bool

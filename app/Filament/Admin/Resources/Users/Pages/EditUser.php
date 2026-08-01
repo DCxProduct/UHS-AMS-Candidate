@@ -7,10 +7,13 @@ use App\Support\UserTypeOptions;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Enums\Width;
+use Illuminate\Support\Str;
 
 class EditUser extends EditRecord
 {
     protected static string $resource = UserResource::class;
+
+    protected ?string $selectedCandidateType = null;
 
     protected function getRedirectUrl(): string
     {
@@ -32,16 +35,29 @@ class EditUser extends EditRecord
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
-        $data['candidate_type'] = UserTypeOptions::BASE_ROLE;
+        $storedRoles = $this->record->roles;
+
+        if (is_string($storedRoles)) {
+            $decoded = json_decode($storedRoles, true);
+            $storedRoles = is_array($decoded) ? $decoded : [$storedRoles];
+        }
+
+        $candidateType = collect(is_array($storedRoles) ? $storedRoles : [])
+            ->filter(fn ($role): bool => filled($role))
+            ->map(fn ($role): string => trim((string) $role))
+            ->first(fn (string $role): bool => UserTypeOptions::isCandidateManagedRole($role));
+
+        $data['candidate_type'] = UserTypeOptions::resolve($candidateType ?? UserTypeOptions::BASE_ROLE);
 
         return $data;
     }
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        $candidateType = UserTypeOptions::BASE_ROLE;
+        $candidateType = UserTypeOptions::resolve($data['candidate_type'] ?? null);
+        $this->selectedCandidateType = $candidateType;
 
-        $data['roles'] = UserTypeOptions::assignableSystemRoles($candidateType);
+        $data['roles'] = UserTypeOptions::assignableUserRoles($candidateType);
 
         unset($data['role_ids']);
         unset($data['candidate_type']);
@@ -52,7 +68,7 @@ class EditUser extends EditRecord
 
         $data['username'] = blank($data['username'] ?? null)
             ? null
-            : trim((string) $data['username']);
+            : Str::lower(trim((string) $data['username']));
 
         $data['email'] = blank($data['email'] ?? null)
             ? null
@@ -70,6 +86,14 @@ class EditUser extends EditRecord
 
     protected function afterSave(): void
     {
+        if ($this->selectedCandidateType) {
+            $this->record->forceFill([
+                'roles' => UserTypeOptions::assignableUserRoles($this->selectedCandidateType),
+            ])->save();
+
+            $this->record->refresh();
+        }
+
         $this->record->syncLoginUser();
     }
 }
