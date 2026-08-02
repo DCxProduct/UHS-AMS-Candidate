@@ -57,7 +57,7 @@ return [
 
     'actions' => [
         'new' => 'Create New',
-        'create_payment' => 'Create Payment',
+        'create_payment' => 'Create New',
         'record_payment' => 'Record Payment',
         'pay' => 'Pay',
         'submit_payment' => 'Submit Payment',
