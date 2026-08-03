@@ -57,7 +57,7 @@ return [
 
     'actions' => [
         'new' => 'បង្កើតថ្មី',
-        'create_payment' => 'បង្កើតថ្មី',
+        'create_payment' => 'បង្កើត ការទូទាត់ប្រាក់',
         'record_payment' => 'កត់ត្រាការទូទាត់ប្រាក់',
         'pay' => 'បង់ប្រាក់',
         'submit_payment' => 'បញ្ជូនការទូទាត់',
