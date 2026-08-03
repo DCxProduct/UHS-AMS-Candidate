@@ -2,12 +2,12 @@
 
 namespace Database\Seeders;
 
+use App\Models\Role;
 use App\Models\SystemUser;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
-use Spatie\Permission\Models\Role;
 
 class AdminUserSeeder extends Seeder
 {
@@ -40,19 +40,29 @@ class AdminUserSeeder extends Seeder
             $data,
         );
 
-        Role::firstOrCreate([
-            'name' => 'admin',
-            'guard_name' => 'web',
-        ]);
+        Role::query()->updateOrCreate(
+            [
+                'name' => 'admin',
+                'guard_name' => 'web',
+            ],
+            [
+                'name_kh' => 'អ្នកគ្រប់គ្រង',
+            ]
+        );
 
         if (method_exists($admin, 'assignRole') && ! $admin->hasRole('admin')) {
             $admin->assignRole('admin');
         }
 
-        Role::firstOrCreate([
-            'name' => 'cashier',
-            'guard_name' => 'web',
-        ]);
+        Role::query()->updateOrCreate(
+            [
+                'name' => 'cashier',
+                'guard_name' => 'web',
+            ],
+            [
+                'name_kh' => 'មន្ត្រីគណនី',
+            ]
+        );
 
         $cashier = SystemUser::query()->updateOrCreate(
             [

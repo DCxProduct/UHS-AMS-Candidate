@@ -2,11 +2,11 @@
 
 namespace Database\Seeders;
 
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Artisan;
-use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -25,22 +25,32 @@ class RolesAndPermissionsSeeder extends Seeder
         ]);
 
         $systemAdminRoles = collect([
-            'admin',
-            'cashier',
-        ])->mapWithKeys(fn (string $role): array => [
-            $role => Role::firstOrCreate([
-                'name' => $role,
-                'guard_name' => 'web',
-            ]),
+            'admin' => 'អ្នកគ្រប់គ្រង',
+            'cashier' => 'មន្ត្រីគណនី',
+        ])->mapWithKeys(fn (string $nameKh, string $role): array => [
+            $role => Role::query()->updateOrCreate(
+                [
+                    'name' => $role,
+                    'guard_name' => 'web',
+                ],
+                [
+                    'name_kh' => $nameKh,
+                ]
+            ),
         ]);
 
         $userRoles = collect([
-            'candidate',
-        ])->mapWithKeys(fn (string $role): array => [
-            $role => Role::firstOrCreate([
-                'name' => $role,
-                'guard_name' => 'web',
-            ]),
+            'candidate' => 'បេក្ខជន',
+        ])->mapWithKeys(fn (string $nameKh, string $role): array => [
+            $role => Role::query()->updateOrCreate(
+                [
+                    'name' => $role,
+                    'guard_name' => 'web',
+                ],
+                [
+                    'name_kh' => $nameKh,
+                ]
+            ),
         ]);
 
         $admin = $systemAdminRoles['admin'];

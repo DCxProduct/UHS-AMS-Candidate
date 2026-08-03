@@ -84,13 +84,19 @@ return [
     ],
 
     'role_menu' => [
+        'table_name' => 'ឈ្មោះ',
         'type' => 'ប្រភេទតួនាទី',
         'type_placeholder' => 'ជ្រើសរើសប្រភេទតួនាទី',
-        'name_placeholder' => 'បញ្ចូលឈ្មោះតួនាទី',
+        'name_en' => 'ឈ្មោះជាអង់គ្លេស',
+        'name_en_placeholder' => 'បញ្ចូលឈ្មោះតួនាទីជាអង់គ្លេស',
+        'name_kh' => 'ឈ្មោះជាខ្មែរ',
+        'name_kh_placeholder' => 'បញ្ចូលឈ្មោះតួនាទីជាខ្មែរ',
         'help_user' => 'ប្រើសម្រាប់តួនាទីអ្នកប្រើប្រាស់ ឬ បេក្ខជន។',
         'help_system_admin' => 'ប្រើសម្រាប់តួនាទីបុគ្គលិកដូចជា អ្នកគ្រប់គ្រង បេឡាករ ហិរញ្ញវត្ថុ ការិយាល័យចុះបញ្ជី និងតួនាទីប្រព័ន្ធផ្សេងៗ។',
-        'name_help_user' => 'ឧទាហរណ៍៖ candidate, master, associate។',
-        'name_help_system_admin' => 'ឧទាហរណ៍៖ admin, cashier, finance, registrar។',
+        'name_en_help_user' => 'ឧទាហរណ៍៖ candidate, master, associate។',
+        'name_en_help_system_admin' => 'ឧទាហរណ៍៖ admin, cashier, finance, registrar។',
+        'name_kh_help_user' => 'ឧទាហរណ៍៖ បេក្ខជន, អនុបណ្ឌិត, បរិញ្ញាបត្ររង។',
+        'name_kh_help_system_admin' => 'ឧទាហរណ៍៖ អ្នកគ្រប់គ្រង, បេឡាករ, ហិរញ្ញវត្ថុ, ការិយាល័យចុះបញ្ជី។',
         'options' => [
             'user' => 'អ្នកប្រើប្រាស់',
             'system_admin' => 'បុគ្គលិក',

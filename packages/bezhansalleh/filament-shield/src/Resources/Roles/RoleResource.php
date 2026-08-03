@@ -29,7 +29,6 @@ use Filament\Schemas\Schema;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Unique;
 use Override;
 
@@ -54,17 +53,26 @@ class RoleResource extends Resource
                         Section::make()
                             ->schema([
                                 TextInput::make('name')
-                                    ->label(__('filament-shield::filament-shield.field.name'))
-                                    ->placeholder(__('system_users.role_menu.name_placeholder'))
+                                    ->label(__('system_users.role_menu.name_en'))
+                                    ->placeholder(__('system_users.role_menu.name_en_placeholder'))
                                     ->helperText(fn (Get $get): string => match ((string) $get('role_audience')) {
-                                        'system_admin' => __('system_users.role_menu.name_help_system_admin'),
-                                        default => __('system_users.role_menu.name_help_user'),
+                                        'system_admin' => __('system_users.role_menu.name_en_help_system_admin'),
+                                        default => __('system_users.role_menu.name_en_help_user'),
                                     })
                                     ->unique(
                                         ignoreRecord: true, /** @phpstan-ignore-next-line */
                                         modifyRuleUsing: fn (Unique $rule): Unique => Utils::isTenancyEnabled() ? $rule->where(Utils::getTenantModelForeignKey(), Filament::getTenant()?->id) : $rule
                                     )
                                     ->required()
+                                    ->maxLength(255),
+
+                                TextInput::make('name_kh')
+                                    ->label(__('system_users.role_menu.name_kh'))
+                                    ->placeholder(__('system_users.role_menu.name_kh_placeholder'))
+                                    ->helperText(fn (Get $get): string => match ((string) $get('role_audience')) {
+                                        'system_admin' => __('system_users.role_menu.name_kh_help_system_admin'),
+                                        default => __('system_users.role_menu.name_kh_help_user'),
+                                    })
                                     ->maxLength(255),
 
                                 Select::make('role_audience')
@@ -133,9 +141,9 @@ class RoleResource extends Resource
             ->columns([
                 TextColumn::make('name')
                     ->weight(FontWeight::Medium)
-                    ->label(__('filament-shield::filament-shield.column.name'))
-                    ->formatStateUsing(fn (string $state): string => Str::headline($state))
-                    ->searchable(),
+                    ->label(__('system_users.role_menu.table_name'))
+                    ->state(fn ($record): string => $record->localized_name)
+                    ->searchable(['name', 'name_kh']),
                 TextColumn::make('role_audience')
                     ->label(__('system_users.role_menu.type'))
                     ->state(fn ($record): string => static::resolveRoleAudience($record->name))
