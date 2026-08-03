@@ -171,7 +171,7 @@ class Register extends BaseRegister
                     ->placeholder(__('app.select_date_of_birth'))
                     ->required()
                     ->native(false)
-                    ->displayFormat('d/m/Y')
+                    ->displayFormat('d-m-Y')
                     ->prefixIcon('heroicon-o-calendar-days')
                     ->maxDate(now())
                     ->validationMessages([

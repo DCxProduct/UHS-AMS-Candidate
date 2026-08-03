@@ -27,7 +27,8 @@ class EditSystemUser extends EditRecord
     {
         return [
             Actions\DeleteAction::make()
-                ->label(__('system_users.actions.delete')),
+                ->label(__('system_users.actions.delete'))
+                ->action(fn () => $this->record->forceDelete()),
         ];
     }
 

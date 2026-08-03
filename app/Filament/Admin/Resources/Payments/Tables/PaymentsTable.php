@@ -4,9 +4,9 @@ namespace App\Filament\Admin\Resources\Payments\Tables;
 
 use App\Models\PaymentType;
 use App\Models\Payment;
+use App\Support\LocalizedDate;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
-use Filament\Actions\ActionGroup;
-use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Tables\Columns\TextColumn;
@@ -112,7 +112,7 @@ class PaymentsTable
 
                 TextColumn::make('datetime_pay')
                     ->label(__('payments.table.datetime_pay'))
-                    ->date('M d, Y')
+                    ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
                     ->toggleable(isToggledHiddenByDefault: false),
                 ])
             ->filters([
@@ -164,22 +164,14 @@ class PaymentsTable
             ], layout: FiltersLayout::AboveContent)
             ->deferFilters(false)
             ->filtersFormColumns(4)
+            ->toolbarActions([
+                DeleteBulkAction::make()
+                    ->label(__('payments.actions.delete')),
+            ])
             ->recordActions([
-                ActionGroup::make([
-                    EditAction::make()
-                        ->label(__('payments.actions.edit'))
-                        ->icon('heroicon-o-pencil-square')
-                        ->color('warning'),
-
-                    DeleteAction::make()
-                        ->label(__('payments.actions.delete'))
-                        ->icon('heroicon-o-trash')
-                        ->color('danger'),
-                ])
-                    ->label('')
-                    ->icon('heroicon-m-ellipsis-vertical')
-                    ->color('warning')
-                    ->tooltip(__('payments.actions.actions')),
+                EditAction::make()
+                    ->label(__('payments.actions.edit'))
+                    ->icon('heroicon-o-pencil-square'),
             ]);
     }
 
@@ -289,7 +281,7 @@ class PaymentsTable
     protected static function dynamicFormOptions(): array
     {
         return Payment::query()
-            ->with('form:id,name,display_name')
+            ->with('form:id,name')
             ->get()
             ->filter(fn (Payment $record): bool => filled($record->form_id) && $record->form !== null)
             ->mapWithKeys(fn (Payment $record): array => [

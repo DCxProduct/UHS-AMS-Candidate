@@ -93,6 +93,9 @@ class PaymentForm
                                     ->placeholder(__('payments.placeholders.amount_usd'))
                                     ->suffix('$')
                                     ->inputMode('decimal')
+                                    ->extraInputAttributes([
+                                        'oninput' => "this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\\..*)\\./g, '$1')",
+                                    ])
                                     ->rule('numeric')
                                     ->live(onBlur: true)
                                     ->afterStateHydrated(function (TextInput $component, mixed $state): void {
@@ -109,6 +112,9 @@ class PaymentForm
                                     ->placeholder(__('payments.placeholders.amount_kh'))
                                     ->suffix('KHR')
                                     ->inputMode('decimal')
+                                    ->extraInputAttributes([
+                                        'oninput' => "this.value = this.value.replace(/[^0-9,]/g, '')",
+                                    ])
                                     ->rule('numeric')
                                     ->live(onBlur: true)
                                     ->afterStateHydrated(function (TextInput $component, mixed $state): void {

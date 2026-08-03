@@ -8,7 +8,6 @@ use App\Models\GeoLocation;
 use App\Support\NotificationLanguage;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
 use Filament\Actions\Action;
-use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
@@ -39,10 +38,8 @@ class CustomFormEntriesTable
             ->defaultSort('created_at', 'desc')
             ->recordActions(self::getRecordActions())
             ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make()
-                        ->visible(fn (): bool => self::currentPanelIsAdmin()),
-                ]),
+                DeleteBulkAction::make()
+                    ->visible(fn (): bool => self::currentPanelIsAdmin()),
             ])
             ->modifyQueryUsing(fn (Builder $query) => self::applyQueryConstraints($query, $formId));
     }
@@ -238,7 +235,6 @@ class CustomFormEntriesTable
                           ->orWhere('data->degree_level_major', 'like', "%{$search}%");
                     });
                 })
-                ->sortable()
                 ->toggleable(isToggledHiddenByDefault: false),
 
             // 4. Gender
@@ -250,7 +246,6 @@ class CustomFormEntriesTable
                     'female' => app()->getLocale() === 'km' ? 'ស្រី' : 'Female',
                     default => filled($state) ? ucfirst($state) : '-',
                 })
-                ->sortable()
                 ->toggleable(isToggledHiddenByDefault: false),
 
             // 5. Phone Number
@@ -258,7 +253,6 @@ class CustomFormEntriesTable
                 ->label(app()->getLocale() === 'km' ? 'លេខទូរស័ព្ទ' : 'Phone Number')
                 ->placeholder('-')
                 ->searchable()
-                ->sortable()
                 ->toggleable(isToggledHiddenByDefault: false),
 
             // 6. Academic Year
@@ -266,7 +260,6 @@ class CustomFormEntriesTable
                 ->label(app()->getLocale() === 'km' ? 'ឆ្នាំសិក្សា' : 'Academic Year')
                 ->placeholder('-')
                 ->searchable()
-                ->sortable()
                 ->toggleable(isToggledHiddenByDefault: false),
 
         ];
@@ -279,9 +272,10 @@ class CustomFormEntriesTable
 
         $columns[] = TextColumn::make('created_at')
             ->label(__('review_applications.request_at'))
-            ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
+            ->formatStateUsing(fn ($state, $record): string => LocalizedDate::dayMonthYear(
+                data_get($record->data, 'submitted_at') ?: $state
+            ))
             ->color('gray')
-            ->sortable()
             ->toggleable(isToggledHiddenByDefault: false);
 
         return $columns;
@@ -395,7 +389,9 @@ class CustomFormEntriesTable
 
         $columns[] = TextColumn::make('created_at')
             ->label(__('review_applications.request_at'))
-            ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
+            ->formatStateUsing(fn ($state, $record): string => LocalizedDate::dayMonthYear(
+                data_get($record->data, 'submitted_at') ?: $state
+            ))
             ->color('gray');
 
         $columns[] = TextColumn::make('reviewed_at')
@@ -451,6 +447,12 @@ class CustomFormEntriesTable
             Filter::make('application_review_filters')
                 ->label(new HtmlString('&nbsp;'))
                 ->schema([
+                    Select::make('major')
+                        ->label(__('candidate_payment_lists.columns.major'))
+                        ->options(fn (): array => self::dynamicMajorOptions($formId))
+                        ->native(false)
+                        ->live(),
+
                     Select::make('review_status')
                         ->label(__('review_applications.review_status'))
                         ->options([
@@ -501,6 +503,15 @@ class CustomFormEntriesTable
                             }
                         )
                         ->when(
+                            filled($data['major'] ?? null),
+                            function (Builder $query) use ($data): Builder {
+                                return $query->where(function (Builder $query) use ($data): void {
+                                    $query->where('data->selected_major', $data['major'])
+                                        ->orWhere('data->degree_level_major', $data['major']);
+                                });
+                            }
+                        )
+                        ->when(
                             filled($data['reviewed_month'] ?? null),
                             fn (Builder $query): Builder => $query->whereMonth('reviewed_at', $data['reviewed_month'])
                         );
@@ -532,6 +543,25 @@ class CustomFormEntriesTable
             ->unique()
             ->sort()
             ->mapWithKeys(fn ($year): array => [(string) $year => (string) $year])
+            ->toArray();
+    }
+
+    protected static function dynamicMajorOptions(?string $formId): array
+    {
+        return \Chanthoeun\FilamentCustomForms\Models\CustomFormEntry::query()
+            ->when($formId, fn ($query) => $query->where('custom_form_id', $formId))
+            ->get(['data'])
+            ->map(function ($entry): string {
+                return trim((string) (
+                    data_get($entry->data, 'selected_major')
+                    ?: data_get($entry->data, 'degree_level_major')
+                    ?: ''
+                ));
+            })
+            ->filter(fn (string $value): bool => $value !== '')
+            ->unique()
+            ->sort()
+            ->mapWithKeys(fn (string $value): array => [$value => $value])
             ->toArray();
     }
 
@@ -598,6 +628,11 @@ class CustomFormEntriesTable
                 ),
 
             EditAction::make()
+                ->label(function ($record): string {
+                    return self::entryStatus($record) === 'draft'
+                        ? __('student_profile.edit_draft')
+                        : __('filament-actions::edit.single.label');
+                })
                 ->url(fn ($record): string => CustomFormEntryResource::getUrl('edit', [
                     'record' => $record,
                 ]))
