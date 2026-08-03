@@ -2,6 +2,7 @@
 
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Pages;
 
+use App\Support\ProfileFormData;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
@@ -9,6 +10,7 @@ use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\ValidationException;
 
 class EditCustomFormEntry extends EditRecord
 {
@@ -50,14 +52,22 @@ class EditCustomFormEntry extends EditRecord
         $actions = [];
 
         if (! $this->isLockedForEditing()) {
-            $actions[] = $this->getSaveFormAction()
+            $actions[] = Action::make('save')
                 ->label(__('app.done'))
                 ->color('primary')
+                ->keyBindings(['mod+s'])
                 ->requiresConfirmation()
                 ->modalHeading(__('app.confirm_submit_data'))
                 ->modalDescription(__('app.confirm_submit_data_description'))
                 ->modalSubmitActionLabel(__('app.yes'))
                 ->modalCancelActionLabel(__('app.no'))
+                ->action(function (): void {
+                    try {
+                        $this->save();
+                    } catch (ValidationException $exception) {
+                        $this->handleSubmitValidationException($exception);
+                    }
+                })
                 ->hidden(fn () => $this->hasWizardOnFirstStep());
         }
 
@@ -135,6 +145,7 @@ class EditCustomFormEntry extends EditRecord
             $data['data'] = $data['data'] ?? [];
             $data['data']['registration_status'] = 'pending';
             $data['data']['candidate_status'] = 'pending';
+            $data['data']['submitted_at'] = now()->toDateTimeString();
             unset($data['data']['candidate_reviewed_at']);
 
             if (Schema::hasColumn('custom_form_entries', 'reviewed_by')) {
@@ -162,6 +173,7 @@ class EditCustomFormEntry extends EditRecord
         $data = is_array($data) ? $data : [];
         $data['registration_status'] = 'pending';
         $data['candidate_status'] = 'pending';
+        $data['submitted_at'] = $data['submitted_at'] ?? now()->toDateTimeString();
         unset($data['candidate_reviewed_at']);
 
         $update = [
@@ -296,6 +308,13 @@ class EditCustomFormEntry extends EditRecord
     {
         parent::mount($record);
 
+        $this->form->fill(
+            app(ProfileFormData::class)->prefillStateForForm(
+                $this->record->custom_form_id,
+                $this->form->getRawState()
+            )
+        );
+
         $status = $this->entryStatus();
         $slug = $this->record->customForm?->slug;
 
@@ -384,5 +403,12 @@ class EditCustomFormEntry extends EditRecord
         }
 
         return parent::getSavedNotificationTitle();
+    }
+
+    protected function handleSubmitValidationException(ValidationException $exception): never
+    {
+        $this->unmountAction(cancelParentActions: false);
+
+        throw $exception;
     }
 }

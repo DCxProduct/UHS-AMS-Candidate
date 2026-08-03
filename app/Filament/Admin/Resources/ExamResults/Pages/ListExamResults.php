@@ -237,7 +237,7 @@ class ListExamResults extends ListRecords
         }
 
         try {
-            return Carbon::parse($state)->format('d/m/Y');
+            return Carbon::parse($state)->format('d-m-Y');
         } catch (\Throwable) {
             return (string) $state;
         }

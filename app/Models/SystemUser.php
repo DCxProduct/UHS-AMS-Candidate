@@ -70,7 +70,9 @@ class SystemUser extends Authenticatable implements FilamentUser, HasAvatar, Has
             }
 
             if ($linkedLoginUser->registration_type === 'admin') {
-                $linkedLoginUser->delete();
+                $systemUser->isForceDeleting()
+                    ? $linkedLoginUser->forceDelete()
+                    : $linkedLoginUser->delete();
             }
         });
     }

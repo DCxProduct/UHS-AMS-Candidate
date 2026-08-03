@@ -44,12 +44,12 @@ class ClosingDatesTable
 
                 TextColumn::make('start_date')
                     ->label(__('closing_dates.start_date'))
-                    ->date('d M Y')
+                    ->date('d-M-Y')
                     ->sortable(),
 
                 TextColumn::make('end_date')
                     ->label(__('closing_dates.end_date'))
-                    ->date('d M Y')
+                    ->date('d-M-Y')
                     ->sortable(),
 
                 TextColumn::make('created_at')
@@ -74,7 +74,8 @@ class ClosingDatesTable
                     DeleteAction::make()
                         ->label(__('closing_dates.delete'))
                         ->icon('heroicon-o-trash')
-                        ->color('danger'),
+                        ->color('danger')
+                        ->action(fn (ClosingDate $record) => $record->forceDelete()),
                 ])
                     ->label('')
                     ->icon('heroicon-m-ellipsis-vertical')

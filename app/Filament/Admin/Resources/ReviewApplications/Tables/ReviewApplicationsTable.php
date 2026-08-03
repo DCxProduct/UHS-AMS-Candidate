@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\ReviewApplications\Tables;
 
 use App\Models\User;
+use App\Support\LocalizedDate;
 use App\Support\NotificationLanguage;
 use Carbon\Carbon;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
@@ -10,6 +11,7 @@ use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
@@ -132,7 +134,7 @@ class ReviewApplicationsTable
                         ? data_get($record->data, 'candidate_reviewed_at')
                         : null)
                     ->formatStateUsing(fn ($state) => filled($state)
-                        ? Carbon::parse($state)->format('d M Y H:i')
+                        ? LocalizedDate::dayMonthYear($state)
                         : '-')
                     ->color('info')
                     ->sortable(false)
@@ -318,6 +320,9 @@ class ReviewApplicationsTable
                             ->success()
                             ->send();
                     }),
+
+                DeleteBulkAction::make()
+                    ->label(__('system_users.actions.delete')),
             ]);
     }
 
@@ -708,7 +713,7 @@ class ReviewApplicationsTable
         }
 
         try {
-            return Carbon::parse($state)->format('d/m/Y');
+            return Carbon::parse($state)->format('d-m-Y');
         } catch (\Throwable) {
             return (string) $state;
         }

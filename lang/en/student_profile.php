@@ -19,7 +19,8 @@ return [
     'submit' => 'Submit',
     'back' => 'Back',
 
-    'save_as_draft' => 'Edit Draft',
+    'save_as_draft' => 'Save Draft',
+    'edit_draft' => 'Edit Draft',
     'draft_saved' => 'Draft saved',
 
     'form_type_required' => 'Please select a form type first.',

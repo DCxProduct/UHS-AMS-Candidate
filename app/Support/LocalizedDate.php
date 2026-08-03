@@ -39,6 +39,25 @@ class LocalizedDate
         ]);
     }
 
+    public static function dayMonthYearTime(mixed $value): string
+    {
+        if (blank($value)) {
+            return '-';
+        }
+
+        $date = self::parse($value);
+
+        if (! $date) {
+            return (string) $value;
+        }
+
+        $formatted = self::dayMonthYear($date) . ' ' . $date->format('H:i');
+
+        return app()->getLocale() === 'km'
+            ? self::toKhmerDigits($formatted)
+            : $formatted;
+    }
+
     protected static function parse(mixed $value): ?CarbonInterface
     {
         if ($value instanceof CarbonInterface) {

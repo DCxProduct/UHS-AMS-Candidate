@@ -105,6 +105,11 @@
          'deleted_at' => 'Deleted At',
      ],
 
+     'validation' => [
+         'field' => 'this field',
+         'required_attribute' => 'The :attribute field is required.',
+     ],
+
      'menu' => [
          'sidebar' => 'Create with Sidebar',
          'sub_item' => 'Form Builder Sub Item',

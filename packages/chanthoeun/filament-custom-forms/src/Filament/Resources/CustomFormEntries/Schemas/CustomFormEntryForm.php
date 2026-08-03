@@ -295,7 +295,8 @@ class CustomFormEntryForm
 
             $options = self::normalizeOptions($fieldModel->options ?? []);
             $isHiddenLabel = (bool) ($options['is_hidden_label'] ?? false);
-            $label = self::formatLabel(self::transText($fieldModel->label), $options);
+            $rawLabel = self::transText($fieldModel->label);
+            $label = self::formatLabel($rawLabel, $options);
             $component = null;
 
             if ($type === 'section') {
@@ -376,6 +377,7 @@ class CustomFormEntryForm
 
                 if ($fieldModel->required) {
                     $component->required();
+                    self::applyRequiredValidationMessage($component, $rawLabel);
                 }
 
                 self::lockComponent($component, $isLocked);
@@ -512,6 +514,7 @@ class CustomFormEntryForm
 
                     if ($required && method_exists($component, 'required')) {
                         $component->required();
+                        self::applyRequiredValidationMessage($component, $rawLabel);
                     }
 
                     if ($isHiddenLabel) {
@@ -536,6 +539,10 @@ class CustomFormEntryForm
 
                     if (! self::isFieldInputEnabled($options) && method_exists($component, 'disabled')) {
                         $component->disabled(true);
+
+                        if (method_exists($component, 'dehydrated')) {
+                            $component->dehydrated(true);
+                        }
                     }
 
                     self::lockComponent($component, $isLocked);
@@ -783,6 +790,19 @@ class CustomFormEntryForm
         }
 
         $component->columnSpan((int) $columnSpan);
+    }
+
+    protected static function applyRequiredValidationMessage(object $component, string $attribute): void
+    {
+        if (! method_exists($component, 'validationMessages')) {
+            return;
+        }
+
+        $component->validationMessages([
+            'required' => __('filament-custom-forms::fcf.validation.required_attribute', [
+                'attribute' => trim($attribute) !== '' ? trim($attribute) : __('filament-custom-forms::fcf.validation.field'),
+            ]),
+        ]);
     }
 
     protected static function isGeoField(string $name, string $label, array $options = []): bool

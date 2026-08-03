@@ -65,7 +65,8 @@ class EditClosingDate extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\DeleteAction::make(),
+            Actions\DeleteAction::make()
+                ->action(fn () => $this->record->forceDelete()),
         ];
     }
 }

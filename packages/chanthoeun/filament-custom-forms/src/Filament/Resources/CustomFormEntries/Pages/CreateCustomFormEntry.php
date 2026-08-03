@@ -12,6 +12,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\ValidationException;
 
 class CreateCustomFormEntry extends CreateRecord
 {
@@ -172,7 +173,12 @@ class CreateCustomFormEntry extends CreateRecord
                     $this->isSavingDraft = false;
 
                     if ($this->draftEntryId) {
-                        $data = $this->form->getState();
+                        try {
+                            $data = $this->form->getState();
+                        } catch (ValidationException $exception) {
+                            $this->handleSubmitValidationException($exception);
+                        }
+
                         $data = $this->mutateFormDataBeforeCreate($data);
 
                         if (Schema::hasColumn('custom_form_entries', 'review_status')) {
@@ -184,6 +190,7 @@ class CreateCustomFormEntry extends CreateRecord
                         }
 
                         $data['data']['registration_status'] = 'pending';
+                        $data['data']['submitted_at'] = data_get($data, 'data.submitted_at') ?: now()->toDateTimeString();
 
                         CustomFormEntry::query()
                             ->where('id', $this->draftEntryId)
@@ -196,7 +203,11 @@ class CreateCustomFormEntry extends CreateRecord
                         return;
                     }
 
-                    $this->create(false);
+                    try {
+                        $this->create(false);
+                    } catch (ValidationException $exception) {
+                        $this->handleSubmitValidationException($exception);
+                    }
                 }),
 
             Action::make('back')
@@ -225,6 +236,10 @@ class CreateCustomFormEntry extends CreateRecord
 
         $data['data'] = $data['data'] ?? [];
         $data['data']['registration_status'] = $status;
+
+        if ($status === 'pending') {
+            $data['data']['submitted_at'] = data_get($data, 'data.submitted_at') ?: now()->toDateTimeString();
+        }
 
         return $data;
     }
@@ -428,5 +443,12 @@ class CreateCustomFormEntry extends CreateRecord
         }
 
         return parent::getCreatedNotificationTitle();
+    }
+
+    protected function handleSubmitValidationException(ValidationException $exception): never
+    {
+        $this->unmountAction(cancelParentActions: false);
+
+        throw $exception;
     }
 }

@@ -105,6 +105,11 @@
          'deleted_at' => 'បានលុបនៅ',
      ],
 
+     'validation' => [
+         'field' => 'ព័ត៌មាននេះ',
+         'required_attribute' => 'សូមបំពេញ :attribute។',
+     ],
+
      'menu' => [
          'sidebar' => 'បង្កើតជាម៉ឺនុយមេ',
          'sub_item' => 'បង្កើតជាម៉ឺនុយរង',

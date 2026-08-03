@@ -193,7 +193,8 @@ class SystemUsersTable
                     DeleteAction::make()
                         ->label(__('system_users.actions.delete'))
                         ->icon('heroicon-o-trash')
-                        ->color('danger'),
+                        ->color('danger')
+                        ->action(fn (SystemUser $record) => $record->forceDelete()),
                 ])
                     ->label('')
                     ->icon('heroicon-m-ellipsis-vertical')

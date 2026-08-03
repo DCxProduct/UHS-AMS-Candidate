@@ -209,16 +209,38 @@ class CandidatePaymentListsTable
                             TextInput::make('amount_usd')
                                 ->label(__('payments.fields.amount_usd'))
                                 ->placeholder(__('payments.placeholders.amount_usd'))
-                                ->numeric()
                                 ->suffix('$')
-                                ->inputMode('decimal'),
+                                ->inputMode('decimal')
+                                ->extraInputAttributes([
+                                    'oninput' => "this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\\..*)\\./g, '$1')",
+                                ])
+                                ->rule('numeric')
+                                ->live(onBlur: true)
+                                ->afterStateHydrated(function (TextInput $component, mixed $state): void {
+                                    $component->state(self::normalizeUsdAmount($state));
+                                })
+                                ->afterStateUpdated(function (mixed $state, callable $set): void {
+                                    $set('amount_usd', self::normalizeUsdAmount($state));
+                                })
+                                ->dehydrateStateUsing(fn (mixed $state): ?string => self::normalizeUsdAmount($state)),
 
                             TextInput::make('amount_kh')
                                 ->label(__('payments.fields.amount_kh'))
                                 ->placeholder(__('payments.placeholders.amount_kh'))
-                                ->numeric()
                                 ->suffix('KHR')
-                                ->inputMode('decimal'),
+                                ->inputMode('decimal')
+                                ->extraInputAttributes([
+                                    'oninput' => "this.value = this.value.replace(/[^0-9,]/g, '')",
+                                ])
+                                ->rule('numeric')
+                                ->live(onBlur: true)
+                                ->afterStateHydrated(function (TextInput $component, mixed $state): void {
+                                    $component->state(self::normalizeKhrAmount($state));
+                                })
+                                ->afterStateUpdated(function (mixed $state, callable $set): void {
+                                    $set('amount_kh', self::normalizeKhrAmount($state));
+                                })
+                                ->dehydrateStateUsing(fn (mixed $state): ?string => self::dehydrateKhrAmount($state)),
                         ]),
 
                         Textarea::make('description')
@@ -305,6 +327,69 @@ class CandidatePaymentListsTable
         }
 
         return strtolower((string) $payment->status_payt) === 'paid' ? 'paid' : 'unpaid';
+    }
+
+    protected static function normalizeUsdAmount(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $normalized = trim((string) $value);
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        $normalized = str_replace(',', '', $normalized);
+
+        if (! is_numeric($normalized)) {
+            return $normalized;
+        }
+
+        return number_format((float) $normalized, 2, '.', '');
+    }
+
+    protected static function normalizeKhrAmount(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $normalized = trim((string) $value);
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        $normalized = str_replace(',', '', $normalized);
+
+        if (! is_numeric($normalized)) {
+            return $normalized;
+        }
+
+        $number = (float) $normalized;
+
+        if (floor($number) === $number) {
+            return number_format($number, 0, '.', ',');
+        }
+
+        return number_format($number, 2, '.', ',');
+    }
+
+    protected static function dehydrateKhrAmount(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $normalized = trim((string) $value);
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        return str_replace(',', '', $normalized);
     }
 
     protected static function ownerId(CandidatePaymentList $record): ?int

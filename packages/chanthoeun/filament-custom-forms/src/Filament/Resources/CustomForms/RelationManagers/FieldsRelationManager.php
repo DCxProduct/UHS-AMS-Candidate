@@ -656,9 +656,34 @@ class FieldsRelationManager extends RelationManager
                     ->modalHeading(__('filament-custom-forms::fcf.admin.create_custom_form_field'))
                     ->using(function (array $data) {
                         $createdRecord = null;
+                        $sourceFieldMap = [];
 
                         foreach ($this->prepareFieldDataList($data) as $fieldData) {
+                            $sourceFieldId = $fieldData['__source_field_id'] ?? null;
+                            $resolvedParentId = $fieldData['__resolved_parent_target_id'] ?? null;
+                            $sourceParentId = $fieldData['__source_parent_field_id'] ?? null;
+
+                            if (blank($resolvedParentId) && filled($sourceParentId)) {
+                                $resolvedParentId = $sourceFieldMap[(string) $sourceParentId] ?? null;
+                            }
+
+                            if ($sourceFieldId !== null) {
+                                unset(
+                                    $fieldData['__source_field_id'],
+                                    $fieldData['__source_parent_field_id'],
+                                    $fieldData['__resolved_parent_target_id'],
+                                );
+                            }
+
+                            if (filled($resolvedParentId)) {
+                                $fieldData['parent_id'] = $resolvedParentId;
+                            }
+
                             $record = \Chanthoeun\FilamentCustomForms\Models\CustomFormField::create($fieldData);
+
+                            if (filled($sourceFieldId)) {
+                                $sourceFieldMap[(string) $sourceFieldId] = $record->id;
+                            }
 
                             if (! $createdRecord) {
                                 $createdRecord = $record;
@@ -1140,7 +1165,9 @@ class FieldsRelationManager extends RelationManager
 
         if (! empty($selectedFields) && blank($data['name'] ?? null)) {
             $ownerForm = $this->getOwnerRecord();
-            $sourceFields = $this->resolveSelectionSourceFields($selectedFields);
+            $sourceFields = $this->expandSelectionSourceHierarchy(
+                $this->resolveSelectionSourceFields($selectedFields)
+            );
 
             $targetForms = empty($selectedTypes)
                 ? collect([$ownerForm])
@@ -1151,16 +1178,25 @@ class FieldsRelationManager extends RelationManager
             $items = [];
 
             foreach ($targetForms as $targetForm) {
-                $existingNames = $targetForm->fields()
-                    ->pluck('name')
-                    ->filter()
-                    ->map(fn ($name): string => self::normalizeFieldName((string) $name))
-                    ->toArray();
+                $existingFieldsByName = $targetForm->fields()
+                    ->get(['id', 'name'])
+                    ->filter(fn ($field): bool => filled($field->name))
+                    ->mapWithKeys(fn ($field): array => [
+                        self::normalizeFieldName((string) $field->name) => $field->id,
+                    ])
+                    ->all();
+
+                $sourceToTargetParentMap = [];
 
                 foreach ($sourceFields as $field) {
                     $fieldName = self::normalizeFieldName((string) $field->name);
 
-                    if ($fieldName === '' || in_array($fieldName, $existingNames, true)) {
+                    if ($fieldName === '') {
+                        continue;
+                    }
+
+                    if (array_key_exists($fieldName, $existingFieldsByName)) {
+                        $sourceToTargetParentMap[(string) $field->id] = $existingFieldsByName[$fieldName];
                         continue;
                     }
 
@@ -1169,7 +1205,9 @@ class FieldsRelationManager extends RelationManager
                     unset($copy['id'], $copy['created_at'], $copy['updated_at']);
 
                     $copy['custom_form_id'] = $targetForm->id;
-                    $copy['parent_id'] = null;
+                    $copy['__source_field_id'] = $field->id;
+                    $copy['__source_parent_field_id'] = $field->parent_id;
+                    $copy['__resolved_parent_target_id'] = $sourceToTargetParentMap[(string) ($field->parent_id ?? '')] ?? null;
 
                     if ($targetForm->menu_placement === 'sub_item' && filled($targetForm->sub_item_type)) {
                         data_set($copy, 'options.visible_when.field', 'form_selection');
@@ -1180,7 +1218,6 @@ class FieldsRelationManager extends RelationManager
                     }
 
                     $items[] = $copy;
-                    $existingNames[] = $fieldName;
                 }
             }
 
@@ -1361,5 +1398,38 @@ class FieldsRelationManager extends RelationManager
         return $resolved
             ->unique(fn ($field): string => (string) $field->id)
             ->values();
+    }
+
+    private function expandSelectionSourceHierarchy(
+        \Illuminate\Support\Collection $selectedFields
+    ): \Illuminate\Support\Collection {
+        $availableFields = self::availableSelectionSourceFields()->keyBy('id');
+        $ordered = collect();
+        $visited = [];
+
+        $appendAncestorsAndField = function ($field) use (&$appendAncestorsAndField, &$ordered, &$visited, $availableFields): void {
+            if (! $field) {
+                return;
+            }
+
+            $fieldId = (string) $field->id;
+
+            if (isset($visited[$fieldId])) {
+                return;
+            }
+
+            if (filled($field->parent_id)) {
+                $appendAncestorsAndField($availableFields->get($field->parent_id));
+            }
+
+            $visited[$fieldId] = true;
+            $ordered->push($field);
+        };
+
+        foreach ($selectedFields as $field) {
+            $appendAncestorsAndField($field);
+        }
+
+        return $ordered->values();
     }
 }
