@@ -70,7 +70,13 @@ class RolesAndPermissionsSeeder extends Seeder
         $cashier->syncPermissions(
             Permission::query()
                 ->where('guard_name', 'web')
-                ->where('name', 'like', '%:Payment')
+                ->where(function ($query): void {
+                    $query->where('name', 'like', '%:Payment')
+                        ->orWhereIn('name', [
+                            'View:Dashboard',
+                            'View:MyProfile',
+                        ]);
+                })
                 ->get()
         );
 
