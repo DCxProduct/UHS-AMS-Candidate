@@ -2,6 +2,7 @@
 
 namespace Chanthoeun\FilamentDocumentBuilder\Resources\DocumentTemplateResource\Tables;
 
+use App\Support\LocalizedDate;
 use Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate;
 use Chanthoeun\FilamentDocumentBuilder\Services\DocumentRenderer;
 use Filament\Actions;
@@ -37,13 +38,13 @@ class DocumentTemplateTable
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label(__('filament-document-builder::document-builder.labels.created_on'))
-                    ->date('M j, Y')
+                    ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 Tables\Columns\TextColumn::make('updated_at')
                     ->label(__('filament-document-builder::document-builder.labels.last_updated'))
-                    ->dateTime('M j, Y h:i A')
+                    ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
