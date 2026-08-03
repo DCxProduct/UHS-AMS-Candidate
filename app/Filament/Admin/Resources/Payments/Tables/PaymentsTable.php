@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources\Payments\Tables;
 
+use App\Models\PaymentType;
 use App\Models\Payment;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Actions\ActionGroup;
@@ -84,7 +85,7 @@ class PaymentsTable
                 TextColumn::make('type_payment')
                     ->label(__('payments.table.type_payment'))
                     ->badge()
-                    ->formatStateUsing(fn (?string $state): string => __('payments.options.type_payment.' . strtolower((string) $state)))
+                    ->formatStateUsing(fn (?string $state): string => PaymentType::localizedLabelFor($state))
                     ->color('info')
                     ->toggleable(isToggledHiddenByDefault: false),
 
@@ -135,13 +136,6 @@ class PaymentsTable
                         Select::make('type_payment')
                             ->label(__('payments.fields.type_payment'))
                             ->options(fn (): array => self::dynamicTypePaymentOptions())
-                            ->native(false)
-                            ->searchable()
-                            ->live(),
-
-                        Select::make('status_payt')
-                            ->label(__('payments.fields.status_payt'))
-                            ->options(fn (): array => self::dynamicStatusPaymentOptions())
                             ->native(false)
                             ->searchable()
                             ->live(),
@@ -327,15 +321,7 @@ class PaymentsTable
 
     protected static function dynamicTypePaymentOptions(): array
     {
-        return Payment::query()
-            ->whereNotNull('type_payment')
-            ->pluck('type_payment')
-            ->map(fn (?string $value): string => strtolower(trim((string) $value)))
-            ->filter()
-            ->unique()
-            ->sort()
-            ->mapWithKeys(fn (string $value): array => [$value => __('payments.options.type_payment.' . $value)])
-            ->toArray();
+        return PaymentType::activeOptions();
     }
 
     protected static function dynamicStatusPaymentOptions(): array

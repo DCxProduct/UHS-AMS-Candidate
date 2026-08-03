@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\Payments\Schemas;
 
 use App\Filament\Admin\Resources\Users\UserResource;
+use App\Models\PaymentType;
 use App\Models\SystemUser;
 use App\Models\User;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
@@ -71,14 +72,10 @@ class PaymentForm
                                 Select::make('type_payment')
                                     ->label(__('payments.fields.type_payment'))
                                     ->placeholder(__('payments.placeholders.type_payment'))
-                                    ->options([
-                                        'aba' => __('payments.options.type_payment.aba'),
-                                        'wing' => __('payments.options.type_payment.wing'),
-                                        'acleda' => __('payments.options.type_payment.acleda'),
-                                        'cash' => __('payments.options.type_payment.cash'),
-                                        'other' => __('payments.options.type_payment.other'),
-                                    ])
+                                    ->options(fn (): array => PaymentType::activeOptions())
                                     ->native(false)
+                                    ->searchable()
+                                    ->preload()
                                     ->required()
                                     ->validationMessages([
                                         'required' => __('payments.validation.type_payment_required'),

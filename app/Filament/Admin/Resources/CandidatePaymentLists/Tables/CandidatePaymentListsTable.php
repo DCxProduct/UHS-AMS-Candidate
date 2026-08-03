@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Resources\CandidatePaymentLists\Tables;
 use App\Filament\Admin\Resources\CandidatePaymentLists\CandidatePaymentListResource;
 use App\Models\CandidatePaymentList;
 use App\Models\Payment;
+use App\Models\PaymentType;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteBulkAction;
@@ -185,14 +186,10 @@ class CandidatePaymentListsTable
                             Select::make('type_payment')
                                 ->label(__('payments.fields.type_payment'))
                                 ->placeholder(__('payments.placeholders.type_payment'))
-                                ->options([
-                                    'aba' => __('payments.options.type_payment.aba'),
-                                    'wing' => __('payments.options.type_payment.wing'),
-                                    'acleda' => __('payments.options.type_payment.acleda'),
-                                    'cash' => __('payments.options.type_payment.cash'),
-                                    'other' => __('payments.options.type_payment.other'),
-                                ])
+                                ->options(fn (): array => PaymentType::activeOptions())
                                 ->native(false)
+                                ->searchable()
+                                ->preload()
                                 ->required(),
 
                             DatePicker::make('datetime_pay')

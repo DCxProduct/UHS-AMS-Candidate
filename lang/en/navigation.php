@@ -20,6 +20,7 @@ return [
     'document_templates' => 'Document Templates',
     'closing_date' => 'Closing Date',
     'users' => 'Users',
+    'payment_types' => 'Payment Types',
     'system_users' => 'System Users',
 
     'forms' => [
