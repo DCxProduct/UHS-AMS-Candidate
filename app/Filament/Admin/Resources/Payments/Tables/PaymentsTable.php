@@ -7,11 +7,14 @@ use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Select;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Enums\FiltersLayout;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\HtmlString;
 
 class PaymentsTable
 {
@@ -112,31 +115,61 @@ class PaymentsTable
                     ->toggleable(isToggledHiddenByDefault: false),
                 ])
             ->filters([
-                SelectFilter::make('type_payment')
-                    ->label(__('payments.fields.type_payment'))
-                    ->options([
-                        'aba' => __('payments.options.type_payment.aba'),
-                        'wing' => __('payments.options.type_payment.wing'),
-                        'acleda' => __('payments.options.type_payment.acleda'),
-                        'cash' => __('payments.options.type_payment.cash'),
-                        'other' => __('payments.options.type_payment.other'),
-                    ]),
+                Filter::make('payment_filters')
+                    ->label(new HtmlString('&nbsp;'))
+                    ->schema([
+                        Select::make('form_id')
+                            ->label(__('payments.fields.form'))
+                            ->options(fn (): array => self::dynamicFormOptions())
+                            ->native(false)
+                            ->searchable()
+                            ->live(),
 
-                SelectFilter::make('status_payt')
-                    ->label(__('payments.fields.status_payt'))
-                    ->options([
-                        'paid' => __('payments.options.status_payt.paid'),
-                        'return' => __('payments.options.status_payt.return'),
-                        'pending' => __('payments.options.status_payt.pending'),
-                    ]),
+                        Select::make('major')
+                            ->label(__('payments.table.major'))
+                            ->options(fn (): array => self::dynamicMajorOptions())
+                            ->native(false)
+                            ->searchable()
+                            ->live(),
 
-                SelectFilter::make('status')
-                    ->label(__('payments.fields.status'))
-                    ->options([
-                        '1' => __('payments.options.status.active'),
-                        '0' => __('payments.options.status.inactive'),
-                    ]),
-            ])
+                        Select::make('type_payment')
+                            ->label(__('payments.fields.type_payment'))
+                            ->options(fn (): array => self::dynamicTypePaymentOptions())
+                            ->native(false)
+                            ->searchable()
+                            ->live(),
+
+                        Select::make('status_payt')
+                            ->label(__('payments.fields.status_payt'))
+                            ->options(fn (): array => self::dynamicStatusPaymentOptions())
+                            ->native(false)
+                            ->searchable()
+                            ->live(),
+                    ])
+                    ->columns(4)
+                    ->columnSpanFull()
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                filled($data['form_id'] ?? null),
+                                fn (Builder $query): Builder => $query->where('form_id', $data['form_id'])
+                            )
+                            ->when(
+                                filled($data['major'] ?? null),
+                                fn (Builder $query): Builder => $query->whereIn('id', self::paymentIdsForMajor((string) $data['major']))
+                            )
+                            ->when(
+                                filled($data['type_payment'] ?? null),
+                                fn (Builder $query): Builder => $query->where('type_payment', $data['type_payment'])
+                            )
+                            ->when(
+                                filled($data['status_payt'] ?? null),
+                                fn (Builder $query): Builder => $query->where('status_payt', $data['status_payt'])
+                            );
+                    }),
+            ], layout: FiltersLayout::AboveContent)
+            ->deferFilters(false)
+            ->filtersFormColumns(4)
             ->recordActions([
                 ActionGroup::make([
                     EditAction::make()
@@ -257,5 +290,64 @@ class PaymentsTable
             'female' => app()->getLocale() === 'km' ? 'ស្រី' : 'Female',
             default => $state,
         };
+    }
+
+    protected static function dynamicFormOptions(): array
+    {
+        return Payment::query()
+            ->with('form:id,name,display_name')
+            ->get()
+            ->filter(fn (Payment $record): bool => filled($record->form_id) && $record->form !== null)
+            ->mapWithKeys(fn (Payment $record): array => [
+                (string) $record->form_id => (string) ($record->form->display_name ?: $record->form->name ?: '-'),
+            ])
+            ->toArray();
+    }
+
+    protected static function dynamicMajorOptions(): array
+    {
+        return Payment::query()
+            ->get()
+            ->map(fn (Payment $record): string => trim(self::major($record)))
+            ->filter(fn (string $value): bool => $value !== '' && $value !== '-')
+            ->unique()
+            ->sort()
+            ->mapWithKeys(fn (string $value): array => [$value => $value])
+            ->toArray();
+    }
+
+    protected static function paymentIdsForMajor(string $major): array
+    {
+        return Payment::query()
+            ->get()
+            ->filter(fn (Payment $record): bool => self::major($record) === $major)
+            ->pluck('id')
+            ->all();
+    }
+
+    protected static function dynamicTypePaymentOptions(): array
+    {
+        return Payment::query()
+            ->whereNotNull('type_payment')
+            ->pluck('type_payment')
+            ->map(fn (?string $value): string => strtolower(trim((string) $value)))
+            ->filter()
+            ->unique()
+            ->sort()
+            ->mapWithKeys(fn (string $value): array => [$value => __('payments.options.type_payment.' . $value)])
+            ->toArray();
+    }
+
+    protected static function dynamicStatusPaymentOptions(): array
+    {
+        return Payment::query()
+            ->whereNotNull('status_payt')
+            ->pluck('status_payt')
+            ->map(fn (?string $value): string => strtolower(trim((string) $value)))
+            ->filter()
+            ->unique()
+            ->sort()
+            ->mapWithKeys(fn (string $value): array => [$value => __('payments.options.status_payt.' . $value)])
+            ->toArray();
     }
 }
