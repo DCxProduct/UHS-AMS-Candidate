@@ -84,6 +84,7 @@ return [
     ],
 
     'role_menu' => [
+        'table_name' => 'ឈ្មោះ',
         'type' => 'ប្រភេទតួនាទី',
         'type_placeholder' => 'ជ្រើសរើសប្រភេទតួនាទី',
         'name_en' => 'ឈ្មោះជាអង់គ្លេស',

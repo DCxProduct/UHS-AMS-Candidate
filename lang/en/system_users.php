@@ -84,6 +84,7 @@ return [
     ],
 
     'role_menu' => [
+        'table_name' => 'Name',
         'type' => 'Role Type',
         'type_placeholder' => 'Select role type',
         'name_en' => 'Name English',

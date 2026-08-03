@@ -141,9 +141,7 @@ class RoleResource extends Resource
             ->columns([
                 TextColumn::make('name')
                     ->weight(FontWeight::Medium)
-                    ->label(app()->getLocale() === 'km'
-                        ? __('system_users.role_menu.name_kh')
-                        : __('system_users.role_menu.name_en'))
+                    ->label(__('system_users.role_menu.table_name'))
                     ->state(fn ($record): string => $record->localized_name)
                     ->searchable(['name', 'name_kh']),
                 TextColumn::make('role_audience')
