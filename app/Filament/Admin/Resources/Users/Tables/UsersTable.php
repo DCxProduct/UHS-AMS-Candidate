@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Resources\Users\Tables;
 
 use App\Models\SystemUser;
 use App\Models\User;
+use App\Support\LocalizedDate;
 use App\Support\UserTypeOptions;
 use App\Support\NotificationLanguage;
 use Filament\Actions\Action;
@@ -91,12 +92,12 @@ class UsersTable
 
                 TextColumn::make('created_at')
                     ->label(__('users.fields.created_at'))
-                    ->date('M d, Y')
+                    ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
                     ->sortable(),
 
                 TextColumn::make('updated_at')
                     ->label(__('users.fields.updated_at'))
-                    ->date('M d, Y')
+                    ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
                     ->sortable(),
             ])
             ->filters([

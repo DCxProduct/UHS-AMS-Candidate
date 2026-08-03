@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\PaymentTypes\Tables;
 
 use App\Models\PaymentType;
+use App\Support\LocalizedDate;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
@@ -46,11 +47,11 @@ class PaymentTypesTable
 
                 TextColumn::make('created_at')
                     ->label(__('payment_types.table.created_at'))
-                    ->date('M d, Y'),
+                    ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state)),
 
                 TextColumn::make('updated_at')
                     ->label(__('payment_types.table.updated_at'))
-                    ->date('M d, Y'),
+                    ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state)),
             ])
             ->recordActions([
                 ActionGroup::make([

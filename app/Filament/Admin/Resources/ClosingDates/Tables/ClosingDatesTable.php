@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\ClosingDates\Tables;
 
 use App\Models\ClosingDate;
+use App\Support\LocalizedDate;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
@@ -53,13 +54,13 @@ class ClosingDatesTable
 
                 TextColumn::make('created_at')
                     ->label(__('closing_dates.created_at'))
-                    ->dateTime()
+                    ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
                     ->hidden()
                     ->sortable(),
 
                 TextColumn::make('updated_at')
                     ->label(__('closing_dates.updated_at'))
-                    ->dateTime()
+                    ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
                     ->hidden()
                     ->sortable(),
             ])

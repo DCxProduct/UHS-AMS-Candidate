@@ -2,6 +2,7 @@
 
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomForms\Tables;
 
+use App\Support\LocalizedDate;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -83,13 +84,13 @@ class CustomFormsTable
 
                 TextColumn::make('created_at')
                     ->label(__('filament-custom-forms::fcf.general.created_at'))
-                    ->dateTime()
+                    ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('updated_at')
                     ->label(__('filament-custom-forms::fcf.general.updated_at'))
-                    ->dateTime()
+                    ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
 

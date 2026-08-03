@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\UserTypes\Tables;
 
 use App\Models\UserType;
+use App\Support\LocalizedDate;
 use App\Support\UserTypeOptions;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
@@ -36,11 +37,11 @@ class UserTypesTable
 
                 TextColumn::make('created_at')
                     ->label(__('user_types.table.created_at'))
-                    ->date('M d, Y'),
+                    ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state)),
 
                 TextColumn::make('updated_at')
                     ->label(__('user_types.table.updated_at'))
-                    ->date('M d, Y'),
+                    ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state)),
             ])
             ->recordActions([
                 ActionGroup::make([

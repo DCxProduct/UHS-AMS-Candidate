@@ -2,6 +2,7 @@
 
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Tables;
 
+use App\Support\LocalizedDate;
 use App\Models\User;
 use App\Models\GeoLocation;
 use App\Support\NotificationLanguage;
@@ -278,7 +279,7 @@ class CustomFormEntriesTable
 
         $columns[] = TextColumn::make('created_at')
             ->label(__('review_applications.request_at'))
-            ->dateTime('d-M-Y')
+            ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
             ->color('gray')
             ->sortable()
             ->toggleable(isToggledHiddenByDefault: false);
@@ -394,7 +395,7 @@ class CustomFormEntriesTable
 
         $columns[] = TextColumn::make('created_at')
             ->label(__('review_applications.request_at'))
-            ->dateTime('d M Y H:i')
+            ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
             ->color('gray');
 
         $columns[] = TextColumn::make('reviewed_at')

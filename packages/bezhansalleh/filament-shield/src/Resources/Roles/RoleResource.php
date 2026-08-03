@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BezhanSalleh\FilamentShield\Resources\Roles;
 
 use App\Models\UserType;
+use App\Support\LocalizedDate;
 use App\Support\UserTypeOptions;
 use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use BezhanSalleh\FilamentShield\Resources\Roles\Pages\CreateRole;
@@ -170,7 +171,7 @@ class RoleResource extends Resource
                     ->color('primary'),
                 TextColumn::make('updated_at')
                     ->label(__('filament-shield::filament-shield.column.updated_at'))
-                    ->dateTime(),
+                    ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state)),
             ])
             ->filters([
                 //
