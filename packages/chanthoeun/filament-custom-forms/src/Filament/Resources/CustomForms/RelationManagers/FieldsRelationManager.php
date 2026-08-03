@@ -250,18 +250,10 @@ class FieldsRelationManager extends RelationManager
                                     ->label(__('filament-custom-forms::fcf.admin.select_field'))
                                     ->key(function ($get): string {
                                         $selectedFormId = $get('selection_source_forms');
-                                        $selectedFields = $get('options.visible_when.fields');
-
-                                        if (! is_array($selectedFields)) {
-                                            $selectedFields = filled($selectedFields) ? [$selectedFields] : [];
-                                        }
-
-                                        sort($selectedFields);
 
                                         return 'selection-fields-'
                                             . md5(json_encode([
                                                 'form' => $selectedFormId,
-                                                'fields' => $selectedFields,
                                             ]));
                                     })
                                     ->options(function ($get): array {
