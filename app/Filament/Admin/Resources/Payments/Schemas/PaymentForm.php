@@ -2,13 +2,14 @@
 
 namespace App\Filament\Admin\Resources\Payments\Schemas;
 
+use App\Filament\Admin\Resources\Users\UserResource;
+use App\Models\SystemUser;
 use App\Models\User;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
-use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -24,19 +25,13 @@ class PaymentForm
                     ->schema([
                         Grid::make([
                             'default' => 1,
-                            'lg' => 3,
+                            'lg' => 2,
                         ])
                             ->schema([
                                 Select::make('users_id')
                                     ->label(__('payments.fields.user'))
                                     ->placeholder(__('payments.placeholders.user'))
-                                    ->options(fn (): array => User::query()
-                                        ->orderBy('name')
-                                        ->get()
-                                        ->mapWithKeys(fn (User $user): array => [
-                                            $user->id => trim((string) ($user->name ?: $user->username ?: $user->email ?: $user->phone ?: '-')),
-                                        ])
-                                        ->toArray())
+                                    ->options(fn (): array => self::candidateUserOptions())
                                     ->default(fn (): ?int => request()->integer('users_id') ?: null)
                                     ->searchable()
                                     ->native(false)
@@ -89,48 +84,45 @@ class PaymentForm
                                         'required' => __('payments.validation.type_payment_required'),
                                     ]),
 
-                                Select::make('status_payt')
-                                    ->label(__('payments.fields.status_payt'))
-                                    ->placeholder(__('payments.placeholders.status_payt'))
-                                    ->options([
-                                        'paid' => __('payments.options.status_payt.paid'),
-                                        'return' => __('payments.options.status_payt.return'),
-                                        'pending' => __('payments.options.status_payt.pending'),
-                                    ])
-                                    ->native(false)
-                                    ->default('paid')
-                                    ->required()
-                                    ->validationMessages([
-                                        'required' => __('payments.validation.status_payt_required'),
-                                    ]),
-
-                                DateTimePicker::make('datetime_pay')
+                                DatePicker::make('datetime_pay')
                                     ->label(__('payments.fields.datetime_pay'))
                                     ->placeholder(__('payments.placeholders.datetime_pay'))
-                                    ->seconds(false)
                                     ->native(false)
+                                    ->suffixIcon('heroicon-o-calendar-days')
                                     ->nullable(),
 
                                 TextInput::make('amount_usd')
                                     ->label(__('payments.fields.amount_usd'))
                                     ->placeholder(__('payments.placeholders.amount_usd'))
-                                    ->numeric()
-                                    ->prefix('$')
+                                    ->suffix('$')
                                     ->inputMode('decimal')
+                                    ->rule('numeric')
+                                    ->live(onBlur: true)
+                                    ->afterStateHydrated(function (TextInput $component, mixed $state): void {
+                                        $component->state(self::normalizeUsdAmount($state));
+                                    })
+                                    ->afterStateUpdated(function (mixed $state, callable $set): void {
+                                        $set('amount_usd', self::normalizeUsdAmount($state));
+                                    })
+                                    ->dehydrateStateUsing(fn (mixed $state): ?string => self::normalizeUsdAmount($state))
                                     ->nullable(),
 
                                 TextInput::make('amount_kh')
                                     ->label(__('payments.fields.amount_kh'))
                                     ->placeholder(__('payments.placeholders.amount_kh'))
-                                    ->numeric()
                                     ->suffix('KHR')
                                     ->inputMode('decimal')
+                                    ->rule('numeric')
+                                    ->live(onBlur: true)
+                                    ->afterStateHydrated(function (TextInput $component, mixed $state): void {
+                                        $component->state(self::normalizeKhrAmount($state));
+                                    })
+                                    ->afterStateUpdated(function (mixed $state, callable $set): void {
+                                        $set('amount_kh', self::normalizeKhrAmount($state));
+                                    })
+                                    ->dehydrateStateUsing(fn (mixed $state): ?string => self::dehydrateKhrAmount($state))
                                     ->nullable(),
 
-                                Toggle::make('status')
-                                    ->label(__('payments.fields.status'))
-                                    ->default(true)
-                                    ->required(),
                             ]),
 
                         Textarea::make('description')
@@ -140,5 +132,87 @@ class PaymentForm
                             ->columnSpanFull(),
                     ]),
             ]);
+    }
+
+    protected static function normalizeUsdAmount(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $normalized = trim((string) $value);
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        $normalized = str_replace(',', '', $normalized);
+
+        if (! is_numeric($normalized)) {
+            return $normalized;
+        }
+
+        return number_format((float) $normalized, 2, '.', '');
+    }
+
+    protected static function normalizeKhrAmount(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $normalized = trim((string) $value);
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        $normalized = str_replace(',', '', $normalized);
+
+        if (! is_numeric($normalized)) {
+            return $normalized;
+        }
+
+        $number = (float) $normalized;
+
+        if (floor($number) === $number) {
+            return number_format($number, 0, '.', ',');
+        }
+
+        return number_format($number, 2, '.', ',');
+    }
+
+    protected static function dehydrateKhrAmount(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $normalized = trim((string) $value);
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        return str_replace(',', '', $normalized);
+    }
+
+    protected static function candidateUserOptions(): array
+    {
+        return UserResource::getEloquentQuery()
+            ->orderBy('name')
+            ->get()
+            ->mapWithKeys(function (SystemUser $systemUser): array {
+                $loginUser = $systemUser->findLinkedLoginUser();
+
+                if (! $loginUser instanceof User || blank($loginUser->id)) {
+                    return [];
+                }
+
+                return [
+                    $loginUser->id => trim((string) ($systemUser->name ?: $systemUser->username ?: $systemUser->email ?: $systemUser->phone ?: '-')),
+                ];
+            })
+            ->toArray();
     }
 }

@@ -10,6 +10,14 @@ class CreatePayment extends CreateRecord
 {
     protected static string $resource = PaymentResource::class;
 
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        $data['status_payt'] = 'paid';
+        $data['status'] ??= true;
+
+        return $data;
+    }
+
     public function getTitle(): string | Htmlable
     {
         return __('payments.actions.create_payment');

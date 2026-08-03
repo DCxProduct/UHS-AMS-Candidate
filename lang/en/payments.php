@@ -11,7 +11,7 @@ return [
     ],
 
     'fields' => [
-        'user' => 'User',
+        'user' => 'Candidate Name',
         'form' => 'Application Form Type',
         'receipt_number' => 'Receipt',
         'type_payment' => 'Payment Type',
@@ -24,7 +24,7 @@ return [
     ],
 
     'placeholders' => [
-        'user' => 'Select user',
+        'user' => 'Select candidate name',
         'form' => 'Select application form type',
         'type_payment' => 'Select payment type',
         'datetime_pay' => 'Select payment date',
@@ -37,7 +37,7 @@ return [
 
     'table' => [
         'no' => 'No',
-        'user' => 'User',
+        'user' => 'Candidate Name',
         'form' => 'Application Form Type',
         'name_khmer' => 'Name',
         'name_latin' => 'Name Latin',
@@ -57,7 +57,7 @@ return [
 
     'actions' => [
         'new' => 'Create New',
-        'create_payment' => 'Create New',
+        'create_payment' => 'Create Record Payment',
         'record_payment' => 'Record Payment',
         'pay' => 'Pay',
         'submit_payment' => 'Submit Payment',

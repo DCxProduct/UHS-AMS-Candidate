@@ -14,7 +14,7 @@ class ListPayments extends ListRecords
     {
         return [
             CreateAction::make()
-                ->label(__('payments.actions.create_payment')),
+                ->label(__('payments.actions.new')),
         ];
     }
 }
