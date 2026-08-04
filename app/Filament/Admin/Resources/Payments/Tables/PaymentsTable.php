@@ -7,7 +7,6 @@ use App\Models\Payment;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Tables\Columns\TextColumn;
@@ -23,6 +22,7 @@ class PaymentsTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->selectable()
             ->searchPlaceholder(__('payments.search'))
             ->defaultSort('id', 'desc')
             ->columns([
@@ -166,10 +166,6 @@ class PaymentsTable
             ], layout: FiltersLayout::AboveContent)
             ->deferFilters(false)
             ->filtersFormColumns(4)
-            ->toolbarActions([
-                DeleteBulkAction::make()
-                    ->label(__('payments.actions.delete')),
-            ])
             ->recordActions([
                 EditAction::make()
                     ->label(__('payments.actions.edit'))

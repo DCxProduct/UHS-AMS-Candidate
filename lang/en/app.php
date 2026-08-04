@@ -347,6 +347,8 @@ return [
     'updated_at' => 'Updated At',
     'data' => 'Data',
     'export_data' => 'Export Data',
+    'clear_data' => 'Clear Data',
+    'clear_data_confirm' => 'This will permanently delete the current filtered data in this menu.',
     'create_form_entry' => 'Create :name',
     'no_entries' => 'No :name Entries',
     'yes' => 'Yes',

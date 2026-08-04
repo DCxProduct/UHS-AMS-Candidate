@@ -9,7 +9,6 @@ use App\Models\PaymentType;
 use App\Support\LocalizedNumber;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Filament\Actions\Action;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -30,6 +29,7 @@ class CandidatePaymentListsTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->selectable()
             ->searchPlaceholder(__('payments.search'))
             ->defaultSort('id', 'desc')
             ->columns([
@@ -270,10 +270,6 @@ class CandidatePaymentListsTable
                             ->send();
                     })
                     ->visible(fn (CandidatePaymentList $record): bool => self::latestPaymentRecord($record) === null),
-            ])
-            ->toolbarActions([
-                DeleteBulkAction::make()
-                    ->label(__('system_users.actions.delete')),
             ]);
     }
 

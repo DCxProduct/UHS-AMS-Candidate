@@ -10,7 +10,6 @@ use App\Models\GeoLocation;
 use App\Support\NotificationLanguage;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
 use Filament\Actions\Action;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -32,6 +31,7 @@ class CustomFormEntriesTable
         $formId = self::getFormId($table);
 
         return $table
+            ->selectable()
             ->recordAction(null)
             ->recordUrl(null)
             ->columns(self::getColumns($formId))
@@ -40,10 +40,6 @@ class CustomFormEntriesTable
             ->filtersFormColumns(4)
             ->defaultSort('created_at', 'desc')
             ->recordActions(self::getRecordActions())
-            ->toolbarActions([
-                DeleteBulkAction::make()
-                    ->visible(fn (): bool => self::currentPanelIsAdmin()),
-            ])
             ->modifyQueryUsing(fn (Builder $query) => self::applyQueryConstraints($query, $formId));
     }
 
