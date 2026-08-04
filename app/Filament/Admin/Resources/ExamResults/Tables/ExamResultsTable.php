@@ -33,20 +33,6 @@ class ExamResultsTable
                     ->alignCenter()
                     ->toggleable(isToggledHiddenByDefault: false),
 
-                TextColumn::make('form_type')
-                    ->label(__('review_applications.form_type'))
-                    ->getStateUsing(fn (CustomFormEntry $record): string => self::recordFormTypeLabel($record))
-                    ->badge()
-                    ->color('info')
-                    ->toggleable(isToggledHiddenByDefault: false),
-
-                TextColumn::make('academic_year')
-                    ->label(__('exam_results.academic_year'))
-                    ->getStateUsing(fn ($record): string => self::entryValue($record, 'academic_year', $record->creator?->academic_year))
-                    ->searchable(query: fn (Builder $query, string $search): Builder => $query->where('data->academic_year', 'like', "%{$search}%"))
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: false),
-
                 TextColumn::make('seat_number')
                     ->label(__('exam_results.seat_number'))
                     ->getStateUsing(fn ($record): string => self::entryValue($record, 'seat_number', self::entryValue($record, 'list_number', $record->creator?->seat_number)))
@@ -71,6 +57,27 @@ class ExamResultsTable
                         ->orWhere('data->last_name_en', 'like', "%{$search}%"))
                     ->toggleable(isToggledHiddenByDefault: false),
 
+                TextColumn::make('gender')
+                    ->label(__('exam_results.gender'))
+                    ->getStateUsing(fn ($record): string => self::genderLabel(self::entryValue($record, 'gender')))
+                    ->toggleable(isToggledHiddenByDefault: false),
+
+                TextColumn::make('date_of_birth')
+                    ->label(__('exam_results.date_of_birth'))
+                    ->getStateUsing(fn ($record): string => self::dateValue(self::entryValue($record, 'date_of_birth', $record->creator?->date_of_birth)))
+                    ->toggleable(isToggledHiddenByDefault: false),
+
+                TextColumn::make('academic_year')
+                    ->label(__('exam_results.academic_year'))
+                    ->getStateUsing(fn ($record): string => self::entryValue($record, 'academic_year', $record->creator?->academic_year))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => $query->where('data->academic_year', 'like', "%{$search}%"))
+                    ->toggleable(isToggledHiddenByDefault: false),
+
+                TextColumn::make('exam_date')
+                    ->label(__('exam_results.exam_date'))
+                    ->getStateUsing(fn ($record): string => self::dateValue(self::entryValue($record, 'exam_date')))
+                    ->toggleable(isToggledHiddenByDefault: false),
+
                 TextColumn::make('major')
                     ->label(app()->getLocale() === 'km' ? 'ផ្នែក/ជំនាញ' : 'Major')
                     ->getStateUsing(fn ($record): string => self::entryValue(
@@ -82,25 +89,16 @@ class ExamResultsTable
                         ->orWhere('data->degree_level_major', 'like', "%{$search}%"))
                     ->toggleable(isToggledHiddenByDefault: false),
 
-                TextColumn::make('date_of_birth')
-                    ->label(__('exam_results.date_of_birth'))
-                    ->getStateUsing(fn ($record): string => self::dateValue(self::entryValue($record, 'date_of_birth', $record->creator?->date_of_birth)))
-                    ->toggleable(isToggledHiddenByDefault: false),
             ])
             ->filters([
                 Filter::make('exam_result_filters')
                     ->label(new HtmlString('&nbsp;'))
                     ->schema([
-                        Select::make('form_selection')
-                            ->label(__('review_applications.form_type'))
-                            ->options(fn (): array => self::dynamicFormTypeOptions())
+                        Select::make('academic_year')
+                            ->label(__('exam_results.academic_year'))
+                            ->options(fn (): array => self::dynamicAcademicYearOptions())
                             ->native(false)
-                            ->live(),
-
-                        Select::make('reviewed_year')
-                            ->label(__('review_applications.reviewed_year'))
-                            ->options(fn (): array => self::dynamicPassedYears())
-                            ->native(false)
+                            ->searchable()
                             ->live(),
 
                         Select::make('major')
@@ -115,18 +113,11 @@ class ExamResultsTable
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
                             ->when(
-                                filled($data['form_selection'] ?? null),
-                                fn (Builder $query): Builder => self::applyFormTypeFilter(
-                                    $query,
-                                    (string) $data['form_selection'],
-                                )
-                            )
-                            ->when(
-                                filled($data['reviewed_year'] ?? null),
-                                fn (Builder $query): Builder => $query->whereRaw(
-                                    "EXTRACT(YEAR FROM NULLIF(data->>'candidate_reviewed_at', '')::timestamp) = ?",
-                                    [$data['reviewed_year']]
-                                )
+                                filled($data['academic_year'] ?? null),
+                                fn (Builder $query): Builder => $query->where(function (Builder $query) use ($data): void {
+                                    $query->where('data->academic_year', $data['academic_year'])
+                                        ->orWhereHas('creator', fn (Builder $creatorQuery): Builder => $creatorQuery->where('academic_year', $data['academic_year']));
+                                })
                             )
                             ->when(
                                 filled($data['major'] ?? null),
@@ -347,12 +338,6 @@ class ExamResultsTable
                 'value' => fn (CustomFormEntry $record, int $rowNumber): string => (string) $rowNumber,
                 'clean' => fn (CustomFormEntry $record, int $rowNumber): string => (string) $rowNumber,
             ],
-            'form_type' => [
-                'label' => __('review_applications.form_type'),
-                'field_key' => 'form_type',
-                'value' => fn (CustomFormEntry $record): string => self::recordFormTypeLabel($record),
-                'clean' => fn (CustomFormEntry $record): string => self::rawFormTypeValue($record),
-            ],
             'academic_year' => [
                 'label' => __('exam_results.academic_year'),
                 'field_key' => 'academic_year',
@@ -377,6 +362,12 @@ class ExamResultsTable
                 'value' => fn (CustomFormEntry $record): string => self::latinName($record),
                 'clean' => fn (CustomFormEntry $record): string => self::latinName($record),
             ],
+            'gender' => [
+                'label' => __('exam_results.gender'),
+                'field_key' => 'gender',
+                'value' => fn (CustomFormEntry $record): string => self::genderLabel(self::entryValue($record, 'gender')),
+                'clean' => fn (CustomFormEntry $record): string => self::entryValue($record, 'gender'),
+            ],
             'major' => [
                 'label' => app()->getLocale() === 'km' ? 'ផ្នែក/ជំនាញ' : 'Major',
                 'field_key' => 'major',
@@ -399,6 +390,17 @@ class ExamResultsTable
                     $record,
                     'date_of_birth',
                     $record->creator?->date_of_birth
+                ),
+            ],
+            'exam_date' => [
+                'label' => __('exam_results.exam_date'),
+                'field_key' => 'exam_date',
+                'value' => fn (CustomFormEntry $record): string => self::dateValue(
+                    self::entryValue($record, 'exam_date')
+                ),
+                'clean' => fn (CustomFormEntry $record): string => self::entryValue(
+                    $record,
+                    'exam_date'
                 ),
             ],
         ];
@@ -508,17 +510,23 @@ class ExamResultsTable
         return ReviewApplicationsTable::hasStudentReviewResultNotification($record, 'passed');
     }
 
-    protected static function dynamicPassedYears(): array
+    protected static function dynamicAcademicYearOptions(): array
     {
         return CustomFormEntry::query()
+            ->with('creator:id,academic_year')
             ->where('data->candidate_status', 'passed')
-            ->get(['data'])
-            ->pluck('data.candidate_reviewed_at')
+            ->get(['id', 'data'])
+            ->flatMap(function (CustomFormEntry $entry): array {
+                return array_filter([
+                    data_get($entry->data, 'academic_year'),
+                    $entry->creator?->academic_year,
+                ], fn ($value): bool => filled($value));
+            })
+            ->map(fn ($value): string => trim((string) $value))
             ->filter()
-            ->map(fn ($date): string => Carbon::parse($date)->format('Y'))
             ->unique()
             ->sort()
-            ->mapWithKeys(fn ($year): array => [(string) $year => (string) $year])
+            ->mapWithKeys(fn (string $year): array => [$year => $year])
             ->toArray();
     }
 
