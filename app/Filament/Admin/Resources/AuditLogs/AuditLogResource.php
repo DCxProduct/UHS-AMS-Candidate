@@ -28,7 +28,7 @@ class AuditLogResource extends Resource
 
     public static function getNavigationGroup(): string | UnitEnum | null
     {
-        return __('navigation.groups.settings');
+        return __('audit_logs.activity_navigation_label');
     }
 
     public static function getModelLabel(): string

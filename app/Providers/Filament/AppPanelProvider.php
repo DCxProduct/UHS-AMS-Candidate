@@ -155,6 +155,10 @@ class AppPanelProvider extends PanelProvider
                 NavigationGroup::make()
                     ->label(fn (): string => __('navigation.groups.settings'))
                     ->collapsible(),
+
+                NavigationGroup::make()
+                    ->label(fn (): string => __('audit_logs.activity_navigation_label'))
+                    ->collapsible(),
             ])
 
             ->navigationItems([
