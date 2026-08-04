@@ -10,6 +10,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Schema as SchemaFacade;
 use UnitEnum;
 
 class AuditLogResource extends Resource
@@ -52,6 +53,10 @@ class AuditLogResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
+        if (! static::auditLogsTableExists()) {
+            abort(404);
+        }
+
         $query = parent::getEloquentQuery();
         $user = auth()->user();
 
@@ -78,16 +83,21 @@ class AuditLogResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->check();
+        return auth()->check() && static::auditLogsTableExists();
     }
 
     public static function canAccess(): bool
     {
-        return auth()->check();
+        return auth()->check() && static::auditLogsTableExists();
     }
 
     public static function canViewAny(): bool
     {
-        return auth()->check();
+        return auth()->check() && static::auditLogsTableExists();
+    }
+
+    protected static function auditLogsTableExists(): bool
+    {
+        return SchemaFacade::hasTable((new AuditLog)->getTable());
     }
 }
