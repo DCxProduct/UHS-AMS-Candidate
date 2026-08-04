@@ -58,18 +58,54 @@ class LocalizedDate
             : $formatted;
     }
 
+    public static function fullDateTime(mixed $value): string
+    {
+        if (blank($value)) {
+            return '-';
+        }
+
+        $date = self::parse($value);
+
+        if (! $date) {
+            return (string) $value;
+        }
+
+        if (app()->getLocale() === 'km') {
+            $hour = (int) $date->format('g');
+            $minute = $date->format('i');
+            $second = $date->format('s');
+            $period = $date->format('A') === 'AM' ? 'ព្រឹក' : 'ល្ងាច';
+
+            return sprintf(
+                'ថ្ងៃ%s %s-%s-%s នៅម៉ោង %s:%s:%s %s',
+                self::khmerWeekday((int) $date->dayOfWeek),
+                self::toKhmerDigits(str_pad((string) $date->day, 2, '0', STR_PAD_LEFT)),
+                self::khmerMonth($date->month),
+                self::toKhmerDigits((string) $date->year),
+                self::toKhmerDigits((string) $hour),
+                self::toKhmerDigits($minute),
+                self::toKhmerDigits($second),
+                $period
+            );
+        }
+
+        return $date->format('l d M Y \a\t g:i:s A');
+    }
+
     protected static function parse(mixed $value): ?CarbonInterface
     {
+        $timezone = config('app.timezone', 'Asia/Phnom_Penh');
+
         if ($value instanceof CarbonInterface) {
-            return $value;
+            return $value->copy()->setTimezone($timezone);
         }
 
         if ($value instanceof DateTimeInterface) {
-            return Carbon::instance($value);
+            return Carbon::instance($value)->setTimezone($timezone);
         }
 
         try {
-            return Carbon::parse($value);
+            return Carbon::parse($value)->setTimezone($timezone);
         } catch (\Throwable) {
             return null;
         }
@@ -90,6 +126,20 @@ class LocalizedDate
             10 => 'តុលា',
             11 => 'វិច្ឆិកា',
             12 => 'ធ្នូ',
+            default => '',
+        };
+    }
+
+    protected static function khmerWeekday(int $weekday): string
+    {
+        return match ($weekday) {
+            0 => 'អាទិត្យ',
+            1 => 'ចន្ទ',
+            2 => 'អង្គារ',
+            3 => 'ពុធ',
+            4 => 'ព្រហស្បតិ៍',
+            5 => 'សុក្រ',
+            6 => 'សៅរ៍',
             default => '',
         };
     }

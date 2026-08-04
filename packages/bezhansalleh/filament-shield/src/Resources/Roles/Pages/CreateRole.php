@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BezhanSalleh\FilamentShield\Resources\Roles\Pages;
 
+use App\Support\AuditLogger;
 use BezhanSalleh\FilamentShield\Resources\Roles\RoleResource;
 use BezhanSalleh\FilamentShield\Support\Utils;
 use Filament\Resources\Pages\CreateRecord;
@@ -44,5 +45,15 @@ class CreateRole extends CreateRecord
         });
 
         $this->record->syncPermissions($permissionModels);
+
+        AuditLogger::log(
+            action: 'created',
+            auditable: $this->record,
+            newValues: [
+                'permissions' => $permissionModels->pluck('name')->values()->all(),
+            ],
+            description: 'Role created with permissions',
+            metadata: ['module' => 'Roles'],
+        );
     }
 }

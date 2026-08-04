@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\ReviewApplications\Tables;
 
 use App\Models\User;
+use App\Support\AuditLogger;
 use App\Support\LocalizedDate;
 use App\Support\NotificationLanguage;
 use Carbon\Carbon;
@@ -543,6 +544,11 @@ class ReviewApplicationsTable
     protected static function markPassed(CustomFormEntry $record): void
     {
         $dataJson = self::normalizeData($record->data);
+        $oldValues = [
+            'candidate_status' => data_get($dataJson, 'candidate_status'),
+            'registration_status' => data_get($dataJson, 'registration_status'),
+            'review_status' => $record->review_status,
+        ];
 
         $dataJson['candidate_status'] = 'passed';
         $dataJson['registration_status'] = 'passed';
@@ -560,11 +566,28 @@ class ReviewApplicationsTable
             ]);
 
         $record->refresh();
+
+        AuditLogger::log(
+            action: 'passed',
+            auditable: $record,
+            oldValues: $oldValues,
+            newValues: [
+                'candidate_status' => 'passed',
+                'registration_status' => 'passed',
+                'review_status' => 'passed',
+            ],
+            description: 'Candidate result marked as passed',
+            metadata: ['module' => 'Review Applications'],
+        );
     }
 
     protected static function markCandidatePending(CustomFormEntry $record): void
     {
         $dataJson = self::normalizeData($record->data);
+        $oldValues = [
+            'candidate_status' => data_get($dataJson, 'candidate_status'),
+            'review_status' => $record->review_status,
+        ];
         $dataJson['candidate_status'] = 'pending';
 
         DB::table('custom_form_entries')
@@ -575,6 +598,18 @@ class ReviewApplicationsTable
             ]);
 
         $record->refresh();
+
+        AuditLogger::log(
+            action: 'updated',
+            auditable: $record,
+            oldValues: $oldValues,
+            newValues: [
+                'candidate_status' => 'pending',
+                'review_status' => $record->review_status,
+            ],
+            description: 'Candidate result changed back to pending',
+            metadata: ['module' => 'Review Applications'],
+        );
     }
 
     protected static function recordFormTypeLabel(CustomFormEntry $record): string

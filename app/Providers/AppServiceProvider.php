@@ -2,13 +2,26 @@
 
 namespace App\Providers;
 
+use App\Models\AuditLog;
+use App\Models\ClosingDate;
+use App\Models\GeoLocation;
+use App\Models\Payment;
+use App\Models\PaymentType;
+use App\Models\Role;
+use App\Models\SystemUser;
+use App\Models\UserType;
 use App\Models\User;
+use App\Observers\AuditLogObserver;
+use App\Support\AuditLogger;
 use App\Support\NotificationLanguage;
 use BezhanSalleh\LanguageSwitch\LanguageSwitch;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Notifications\Notification;
+use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Logout;
 use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -24,6 +37,8 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        $this->registerAuditLogging();
+
         Gate::before(function ($user, string $ability): ?bool {
             if (! $user instanceof User) {
                 return null;
@@ -120,6 +135,51 @@ class AppServiceProvider extends ServiceProvider
                     outsidePanels: false,
                 );
         });
+    }
+
+    protected function registerAuditLogging(): void
+    {
+        foreach ($this->auditableModels() as $modelClass) {
+            $modelClass::observe(AuditLogObserver::class);
+        }
+
+        Event::listen(Login::class, function (Login $event): void {
+            if ($event->user instanceof User && Schema::hasColumn('users', 'last_login_at')) {
+                $event->user->forceFill([
+                    'last_login_at' => now(),
+                ])->saveQuietly();
+            }
+
+            AuditLogger::log(
+                action: 'login',
+                auditable: $event->user instanceof \Illuminate\Database\Eloquent\Model ? $event->user : null,
+                description: 'User logged in',
+            );
+        });
+
+        Event::listen(Logout::class, function (Logout $event): void {
+            AuditLogger::log(
+                action: 'logout',
+                auditable: $event->user instanceof \Illuminate\Database\Eloquent\Model ? $event->user : null,
+                description: 'User logged out',
+            );
+        });
+    }
+
+    protected function auditableModels(): array
+    {
+        return [
+            User::class,
+            SystemUser::class,
+            Role::class,
+            Payment::class,
+            PaymentType::class,
+            GeoLocation::class,
+            UserType::class,
+            ClosingDate::class,
+            CustomForm::class,
+            CustomFormEntry::class,
+        ];
     }
 
     protected function notifyAdminsWhenStudentSubmitEnrollment(CustomFormEntry $entry): void

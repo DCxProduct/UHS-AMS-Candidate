@@ -4,11 +4,13 @@ namespace App\Filament\Pages;
 
 use App\Filament\Concerns\StudentOnly;
 use App\Filament\Student\Resources\CustomFormEntries\CustomFormEntryResource;
+use App\Support\AuditLogger;
 use App\Support\ClosingDateWorkflow;
 use App\Support\NotificationLanguage;
 use App\Support\ProfileFormData;
 use App\Support\StudentDynamicFormSchema;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
+use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
@@ -274,7 +276,24 @@ class StudentDynamicFormPage extends Page implements HasForms
             ->filter(fn ($value, string $key): bool => in_array($key, $columns, true))
             ->all();
 
-        DB::table('custom_form_entries')->insert($payload);
+        $entryId = DB::table('custom_form_entries')->insertGetId($payload);
+
+        if ($entryId) {
+            $entry = CustomFormEntry::query()->find($entryId);
+
+            if ($entry) {
+                AuditLogger::log(
+                    action: 'submitted',
+                    auditable: $entry,
+                    newValues: [
+                        'custom_form_id' => $entry->custom_form_id,
+                        'review_status' => $entry->review_status,
+                    ],
+                    description: 'Student submitted a dynamic form entry',
+                    metadata: ['module' => 'Student Dynamic Form'],
+                );
+            }
+        }
 
         return true;
     }

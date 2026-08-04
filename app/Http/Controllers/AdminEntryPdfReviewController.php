@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\AuditLogger;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate;
@@ -41,6 +42,10 @@ class AdminEntryPdfReviewController extends Controller
         abort_unless(auth()->user()?->registration_type === 'admin', 403);
 
         $data = is_array($entry->data) ? $entry->data : [];
+        $oldValues = [
+            'review_status' => $entry->review_status,
+            'registration_status' => data_get($data, 'registration_status'),
+        ];
         $data['candidate_status'] = 'pending';
         $data['registration_status'] = 'approved';
 
@@ -52,6 +57,20 @@ class AdminEntryPdfReviewController extends Controller
             'updated_at' => now(),
             'data' => json_encode($data),
         ]);
+
+        $entry->refresh();
+
+        AuditLogger::log(
+            action: 'approved',
+            auditable: $entry,
+            oldValues: $oldValues,
+            newValues: [
+                'review_status' => 'approved',
+                'registration_status' => 'approved',
+            ],
+            description: 'Application approved from PDF review',
+            metadata: ['module' => 'Review Applications'],
+        );
 
         return redirect()->back();
     }
@@ -65,6 +84,11 @@ class AdminEntryPdfReviewController extends Controller
         ]);
 
         $data = is_array($entry->data) ? $entry->data : [];
+        $oldValues = [
+            'review_status' => $entry->review_status,
+            'registration_status' => data_get($data, 'registration_status'),
+            'review_note' => $entry->review_note,
+        ];
         $data['registration_status'] = 'rejected';
 
         DB::table('custom_form_entries')->where('id', $entry->id)->update([
@@ -75,6 +99,21 @@ class AdminEntryPdfReviewController extends Controller
             'updated_at' => now(),
             'data' => json_encode($data),
         ]);
+
+        $entry->refresh();
+
+        AuditLogger::log(
+            action: 'rejected',
+            auditable: $entry,
+            oldValues: $oldValues,
+            newValues: [
+                'review_status' => 'rejected',
+                'registration_status' => 'rejected',
+                'review_note' => $request->review_note,
+            ],
+            description: 'Application rejected from PDF review',
+            metadata: ['module' => 'Review Applications'],
+        );
 
         return redirect()->back();
     }
