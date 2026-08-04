@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'activity_navigation_label' => 'Activity',
     'navigation_label' => 'Audit Logs',
     'model_label' => 'Audit Log',
     'plural_model_label' => 'Audit Logs',

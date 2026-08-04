@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'activity_navigation_label' => 'សកម្មភាព',
     'navigation_label' => 'កំណត់ហេតុសកម្មភាព',
     'model_label' => 'កំណត់ហេតុសកម្មភាព',
     'plural_model_label' => 'កំណត់ហេតុសកម្មភាព',
