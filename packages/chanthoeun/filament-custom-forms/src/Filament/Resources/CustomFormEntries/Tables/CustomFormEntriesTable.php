@@ -2,6 +2,7 @@
 
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Tables;
 
+use App\Support\AuditLogger;
 use App\Support\LocalizedDate;
 use App\Models\User;
 use App\Models\GeoLocation;
@@ -586,6 +587,8 @@ class CustomFormEntriesTable
                         ->rows(5),
                 ])
                 ->action(function ($record, array $data): void {
+                    $oldReviewNote = $record->review_note;
+
                     DB::table('custom_form_entries')
                         ->where('id', $record->id)
                         ->update([
@@ -594,6 +597,15 @@ class CustomFormEntriesTable
                         ]);
 
                     $record->refresh();
+
+                    AuditLogger::log(
+                        action: 'updated',
+                        auditable: $record,
+                        oldValues: ['review_note' => $oldReviewNote],
+                        newValues: ['review_note' => $data['review_note'] ?? null],
+                        description: 'Review note updated',
+                        metadata: ['module' => 'Custom Form Entries'],
+                    );
 
                     Notification::make()
                         ->title(app()->getLocale() === 'km' ? 'បានរក្សាទុកសារ' : 'Message saved')
@@ -655,6 +667,8 @@ class CustomFormEntriesTable
                         : json_decode((string) $record->data, true);
 
                     $data = is_array($data) ? $data : [];
+                    $oldStatus = $record->review_status;
+                    $oldRegistrationStatus = data_get($data, 'registration_status');
                     $data['registration_status'] = 'draft';
 
                     DB::table('custom_form_entries')
@@ -664,6 +678,21 @@ class CustomFormEntriesTable
                             'data' => json_encode($data),
                             'updated_at' => now(),
                         ]);
+
+                    AuditLogger::log(
+                        action: 'updated',
+                        auditable: $record,
+                        oldValues: [
+                            'review_status' => $oldStatus,
+                            'registration_status' => $oldRegistrationStatus,
+                        ],
+                        newValues: [
+                            'review_status' => 'draft',
+                            'registration_status' => 'draft',
+                        ],
+                        description: 'Custom form entry saved as draft',
+                        metadata: ['module' => 'Custom Form Entries'],
+                    );
 
                     redirect(CustomFormEntryResource::getUrl('create', [
                         'form_id' => $record->custom_form_id,
@@ -700,6 +729,10 @@ class CustomFormEntriesTable
                         ->visible(fn (): bool => self::entryStatus($record) === 'pending')
                         ->action(function () use ($record): void {
                             $data = is_array($record->data) ? $record->data : [];
+                            $oldValues = [
+                                'review_status' => $record->review_status,
+                                'registration_status' => data_get($data, 'registration_status'),
+                            ];
                             $data['candidate_status'] = 'pending';
                             $data['registration_status'] = 'approved';
 
@@ -715,6 +748,18 @@ class CustomFormEntriesTable
                                 ]);
 
                             $record->refresh();
+
+                            AuditLogger::log(
+                                action: 'approved',
+                                auditable: $record,
+                                oldValues: $oldValues,
+                                newValues: [
+                                    'review_status' => 'approved',
+                                    'registration_status' => 'approved',
+                                ],
+                                description: 'Custom form entry approved',
+                                metadata: ['module' => 'Custom Form Entries'],
+                            );
 
                             self::notifyStudentNationalExamResult($record, 'approved', null);
 
@@ -739,6 +784,11 @@ class CustomFormEntriesTable
                         ->visible(fn (): bool => self::entryStatus($record) === 'pending')
                         ->action(function (array $data) use ($record): void {
                             $recordData = is_array($record->data) ? $record->data : [];
+                            $oldValues = [
+                                'review_status' => $record->review_status,
+                                'registration_status' => data_get($recordData, 'registration_status'),
+                                'review_note' => $record->review_note,
+                            ];
                             $recordData['registration_status'] = 'rejected';
 
                             DB::table('custom_form_entries')
@@ -753,6 +803,19 @@ class CustomFormEntriesTable
                                 ]);
 
                             $record->refresh();
+
+                            AuditLogger::log(
+                                action: 'rejected',
+                                auditable: $record,
+                                oldValues: $oldValues,
+                                newValues: [
+                                    'review_status' => 'rejected',
+                                    'registration_status' => 'rejected',
+                                    'review_note' => $data['review_note'] ?? null,
+                                ],
+                                description: 'Custom form entry rejected',
+                                metadata: ['module' => 'Custom Form Entries'],
+                            );
 
                             self::notifyStudentNationalExamResult($record, 'rejected', $data['review_note'] ?? null);
 
@@ -784,6 +847,10 @@ class CustomFormEntriesTable
                 )
                 ->action(function ($record): void {
                     $data = is_array($record->data) ? $record->data : [];
+                    $oldValues = [
+                        'review_status' => $record->review_status,
+                        'registration_status' => data_get($data, 'registration_status'),
+                    ];
                     $data['candidate_status'] = 'pending';
                     $data['registration_status'] = 'approved';
 
@@ -799,6 +866,18 @@ class CustomFormEntriesTable
                         ]);
 
                     $record->refresh();
+
+                    AuditLogger::log(
+                        action: 'approved',
+                        auditable: $record,
+                        oldValues: $oldValues,
+                        newValues: [
+                            'review_status' => 'approved',
+                            'registration_status' => 'approved',
+                        ],
+                        description: 'Custom form entry approved',
+                        metadata: ['module' => 'Custom Form Entries'],
+                    );
 
                     self::notifyStudentNationalExamResult($record, 'approved', null);
 
@@ -826,6 +905,11 @@ class CustomFormEntriesTable
                 ])
                 ->action(function ($record, array $data): void {
                     $recordData = is_array($record->data) ? $record->data : [];
+                    $oldValues = [
+                        'review_status' => $record->review_status,
+                        'registration_status' => data_get($recordData, 'registration_status'),
+                        'review_note' => $record->review_note,
+                    ];
                     $recordData['registration_status'] = 'rejected';
 
                     DB::table('custom_form_entries')
@@ -840,6 +924,19 @@ class CustomFormEntriesTable
                         ]);
 
                     $record->refresh();
+
+                    AuditLogger::log(
+                        action: 'rejected',
+                        auditable: $record,
+                        oldValues: $oldValues,
+                        newValues: [
+                            'review_status' => 'rejected',
+                            'registration_status' => 'rejected',
+                            'review_note' => $data['review_note'] ?? null,
+                        ],
+                        description: 'Custom form entry rejected',
+                        metadata: ['module' => 'Custom Form Entries'],
+                    );
 
                     self::notifyStudentNationalExamResult($record, 'rejected', $data['review_note'] ?? null);
 

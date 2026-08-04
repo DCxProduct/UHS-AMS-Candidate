@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BezhanSalleh\FilamentShield\Resources\Roles\Pages;
 
+use App\Support\AuditLogger;
 use BezhanSalleh\FilamentShield\Resources\Roles\RoleResource;
 use BezhanSalleh\FilamentShield\Support\Utils;
 use Filament\Actions\DeleteAction;
@@ -53,5 +54,15 @@ class EditRole extends EditRecord
 
         // @phpstan-ignore-next-line
         $this->record->syncPermissions($permissionModels);
+
+        AuditLogger::log(
+            action: 'updated',
+            auditable: $this->record,
+            newValues: [
+                'permissions' => $permissionModels->pluck('name')->values()->all(),
+            ],
+            description: 'Role permissions updated',
+            metadata: ['module' => 'Roles'],
+        );
     }
 }
