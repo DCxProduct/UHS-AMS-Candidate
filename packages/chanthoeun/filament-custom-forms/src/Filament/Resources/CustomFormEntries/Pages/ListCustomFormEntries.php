@@ -4,9 +4,11 @@ namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Pa
 
 use App\Models\ClosingDate;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
+use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Tables\CustomFormEntriesTable;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Actions;
+use Filament\Actions\Action;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\Schema;
@@ -210,7 +212,7 @@ class ListCustomFormEntries extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [
+        $actions = [
             Actions\CreateAction::make()
                 ->label($this->getCreateLabel())
                 ->url(
@@ -225,6 +227,50 @@ class ListCustomFormEntries extends ListRecords
                     fn (): bool => $this->currentUserCanCreateCurrentForm()
                 ),
         ];
+
+        if ($this->currentUserIsAdmin()) {
+            $actions[] = Action::make('download_excel')
+                ->label(__('payments.actions.download_excel'))
+                ->color('success')
+                ->action(fn () => $this->downloadExcel());
+        }
+
+        return $actions;
+    }
+
+    protected function downloadExcel()
+    {
+        return CustomFormEntriesTable::downloadExcel(
+            $this->getFilteredTableQuery()->get(),
+            $this->visibleExportColumnKeys(),
+            $this->activeFormId,
+            $this->getTable(),
+        );
+    }
+
+    protected function visibleExportColumnKeys(): array
+    {
+        $keys = [];
+
+        foreach ($this->tableColumns ?? [] as $item) {
+            if (($item['type'] ?? null) === 'column' && ($item['isToggled'] ?? false)) {
+                $keys[] = (string) $item['name'];
+
+                continue;
+            }
+
+            if (($item['type'] ?? null) !== 'group') {
+                continue;
+            }
+
+            foreach ($item['columns'] ?? [] as $column) {
+                if ($column['isToggled'] ?? false) {
+                    $keys[] = (string) $column['name'];
+                }
+            }
+        }
+
+        return $keys;
     }
 
     protected function currentUserCanCreateCurrentForm(): bool

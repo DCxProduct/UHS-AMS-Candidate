@@ -110,7 +110,32 @@ class ListExamResults extends ListRecords
                 ->get();
         }
 
-        return ExamResultsTable::downloadExcel($records);
+        return ExamResultsTable::downloadExcel($records, $this->visibleExportColumnKeys());
+    }
+
+    protected function visibleExportColumnKeys(): array
+    {
+        $keys = [];
+
+        foreach ($this->tableColumns ?? [] as $item) {
+            if (($item['type'] ?? null) === 'column' && ($item['isToggled'] ?? false)) {
+                $keys[] = (string) $item['name'];
+
+                continue;
+            }
+
+            if (($item['type'] ?? null) !== 'group') {
+                continue;
+            }
+
+            foreach ($item['columns'] ?? [] as $column) {
+                if ($column['isToggled'] ?? false) {
+                    $keys[] = (string) $column['name'];
+                }
+            }
+        }
+
+        return $keys;
     }
 
     public function sendNotificationsFromTableSelection(
@@ -164,19 +189,6 @@ class ListExamResults extends ListRecords
             ->title(__('exam_results.notifications_sent', ['count' => $sentCount]))
             ->success()
             ->send();
-    }
-
-    protected function excelHeadings(): array
-    {
-        return [
-            __('exam_results.no'),
-            __('exam_results.academic_year'),
-            __('exam_results.seat_number'),
-            __('exam_results.name_khmer'),
-            __('exam_results.name_latin'),
-            __('exam_results.gender'),
-            __('exam_results.date_of_birth'),
-        ];
     }
 
     protected function formTypeLabel(?string $state): string
