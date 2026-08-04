@@ -19,6 +19,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -44,6 +45,251 @@ class CustomFormEntriesTable
                     ->visible(fn (): bool => self::currentPanelIsAdmin()),
             ])
             ->modifyQueryUsing(fn (Builder $query) => self::applyQueryConstraints($query, $formId));
+    }
+
+    public static function downloadExcel(iterable $records, ?array $columnKeys = null, ?string $formId = null, ?Table $table = null)
+    {
+        $filename = 'form-submission-list-' . now()->format('Y-m-d-His') . '.xlsx';
+        $path = storage_path('app/' . uniqid('form-submission-list-', true) . '.xlsx');
+
+        $columnKeys ??= collect(self::getColumns($formId))
+            ->map(fn (TextColumn $column): string => $column->getName())
+            ->values()
+            ->all();
+
+        self::writeXlsx($path, [
+            [
+                'name' => 'Clean Data',
+                'rows' => self::excelRows($records, $columnKeys, $formId, $table),
+            ],
+            [
+                'name' => 'Database Export',
+                'rows' => self::cleanDataRows($records, $columnKeys, $formId, $table),
+            ],
+        ]);
+
+        return response()->download($path, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
+
+    protected static function excelRows(iterable $records, array $columnKeys, ?string $formId, ?Table $table): array
+    {
+        $rows = [self::exportHeadings($columnKeys, $formId, $table)];
+        $rowNumber = 1;
+
+        foreach ($records as $record) {
+            $rows[] = self::exportRow($record, $rowNumber++, $columnKeys, $formId, $table, formatted: true);
+        }
+
+        return $rows;
+    }
+
+    protected static function cleanDataRows(iterable $records, array $columnKeys, ?string $formId, ?Table $table): array
+    {
+        $rows = [self::cleanDataHeadings($columnKeys)];
+        $rowNumber = 1;
+
+        foreach ($records as $record) {
+            $rows[] = self::exportRow($record, $rowNumber++, $columnKeys, $formId, $table, formatted: false);
+        }
+
+        return $rows;
+    }
+
+    protected static function exportHeadings(array $columnKeys, ?string $formId, ?Table $table): array
+    {
+        $columns = self::exportColumnsByKey($formId, $table);
+
+        return collect($columnKeys)
+            ->filter(fn (string $key): bool => array_key_exists($key, $columns))
+            ->map(fn (string $key): string => self::columnLabel($columns[$key]))
+            ->values()
+            ->all();
+    }
+
+    protected static function cleanDataHeadings(array $columnKeys): array
+    {
+        return collect($columnKeys)
+            ->map(fn (string $key): string => str_starts_with($key, 'data.') ? substr($key, 5) : $key)
+            ->values()
+            ->all();
+    }
+
+    protected static function exportRow($record, int $rowNumber, array $columnKeys, ?string $formId, ?Table $table, bool $formatted): array
+    {
+        $columns = self::exportColumnsByKey($formId, $table);
+
+        return collect($columnKeys)
+            ->filter(fn (string $key): bool => array_key_exists($key, $columns))
+            ->map(function (string $key) use ($columns, $record, $rowNumber, $formatted): string {
+                if ($key === 'row_number') {
+                    return (string) $rowNumber;
+                }
+
+                $column = clone $columns[$key];
+                $column->record($record);
+                $column->recordKey((string) data_get($record, 'id'));
+                $column->clearCachedState();
+
+                $state = $column->getState();
+
+                if (! $formatted) {
+                    return self::normalizeExportValue($state);
+                }
+
+                return self::normalizeExportValue($column->formatState($state));
+            })
+            ->values()
+            ->all();
+    }
+
+    protected static function exportColumnsByKey(?string $formId, ?Table $table): array
+    {
+        return collect(self::getColumns($formId))
+            ->map(function (TextColumn $column) use ($table): TextColumn {
+                if ($table) {
+                    $column->table($table);
+                }
+
+                return $column;
+            })
+            ->keyBy(fn (TextColumn $column): string => $column->getName())
+            ->all();
+    }
+
+    protected static function columnLabel(TextColumn $column): string
+    {
+        $label = $column->getLabel();
+
+        if ($label instanceof Htmlable) {
+            $label = $label->toHtml();
+        }
+
+        return trim(strip_tags((string) $label));
+    }
+
+    protected static function normalizeExportValue(mixed $value): string
+    {
+        if ($value instanceof Htmlable) {
+            $value = $value->toHtml();
+        }
+
+        if (is_array($value)) {
+            $value = collect($value)
+                ->map(fn ($item): string => is_scalar($item) || $item === null ? (string) $item : json_encode($item))
+                ->implode(', ');
+        }
+
+        $value = trim(strip_tags((string) $value));
+
+        return $value === '' ? '-' : $value;
+    }
+
+    protected static function writeXlsx(string $path, array $sheets): void
+    {
+        $zip = new \ZipArchive();
+        $zip->open($path, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
+
+        $zip->addFromString('[Content_Types].xml', self::contentTypesXml($sheets));
+        $zip->addFromString('_rels/.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            . '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
+            . '</Relationships>');
+        $zip->addFromString('xl/workbook.xml', self::workbookXml($sheets));
+        $zip->addFromString('xl/_rels/workbook.xml.rels', self::workbookRelsXml($sheets));
+
+        foreach (array_values($sheets) as $index => $sheet) {
+            $zip->addFromString(
+                'xl/worksheets/sheet' . ($index + 1) . '.xml',
+                self::worksheetXml($sheet['rows'])
+            );
+        }
+
+        $zip->close();
+    }
+
+    protected static function worksheetXml(array $rows): string
+    {
+        $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+            . '<sheetData>';
+
+        foreach ($rows as $rowIndex => $row) {
+            $excelRow = $rowIndex + 1;
+            $xml .= '<row r="' . $excelRow . '">';
+
+            foreach (array_values($row) as $columnIndex => $value) {
+                $cell = self::columnName($columnIndex + 1) . $excelRow;
+                $xml .= '<c r="' . $cell . '" t="inlineStr"><is><t>' . self::xmlValue($value) . '</t></is></c>';
+            }
+
+            $xml .= '</row>';
+        }
+
+        return $xml . '</sheetData></worksheet>';
+    }
+
+    protected static function contentTypesXml(array $sheets): string
+    {
+        $overrides = collect(array_keys($sheets))
+            ->map(fn (int $index): string => '<Override PartName="/xl/worksheets/sheet' . ($index + 1) . '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>')
+            ->implode('');
+
+        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+            . '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+            . '<Default Extension="xml" ContentType="application/xml"/>'
+            . '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+            . $overrides
+            . '</Types>';
+    }
+
+    protected static function workbookXml(array $sheets): string
+    {
+        $sheetXml = collect(array_values($sheets))
+            ->map(fn (array $sheet, int $index): string => '<sheet name="' . self::xmlValue(self::sheetName($sheet['name'])) . '" sheetId="' . ($index + 1) . '" r:id="rId' . ($index + 1) . '"/>')
+            ->implode('');
+
+        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+            . '<sheets>' . $sheetXml . '</sheets>'
+            . '</workbook>';
+    }
+
+    protected static function workbookRelsXml(array $sheets): string
+    {
+        $relationships = collect(array_keys($sheets))
+            ->map(fn (int $index): string => '<Relationship Id="rId' . ($index + 1) . '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' . ($index + 1) . '.xml"/>')
+            ->implode('');
+
+        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            . $relationships
+            . '</Relationships>';
+    }
+
+    protected static function sheetName(string $name): string
+    {
+        return substr($name, 0, 31);
+    }
+
+    protected static function columnName(int $index): string
+    {
+        $column = '';
+
+        while ($index > 0) {
+            $index--;
+            $column = chr(65 + ($index % 26)) . $column;
+            $index = intdiv($index, 26);
+        }
+
+        return $column;
+    }
+
+    protected static function xmlValue(mixed $value): string
+    {
+        return htmlspecialchars((string) $value, ENT_XML1 | ENT_COMPAT, 'UTF-8');
     }
 
     protected static function getFormId(Table $table): ?string

@@ -39,6 +39,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->registerAuditLogging();
 
+        //roles permission admin automatic
         Gate::before(function ($user, string $ability): ?bool {
             if (! $user instanceof User) {
                 return null;

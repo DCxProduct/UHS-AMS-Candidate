@@ -66,6 +66,7 @@ return [
         'close' => 'បិទ',
         'edit' => 'កែប្រែ',
         'delete' => 'លុប',
+        'download_excel' => 'ទាញយក Excel',
         'actions' => 'សកម្មភាព',
     ],
 

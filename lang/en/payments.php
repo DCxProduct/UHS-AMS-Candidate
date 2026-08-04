@@ -66,6 +66,7 @@ return [
         'close' => 'Close',
         'edit' => 'Edit',
         'delete' => 'Delete',
+        'download_excel' => 'Download Excel',
         'actions' => 'Actions',
     ],
 
