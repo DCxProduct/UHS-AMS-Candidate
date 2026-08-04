@@ -17,20 +17,26 @@ class ClosingDateForm
     public static function configure(Schema $schema): Schema
     {
         return $schema
-            ->columns(12)
+            ->columns(2)
             ->components([
                 Section::make(__('closing_dates.closing_date_information'))
                     ->description(__('closing_dates.closing_date_information_description'))
                     ->schema([
                         TextInput::make('name')
-                            ->label(__('closing_dates.name'))
-                            ->placeholder(__('closing_dates.name_placeholder'))
+                            ->label(__('closing_dates.name_english'))
+                            ->placeholder(__('closing_dates.name_english_placeholder'))
                             ->required()
                             ->maxLength(150)
                             ->validationMessages([
-                                'required' => __('closing_dates.name_required'),
+                                'required' => __('closing_dates.name_english_required'),
                             ])
-                            ->columnSpan(12),
+                            ->columnSpan(1),
+
+                        TextInput::make('name_kh')
+                            ->label(__('closing_dates.name_khmer'))
+                            ->placeholder(__('closing_dates.name_khmer_placeholder'))
+                            ->maxLength(150)
+                            ->columnSpan(1),
 
                         Select::make('type')
                             ->label(__('closing_dates.student_application'))
@@ -47,7 +53,7 @@ class ClosingDateForm
                             ->validationMessages([
                                 'required' => __('closing_dates.type_required'),
                             ])
-                            ->columnSpan(12),
+                            ->columnSpan(1),
 
                         Select::make('status')
                             ->label(__('closing_dates.status'))
@@ -62,7 +68,7 @@ class ClosingDateForm
                             ->validationMessages([
                                 'required' => __('closing_dates.status_required'),
                             ])
-                            ->columnSpan(12),
+                            ->columnSpan(1),
 
                         DatePicker::make('start_date')
                             ->label(__('closing_dates.start_date'))
@@ -92,7 +98,7 @@ class ClosingDateForm
                                 'required' => __('closing_dates.start_date_required'),
                                 'date' => __('closing_dates.start_date_valid'),
                             ])
-                            ->columnSpan(6),
+                            ->columnSpan(1),
 
                         DatePicker::make('end_date')
                             ->label(__('closing_dates.end_date'))
@@ -122,10 +128,10 @@ class ClosingDateForm
                                 'required' => __('closing_dates.end_date_required'),
                                 'date' => __('closing_dates.end_date_valid'),
                             ])
-                            ->columnSpan(6),
+                            ->columnSpan(1),
                     ])
-                    ->columns(12)
-                    ->columnSpan(12),
+                    ->columns(2)
+                    ->columnSpan(2),
             ]);
     }
 
