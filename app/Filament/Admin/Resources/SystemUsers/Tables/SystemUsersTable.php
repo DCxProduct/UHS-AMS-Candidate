@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Resources\SystemUsers\Tables;
 use App\Models\SystemUser;
 use App\Models\User;
 use App\Support\LocalizedDate;
+use App\Support\LocalizedNumber;
 use App\Support\NotificationLanguage;
 use App\Support\UserTypeOptions;
 use Filament\Actions\Action;
@@ -42,6 +43,7 @@ class SystemUsersTable
                 TextColumn::make('row_number')
                     ->label(__('system_users.fields.no'))
                     ->rowIndex()
+                    ->formatStateUsing(fn ($state): string => LocalizedNumber::digits($state))
                     ->alignCenter()
                     ->width('60px'),
 

@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Resources\Payments\Tables;
 use App\Models\PaymentType;
 use App\Models\Payment;
 use App\Support\LocalizedDate;
+use App\Support\LocalizedNumber;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -28,6 +29,7 @@ class PaymentsTable
                 TextColumn::make('row_number')
                     ->label(__('payments.table.no'))
                     ->rowIndex()
+                    ->formatStateUsing(fn ($state): string => LocalizedNumber::digits($state))
                     ->alignCenter()
                     ->width('60px')
                     ->toggleable(isToggledHiddenByDefault: false),

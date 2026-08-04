@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Resources\AuditLogs\Tables;
 
 use App\Models\AuditLog;
 use App\Support\LocalizedDate;
+use App\Support\LocalizedNumber;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Tables\Columns\TextColumn;
@@ -24,6 +25,7 @@ class AuditLogsTable
                 TextColumn::make('row_number')
                     ->label(__('audit_logs.fields.no'))
                     ->rowIndex()
+                    ->formatStateUsing(fn ($state): string => LocalizedNumber::digits($state))
                     ->alignCenter()
                     ->width('60px'),
 

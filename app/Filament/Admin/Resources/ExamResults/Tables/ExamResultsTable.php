@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\ExamResults\Tables;
 
 use App\Filament\Admin\Resources\ReviewApplications\Tables\ReviewApplicationsTable;
+use App\Support\LocalizedNumber;
 use Carbon\Carbon;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
@@ -28,6 +29,7 @@ class ExamResultsTable
                 TextColumn::make('row_number')
                     ->label(__('exam_results.no'))
                     ->rowIndex()
+                    ->formatStateUsing(fn ($state): string => LocalizedNumber::digits($state))
                     ->alignCenter()
                     ->toggleable(isToggledHiddenByDefault: false),
 
