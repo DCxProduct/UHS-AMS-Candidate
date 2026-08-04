@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Resources\PaymentTypes\Tables;
 
 use App\Models\PaymentType;
 use App\Support\LocalizedDate;
+use App\Support\LocalizedNumber;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
@@ -22,6 +23,7 @@ class PaymentTypesTable
                 TextColumn::make('row_number')
                     ->label(__('payment_types.table.no'))
                     ->rowIndex()
+                    ->formatStateUsing(fn ($state): string => LocalizedNumber::digits($state))
                     ->alignCenter()
                     ->width('60px'),
 

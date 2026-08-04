@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Resources\UserTypes\Tables;
 
 use App\Models\UserType;
 use App\Support\LocalizedDate;
+use App\Support\LocalizedNumber;
 use App\Support\UserTypeOptions;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
@@ -22,6 +23,7 @@ class UserTypesTable
                 TextColumn::make('row_number')
                     ->label(__('user_types.table.no'))
                     ->rowIndex()
+                    ->formatStateUsing(fn ($state): string => LocalizedNumber::digits($state))
                     ->alignCenter()
                     ->width('60px'),
 

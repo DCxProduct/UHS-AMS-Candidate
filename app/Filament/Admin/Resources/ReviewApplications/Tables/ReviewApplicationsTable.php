@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Resources\ReviewApplications\Tables;
 use App\Models\User;
 use App\Support\AuditLogger;
 use App\Support\LocalizedDate;
+use App\Support\LocalizedNumber;
 use App\Support\NotificationLanguage;
 use Carbon\Carbon;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
@@ -38,6 +39,7 @@ class ReviewApplicationsTable
                 TextColumn::make('row_number')
                     ->label(__('exam_results.no'))
                     ->rowIndex()
+                    ->formatStateUsing(fn ($state): string => LocalizedNumber::digits($state))
                     ->alignCenter()
                     ->toggleable(isToggledHiddenByDefault: false),
 

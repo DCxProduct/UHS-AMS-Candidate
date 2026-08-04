@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\GeoLocations\Tables;
 
 use App\Models\GeoLocation;
+use App\Support\LocalizedNumber;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
@@ -25,6 +26,7 @@ class GeoLocationsTable
                 TextColumn::make('row_number')
                     ->label(__('geo_locations.table.no'))
                     ->rowIndex()
+                    ->formatStateUsing(fn ($state): string => LocalizedNumber::digits($state))
                     ->alignCenter()
                     ->width('60px'),
 

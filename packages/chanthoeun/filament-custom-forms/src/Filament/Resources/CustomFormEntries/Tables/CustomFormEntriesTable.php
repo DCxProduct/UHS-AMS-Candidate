@@ -4,6 +4,7 @@ namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Ta
 
 use App\Support\AuditLogger;
 use App\Support\LocalizedDate;
+use App\Support\LocalizedNumber;
 use App\Models\User;
 use App\Models\GeoLocation;
 use App\Support\NotificationLanguage;
@@ -217,6 +218,7 @@ class CustomFormEntriesTable
             TextColumn::make('row_number')
                 ->label(app()->getLocale() === 'km' ? 'ល.រ' : 'No.')
                 ->rowIndex()
+                ->formatStateUsing(fn ($state): string => LocalizedNumber::digits($state))
                 ->alignCenter()
                 ->width('60px'),
 

@@ -6,6 +6,7 @@ use App\Filament\Admin\Resources\CandidatePaymentLists\CandidatePaymentListResou
 use App\Models\CandidatePaymentList;
 use App\Models\Payment;
 use App\Models\PaymentType;
+use App\Support\LocalizedNumber;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteBulkAction;
@@ -35,6 +36,7 @@ class CandidatePaymentListsTable
                 TextColumn::make('row_number')
                     ->label(__('candidate_payment_lists.columns.no'))
                     ->rowIndex()
+                    ->formatStateUsing(fn ($state): string => LocalizedNumber::digits($state))
                     ->alignCenter()
                     ->width('60px')
                     ->toggleable(isToggledHiddenByDefault: false),
