@@ -26,6 +26,7 @@ return [
     'placeholders' => [
         'user' => 'Select candidate name',
         'form' => 'Select application form type',
+        'major' => 'Select major',
         'type_payment' => 'Select payment type',
         'datetime_pay' => 'Select payment date',
         'receipt_number' => 'Enter receipt number',

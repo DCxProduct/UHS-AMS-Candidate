@@ -8,6 +8,7 @@ use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
@@ -121,25 +122,45 @@ class PaymentsTable
                 Filter::make('payment_filters')
                     ->label(new HtmlString('&nbsp;'))
                     ->schema([
-                        Select::make('form_id')
-                            ->label(__('payments.fields.form'))
-                            ->options(fn (): array => self::dynamicFormOptions())
+                        Select::make('receipt_number')
+                            ->label(__('payments.table.receipt_number'))
+                            ->placeholder(__('payments.placeholders.receipt_number'))
+                            ->options(fn (): array => self::dynamicReceiptOptions())
                             ->native(false)
                             ->searchable()
                             ->live(),
 
                         Select::make('major')
                             ->label(__('payments.table.major'))
+                            ->placeholder(__('payments.placeholders.major'))
                             ->options(fn (): array => self::dynamicMajorOptions())
                             ->native(false)
                             ->searchable()
                             ->live(),
 
-                        Select::make('type_payment')
-                            ->label(__('payments.fields.type_payment'))
-                            ->options(fn (): array => self::dynamicTypePaymentOptions())
+                        Select::make('amount_usd')
+                            ->label(__('payments.table.amount_usd'))
+                            ->placeholder(__('payments.placeholders.amount_usd'))
+                            ->options(fn (): array => self::dynamicAmountUsdOptions())
                             ->native(false)
                             ->searchable()
+                            ->live(),
+
+                        Select::make('amount_kh')
+                            ->label(__('payments.table.amount_kh'))
+                            ->placeholder(__('payments.placeholders.amount_kh'))
+                            ->options(fn (): array => self::dynamicAmountKhOptions())
+                            ->native(false)
+                            ->searchable()
+                            ->live(),
+
+                        DatePicker::make('datetime_pay')
+                            ->label(__('payments.table.datetime_pay'))
+                            ->placeholder(__('payments.placeholders.datetime_pay'))
+                            ->displayFormat('d-m-Y')
+                            ->native(false)
+                            ->closeOnDateSelection()
+                            ->maxDate(now())
                             ->live(),
                     ])
                     ->columns(4)
@@ -147,20 +168,24 @@ class PaymentsTable
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
                             ->when(
-                                filled($data['form_id'] ?? null),
-                                fn (Builder $query): Builder => $query->where('form_id', $data['form_id'])
+                                filled($data['receipt_number'] ?? null),
+                                fn (Builder $query): Builder => $query->where('receipt_number', $data['receipt_number'])
                             )
                             ->when(
                                 filled($data['major'] ?? null),
                                 fn (Builder $query): Builder => $query->whereIn('id', self::paymentIdsForMajor((string) $data['major']))
                             )
                             ->when(
-                                filled($data['type_payment'] ?? null),
-                                fn (Builder $query): Builder => $query->where('type_payment', $data['type_payment'])
+                                filled($data['amount_usd'] ?? null),
+                                fn (Builder $query): Builder => $query->where('amount_usd', $data['amount_usd'])
                             )
                             ->when(
-                                filled($data['status_payt'] ?? null),
-                                fn (Builder $query): Builder => $query->where('status_payt', $data['status_payt'])
+                                filled($data['amount_kh'] ?? null),
+                                fn (Builder $query): Builder => $query->where('amount_kh', $data['amount_kh'])
+                            )
+                            ->when(
+                                filled($data['datetime_pay'] ?? null),
+                                fn (Builder $query): Builder => $query->whereDate('datetime_pay', $data['datetime_pay'])
                             );
                     }),
             ], layout: FiltersLayout::AboveContent)
@@ -288,6 +313,19 @@ class PaymentsTable
             ->toArray();
     }
 
+    protected static function dynamicReceiptOptions(): array
+    {
+        return Payment::query()
+            ->whereNotNull('receipt_number')
+            ->pluck('receipt_number')
+            ->map(fn (mixed $value): string => trim((string) $value))
+            ->filter()
+            ->unique()
+            ->sort()
+            ->mapWithKeys(fn (string $value): array => [$value => $value])
+            ->toArray();
+    }
+
     protected static function dynamicMajorOptions(): array
     {
         return Payment::query()
@@ -312,6 +350,41 @@ class PaymentsTable
     protected static function dynamicTypePaymentOptions(): array
     {
         return PaymentType::activeOptions();
+    }
+
+    protected static function dynamicAmountUsdOptions(): array
+    {
+        return Payment::query()
+            ->whereNotNull('amount_usd')
+            ->pluck('amount_usd')
+            ->map(fn (mixed $value): string => self::normalizeNumericFilterValue($value))
+            ->filter()
+            ->unique()
+            ->sortBy(fn (string $value): float => (float) $value)
+            ->mapWithKeys(fn (string $value): array => [$value => number_format((float) $value, 2) . '$'])
+            ->toArray();
+    }
+
+    protected static function dynamicAmountKhOptions(): array
+    {
+        return Payment::query()
+            ->whereNotNull('amount_kh')
+            ->pluck('amount_kh')
+            ->map(fn (mixed $value): string => self::normalizeNumericFilterValue($value))
+            ->filter()
+            ->unique()
+            ->sortBy(fn (string $value): float => (float) $value)
+            ->mapWithKeys(fn (string $value): array => [$value => number_format((float) $value, 0) . ' KHR'])
+            ->toArray();
+    }
+
+    protected static function normalizeNumericFilterValue(mixed $value): string
+    {
+        if ($value === null || $value === '') {
+            return '';
+        }
+
+        return rtrim(rtrim(number_format((float) $value, 2, '.', ''), '0'), '.');
     }
 
     protected static function dynamicStatusPaymentOptions(): array
