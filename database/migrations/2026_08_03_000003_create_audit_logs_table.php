@@ -17,7 +17,6 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->timestamps();
 
-            $table->index(['actor_type', 'actor_id']);
             $table->index(['action', 'created_at']);
             $table->index(['module', 'created_at']);
         });
