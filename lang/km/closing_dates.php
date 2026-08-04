@@ -21,6 +21,9 @@ return [
     'closing_date_information_description' => 'គ្រប់គ្រងថ្ងៃចាប់ផ្តើម និងថ្ងៃបញ្ចប់ សម្រាប់ទម្រង់នីមួយៗ។',
 
     'name' => 'ឈ្មោះ',
+    'table_name' => 'ឈ្មោះ',
+    'name_english' => 'ឈ្មោះជាអង់គ្លេស',
+    'name_khmer' => 'ឈ្មោះជាខ្មែរ',
     'type' => 'ទម្រង់ពាក្យស្នើសុំ',
     'student_application' => 'ទម្រង់ពាក្យស្នើសុំ',
     'parent_form' => 'ទម្រង់មេ',
@@ -33,6 +36,8 @@ return [
     'updated_at' => 'បានកែប្រែនៅ',
 
     'name_placeholder' => 'បញ្ចូលឈ្មោះ',
+    'name_english_placeholder' => 'បញ្ចូលឈ្មោះជាអង់គ្លេស',
+    'name_khmer_placeholder' => 'បញ្ចូលឈ្មោះជាខ្មែរ',
     'type_placeholder' => 'ជ្រើសរើសទម្រង់ពាក្យស្នើសុំ',
     'status_placeholder' => 'ជ្រើសរើសស្ថានភាព',
     'start_date_placeholder' => 'ជ្រើសរើសថ្ងៃចាប់ផ្តើម',
@@ -58,6 +63,7 @@ return [
 
     'validation' => [
         'name_required' => 'សូមបញ្ចូលឈ្មោះ។',
+        'name_english_required' => 'សូមបញ្ចូលឈ្មោះជាអង់គ្លេស។',
         'type_required' => 'សូមជ្រើសរើសទម្រង់ពាក្យស្នើសុំ។',
         'status_required' => 'សូមជ្រើសរើសស្ថានភាព។',
         'start_date_required' => 'សូមបញ្ចូលថ្ងៃចាប់ផ្តើម។',
@@ -71,6 +77,7 @@ return [
     'start_date_before_or_equal_end_date' => 'ថ្ងៃចាប់ផ្តើមត្រូវតែមុន ឬស្មើថ្ងៃបញ្ចប់។',
     'end_date_after_or_equal_start_date' => 'ថ្ងៃបញ្ចប់ត្រូវតែក្រោយ ឬស្មើថ្ងៃចាប់ផ្តើម។',
     'name_required' => 'សូមបញ្ចូលឈ្មោះ។',
+    'name_english_required' => 'សូមបញ្ចូលឈ្មោះជាអង់គ្លេស។',
     'type_required' => 'សូមជ្រើសរើសទម្រង់ពាក្យស្នើសុំ។',
     'status_required' => 'សូមជ្រើសរើសស្ថានភាព។',
     'start_date_required' => 'សូមបញ្ចូលថ្ងៃចាប់ផ្តើម។',

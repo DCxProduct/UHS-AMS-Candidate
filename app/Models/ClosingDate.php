@@ -17,6 +17,7 @@ class ClosingDate extends Model
 
     protected $fillable = [
         'name',
+        'name_kh',
         'type',
         'status',
         'start_date',
@@ -167,6 +168,17 @@ class ClosingDate extends Model
         }
 
         return (string) $value;
+    }
+
+    public function getLocalizedNameAttribute(): string
+    {
+        $locale = app()->getLocale();
+
+        if ($locale === 'km' && filled($this->name_kh)) {
+            return (string) $this->name_kh;
+        }
+
+        return (string) ($this->name ?: $this->name_kh ?: '-');
     }
 
     public static function getDeadlineByCustomFormId(

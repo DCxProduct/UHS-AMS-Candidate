@@ -21,6 +21,9 @@ return [
     'closing_date_information_description' => 'Manage start date and end date for each dynamic form.',
 
     'name' => 'Name',
+    'table_name' => 'Name',
+    'name_english' => 'Name English',
+    'name_khmer' => 'Name Khmer',
     'type' => 'Student Application',
     'student_application' => 'Student Application',
     'parent_form' => 'Parent Form',
@@ -33,6 +36,8 @@ return [
     'updated_at' => 'Updated At',
 
     'name_placeholder' => 'Enter name',
+    'name_english_placeholder' => 'Enter name english',
+    'name_khmer_placeholder' => 'Enter name khmer',
     'type_placeholder' => 'Select student application',
     'status_placeholder' => 'Select status',
     'start_date_placeholder' => 'Select start date',
@@ -58,6 +63,7 @@ return [
 
     'validation' => [
         'name_required' => 'Name is required.',
+        'name_english_required' => 'Name English is required.',
         'type_required' => 'Student application is required.',
         'status_required' => 'Status is required.',
         'start_date_required' => 'Start date is required.',
@@ -71,6 +77,7 @@ return [
     'start_date_before_or_equal_end_date' => 'Start date must be before or equal to end date.',
     'end_date_after_or_equal_start_date' => 'End date must be after or equal to start date.',
     'name_required' => 'Name is required.',
+    'name_english_required' => 'Name English is required.',
     'type_required' => 'Student application is required.',
     'status_required' => 'Status is required.',
     'start_date_required' => 'Start date is required.',

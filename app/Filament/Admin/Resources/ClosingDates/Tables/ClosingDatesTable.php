@@ -16,8 +16,8 @@ class ClosingDatesTable
     {
         return $table
             ->columns([
-                TextColumn::make('name')
-                    ->label(__('closing_dates.name'))
+                TextColumn::make('localized_name')
+                    ->label(__('closing_dates.table_name'))
                     ->searchable()
                     ->sortable(),
 
