@@ -4,12 +4,14 @@ namespace App\Filament\Admin\Resources\ExamResults\Pages;
 
 use App\Filament\Admin\Resources\ExamResults\ExamResultResource;
 use App\Filament\Admin\Resources\ExamResults\Tables\ExamResultsTable;
+use App\Support\AuditLogger;
 use Carbon\Carbon;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Database\Eloquent\Model;
 
 class ListExamResults extends ListRecords
 {
@@ -76,17 +78,23 @@ class ListExamResults extends ListRecords
                 ->requiresConfirmation()
                 ->modalHeading(__('app.clear_data'))
                 ->modalDescription(__('app.clear_data_confirm'))
+                ->modalSubmitActionLabel(__('app.delete'))
+                ->modalCancelActionLabel(__('app.cancel'))
                 ->alpineClickHandler(<<<'JS'
                     const table = document.querySelector('.fi-ta');
                     const tableData = table?._x_dataStack?.find((data) => data.selectedRecords instanceof Set);
 
-                    $wire.clearDataFromTableSelection(
-                        tableData ? [...tableData.selectedRecords] : [],
-                        tableData ? tableData.isTrackingDeselectedRecords : false,
-                        tableData ? [...tableData.deselectedRecords] : [],
-                    );
+                    $wire.mountAction('clear_data', {
+                        selectedRecordKeys: tableData ? [...tableData.selectedRecords] : [],
+                        isTrackingDeselectedRecords: tableData ? tableData.isTrackingDeselectedRecords : false,
+                        deselectedRecordKeys: tableData ? [...tableData.deselectedRecords] : [],
+                    });
                 JS)
-                ->action(fn () => $this->clearDataFromTableSelection()),
+                ->action(fn (array $arguments) => $this->clearDataFromTableSelection(
+                    $arguments['selectedRecordKeys'] ?? [],
+                    (bool) ($arguments['isTrackingDeselectedRecords'] ?? false),
+                    $arguments['deselectedRecordKeys'] ?? [],
+                )),
         ];
     }
 
@@ -139,7 +147,26 @@ class ListExamResults extends ListRecords
             $selectedRecordKeys,
             $isTrackingDeselectedRecords,
             $deselectedRecordKeys,
-        )->delete();
+        )->get()->each(function (Model $record): void {
+            $data = $record->data ?? [];
+
+            if (! is_array($data)) {
+                $data = [];
+            }
+
+            $data[ExamResultResource::HIDDEN_FLAG] = true;
+
+            $record->forceFill([
+                'data' => $data,
+            ])->saveQuietly();
+
+            AuditLogger::log(
+                action: 'cleared',
+                auditable: $record,
+                description: 'Cleared from Exam Results',
+                metadata: ['module' => 'Exam Results'],
+            );
+        });
 
         $this->selectedTableRecords = [];
         $this->deselectedTableRecords = [];

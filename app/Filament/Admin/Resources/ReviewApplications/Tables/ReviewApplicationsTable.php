@@ -7,13 +7,13 @@ use App\Support\AuditLogger;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
 use App\Support\NotificationLanguage;
+use App\Support\UserTypeOptions;
 use Carbon\Carbon;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
@@ -33,7 +33,11 @@ class ReviewApplicationsTable
     {
         return $table
             ->checkIfRecordIsSelectableUsing(function (CustomFormEntry $record): bool {
-                return strtolower((string) data_get($record->data, 'candidate_status', 'pending')) === 'pending';
+                return in_array(
+                    strtolower((string) data_get($record->data, 'candidate_status', 'pending')),
+                    ['pending', 'passed'],
+                    true,
+                );
             })
             ->columns([
                 TextColumn::make('row_number')
@@ -60,16 +64,10 @@ class ReviewApplicationsTable
                 TextColumn::make('user_type')
                     ->label(app()->getLocale() === 'km' ? 'ប្រភេទអ្នកប្រើ' : 'User Type')
                     ->getStateUsing(fn ($record): string => self::userTypeLabel(
-                        data_get($record->data, 'user_type')
-                            ?? data_get($record->data, 'candidate_type')
-                            ?? data_get($record->data, 'degree_level')
+                        self::resolveCandidateRole($record->creator)
                     ))
                     ->badge()
                     ->color('gray')
-                    ->searchable(query: fn (Builder $query, string $search): Builder => $query
-                        ->where('data->user_type', 'like', "%{$search}%")
-                        ->orWhere('data->candidate_type', 'like', "%{$search}%")
-                        ->orWhere('data->degree_level', 'like', "%{$search}%"))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('seat_number')
@@ -212,10 +210,8 @@ class ReviewApplicationsTable
                             )
                             ->when(
                                 filled($data['user_type'] ?? null),
-                                fn (Builder $query): Builder => $query->where(function (Builder $query) use ($data): void {
-                                    $query->where('data->user_type', $data['user_type'])
-                                        ->orWhere('data->candidate_type', $data['user_type'])
-                                        ->orWhere('data->degree_level', $data['user_type']);
+                                fn (Builder $query): Builder => $query->whereHas('creator.roles', function (Builder $query) use ($data): void {
+                                    $query->whereRaw('LOWER(name) = ?', [strtolower((string) $data['user_type'])]);
                                 })
                             )
                             ->when(
@@ -324,8 +320,40 @@ class ReviewApplicationsTable
                             ->send();
                     }),
 
-                DeleteBulkAction::make()
-                    ->label(__('system_users.actions.delete')),
+                BulkAction::make('bulk_pending')
+                    ->label(__('review_applications.actions.edit_result'))
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('warning')
+                    ->button()
+                    ->requiresConfirmation()
+                    ->modalHeading(__('review_applications.pending_modal.heading'))
+                    ->modalDescription(__('review_applications.pending_modal.description'))
+                    ->modalSubmitActionLabel(__('review_applications.pending_modal.submit'))
+                    ->modalCancelActionLabel(__('review_applications.pending_modal.cancel'))
+                    ->deselectRecordsAfterCompletion()
+                    ->action(function (Collection $records): void {
+                        $editedCount = 0;
+
+                        $records->each(function (CustomFormEntry $record) use (&$editedCount): void {
+                            if (
+                                strtolower((string) data_get($record->data, 'candidate_status', 'pending')) !== 'passed'
+                                || self::hasStudentReviewResultNotification($record, 'passed')
+                            ) {
+                                return;
+                            }
+
+                            self::markCandidatePending($record);
+                            $editedCount++;
+                        });
+
+                        Notification::make()
+                            ->title(NotificationLanguage::trans('review_applications.actions.edit_result'))
+                            ->body(app()->getLocale() === 'km'
+                                ? "បានកែប្រែ {$editedCount} ទិន្នន័យ។"
+                                : "Updated {$editedCount} record(s).")
+                            ->success()
+                            ->send();
+                    }),
             ]);
     }
 
@@ -362,19 +390,18 @@ class ReviewApplicationsTable
     protected static function dynamicUserTypeOptions(): array
     {
         return CustomFormEntry::query()
-            ->get(['data'])
+            ->with('creator')
+            ->get()
             ->flatMap(function (CustomFormEntry $entry): array {
-                return array_filter([
-                    data_get($entry->data, 'user_type'),
-                    data_get($entry->data, 'candidate_type'),
-                    data_get($entry->data, 'degree_level'),
-                ], fn ($value): bool => filled($value));
+                $role = self::resolveCandidateRole($entry->creator);
+
+                return filled($role) ? [$role] : [];
             })
             ->map(fn ($value): string => strtolower(trim((string) $value)))
             ->filter()
             ->unique()
             ->sort()
-            ->mapWithKeys(fn (string $value): array => [$value => self::userTypeLabel($value)])
+            ->mapWithKeys(fn (string $value): array => [$value => UserTypeOptions::formatLabel($value)])
             ->toArray();
     }
 
@@ -677,14 +704,30 @@ class ReviewApplicationsTable
             return '-';
         }
 
-        return match (strtolower((string) $state)) {
-            'candidate' => app()->getLocale() === 'km' ? 'បេក្ខជន' : 'Candidate',
-            'associate' => app()->getLocale() === 'km' ? 'បរិញ្ញាបត្ររង' : 'Associate',
-            'bachelor' => app()->getLocale() === 'km' ? 'បរិញ្ញាបត្រ' : 'Bachelor',
-            'master' => app()->getLocale() === 'km' ? 'អនុបណ្ឌិត' : 'Master',
-            'phd' => app()->getLocale() === 'km' ? 'បណ្ឌិត' : 'PhD',
-            default => filled($state) ? ucfirst((string) $state) : '-',
-        };
+        return UserTypeOptions::formatLabel((string) $state);
+    }
+
+    protected static function resolveCandidateRole(?User $user): ?string
+    {
+        if (! $user) {
+            return null;
+        }
+
+        $roles = $user->effectiveRoleNames();
+
+        $preferredRole = $roles->first(function (string $role): bool {
+            $normalized = strtolower(trim($role));
+
+            return UserTypeOptions::isCandidateManagedRole($normalized)
+                && ! in_array($normalized, ['candidate', 'student'], true);
+        });
+
+        if ($preferredRole) {
+            return $preferredRole;
+        }
+
+        return $roles->first(fn (string $role): bool => UserTypeOptions::isCandidateManagedRole($role))
+            ?? $roles->first();
     }
 
     protected static function statusLabel(?string $state): string

@@ -19,6 +19,8 @@ class ListAuditLogs extends ListRecords
                 ->requiresConfirmation()
                 ->modalHeading(__('audit_logs.buttons.clear_data'))
                 ->modalDescription(__('audit_logs.messages.clear_confirm'))
+                ->modalSubmitActionLabel(__('app.delete'))
+                ->modalCancelActionLabel(__('app.cancel'))
                 ->action(function (): void {
                     $this->getFilteredTableQuery()?->delete();
                 }),
