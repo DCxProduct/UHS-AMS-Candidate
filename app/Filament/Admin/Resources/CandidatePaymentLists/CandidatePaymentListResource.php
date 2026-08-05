@@ -61,7 +61,7 @@ class CandidatePaymentListResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()
+        $query = parent::getEloquentQuery()
             ->with([
                 'creator',
                 'customForm',
@@ -104,13 +104,33 @@ class CandidatePaymentListResource extends Resource
                     ->where('payments.status_payt', 'paid');
             })
             ->latest('id');
+
+        if (! static::currentUserIsAdmin()) {
+            $userId = auth()->id();
+
+            if (! $userId) {
+                return $query->whereRaw('1 = 0');
+            }
+
+            $ownerColumns = static::existingOwnerColumns();
+
+            if ($ownerColumns === []) {
+                return $query->whereRaw('1 = 0');
+            }
+
+            $query->where(function (Builder $query) use ($ownerColumns, $userId): void {
+                foreach ($ownerColumns as $ownerColumn) {
+                    $query->orWhere($ownerColumn, $userId);
+                }
+            });
+        }
+
+        return $query;
     }
 
     protected static function applyPaymentOwnerMatch(QueryBuilder $query): QueryBuilder
     {
-        $ownerColumns = collect(['created_by', 'user_id', 'created_by_id'])
-            ->filter(fn (string $column): bool => DbSchema::hasColumn('custom_form_entries', $column))
-            ->values();
+        $ownerColumns = collect(static::existingOwnerColumns());
 
         if ($ownerColumns->isEmpty()) {
             return $query->whereRaw('1 = 0');
@@ -125,6 +145,27 @@ class CandidatePaymentListResource extends Resource
         }
 
         return $query;
+    }
+
+    protected static function existingOwnerColumns(): array
+    {
+        return collect(['created_by', 'user_id', 'created_by_id'])
+            ->filter(fn (string $column): bool => DbSchema::hasColumn('custom_form_entries', $column))
+            ->values()
+            ->all();
+    }
+
+    protected static function currentUserIsAdmin(): bool
+    {
+        $user = auth()->user();
+
+        if (! $user) {
+            return false;
+        }
+
+        return method_exists($user, 'hasEffectiveRole')
+            ? $user->hasEffectiveRole('admin')
+            : $user->registration_type === 'admin';
     }
 
     public static function getRelations(): array
