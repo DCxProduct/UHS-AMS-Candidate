@@ -11,11 +11,15 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Support\Facades\Schema as DbSchema;
 use UnitEnum;
 
 class ReviewApplicationResource extends Resource
 {
     use AdminOnly;
+
+    public const HIDDEN_FLAG = 'hidden_from_review_applications';
 
     protected static ?string $model = ReviewApplication::class;
 
@@ -79,8 +83,44 @@ class ReviewApplicationResource extends Resource
                 'accepted',
                 'approved',
             ])
+            ->whereExists(function (QueryBuilder $subQuery): void {
+                $subQuery->selectRaw('1')
+                    ->from('payments')
+                    ->whereColumn('payments.form_id', 'custom_form_entries.custom_form_id')
+                    ->where(fn (QueryBuilder $matchQuery): QueryBuilder => static::applyPaymentOwnerMatch($matchQuery))
+                    ->where('payments.status_payt', 'paid');
+            })
+            ->where(function (Builder $query): void {
+                $query->whereNull('data->' . static::HIDDEN_FLAG)
+                    ->orWhere('data->' . static::HIDDEN_FLAG, false)
+                    ->orWhere('data->' . static::HIDDEN_FLAG, 'false')
+                    ->orWhere('data->' . static::HIDDEN_FLAG, 0)
+                    ->orWhere('data->' . static::HIDDEN_FLAG, '0');
+            })
             ->latest('id');
     }
+
+    protected static function applyPaymentOwnerMatch(QueryBuilder $query): QueryBuilder
+    {
+        $ownerColumns = collect(['created_by', 'user_id', 'created_by_id'])
+            ->filter(fn (string $column): bool => DbSchema::hasColumn('custom_form_entries', $column))
+            ->values();
+
+        if ($ownerColumns->isEmpty()) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        $firstColumn = $ownerColumns->shift();
+
+        $query->whereColumn('payments.users_id', "custom_form_entries.{$firstColumn}");
+
+        foreach ($ownerColumns as $column) {
+            $query->orWhereColumn('payments.users_id', "custom_form_entries.{$column}");
+        }
+
+        return $query;
+    }
+
     public static function form(Schema $schema): Schema
     {
         return $schema->components([]);

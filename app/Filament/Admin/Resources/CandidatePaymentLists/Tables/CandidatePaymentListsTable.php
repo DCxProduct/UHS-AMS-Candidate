@@ -234,7 +234,17 @@ class CandidatePaymentListsTable
                                 ->extraInputAttributes([
                                     'oninput' => "this.value = this.value.replace(/[^0-9,]/g, '')",
                                 ])
-                                ->rule('numeric')
+                                ->rule(static function (): \Closure {
+                                    return static function (string $attribute, mixed $value, \Closure $fail): void {
+                                        if ($value === null || trim((string) $value) === '') {
+                                            return;
+                                        }
+
+                                        if (! is_numeric(str_replace(',', '', (string) $value))) {
+                                            $fail(__('validation.numeric', ['attribute' => $attribute]));
+                                        }
+                                    };
+                                })
                                 ->live(onBlur: true)
                                 ->afterStateHydrated(function (TextInput $component, mixed $state): void {
                                     $component->state(self::normalizeKhrAmount($state));

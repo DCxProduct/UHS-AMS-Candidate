@@ -250,17 +250,23 @@ class ListCustomFormEntries extends ListRecords
                 ->requiresConfirmation()
                 ->modalHeading(__('app.clear_data'))
                 ->modalDescription(__('app.clear_data_confirm'))
+                ->modalSubmitActionLabel(__('app.delete'))
+                ->modalCancelActionLabel(__('app.cancel'))
                 ->alpineClickHandler(<<<'JS'
                     const table = document.querySelector('.fi-ta');
                     const tableData = table?._x_dataStack?.find((data) => data.selectedRecords instanceof Set);
 
-                    $wire.clearDataFromTableSelection(
-                        tableData ? [...tableData.selectedRecords] : [],
-                        tableData ? tableData.isTrackingDeselectedRecords : false,
-                        tableData ? [...tableData.deselectedRecords] : [],
-                    );
+                    $wire.mountAction('clear_data', {
+                        selectedRecordKeys: tableData ? [...tableData.selectedRecords] : [],
+                        isTrackingDeselectedRecords: tableData ? tableData.isTrackingDeselectedRecords : false,
+                        deselectedRecordKeys: tableData ? [...tableData.deselectedRecords] : [],
+                    });
                 JS)
-                ->action(fn () => $this->clearDataFromTableSelection());
+                ->action(fn (array $arguments) => $this->clearDataFromTableSelection(
+                    $arguments['selectedRecordKeys'] ?? [],
+                    (bool) ($arguments['isTrackingDeselectedRecords'] ?? false),
+                    $arguments['deselectedRecordKeys'] ?? [],
+                ));
         }
 
         return $actions;

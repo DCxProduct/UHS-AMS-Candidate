@@ -29,4 +29,5 @@ return [
     'name_latin' => 'ឈ្មោះ (ឡាតាំង)',
     'gender' => 'ភេទ',
     'date_of_birth' => 'ថ្ងៃខែឆ្នាំកំណើត',
+    'exam_date' => 'ថ្ងៃប្រឡង',
 ];

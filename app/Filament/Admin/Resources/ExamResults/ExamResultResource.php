@@ -17,6 +17,8 @@ class ExamResultResource extends Resource
 {
     use AdminOnly;
 
+    public const HIDDEN_FLAG = 'hidden_from_exam_results';
+
     protected static ?string $model = ExamResult::class;
 
     protected static ?string $slug = 'exam-results';
@@ -70,6 +72,13 @@ class ExamResultResource extends Resource
                     });
             })
             ->where('data->candidate_status', 'passed')
+            ->where(function (Builder $query): void {
+                $query->whereNull('data->' . static::HIDDEN_FLAG)
+                    ->orWhere('data->' . static::HIDDEN_FLAG, false)
+                    ->orWhere('data->' . static::HIDDEN_FLAG, 'false')
+                    ->orWhere('data->' . static::HIDDEN_FLAG, 0)
+                    ->orWhere('data->' . static::HIDDEN_FLAG, '0');
+            })
             ->latest('id');
     }
 

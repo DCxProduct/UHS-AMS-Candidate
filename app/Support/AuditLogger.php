@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\AuditLog;
+use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -68,6 +69,16 @@ class AuditLogger
 
         if (! $auditable) {
             return 'System';
+        }
+
+        if ($auditable instanceof CustomFormEntry) {
+            $auditable->loadMissing('customForm');
+
+            $formName = $auditable->customForm?->display_name;
+
+            if (filled($formName)) {
+                return (string) $formName;
+            }
         }
 
         return Str::headline(class_basename($auditable));

@@ -3,9 +3,11 @@
 namespace App\Filament\Admin\Resources\ReviewApplications\Pages;
 
 use App\Filament\Admin\Resources\ReviewApplications\ReviewApplicationResource;
+use App\Support\AuditLogger;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Database\Eloquent\Model;
 
 class ListReviewApplications extends ListRecords
 {
@@ -30,17 +32,23 @@ class ListReviewApplications extends ListRecords
                 ->requiresConfirmation()
                 ->modalHeading(__('app.clear_data'))
                 ->modalDescription(__('app.clear_data_confirm'))
+                ->modalSubmitActionLabel(__('app.delete'))
+                ->modalCancelActionLabel(__('app.cancel'))
                 ->alpineClickHandler(<<<'JS'
                     const table = document.querySelector('.fi-ta');
                     const tableData = table?._x_dataStack?.find((data) => data.selectedRecords instanceof Set);
 
-                    $wire.clearDataFromTableSelection(
-                        tableData ? [...tableData.selectedRecords] : [],
-                        tableData ? tableData.isTrackingDeselectedRecords : false,
-                        tableData ? [...tableData.deselectedRecords] : [],
-                    );
+                    $wire.mountAction('clear_data', {
+                        selectedRecordKeys: tableData ? [...tableData.selectedRecords] : [],
+                        isTrackingDeselectedRecords: tableData ? tableData.isTrackingDeselectedRecords : false,
+                        deselectedRecordKeys: tableData ? [...tableData.deselectedRecords] : [],
+                    });
                 JS)
-                ->action(fn () => $this->clearDataFromTableSelection()),
+                ->action(fn (array $arguments) => $this->clearDataFromTableSelection(
+                    $arguments['selectedRecordKeys'] ?? [],
+                    (bool) ($arguments['isTrackingDeselectedRecords'] ?? false),
+                    $arguments['deselectedRecordKeys'] ?? [],
+                )),
         ];
     }
 
@@ -53,7 +61,26 @@ class ListReviewApplications extends ListRecords
             $selectedRecordKeys,
             $isTrackingDeselectedRecords,
             $deselectedRecordKeys,
-        )->delete();
+        )->get()->each(function (Model $record): void {
+            $data = $record->data ?? [];
+
+            if (! is_array($data)) {
+                $data = [];
+            }
+
+            $data[ReviewApplicationResource::HIDDEN_FLAG] = true;
+
+            $record->forceFill([
+                'data' => $data,
+            ])->saveQuietly();
+
+            AuditLogger::log(
+                action: 'cleared',
+                auditable: $record,
+                description: 'Cleared from Candidate Lists',
+                metadata: ['module' => 'Candidate Lists'],
+            );
+        });
 
         $this->selectedTableRecords = [];
         $this->deselectedTableRecords = [];
