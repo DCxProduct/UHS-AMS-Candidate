@@ -34,6 +34,7 @@ class ListPayments extends ListRecords
             Action::make('clear_data')
                 ->label(__('app.clear_data'))
                 ->color('danger')
+                ->visible(fn (): bool => $this->currentUserCanClearData())
                 ->requiresConfirmation()
                 ->modalHeading(__('app.clear_data'))
                 ->modalDescription(__('app.clear_data_confirm'))
@@ -55,6 +56,19 @@ class ListPayments extends ListRecords
                     $arguments['deselectedRecordKeys'] ?? [],
                 )),
         ];
+    }
+
+    protected function currentUserCanClearData(): bool
+    {
+        $user = auth()->user();
+
+        if (! $user) {
+            return false;
+        }
+
+        return method_exists($user, 'hasEffectiveRole')
+            ? $user->hasEffectiveRole('admin')
+            : $user->registration_type === 'admin';
     }
 
     protected function downloadExcel()

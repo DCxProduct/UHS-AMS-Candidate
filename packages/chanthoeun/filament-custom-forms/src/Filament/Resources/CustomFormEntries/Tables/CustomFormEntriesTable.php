@@ -2,6 +2,7 @@
 
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Tables;
 
+use App\Filament\Admin\Resources\CandidatePaymentLists\CandidatePaymentListResource;
 use App\Support\AuditLogger;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
@@ -20,9 +21,9 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\HtmlString;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\HtmlString;
 
 class CustomFormEntriesTable
 {
@@ -31,7 +32,7 @@ class CustomFormEntriesTable
         $formId = self::getFormId($table);
 
         return $table
-            ->selectable()
+            ->selectable(auth()->user()?->registration_type === 'admin')
             ->recordAction(null)
             ->recordUrl(null)
             ->columns(self::getColumns($formId))
@@ -1394,22 +1395,29 @@ class CustomFormEntriesTable
             return;
         }
 
+        $studentLocale = NotificationLanguage::localeForUser($student);
+
         $formName = $record->customForm
-            ? ($record->customForm->display_name ?: (app()->getLocale() === 'km' ? 'ពាក្យស្នើសុំ' : 'Application'))
-            : (app()->getLocale() === 'km' ? 'ពាក្យស្នើសុំ' : 'Application');
+            ? ($record->customForm->display_name ?: ($studentLocale === 'km' ? 'ពាក្យស្នើសុំ' : 'Application'))
+            : ($studentLocale === 'km' ? 'ពាក្យស្នើសុំ' : 'Application');
 
         if ($status === 'approved') {
             Notification::make()
                 ->title(
                     self::recordIsNationalExam($record)
                         ? NotificationLanguage::transForUser($student, 'review_applications.notifications.national_exam_approved_title')
-                        : (app()->getLocale() === 'km' ? "ពាក្យស្នើសុំ {$formName} ត្រូវបានអនុម័ត" : "Application {$formName} Approved")
+                        : ($studentLocale === 'km' ? "ពាក្យស្នើសុំ {$formName} ត្រូវបានអនុម័ត" : "Application {$formName} Approved")
                 )
                 ->body(
                     self::recordIsNationalExam($record)
                         ? NotificationLanguage::transForUser($student, 'review_applications.notifications.national_exam_approved_body')
-                        : (app()->getLocale() === 'km' ? "ពាក្យស្នើសុំ {$formName} របស់អ្នកត្រូវបានអនុម័តរួចរាល់ហើយ។" : "Your application for {$formName} has been approved.")
+                        : ($studentLocale === 'km'
+                            ? "ពាក្យស្នើសុំ {$formName} របស់អ្នកត្រូវបានអនុម័តរួចរាល់ហើយ។ សូមទៅកាន់បញ្ជីការទូទាត់ប្រាក់របស់បេក្ខជន ដើម្បីបង់ថ្លៃសេវា។"
+                            : "Your application for {$formName} has been approved. Please go to Payment Lists to pay your fee.")
                 )
+                ->actions(array_filter([
+                    self::studentPaymentNotificationAction($studentLocale),
+                ]))
                 ->icon('heroicon-o-check-circle')
                 ->iconColor('success')
                 ->success()
@@ -1422,21 +1430,70 @@ class CustomFormEntriesTable
             ->title(
                 self::recordIsNationalExam($record)
                     ? NotificationLanguage::transForUser($student, 'review_applications.notifications.national_exam_rejected_title')
-                    : (app()->getLocale() === 'km' ? "ពាក្យស្នើសុំ {$formName} ត្រូវបានបដិសេធ" : "Application {$formName} Rejected")
+                    : ($studentLocale === 'km' ? "ពាក្យស្នើសុំ {$formName} ត្រូវបានបដិសេធ" : "Application {$formName} Rejected")
             )
             ->body(
                 self::recordIsNationalExam($record)
                     ? NotificationLanguage::transForUser($student, 'review_applications.notifications.national_exam_rejected_body', [
                         'note' => filled($note) ? $note : NotificationLanguage::transForUser($student, 'review_applications.notifications.no_reject_note'),
                     ])
-                    : (app()->getLocale() === 'km'
-                        ? "ពាក្យស្នើសុំ {$formName} របស់អ្នកត្រូវបានបដិសេធ។ មូលហេតុ៖ " . (filled($note) ? $note : 'គ្មាន')
-                        : "Your application for {$formName} has been rejected. Reason: " . (filled($note) ? $note : 'None'))
+                    : new HtmlString($studentLocale === 'km'
+                        ? 'ពាក្យស្នើសុំ ' . e($formName) . ' របស់អ្នកត្រូវបានបដិសេធ។ សូមកែប្រែឡើងវិញម្ដងទៀត។<br>មូលហេតុ៖ ' . e(filled($note) ? $note : 'គ្មាន') . '</u>'
+                        : 'Your application for ' . e($formName) . ' has been rejected. Please revise and submit again.<br>Reason: ' . e(filled($note) ? $note : 'None') . '</u>')
             )
+            ->actions(array_filter([
+                self::studentEditNotificationAction($record, $studentLocale),
+            ]))
             ->icon('heroicon-o-x-circle')
             ->iconColor('danger')
             ->danger()
             ->sendToDatabase($student);
+    }
+
+    protected static function studentEditNotificationAction($record, string $locale): ?Action
+    {
+        $url = self::studentEditFormUrl($record);
+
+        if (blank($url)) {
+            return null;
+        }
+
+        return Action::make('edit_form')
+            ->label($locale === 'km' ? 'កែប្រែពាក្យស្នើសុំ' : 'Edit Form')
+            ->button()
+            ->color('danger')
+            ->url($url);
+    }
+
+    protected static function studentPaymentNotificationAction(string $locale): ?Action
+    {
+        $url = self::studentPaymentListUrl();
+
+        if (blank($url)) {
+            return null;
+        }
+
+        return Action::make('open_payment_lists')
+            ->label($locale === 'km' ? 'ទៅកាន់បញ្ជីបង់ប្រាក់' : 'Go to Payment Lists')
+            ->button()
+            ->color('success')
+            ->url($url);
+    }
+
+    protected static function studentEditFormUrl($record): ?string
+    {
+        if (! filled($record?->id)) {
+            return null;
+        }
+
+        return CustomFormEntryResource::getUrl('edit', [
+            'record' => $record,
+        ], panel: 'app');
+    }
+
+    protected static function studentPaymentListUrl(): ?string
+    {
+        return CandidatePaymentListResource::getUrl(panel: 'app');
     }
 
     protected static function getOwnerStudent($record): ?User

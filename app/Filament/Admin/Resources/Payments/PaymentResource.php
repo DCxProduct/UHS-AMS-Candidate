@@ -10,6 +10,7 @@ use App\Filament\Admin\Resources\Payments\Tables\PaymentsTable;
 use App\Filament\Concerns\AdminOnly;
 use App\Models\Payment;
 use BackedEnum;
+use Illuminate\Database\Eloquent\Builder;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
@@ -55,6 +56,36 @@ class PaymentResource extends Resource
     public static function table(Table $table): Table
     {
         return PaymentsTable::configure($table);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+
+        if (! static::currentUserIsAdmin()) {
+            $userId = auth()->id();
+
+            if (! $userId) {
+                return $query->whereRaw('1 = 0');
+            }
+
+            $query->where('users_id', $userId);
+        }
+
+        return $query;
+    }
+
+    protected static function currentUserIsAdmin(): bool
+    {
+        $user = auth()->user();
+
+        if (! $user) {
+            return false;
+        }
+
+        return method_exists($user, 'hasEffectiveRole')
+            ? $user->hasEffectiveRole('admin')
+            : $user->registration_type === 'admin';
     }
 
     public static function getRelations(): array
