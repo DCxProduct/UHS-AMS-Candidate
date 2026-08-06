@@ -375,13 +375,13 @@ class CustomFormEntriesTable
 
                 $label = self::transText($field->label ?: $key);
                 if ($key === 'last_name_kh') {
-                    $label = app()->getLocale() === 'km' ? 'នាមត្រកូល' : 'First Name';
+                    $label = __('app.custom_form_entry_ui.labels.last_name_kh');
                 } elseif ($key === 'first_name_kh') {
-                    $label = app()->getLocale() === 'km' ? 'នាមខ្លួន' : 'Last Name';
+                    $label = __('app.custom_form_entry_ui.labels.first_name_kh');
                 } elseif ($key === 'last_name_en') {
-                    $label = app()->getLocale() === 'km' ? 'អក្សរឡាតាំងនាមខ្លួន' : 'Latin Last Name';
+                    $label = __('app.custom_form_entry_ui.labels.last_name_en');
                 } elseif ($key === 'first_name_en') {
-                    $label = app()->getLocale() === 'km' ? 'អក្សរឡាតាំងនាមត្រកូល' : 'Latin First Name';
+                    $label = __('app.custom_form_entry_ui.labels.first_name_en');
                 }
 
                 $column = TextColumn::make("data.{$key}")
@@ -459,7 +459,7 @@ class CustomFormEntriesTable
         $columns = [
             // Row number
             TextColumn::make('row_number')
-                ->label(app()->getLocale() === 'km' ? 'ល.រ' : 'No.')
+                ->label(__('app.custom_form_entry_ui.labels.no'))
                 ->rowIndex()
                 ->formatStateUsing(fn ($state): string => LocalizedNumber::digits($state))
                 ->alignCenter()
@@ -467,7 +467,7 @@ class CustomFormEntriesTable
 
             // 3. Major
             TextColumn::make('major')
-                ->label(app()->getLocale() === 'km' ? 'ផ្នែក/ជំនាញ' : 'Major')
+                ->label(__('app.custom_form_entry_ui.labels.major'))
                 ->getStateUsing(function ($record): string {
                     $key = filled(data_get($record->data, 'selected_major')) ? 'selected_major' : 'degree_level_major';
                     $state = data_get($record->data, $key);
@@ -485,25 +485,25 @@ class CustomFormEntriesTable
 
             // 4. Gender
             TextColumn::make('data.gender')
-                ->label(app()->getLocale() === 'km' ? 'ភេទ' : 'Gender')
+                ->label(__('app.custom_form_entry_ui.labels.gender'))
                 ->placeholder('-')
                 ->formatStateUsing(fn (?string $state): string => match ($state) {
-                    'male' => app()->getLocale() === 'km' ? 'ប្រុស' : 'Male',
-                    'female' => app()->getLocale() === 'km' ? 'ស្រី' : 'Female',
+                    'male' => __('app.custom_form_entry_ui.options.gender.male'),
+                    'female' => __('app.custom_form_entry_ui.options.gender.female'),
                     default => filled($state) ? ucfirst($state) : '-',
                 })
                 ->toggleable(isToggledHiddenByDefault: false),
 
             // 5. Phone Number
             TextColumn::make('data.phone_number')
-                ->label(app()->getLocale() === 'km' ? 'លេខទូរស័ព្ទ' : 'Phone Number')
+                ->label(__('app.custom_form_entry_ui.labels.phone_number'))
                 ->placeholder('-')
                 ->searchable()
                 ->toggleable(isToggledHiddenByDefault: false),
 
             // 6. Academic Year
             TextColumn::make('data.academic_year')
-                ->label(app()->getLocale() === 'km' ? 'ឆ្នាំសិក្សា' : 'Academic Year')
+                ->label(__('app.custom_form_entry_ui.labels.academic_year'))
                 ->placeholder('-')
                 ->searchable()
                 ->toggleable(isToggledHiddenByDefault: false),
@@ -815,19 +815,19 @@ class CustomFormEntriesTable
     {
         $actions = [
             Action::make('edit_review_note')
-                ->label(app()->getLocale() === 'km' ? 'ប្រអប់សារ' : 'Message')
+                ->label(__('app.message'))
                 ->icon('heroicon-o-chat-bubble-left-ellipsis')
                 ->link()
                 ->color('danger')
-                ->modalHeading(app()->getLocale() === 'km' ? 'ប្រអប់សារ' : 'Message')
-                ->modalSubmitActionLabel(app()->getLocale() === 'km' ? 'រក្សាទុក' : 'Save')
-                ->modalCancelActionLabel(app()->getLocale() === 'km' ? 'បិទ' : 'Close')
+                ->modalHeading(__('app.message'))
+                ->modalSubmitActionLabel(__('app.save'))
+                ->modalCancelActionLabel(__('app.close'))
                 ->fillForm(fn ($record): array => [
                     'review_note' => self::reviewMessage($record),
                 ])
                 ->form([
                     Textarea::make('review_note')
-                        ->label(app()->getLocale() === 'km' ? 'ការណែនាំ' : 'Recommendation')
+                        ->label(__('app.recommendation'))
                         ->required()
                         ->rows(5),
                 ])
@@ -853,7 +853,7 @@ class CustomFormEntriesTable
                     );
 
                     Notification::make()
-                        ->title(app()->getLocale() === 'km' ? 'បានរក្សាទុកសារ' : 'Message saved')
+                        ->title(__('app.message_saved'))
                         ->success()
                         ->send();
                 })
@@ -864,13 +864,13 @@ class CustomFormEntriesTable
                 ),
 
             Action::make('view_review_note')
-                ->label(app()->getLocale() === 'km' ? 'ប្រអប់សារ' : 'Message')
+                ->label(__('app.message'))
                 ->icon('heroicon-o-chat-bubble-left-ellipsis')
                 ->link()
                 ->color('danger')
-                ->modalHeading(app()->getLocale() === 'km' ? 'ប្រអប់សារ' : 'Message')
+                ->modalHeading(__('app.message'))
                 ->modalSubmitAction(false)
-                ->modalCancelActionLabel(app()->getLocale() === 'km' ? 'បិទ' : 'Close')
+                ->modalCancelActionLabel(__('app.close'))
                 ->modalContent(function ($record): HtmlString {
                     return new HtmlString(
                         '<div class="rounded-lg border border-warning-200 bg-warning-50 p-4 text-sm leading-6 text-warning-900 dark:border-warning-800 dark:bg-warning-950 dark:text-warning-100">'
@@ -1398,22 +1398,20 @@ class CustomFormEntriesTable
         $studentLocale = NotificationLanguage::localeForUser($student);
 
         $formName = $record->customForm
-            ? ($record->customForm->display_name ?: ($studentLocale === 'km' ? 'ពាក្យស្នើសុំ' : 'Application'))
-            : ($studentLocale === 'km' ? 'ពាក្យស្នើសុំ' : 'Application');
+            ? ($record->customForm->display_name ?: NotificationLanguage::transForUser($student, 'app.custom_form_entry_ui.notifications.application'))
+            : NotificationLanguage::transForUser($student, 'app.custom_form_entry_ui.notifications.application');
 
         if ($status === 'approved') {
             Notification::make()
                 ->title(
                     self::recordIsNationalExam($record)
                         ? NotificationLanguage::transForUser($student, 'review_applications.notifications.national_exam_approved_title')
-                        : ($studentLocale === 'km' ? "ពាក្យស្នើសុំ {$formName} ត្រូវបានអនុម័ត" : "Application {$formName} Approved")
+                        : NotificationLanguage::transForUser($student, 'app.custom_form_entry_ui.notifications.application_approved_title', ['form' => $formName])
                 )
                 ->body(
                     self::recordIsNationalExam($record)
                         ? NotificationLanguage::transForUser($student, 'review_applications.notifications.national_exam_approved_body')
-                        : ($studentLocale === 'km'
-                            ? "ពាក្យស្នើសុំ {$formName} របស់អ្នកត្រូវបានអនុម័តរួចរាល់ហើយ។ សូមទៅកាន់បញ្ជីការទូទាត់ប្រាក់របស់បេក្ខជន ដើម្បីបង់ថ្លៃសេវា។"
-                            : "Your application for {$formName} has been approved. Please go to Payment Lists to pay your fee.")
+                        : NotificationLanguage::transForUser($student, 'app.custom_form_entry_ui.notifications.application_approved_body', ['form' => $formName])
                 )
                 ->actions(array_filter([
                     self::studentPaymentNotificationAction($studentLocale),
@@ -1430,16 +1428,19 @@ class CustomFormEntriesTable
             ->title(
                 self::recordIsNationalExam($record)
                     ? NotificationLanguage::transForUser($student, 'review_applications.notifications.national_exam_rejected_title')
-                    : ($studentLocale === 'km' ? "ពាក្យស្នើសុំ {$formName} ត្រូវបានបដិសេធ" : "Application {$formName} Rejected")
+                    : NotificationLanguage::transForUser($student, 'app.custom_form_entry_ui.notifications.application_rejected_title', ['form' => $formName])
             )
             ->body(
                 self::recordIsNationalExam($record)
                     ? NotificationLanguage::transForUser($student, 'review_applications.notifications.national_exam_rejected_body', [
                         'note' => filled($note) ? $note : NotificationLanguage::transForUser($student, 'review_applications.notifications.no_reject_note'),
                     ])
-                    : new HtmlString($studentLocale === 'km'
-                        ? 'ពាក្យស្នើសុំ ' . e($formName) . ' របស់អ្នកត្រូវបានបដិសេធ។ សូមកែប្រែឡើងវិញម្ដងទៀត។<br>មូលហេតុ៖ ' . e(filled($note) ? $note : 'គ្មាន') . '</u>'
-                        : 'Your application for ' . e($formName) . ' has been rejected. Please revise and submit again.<br>Reason: ' . e(filled($note) ? $note : 'None') . '</u>')
+                    : new HtmlString(NotificationLanguage::transForUser($student, 'app.custom_form_entry_ui.notifications.application_rejected_body', [
+                        'form' => e($formName),
+                        'note' => e(filled($note)
+                            ? $note
+                            : NotificationLanguage::transForUser($student, 'app.custom_form_entry_ui.notifications.no_note')),
+                    ]))
             )
             ->actions(array_filter([
                 self::studentEditNotificationAction($record, $studentLocale),
@@ -1459,7 +1460,7 @@ class CustomFormEntriesTable
         }
 
         return Action::make('edit_form')
-            ->label($locale === 'km' ? 'កែប្រែពាក្យស្នើសុំ' : 'Edit Form')
+            ->label(__('app.custom_form_entry_ui.actions.edit_form', [], $locale))
             ->button()
             ->color('danger')
             ->url($url);
@@ -1474,7 +1475,7 @@ class CustomFormEntriesTable
         }
 
         return Action::make('open_payment_lists')
-            ->label($locale === 'km' ? 'ទៅកាន់បញ្ជីបង់ប្រាក់' : 'Go to Payment Lists')
+            ->label(__('app.custom_form_entry_ui.actions.go_to_payment_lists', [], $locale))
             ->button()
             ->color('success')
             ->url($url);
@@ -1563,10 +1564,10 @@ class CustomFormEntriesTable
         }
 
         return match ((string) $state) {
-            'associate' => $locale === 'km' ? 'បរិញ្ញាបត្ររង' : 'Associate',
-            'bachelor' => $locale === 'km' ? 'បរិញ្ញាបត្រ' : 'Bachelor',
-            'master' => $locale === 'km' ? 'អនុបណ្ឌិត' : 'Master',
-            'phd' => $locale === 'km' ? 'បណ្ឌិត' : 'PhD',
+            'associate' => __('app.custom_form_entry_ui.options.form_type.associate'),
+            'bachelor' => __('app.custom_form_entry_ui.options.form_type.bachelor'),
+            'master' => __('app.custom_form_entry_ui.options.form_type.master'),
+            'phd' => __('app.custom_form_entry_ui.options.form_type.phd'),
             default => filled($state) ? ucfirst((string) $state) : '-',
         };
     }

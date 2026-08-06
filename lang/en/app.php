@@ -282,12 +282,53 @@ return [
     'print' => 'Print',
     'done' => 'Done',
     'save' => 'Save',
+    'close' => 'Close',
     'save_changes' => 'Save Changes',
     'cancel' => 'Cancel',
     'next' => 'Next',
     'previous' => 'Previous',
     'saved_successfully' => 'Saved successfully.',
     'section' => 'Section',
+    'message' => 'Message',
+    'recommendation' => 'Recommendation',
+    'message_saved' => 'Message saved',
+    'custom_form_entry_ui' => [
+        'labels' => [
+            'last_name_kh' => 'First Name',
+            'first_name_kh' => 'Last Name',
+            'last_name_en' => 'Latin Last Name',
+            'first_name_en' => 'Latin First Name',
+            'no' => 'No.',
+            'major' => 'Major',
+            'gender' => 'Gender',
+            'phone_number' => 'Phone Number',
+            'academic_year' => 'Academic Year',
+        ],
+        'options' => [
+            'gender' => [
+                'male' => 'Male',
+                'female' => 'Female',
+            ],
+            'form_type' => [
+                'associate' => 'Associate',
+                'bachelor' => 'Bachelor',
+                'master' => 'Master',
+                'phd' => 'PhD',
+            ],
+        ],
+        'actions' => [
+            'edit_form' => 'Edit Form',
+            'go_to_payment_lists' => 'Go to Payment Lists',
+        ],
+        'notifications' => [
+            'application' => 'Application',
+            'application_approved_title' => 'Application :form Approved',
+            'application_approved_body' => 'Your application for :form has been approved. Please go to Payment Lists to pay your fee.',
+            'application_rejected_title' => 'Application :form Rejected',
+            'application_rejected_body' => 'Your application for :form has been rejected. Please revise and submit again.<br>Reason: :note',
+            'no_note' => 'None',
+        ],
+    ],
 
     /*
     |--------------------------------------------------------------------------

@@ -282,12 +282,53 @@ return [
     'print' => 'បោះពុម្ព',
     'done' => 'រួចរាល់',
     'save' => 'រក្សាទុក',
+    'close' => 'បិទ',
     'save_changes' => 'រក្សាទុកការកែប្រែ',
     'cancel' => 'បោះបង់',
     'next' => 'បន្ទាប់',
     'previous' => 'ថយក្រោយ',
     'saved_successfully' => 'បានរក្សាទុកដោយជោគជ័យ។',
     'section' => 'ផ្នែក',
+    'message' => 'ប្រអប់សារ',
+    'recommendation' => 'ការណែនាំ',
+    'message_saved' => 'បានរក្សាទុកសារ',
+    'custom_form_entry_ui' => [
+        'labels' => [
+            'last_name_kh' => 'នាមត្រកូល',
+            'first_name_kh' => 'នាមខ្លួន',
+            'last_name_en' => 'អក្សរឡាតាំងនាមខ្លួន',
+            'first_name_en' => 'អក្សរឡាតាំងនាមត្រកូល',
+            'no' => 'ល.រ',
+            'major' => 'ផ្នែក/ជំនាញ',
+            'gender' => 'ភេទ',
+            'phone_number' => 'លេខទូរស័ព្ទ',
+            'academic_year' => 'ឆ្នាំសិក្សា',
+        ],
+        'options' => [
+            'gender' => [
+                'male' => 'ប្រុស',
+                'female' => 'ស្រី',
+            ],
+            'form_type' => [
+                'associate' => 'បរិញ្ញាបត្ររង',
+                'bachelor' => 'បរិញ្ញាបត្រ',
+                'master' => 'អនុបណ្ឌិត',
+                'phd' => 'បណ្ឌិត',
+            ],
+        ],
+        'actions' => [
+            'edit_form' => 'កែប្រែពាក្យស្នើសុំ',
+            'go_to_payment_lists' => 'ទៅកាន់បញ្ជីបង់ប្រាក់',
+        ],
+        'notifications' => [
+            'application' => 'ពាក្យស្នើសុំ',
+            'application_approved_title' => 'ពាក្យស្នើសុំ :form ត្រូវបានអនុម័ត',
+            'application_approved_body' => 'ពាក្យស្នើសុំ :form របស់អ្នកត្រូវបានអនុម័តរួចរាល់ហើយ។ សូមទៅកាន់បញ្ជីការទូទាត់ប្រាក់របស់បេក្ខជន ដើម្បីបង់ថ្លៃសេវា។',
+            'application_rejected_title' => 'ពាក្យស្នើសុំ :form ត្រូវបានបដិសេធ',
+            'application_rejected_body' => 'ពាក្យស្នើសុំ :form របស់អ្នកត្រូវបានបដិសេធ។ សូមកែប្រែឡើងវិញម្ដងទៀត។<br>មូលហេតុ៖ :note',
+            'no_note' => 'គ្មាន',
+        ],
+    ],
 
     /*
     |--------------------------------------------------------------------------
