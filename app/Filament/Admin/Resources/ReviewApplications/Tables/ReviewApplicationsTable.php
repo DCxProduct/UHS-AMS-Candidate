@@ -29,6 +29,29 @@ use Illuminate\Support\HtmlString;
 
 class ReviewApplicationsTable
 {
+    public static function downloadExcel(iterable $records, ?array $columnKeys = null)
+    {
+        $filename = 'candidate-lists-' . now()->format('Y-m-d-His') . '.xlsx';
+        $path = storage_path('app/' . uniqid('candidate-lists-', true) . '.xlsx');
+
+        $columnKeys ??= array_keys(self::exportColumnDefinitions());
+
+        self::writeXlsx($path, [
+            [
+                'name' => 'Clean Data',
+                'rows' => self::excelRows($records, $columnKeys),
+            ],
+            [
+                'name' => 'Database Export',
+                'rows' => self::cleanDataRows($records, $columnKeys),
+            ],
+        ]);
+
+        return response()->download($path, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
+
     public static function configure(Table $table): Table
     {
         return $table
@@ -355,6 +378,274 @@ class ReviewApplicationsTable
                             ->send();
                     }),
             ]);
+    }
+
+    protected static function excelRows(iterable $records, ?array $columnKeys = null): array
+    {
+        $columnKeys ??= array_keys(self::exportColumnDefinitions());
+        $rows = [self::excelHeadings($columnKeys)];
+        $rowNumber = 1;
+
+        foreach ($records as $record) {
+            if (! $record instanceof CustomFormEntry) {
+                continue;
+            }
+
+            $rows[] = self::exportRow($record, $rowNumber++, $columnKeys);
+        }
+
+        return $rows;
+    }
+
+    protected static function cleanDataRows(iterable $records, array $columnKeys): array
+    {
+        $rows = [self::cleanDataHeadings($columnKeys)];
+        $rowNumber = 1;
+
+        foreach ($records as $record) {
+            if (! $record instanceof CustomFormEntry) {
+                continue;
+            }
+
+            $rows[] = self::cleanDataRow($record, $rowNumber++, $columnKeys);
+        }
+
+        return $rows;
+    }
+
+    protected static function writeXlsx(string $path, array $sheets): void
+    {
+        $zip = new \ZipArchive();
+        $zip->open($path, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
+
+        $zip->addFromString('[Content_Types].xml', self::contentTypesXml($sheets));
+        $zip->addFromString('_rels/.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            . '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
+            . '</Relationships>');
+        $zip->addFromString('xl/workbook.xml', self::workbookXml($sheets));
+        $zip->addFromString('xl/_rels/workbook.xml.rels', self::workbookRelsXml($sheets));
+
+        foreach (array_values($sheets) as $index => $sheet) {
+            $zip->addFromString(
+                'xl/worksheets/sheet' . ($index + 1) . '.xml',
+                self::worksheetXml($sheet['rows'])
+            );
+        }
+
+        $zip->close();
+    }
+
+    protected static function worksheetXml(array $rows): string
+    {
+        $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+            . '<sheetData>';
+
+        foreach ($rows as $rowIndex => $row) {
+            $excelRow = $rowIndex + 1;
+            $xml .= '<row r="' . $excelRow . '">';
+
+            foreach (array_values($row) as $columnIndex => $value) {
+                $cell = self::columnName($columnIndex + 1) . $excelRow;
+                $xml .= '<c r="' . $cell . '" t="inlineStr"><is><t>' . self::xmlValue($value) . '</t></is></c>';
+            }
+
+            $xml .= '</row>';
+        }
+
+        return $xml . '</sheetData></worksheet>';
+    }
+
+    protected static function columnName(int $index): string
+    {
+        $name = '';
+
+        while ($index > 0) {
+            $index--;
+            $name = chr(65 + ($index % 26)) . $name;
+            $index = intdiv($index, 26);
+        }
+
+        return $name;
+    }
+
+    protected static function xmlValue(mixed $value): string
+    {
+        return htmlspecialchars((string) $value, ENT_XML1 | ENT_COMPAT, 'UTF-8');
+    }
+
+    protected static function excelHeadings(array $columnKeys): array
+    {
+        $definitions = self::exportColumnDefinitions();
+
+        return collect($columnKeys)
+            ->filter(fn (string $key): bool => array_key_exists($key, $definitions))
+            ->map(fn (string $key): string => $definitions[$key]['label'])
+            ->values()
+            ->all();
+    }
+
+    protected static function cleanDataHeadings(array $columnKeys): array
+    {
+        $definitions = self::exportColumnDefinitions();
+
+        return collect($columnKeys)
+            ->filter(fn (string $key): bool => array_key_exists($key, $definitions))
+            ->map(fn (string $key): string => $definitions[$key]['field_key'])
+            ->values()
+            ->all();
+    }
+
+    protected static function exportRow(CustomFormEntry $record, int $rowNumber, array $columnKeys): array
+    {
+        $definitions = self::exportColumnDefinitions();
+
+        return collect($columnKeys)
+            ->filter(fn (string $key): bool => array_key_exists($key, $definitions))
+            ->map(fn (string $key): string => $definitions[$key]['value']($record, $rowNumber))
+            ->values()
+            ->all();
+    }
+
+    protected static function cleanDataRow(CustomFormEntry $record, int $rowNumber, array $columnKeys): array
+    {
+        $definitions = self::exportColumnDefinitions();
+
+        return collect($columnKeys)
+            ->filter(fn (string $key): bool => array_key_exists($key, $definitions))
+            ->map(fn (string $key): string => $definitions[$key]['clean']($record, $rowNumber))
+            ->values()
+            ->all();
+    }
+
+    protected static function exportColumnDefinitions(): array
+    {
+        return [
+            'row_number' => [
+                'label' => __('exam_results.no'),
+                'field_key' => 'row_number',
+                'value' => fn (CustomFormEntry $record, int $rowNumber): string => (string) $rowNumber,
+                'clean' => fn (CustomFormEntry $record, int $rowNumber): string => (string) $rowNumber,
+            ],
+            'form_type' => [
+                'label' => __('review_applications.form_type'),
+                'field_key' => 'form_type',
+                'value' => fn (CustomFormEntry $record): string => self::recordFormTypeLabel($record),
+                'clean' => fn (CustomFormEntry $record): string => (string) data_get($record->data, 'form_selection', ''),
+            ],
+            'academic_year' => [
+                'label' => __('exam_results.academic_year'),
+                'field_key' => 'academic_year',
+                'value' => fn (CustomFormEntry $record): string => self::entryValue($record, 'academic_year', $record->creator?->academic_year),
+                'clean' => fn (CustomFormEntry $record): string => self::entryValue($record, 'academic_year', $record->creator?->academic_year),
+            ],
+            'user_type' => [
+                'label' => app()->getLocale() === 'km' ? 'ប្រភេទអ្នកប្រើ' : 'User Type',
+                'field_key' => 'user_type',
+                'value' => fn (CustomFormEntry $record): string => self::userTypeLabel(self::resolveCandidateRole($record->creator)),
+                'clean' => fn (CustomFormEntry $record): string => (string) self::resolveCandidateRole($record->creator),
+            ],
+            'seat_number' => [
+                'label' => __('exam_results.seat_number'),
+                'field_key' => 'seat_number',
+                'value' => fn (CustomFormEntry $record): string => self::entryValue($record, 'seat_number', self::entryValue($record, 'list_number', $record->creator?->seat_number)),
+                'clean' => fn (CustomFormEntry $record): string => self::entryValue($record, 'seat_number', self::entryValue($record, 'list_number', $record->creator?->seat_number)),
+            ],
+            'name_khmer' => [
+                'label' => __('exam_results.name_khmer'),
+                'field_key' => 'name_khmer',
+                'value' => fn (CustomFormEntry $record): string => self::khmerName($record),
+                'clean' => fn (CustomFormEntry $record): string => self::khmerName($record),
+            ],
+            'name_latin' => [
+                'label' => __('exam_results.name_latin'),
+                'field_key' => 'name_latin',
+                'value' => fn (CustomFormEntry $record): string => self::latinName($record),
+                'clean' => fn (CustomFormEntry $record): string => self::latinName($record),
+            ],
+            'gender' => [
+                'label' => __('exam_results.gender'),
+                'field_key' => 'gender',
+                'value' => fn (CustomFormEntry $record): string => self::genderLabel(self::entryValue($record, 'gender')),
+                'clean' => fn (CustomFormEntry $record): string => self::entryValue($record, 'gender'),
+            ],
+            'major' => [
+                'label' => app()->getLocale() === 'km' ? 'ផ្នែក/ជំនាញ' : 'Major',
+                'field_key' => 'major',
+                'value' => fn (CustomFormEntry $record): string => self::entryValue(
+                    $record,
+                    filled(data_get($record->data, 'selected_major')) ? 'selected_major' : 'degree_level_major'
+                ),
+                'clean' => fn (CustomFormEntry $record): string => self::entryValue(
+                    $record,
+                    filled(data_get($record->data, 'selected_major')) ? 'selected_major' : 'degree_level_major'
+                ),
+            ],
+            'date_of_birth' => [
+                'label' => __('exam_results.date_of_birth'),
+                'field_key' => 'date_of_birth',
+                'value' => fn (CustomFormEntry $record): string => self::dateValue(self::entryValue($record, 'date_of_birth', $record->creator?->date_of_birth)),
+                'clean' => fn (CustomFormEntry $record): string => self::entryValue($record, 'date_of_birth', $record->creator?->date_of_birth),
+            ],
+            'data.candidate_status' => [
+                'label' => __('review_applications.review_status_result'),
+                'field_key' => 'candidate_status',
+                'value' => fn (CustomFormEntry $record): string => match ((string) data_get($record->data, 'candidate_status', 'pending')) {
+                    'passed' => __('review_applications.statuses.passed'),
+                    default => __('review_applications.statuses.pending'),
+                },
+                'clean' => fn (CustomFormEntry $record): string => (string) data_get($record->data, 'candidate_status', 'pending'),
+            ],
+            'data.candidate_reviewed_at' => [
+                'label' => __('review_applications.reviewed_at'),
+                'field_key' => 'candidate_reviewed_at',
+                'value' => fn (CustomFormEntry $record): string => filled(data_get($record->data, 'candidate_reviewed_at'))
+                    ? LocalizedDate::dayMonthYear((string) data_get($record->data, 'candidate_reviewed_at'))
+                    : '-',
+                'clean' => fn (CustomFormEntry $record): string => (string) data_get($record->data, 'candidate_reviewed_at', ''),
+            ],
+        ];
+    }
+
+    protected static function contentTypesXml(array $sheets): string
+    {
+        $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+            . '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+            . '<Default Extension="xml" ContentType="application/xml"/>'
+            . '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>';
+
+        foreach (array_values($sheets) as $index => $sheet) {
+            $xml .= '<Override PartName="/xl/worksheets/sheet' . ($index + 1) . '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>';
+        }
+
+        return $xml . '</Types>';
+    }
+
+    protected static function workbookXml(array $sheets): string
+    {
+        $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
+            . 'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>';
+
+        foreach (array_values($sheets) as $index => $sheet) {
+            $xml .= '<sheet name="' . self::xmlValue($sheet['name']) . '" sheetId="' . ($index + 1) . '" r:id="rId' . ($index + 1) . '"/>';
+        }
+
+        return $xml . '</sheets></workbook>';
+    }
+
+    protected static function workbookRelsXml(array $sheets): string
+    {
+        $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">';
+
+        foreach (array_values($sheets) as $index => $sheet) {
+            $xml .= '<Relationship Id="rId' . ($index + 1) . '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' . ($index + 1) . '.xml"/>';
+        }
+
+        return $xml . '</Relationships>';
     }
 
     protected static function dynamicRequestReviewedYears(): array

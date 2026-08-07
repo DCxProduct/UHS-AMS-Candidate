@@ -101,6 +101,7 @@ return [
     'reviewed_year' => 'ឆ្នាំ',
     'national_registration_number' => 'លេខចុះឈ្មោះថ្នាក់ជាតិ',
     'not_reviewed_yet' => 'មិនទាន់បានពិនិត្យ',
+    'download_excel' => 'ទាញយក Excel',
     'download_pdf' => 'ទាញយក PDF',
 
     'months' => [
