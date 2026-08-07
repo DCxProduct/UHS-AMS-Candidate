@@ -1329,38 +1329,52 @@ class CustomFormEntriesTable
         if ($formId) {
             $query->where('custom_form_id', $formId);
         } else {
-            $nationalExamFormId = \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
-                ->where('slug', 'national-examination-registration')
-                ->value('id');
-
-            if ($nationalExamFormId) {
-                $query->where('custom_form_id', $nationalExamFormId);
-            }
+            $query->whereHas('customForm', function (Builder $query): void {
+                $query->where('slug', '!=', 'profile');
+            });
         }
 
-        if (
-            \Filament\Facades\Filament::getCurrentPanel()
-            && \Filament\Facades\Filament::getCurrentPanel()->getId() === 'student'
-        ) {
+        if (! self::currentPanelIsAdmin()) {
             $userId = auth()->id();
 
             if (! $userId) {
                 return $query->whereRaw('1 = 0');
             }
 
-            if (Schema::hasColumn('custom_form_entries', 'created_by')) {
-                return $query->where('created_by', $userId);
+            $ownerColumns = collect(['created_by', 'user_id', 'created_by_id'])
+                ->filter(fn (string $column): bool => Schema::hasColumn('custom_form_entries', $column))
+                ->values()
+                ->all();
+
+            if ($ownerColumns === []) {
+                return $query->whereRaw('1 = 0');
             }
 
-            if (Schema::hasColumn('custom_form_entries', 'user_id')) {
-                return $query->where('user_id', $userId);
-            }
+            $query->where(function (Builder $query) use ($ownerColumns, $userId): void {
+                foreach ($ownerColumns as $ownerColumn) {
+                    $query->orWhere($ownerColumn, $userId);
+                }
+            });
 
-            if (Schema::hasColumn('custom_form_entries', 'created_by_id')) {
-                return $query->where('created_by_id', $userId);
-            }
+            $driver = DB::connection()->getDriverName();
+            $formSelectionExpression = $driver === 'pgsql'
+                ? "COALESCE(student_entries.data->>'form_selection', '') = COALESCE(custom_form_entries.data->>'form_selection', '')"
+                : "COALESCE(JSON_UNQUOTE(JSON_EXTRACT(student_entries.data, '$.form_selection')), '') = COALESCE(JSON_UNQUOTE(JSON_EXTRACT(custom_form_entries.data, '$.form_selection')), '')";
 
-            return $query->whereRaw('1 = 0');
+            $ownerConditions = collect($ownerColumns)
+                ->map(fn (string $column): string => "student_entries.{$column} = ?")
+                ->implode(' OR ');
+
+            return $query->whereRaw(
+                "custom_form_entries.id = (
+                    SELECT MAX(student_entries.id)
+                    FROM custom_form_entries AS student_entries
+                    WHERE student_entries.custom_form_id = custom_form_entries.custom_form_id
+                      AND {$formSelectionExpression}
+                      AND ({$ownerConditions})
+                )",
+                array_fill(0, count($ownerColumns), $userId),
+            );
         }
 
         if (self::currentPanelIsAdmin()) {

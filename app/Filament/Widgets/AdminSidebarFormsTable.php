@@ -62,7 +62,6 @@ class AdminSidebarFormsTable extends TableWidget
                     ->color(fn (mixed $state): string => ((int) $state) > 0 ? 'primary' : 'gray')
                     ->description(__('dashboard.form_entries_count_hint'))
                     ->alignCenter()
-                    ->sortable()
                     ->extraCellAttributes([
                         'class' => 'uhs-sidebar-form-count-cell',
                     ]),
