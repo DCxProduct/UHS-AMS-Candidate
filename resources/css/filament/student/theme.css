@@ -538,7 +538,7 @@ form button[type="submit"].fi-btn:hover,
 
 .uhs-admin-overview__grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 1rem;
 }
 
@@ -663,6 +663,7 @@ form button[type="submit"].fi-btn:hover,
     border: 1px solid rgba(148, 163, 184, 0.18) !important;
     box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05) !important;
     transition: transform 0.18s ease, box-shadow 0.18s ease !important;
+    min-height: 172px;
 }
 
 .uhs-admin-stat-card:hover {
@@ -670,20 +671,57 @@ form button[type="submit"].fi-btn:hover,
     box-shadow: 0 14px 28px rgba(15, 23, 42, 0.07) !important;
 }
 
+.uhs-admin-stat-card .fi-wi-stats-overview-stat-description {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2rem;
+    margin-top: 0.9rem;
+    padding: 0.35rem 0.8rem;
+    border-radius: 9999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    line-height: 1.4;
+    background: #f8fafc;
+}
+
 .uhs-admin-stat-card--primary {
     background: linear-gradient(180deg, #ffffff, #f8fafc) !important;
+    border-top: 3px solid #3b82f6 !important;
+}
+
+.uhs-admin-stat-card--primary .fi-wi-stats-overview-stat-description {
+    color: #1d4ed8;
+    background: #eff6ff;
 }
 
 .uhs-admin-stat-card--success {
     background: linear-gradient(180deg, #ffffff, #f8fafc) !important;
+    border-top: 3px solid #22c55e !important;
+}
+
+.uhs-admin-stat-card--success .fi-wi-stats-overview-stat-description {
+    color: #15803d;
+    background: #ecfdf5;
 }
 
 .uhs-admin-stat-card--danger {
     background: linear-gradient(180deg, #ffffff, #f8fafc) !important;
+    border-top: 3px solid #ef4444 !important;
+}
+
+.uhs-admin-stat-card--danger .fi-wi-stats-overview-stat-description {
+    color: #dc2626;
+    background: #fef2f2;
 }
 
 .uhs-admin-stat-card--warning {
     background: linear-gradient(180deg, #ffffff, #f8fafc) !important;
+    border-top: 3px solid #f59e0b !important;
+}
+
+.uhs-admin-stat-card--warning .fi-wi-stats-overview-stat-description {
+    color: #c2410c;
+    background: #fff7ed;
 }
 
 @media (max-width: 1280px) {
