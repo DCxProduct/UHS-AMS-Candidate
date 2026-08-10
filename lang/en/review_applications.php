@@ -100,6 +100,7 @@ return [
     'reviewed_year' => 'Year',
     'national_registration_number' => 'National Registration Number',
     'not_reviewed_yet' => 'Not reviewed yet',
+    'download_excel' => 'Download Excel',
     'download_pdf' => 'Download PDF',
 
     'months' => [

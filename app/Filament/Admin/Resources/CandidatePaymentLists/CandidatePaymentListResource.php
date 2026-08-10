@@ -105,7 +105,7 @@ class CandidatePaymentListResource extends Resource
             })
             ->latest('id');
 
-        if (! static::currentUserIsAdmin()) {
+        if (! static::currentUserCanViewAllRecords()) {
             $userId = auth()->id();
 
             if (! $userId) {
@@ -155,7 +155,7 @@ class CandidatePaymentListResource extends Resource
             ->all();
     }
 
-    protected static function currentUserIsAdmin(): bool
+    protected static function currentUserCanViewAllRecords(): bool
     {
         $user = auth()->user();
 
@@ -164,7 +164,7 @@ class CandidatePaymentListResource extends Resource
         }
 
         return method_exists($user, 'hasEffectiveRole')
-            ? $user->hasEffectiveRole('admin')
+            ? $user->hasEffectiveRole(['admin', 'cashier', 'staff'])
             : $user->registration_type === 'admin';
     }
 

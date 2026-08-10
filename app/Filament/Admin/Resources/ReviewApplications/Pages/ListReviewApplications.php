@@ -3,7 +3,9 @@
 namespace App\Filament\Admin\Resources\ReviewApplications\Pages;
 
 use App\Filament\Admin\Resources\ReviewApplications\ReviewApplicationResource;
+use App\Filament\Admin\Resources\ReviewApplications\Tables\ReviewApplicationsTable;
 use App\Support\AuditLogger;
+use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Contracts\Support\Htmlable;
@@ -26,6 +28,20 @@ class ListReviewApplications extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('download_excel')
+                ->label(__('review_applications.download_excel'))
+                ->color('success')
+                ->alpineClickHandler(<<<'JS'
+                    const table = document.querySelector('.fi-ta');
+                    const tableData = table?._x_dataStack?.find((data) => data.selectedRecords instanceof Set);
+
+                    $wire.downloadExcelFromTableSelection(
+                        tableData ? [...tableData.selectedRecords] : [],
+                        tableData ? tableData.isTrackingDeselectedRecords : false,
+                        tableData ? [...tableData.deselectedRecords] : [],
+                    );
+                JS)
+                ->action(fn () => $this->downloadExcel()),
             Action::make('clear_data')
                 ->label(__('app.clear_data'))
                 ->color('danger')
@@ -53,6 +69,15 @@ class ListReviewApplications extends ListRecords
         ];
     }
 
+    protected function downloadExcel()
+    {
+        return $this->downloadExcelFromTableSelection(
+            $this->selectedTableRecords ?? [],
+            $this->isTrackingDeselectedTableRecords,
+            $this->deselectedTableRecords ?? [],
+        );
+    }
+
     protected function currentUserCanClearData(): bool
     {
         $user = auth()->user();
@@ -63,6 +88,38 @@ class ListReviewApplications extends ListRecords
 
         return ! method_exists($user, 'hasEffectiveRole')
             || ! $user->hasEffectiveRole('user');
+    }
+
+    public function downloadExcelFromTableSelection(
+        array $selectedRecordKeys = [],
+        bool $isTrackingDeselectedRecords = false,
+        array $deselectedRecordKeys = [],
+    )
+    {
+        $selectedRecordKeys = array_values(array_filter($selectedRecordKeys));
+        $deselectedRecordKeys = array_values(array_filter($deselectedRecordKeys));
+
+        if ($isTrackingDeselectedRecords) {
+            $query = $this->getTableQueryForExport()
+                ->with('creator');
+
+            if (filled($deselectedRecordKeys)) {
+                $query->whereKeyNot($deselectedRecordKeys);
+            }
+
+            $records = $query->get();
+        } elseif (filled($selectedRecordKeys)) {
+            $records = CustomFormEntry::query()
+                ->with('creator')
+                ->whereKey($selectedRecordKeys)
+                ->get();
+        } else {
+            $records = $this->getTableQueryForExport()
+                ->with('creator')
+                ->get();
+        }
+
+        return ReviewApplicationsTable::downloadExcel($records, $this->visibleExportColumnKeys());
     }
 
     public function clearDataFromTableSelection(
@@ -125,5 +182,30 @@ class ListReviewApplications extends ListRecords
         }
 
         return $query;
+    }
+
+    protected function visibleExportColumnKeys(): array
+    {
+        $keys = [];
+
+        foreach ($this->tableColumns ?? [] as $item) {
+            if (($item['type'] ?? null) === 'column' && ($item['isToggled'] ?? false)) {
+                $keys[] = (string) $item['name'];
+
+                continue;
+            }
+
+            if (($item['type'] ?? null) !== 'group') {
+                continue;
+            }
+
+            foreach ($item['columns'] ?? [] as $column) {
+                if ($column['isToggled'] ?? false) {
+                    $keys[] = (string) $column['name'];
+                }
+            }
+        }
+
+        return $keys;
     }
 }

@@ -79,10 +79,15 @@ class ReviewApplicationResource extends Resource
                     });
             })
             ->whereIn('review_status', [
-                'passed',
                 'accepted',
                 'approved',
             ])
+            ->where(function (Builder $query): void {
+                $query
+                    ->whereNull('data->candidate_status')
+                    ->orWhere('data->candidate_status', '')
+                    ->orWhere('data->candidate_status', 'pending');
+            })
             ->whereExists(function (QueryBuilder $subQuery): void {
                 $subQuery->selectRaw('1')
                     ->from('payments')

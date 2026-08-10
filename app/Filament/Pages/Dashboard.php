@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Filament\Widgets\AdminMenuOverview;
 use App\Filament\Widgets\AdminSidebarFormsTable;
 use App\Filament\Widgets\AdminStatsOverview;
+use App\Filament\Widgets\CashierStatsOverview;
 use App\Filament\Widgets\StudentCompletionDoughnutChart;
 use App\Filament\Widgets\StudentProgressChart;
 use App\Filament\Widgets\StudentStatsOverview;
@@ -47,6 +48,10 @@ class Dashboard extends BaseDashboard
             return __('dashboard.admin_subheading');
         }
 
+        if ($this->isCashierDashboardUser()) {
+            return __('dashboard.cashier_subheading');
+        }
+
         if ($this->isStudentDashboardUser()) {
             return __('dashboard.student_subheading');
         }
@@ -73,6 +78,13 @@ class Dashboard extends BaseDashboard
             ];
         }
 
+        if ($this->isCashierDashboardUser()) {
+            return [
+                CashierStatsOverview::class,
+                AdminMenuOverview::class,
+            ];
+        }
+
         if (! $this->isStudentDashboardUser()) {
             return [];
         }
@@ -95,6 +107,11 @@ class Dashboard extends BaseDashboard
         return $this->isStudentDashboardUser();
     }
 
+    public function isCashier(): bool
+    {
+        return $this->isCashierDashboardUser();
+    }
+
     public function hasDashboardWidgets(): bool
     {
         return $this->getWidgets() !== [];
@@ -103,6 +120,11 @@ class Dashboard extends BaseDashboard
     protected function isAdminDashboardUser(): bool
     {
         return auth()->user()?->hasEffectiveRole('admin') ?? false;
+    }
+
+    protected function isCashierDashboardUser(): bool
+    {
+        return auth()->user()?->hasEffectiveRole('cashier') ?? false;
     }
 
     protected function isStudentDashboardUser(): bool

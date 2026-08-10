@@ -72,6 +72,7 @@ class RolesAndPermissionsSeeder extends Seeder
                 ->where('guard_name', 'web')
                 ->where(function ($query): void {
                     $query->where('name', 'like', '%:Payment')
+                        ->orWhere('name', 'like', '%:CandidatePaymentList')
                         ->orWhereIn('name', [
                             'View:Dashboard',
                             'View:MyProfile',

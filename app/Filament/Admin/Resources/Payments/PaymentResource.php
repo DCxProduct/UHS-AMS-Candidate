@@ -62,7 +62,7 @@ class PaymentResource extends Resource
     {
         $query = parent::getEloquentQuery();
 
-        if (! static::currentUserIsAdmin()) {
+        if (! static::currentUserCanViewAllRecords()) {
             $userId = auth()->id();
 
             if (! $userId) {
@@ -75,7 +75,7 @@ class PaymentResource extends Resource
         return $query;
     }
 
-    protected static function currentUserIsAdmin(): bool
+    protected static function currentUserCanViewAllRecords(): bool
     {
         $user = auth()->user();
 
@@ -84,7 +84,7 @@ class PaymentResource extends Resource
         }
 
         return method_exists($user, 'hasEffectiveRole')
-            ? $user->hasEffectiveRole('admin')
+            ? $user->hasEffectiveRole(['admin', 'cashier', 'staff'])
             : $user->registration_type === 'admin';
     }
 

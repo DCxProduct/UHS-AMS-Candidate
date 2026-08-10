@@ -30,7 +30,7 @@ class AdminMenuOverview extends Widget
 
     public static function canView(): bool
     {
-        return auth()->user()?->hasEffectiveRole('admin') ?? false;
+        return auth()->user()?->hasEffectiveRole(['admin', 'cashier']) ?? false;
     }
 
     protected function getViewData(): array
