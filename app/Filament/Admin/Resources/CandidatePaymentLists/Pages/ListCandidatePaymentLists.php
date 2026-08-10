@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\CandidatePaymentLists\Pages;
 
 use App\Filament\Admin\Resources\CandidatePaymentLists\CandidatePaymentListResource;
+use App\Filament\Admin\Resources\CandidatePaymentLists\Tables\CandidatePaymentListsTable;
 use App\Support\AuditLogger;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\ListRecords;
@@ -15,6 +16,20 @@ class ListCandidatePaymentLists extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('download_excel')
+                ->label(__('candidate_payment_lists.download_excel'))
+                ->color('success')
+                ->alpineClickHandler(<<<'JS'
+                    const table = document.querySelector('.fi-ta');
+                    const tableData = table?._x_dataStack?.find((data) => data.selectedRecords instanceof Set);
+
+                    $wire.downloadExcelFromTableSelection(
+                        tableData ? [...tableData.selectedRecords] : [],
+                        tableData ? tableData.isTrackingDeselectedRecords : false,
+                        tableData ? [...tableData.deselectedRecords] : [],
+                    );
+                JS)
+                ->action(fn () => $this->downloadExcel()),
             Action::make('clear_data')
                 ->label(__('app.clear_data'))
                 ->color('danger')
@@ -40,6 +55,15 @@ class ListCandidatePaymentLists extends ListRecords
                     $arguments['deselectedRecordKeys'] ?? [],
                 )),
         ];
+    }
+
+    protected function downloadExcel()
+    {
+        return $this->downloadExcelFromTableSelection(
+            $this->selectedTableRecords ?? [],
+            $this->isTrackingDeselectedTableRecords,
+            $this->deselectedTableRecords ?? [],
+        );
     }
 
     protected function currentUserCanClearData(): bool
@@ -94,6 +118,24 @@ class ListCandidatePaymentLists extends ListRecords
         $this->dispatch('$refresh');
     }
 
+    public function downloadExcelFromTableSelection(
+        array $selectedRecordKeys = [],
+        bool $isTrackingDeselectedRecords = false,
+        array $deselectedRecordKeys = [],
+    )
+    {
+        return CandidatePaymentListsTable::downloadExcel(
+            $this->selectedOrFilteredQuery(
+                $selectedRecordKeys,
+                $isTrackingDeselectedRecords,
+                $deselectedRecordKeys,
+            )
+                ->with(['creator', 'customForm'])
+                ->get(),
+            $this->visibleExportColumnKeys(),
+        );
+    }
+
     protected function selectedOrFilteredQuery(
         array $selectedRecordKeys = [],
         bool $isTrackingDeselectedRecords = false,
@@ -117,5 +159,30 @@ class ListCandidatePaymentLists extends ListRecords
         }
 
         return $query;
+    }
+
+    protected function visibleExportColumnKeys(): array
+    {
+        $keys = [];
+
+        foreach ($this->tableColumns ?? [] as $item) {
+            if (($item['type'] ?? null) === 'column' && ($item['isToggled'] ?? false)) {
+                $keys[] = (string) $item['name'];
+
+                continue;
+            }
+
+            if (($item['type'] ?? null) !== 'group') {
+                continue;
+            }
+
+            foreach ($item['columns'] ?? [] as $column) {
+                if ($column['isToggled'] ?? false) {
+                    $keys[] = (string) $column['name'];
+                }
+            }
+        }
+
+        return $keys;
     }
 }

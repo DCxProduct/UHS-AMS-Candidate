@@ -4,6 +4,7 @@ return [
     'navigation_label' => 'បញ្ជីការទូទាត់ប្រាក់របស់បេក្ខជន',
     'resource_label' => 'បញ្ជីការទូទាត់ប្រាក់របស់បេក្ខជន',
     'resource_plural_label' => 'បញ្ជីការទូទាត់ប្រាក់របស់បេក្ខជន',
+    'download_excel' => 'ទាញយក Excel',
     'columns' => [
         'no' => 'ល.រ',
         'application_form_type' => 'ប្រភេទទម្រង់ពាក្យស្នើសុំ',

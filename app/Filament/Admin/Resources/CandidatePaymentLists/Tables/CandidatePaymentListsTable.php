@@ -19,6 +19,29 @@ use Illuminate\Support\Facades\Schema;
 
 class CandidatePaymentListsTable
 {
+    public static function downloadExcel(iterable $records, ?array $columnKeys = null)
+    {
+        $filename = 'payment-lists-' . now()->format('Y-m-d-His') . '.xlsx';
+        $path = storage_path('app/' . uniqid('payment-lists-', true) . '.xlsx');
+
+        $columnKeys ??= array_keys(self::exportColumnDefinitions());
+
+        self::writeXlsx($path, [
+            [
+                'name' => 'Clean Data',
+                'rows' => self::excelRows($records, $columnKeys),
+            ],
+            [
+                'name' => 'Database Export',
+                'rows' => self::cleanDataRows($records, $columnKeys),
+            ],
+        ]);
+
+        return response()->download($path, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
+
     public static function configure(Table $table): Table
     {
         return $table
@@ -160,6 +183,261 @@ class CandidatePaymentListsTable
             ->deferFilters(false)
             ->filtersFormColumns(3)
             ->recordActions([]);
+    }
+
+    protected static function excelRows(iterable $records, ?array $columnKeys = null): array
+    {
+        $columnKeys ??= array_keys(self::exportColumnDefinitions());
+        $rows = [self::excelHeadings($columnKeys)];
+        $rowNumber = 1;
+
+        foreach ($records as $record) {
+            if (! $record instanceof CandidatePaymentList) {
+                continue;
+            }
+
+            $rows[] = self::exportRow($record, $rowNumber++, $columnKeys);
+        }
+
+        return $rows;
+    }
+
+    protected static function cleanDataRows(iterable $records, array $columnKeys): array
+    {
+        $rows = [self::cleanDataHeadings($columnKeys)];
+        $rowNumber = 1;
+
+        foreach ($records as $record) {
+            if (! $record instanceof CandidatePaymentList) {
+                continue;
+            }
+
+            $rows[] = self::cleanDataRow($record, $rowNumber++, $columnKeys);
+        }
+
+        return $rows;
+    }
+
+    protected static function exportColumnDefinitions(): array
+    {
+        return [
+            'row_number' => [
+                'label' => __('candidate_payment_lists.columns.no'),
+                'field_key' => 'row_number',
+            ],
+            'form_name' => [
+                'label' => __('candidate_payment_lists.columns.application_form_type'),
+                'field_key' => 'form_name',
+            ],
+            'name_khmer' => [
+                'label' => __('candidate_payment_lists.columns.name_khmer'),
+                'field_key' => 'name_khmer',
+            ],
+            'name_latin' => [
+                'label' => __('candidate_payment_lists.columns.name_latin'),
+                'field_key' => 'name_latin',
+            ],
+            'gender' => [
+                'label' => __('candidate_payment_lists.columns.gender'),
+                'field_key' => 'gender',
+            ],
+            'phone_number' => [
+                'label' => __('candidate_payment_lists.columns.phone_number'),
+                'field_key' => 'phone_number',
+            ],
+            'date_of_birth' => [
+                'label' => __('candidate_payment_lists.columns.date_of_birth'),
+                'field_key' => 'date_of_birth',
+            ],
+            'major' => [
+                'label' => __('candidate_payment_lists.columns.major'),
+                'field_key' => 'major',
+            ],
+            'academic_year' => [
+                'label' => __('candidate_payment_lists.columns.academic_year'),
+                'field_key' => 'academic_year',
+            ],
+            'status_payt' => [
+                'label' => __('candidate_payment_lists.columns.payment_status'),
+                'field_key' => 'status_payt',
+            ],
+        ];
+    }
+
+    protected static function excelHeadings(array $columnKeys): array
+    {
+        $definitions = self::exportColumnDefinitions();
+
+        return collect($columnKeys)
+            ->filter(fn (string $key): bool => array_key_exists($key, $definitions))
+            ->map(fn (string $key): string => $definitions[$key]['label'])
+            ->values()
+            ->all();
+    }
+
+    protected static function cleanDataHeadings(array $columnKeys): array
+    {
+        $definitions = self::exportColumnDefinitions();
+
+        return collect($columnKeys)
+            ->filter(fn (string $key): bool => array_key_exists($key, $definitions))
+            ->map(fn (string $key): string => $definitions[$key]['field_key'])
+            ->values()
+            ->all();
+    }
+
+    protected static function exportRow(CandidatePaymentList $record, int $rowNumber, array $columnKeys): array
+    {
+        $values = [
+            'row_number' => (string) $rowNumber,
+            'form_name' => self::localizedFormName($record->customForm?->name),
+            'name_khmer' => self::khmerName($record),
+            'name_latin' => self::latinName($record),
+            'gender' => self::genderLabel(self::entryValue($record, 'gender')),
+            'phone_number' => self::entryValue($record, 'phone_number', $record->creator?->phone),
+            'date_of_birth' => self::dateOfBirth($record),
+            'major' => self::entryValue(
+                $record,
+                filled(data_get($record->data, 'selected_major')) ? 'selected_major' : 'degree_level_major'
+            ),
+            'academic_year' => self::entryValue($record, 'academic_year', $record->creator?->academic_year),
+            'status_payt' => strtolower(self::paymentStatus($record)) === 'paid'
+                ? __('payments.options.status_payt.paid')
+                : __('payments.options.status_payt.unpaid'),
+        ];
+
+        return collect($columnKeys)
+            ->filter(fn (string $key): bool => array_key_exists($key, $values))
+            ->map(fn (string $key): string => (string) ($values[$key] ?? ''))
+            ->values()
+            ->all();
+    }
+
+    protected static function cleanDataRow(CandidatePaymentList $record, int $rowNumber, array $columnKeys): array
+    {
+        $values = [
+            'row_number' => (string) $rowNumber,
+            'form_name' => (string) $record->custom_form_id,
+            'name_khmer' => trim((string) data_get($record->data, 'full_name_kh')) ?: self::khmerName($record),
+            'name_latin' => trim((string) data_get($record->data, 'full_name_en')) ?: self::latinName($record),
+            'gender' => self::entryValue($record, 'gender'),
+            'phone_number' => self::entryValue($record, 'phone_number', $record->creator?->phone),
+            'date_of_birth' => self::entryValue($record, 'date_of_birth', $record->creator?->date_of_birth),
+            'major' => self::entryValue(
+                $record,
+                filled(data_get($record->data, 'selected_major')) ? 'selected_major' : 'degree_level_major'
+            ),
+            'academic_year' => self::entryValue($record, 'academic_year', $record->creator?->academic_year),
+            'status_payt' => strtolower(self::paymentStatus($record)),
+        ];
+
+        return collect($columnKeys)
+            ->filter(fn (string $key): bool => array_key_exists($key, $values))
+            ->map(fn (string $key): string => (string) ($values[$key] ?? ''))
+            ->values()
+            ->all();
+    }
+
+    protected static function writeXlsx(string $path, array $sheets): void
+    {
+        $zip = new \ZipArchive();
+        $zip->open($path, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
+
+        $zip->addFromString('[Content_Types].xml', self::contentTypesXml($sheets));
+        $zip->addFromString('_rels/.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            . '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
+            . '</Relationships>');
+        $zip->addFromString('xl/workbook.xml', self::workbookXml($sheets));
+        $zip->addFromString('xl/_rels/workbook.xml.rels', self::workbookRelsXml($sheets));
+
+        foreach (array_values($sheets) as $index => $sheet) {
+            $zip->addFromString(
+                'xl/worksheets/sheet' . ($index + 1) . '.xml',
+                self::worksheetXml($sheet['rows'])
+            );
+        }
+
+        $zip->close();
+    }
+
+    protected static function worksheetXml(array $rows): string
+    {
+        $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+            . '<sheetData>';
+
+        foreach ($rows as $rowIndex => $row) {
+            $excelRow = $rowIndex + 1;
+            $xml .= '<row r="' . $excelRow . '">';
+
+            foreach (array_values($row) as $columnIndex => $value) {
+                $cell = self::columnName($columnIndex + 1) . $excelRow;
+                $xml .= '<c r="' . $cell . '" t="inlineStr"><is><t>' . self::xmlValue($value) . '</t></is></c>';
+            }
+
+            $xml .= '</row>';
+        }
+
+        return $xml . '</sheetData></worksheet>';
+    }
+
+    protected static function contentTypesXml(array $sheets): string
+    {
+        $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+            . '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+            . '<Default Extension="xml" ContentType="application/xml"/>'
+            . '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>';
+
+        foreach (array_values($sheets) as $index => $_sheet) {
+            $xml .= '<Override PartName="/xl/worksheets/sheet' . ($index + 1) . '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>';
+        }
+
+        return $xml . '</Types>';
+    }
+
+    protected static function workbookXml(array $sheets): string
+    {
+        $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>';
+
+        foreach (array_values($sheets) as $index => $sheet) {
+            $name = self::xmlValue($sheet['name'] ?? ('Sheet ' . ($index + 1)));
+            $xml .= '<sheet name="' . $name . '" sheetId="' . ($index + 1) . '" r:id="rId' . ($index + 1) . '"/>';
+        }
+
+        return $xml . '</sheets></workbook>';
+    }
+
+    protected static function workbookRelsXml(array $sheets): string
+    {
+        $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">';
+
+        foreach (array_values($sheets) as $index => $_sheet) {
+            $xml .= '<Relationship Id="rId' . ($index + 1) . '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' . ($index + 1) . '.xml"/>';
+        }
+
+        return $xml . '</Relationships>';
+    }
+
+    protected static function columnName(int $index): string
+    {
+        $name = '';
+
+        while ($index > 0) {
+            $index--;
+            $name = chr(65 + ($index % 26)) . $name;
+            $index = intdiv($index, 26);
+        }
+
+        return $name;
+    }
+
+    protected static function xmlValue(mixed $value): string
+    {
+        return htmlspecialchars((string) $value, ENT_QUOTES | ENT_XML1, 'UTF-8');
     }
 
     protected static function entryValue(?CandidatePaymentList $record, string $key, mixed $fallback = null): string
