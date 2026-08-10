@@ -318,12 +318,12 @@ return [
         ],
         'actions' => [
             'edit_form' => 'Edit Form',
-            'go_to_payment_lists' => 'Go to Payment Lists',
+            'go_to_payment_lists' => 'Go to Unpaid Applications',
         ],
         'notifications' => [
             'application' => 'Application',
             'application_approved_title' => 'Application :form Approved',
-            'application_approved_body' => 'Your application for :form has been approved. Please go to Payment Lists to pay your fee.',
+            'application_approved_body' => 'Your application for :form has been approved. Please go to Unpaid Applications to pay your fee.',
             'application_rejected_title' => 'Application :form Rejected',
             'application_rejected_body' => 'Your application for :form has been rejected. Please revise and submit again.<br>Reason: :note',
             'no_note' => 'None',

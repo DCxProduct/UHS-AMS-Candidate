@@ -1,9 +1,9 @@
 <?php
 
 return [
-    'navigation_label' => 'Payment Lists',
-    'resource_label' => 'Payment List',
-    'resource_plural_label' => 'Payment Lists',
+    'navigation_label' => 'Unpaid Applications',
+    'resource_label' => 'Unpaid Application',
+    'resource_plural_label' => 'Unpaid Applications',
     'download_excel' => 'Download Excel',
     'columns' => [
         'no' => 'No',

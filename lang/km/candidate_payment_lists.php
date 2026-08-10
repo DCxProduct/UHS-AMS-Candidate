@@ -1,9 +1,9 @@
 <?php
 
 return [
-    'navigation_label' => 'បញ្ជីការទូទាត់ប្រាក់របស់បេក្ខជន',
-    'resource_label' => 'បញ្ជីការទូទាត់ប្រាក់របស់បេក្ខជន',
-    'resource_plural_label' => 'បញ្ជីការទូទាត់ប្រាក់របស់បេក្ខជន',
+    'navigation_label' => 'ពាក្យស្នើសុំមិនទាន់បង់ប្រាក់',
+    'resource_label' => 'ពាក្យស្នើសុំមិនទាន់បង់ប្រាក់',
+    'resource_plural_label' => 'ពាក្យស្នើសុំមិនទាន់បង់ប្រាក់',
     'download_excel' => 'ទាញយក Excel',
     'columns' => [
         'no' => 'ល.រ',

@@ -23,7 +23,7 @@ class CandidatePaymentListResource extends Resource
 
     protected static ?string $model = CandidatePaymentList::class;
 
-    protected static ?string $slug = 'candidate-payment-lists';
+    protected static ?string $slug = 'unpaid-applications';
 
     protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-currency-dollar';
 

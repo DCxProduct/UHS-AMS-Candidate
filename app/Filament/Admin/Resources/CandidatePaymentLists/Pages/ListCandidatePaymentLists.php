@@ -106,8 +106,8 @@ class ListCandidatePaymentLists extends ListRecords
             AuditLogger::log(
                 action: 'cleared',
                 auditable: $record,
-                description: 'Cleared from Payment Lists',
-                metadata: ['module' => 'Payment Lists'],
+                description: 'Cleared from Unpaid Applications',
+                metadata: ['module' => 'Unpaid Applications'],
             );
         });
 
