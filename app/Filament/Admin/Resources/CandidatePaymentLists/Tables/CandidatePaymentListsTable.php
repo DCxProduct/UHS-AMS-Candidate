@@ -5,16 +5,9 @@ namespace App\Filament\Admin\Resources\CandidatePaymentLists\Tables;
 use App\Filament\Admin\Resources\CandidatePaymentLists\CandidatePaymentListResource;
 use App\Models\CandidatePaymentList;
 use App\Models\Payment;
-use App\Models\PaymentType;
 use App\Support\LocalizedNumber;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
-use Filament\Actions\Action;
-use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\TextInput;
-use Filament\Notifications\Notification;
-use Filament\Schemas\Components\Grid;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
@@ -26,6 +19,29 @@ use Illuminate\Support\Facades\Schema;
 
 class CandidatePaymentListsTable
 {
+    public static function downloadExcel(iterable $records, ?array $columnKeys = null)
+    {
+        $filename = 'payment-lists-' . now()->format('Y-m-d-His') . '.xlsx';
+        $path = storage_path('app/' . uniqid('payment-lists-', true) . '.xlsx');
+
+        $columnKeys ??= array_keys(self::exportColumnDefinitions());
+
+        self::writeXlsx($path, [
+            [
+                'name' => 'Clean Data',
+                'rows' => self::excelRows($records, $columnKeys),
+            ],
+            [
+                'name' => 'Database Export',
+                'rows' => self::cleanDataRows($records, $columnKeys),
+            ],
+        ]);
+
+        return response()->download($path, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
+
     public static function configure(Table $table): Table
     {
         return $table
@@ -166,121 +182,262 @@ class CandidatePaymentListsTable
             ], layout: FiltersLayout::AboveContent)
             ->deferFilters(false)
             ->filtersFormColumns(3)
-            ->recordActions([
-                Action::make('pay')
-                    ->label(__('payments.actions.pay'))
-                    ->icon('heroicon-o-banknotes')
-                    ->color('success')
-                    ->link()
-                    ->modalWidth('4xl')
-                    ->modalHeading(__('payments.actions.create_payment'))
-                    ->modalSubmitActionLabel(__('payments.actions.submit_payment'))
-                    ->fillForm(fn (CandidatePaymentList $record): array => [
-                        'users_id' => self::ownerId($record),
-                        'form_id' => $record->custom_form_id,
-                        'status' => true,
-                    ])
-                    ->form([
-                        Grid::make([
-                            'default' => 1,
-                            'md' => 2,
-                        ])->schema([
-                            Select::make('type_payment')
-                                ->label(__('payments.fields.type_payment'))
-                                ->placeholder(__('payments.placeholders.type_payment'))
-                                ->options(fn (): array => PaymentType::activeOptions())
-                                ->native(false)
-                                ->searchable()
-                                ->preload()
-                                ->required(),
+            ->recordActions([]);
+    }
 
-                            DatePicker::make('datetime_pay')
-                                ->label(__('payments.fields.datetime_pay'))
-                                ->placeholder(__('payments.placeholders.datetime_pay'))
-                                ->native(false)
-                                ->suffixIcon('heroicon-o-calendar-days')
-                                ->maxDate(now()->toDateString())
-                                ->required(),
+    protected static function excelRows(iterable $records, ?array $columnKeys = null): array
+    {
+        $columnKeys ??= array_keys(self::exportColumnDefinitions());
+        $rows = [self::excelHeadings($columnKeys)];
+        $rowNumber = 1;
 
-                            TextInput::make('receipt_number')
-                                ->label(__('payments.fields.receipt_number'))
-                                ->placeholder(__('payments.placeholders.receipt_number'))
-                                ->required()
-                                ->maxLength(255),
+        foreach ($records as $record) {
+            if (! $record instanceof CandidatePaymentList) {
+                continue;
+            }
 
-                            TextInput::make('amount_usd')
-                                ->label(__('payments.fields.amount_usd'))
-                                ->placeholder(__('payments.placeholders.amount_usd'))
-                                ->suffix('$')
-                                ->inputMode('decimal')
-                                ->extraInputAttributes([
-                                    'oninput' => "this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\\..*)\\./g, '$1')",
-                                ])
-                                ->rule('numeric')
-                                ->live(onBlur: true)
-                                ->afterStateHydrated(function (TextInput $component, mixed $state): void {
-                                    $component->state(self::normalizeUsdAmount($state));
-                                })
-                                ->afterStateUpdated(function (mixed $state, callable $set): void {
-                                    $set('amount_usd', self::normalizeUsdAmount($state));
-                                })
-                                ->dehydrateStateUsing(fn (mixed $state): ?string => self::normalizeUsdAmount($state)),
+            $rows[] = self::exportRow($record, $rowNumber++, $columnKeys);
+        }
 
-                            TextInput::make('amount_kh')
-                                ->label(__('payments.fields.amount_kh'))
-                                ->placeholder(__('payments.placeholders.amount_kh'))
-                                ->suffix('KHR')
-                                ->inputMode('decimal')
-                                ->extraInputAttributes([
-                                    'oninput' => "this.value = this.value.replace(/[^0-9,]/g, '')",
-                                ])
-                                ->rule(static function (): \Closure {
-                                    return static function (string $attribute, mixed $value, \Closure $fail): void {
-                                        if ($value === null || trim((string) $value) === '') {
-                                            return;
-                                        }
+        return $rows;
+    }
 
-                                        if (! is_numeric(str_replace(',', '', (string) $value))) {
-                                            $fail(__('validation.numeric', ['attribute' => $attribute]));
-                                        }
-                                    };
-                                })
-                                ->live(onBlur: true)
-                                ->afterStateHydrated(function (TextInput $component, mixed $state): void {
-                                    $component->state(self::normalizeKhrAmount($state));
-                                })
-                                ->afterStateUpdated(function (mixed $state, callable $set): void {
-                                    $set('amount_kh', self::normalizeKhrAmount($state));
-                                })
-                                ->dehydrateStateUsing(fn (mixed $state): ?string => self::dehydrateKhrAmount($state)),
-                        ]),
+    protected static function cleanDataRows(iterable $records, array $columnKeys): array
+    {
+        $rows = [self::cleanDataHeadings($columnKeys)];
+        $rowNumber = 1;
 
-                        Textarea::make('description')
-                            ->label(__('payments.fields.description'))
-                            ->placeholder(__('payments.placeholders.description'))
-                            ->rows(4),
-                    ])
-                    ->action(function (CandidatePaymentList $record, array $data): void {
-                        Payment::create([
-                            'users_id' => self::ownerId($record),
-                            'form_id' => $record->custom_form_id,
-                            'receipt_number' => $data['receipt_number'],
-                            'type_payment' => $data['type_payment'],
-                            'status_payt' => 'paid',
-                            'amount_usd' => $data['amount_usd'] ?? null,
-                            'amount_kh' => $data['amount_kh'] ?? null,
-                            'datetime_pay' => $data['datetime_pay'] ?? null,
-                            'status' => true,
-                            'description' => $data['description'] ?? null,
-                        ]);
+        foreach ($records as $record) {
+            if (! $record instanceof CandidatePaymentList) {
+                continue;
+            }
 
-                        Notification::make()
-                            ->title(__('payments.actions.record_payment'))
-                            ->success()
-                            ->send();
-                    })
-                    ->visible(fn (CandidatePaymentList $record): bool => self::latestPaymentRecord($record) === null),
-            ]);
+            $rows[] = self::cleanDataRow($record, $rowNumber++, $columnKeys);
+        }
+
+        return $rows;
+    }
+
+    protected static function exportColumnDefinitions(): array
+    {
+        return [
+            'row_number' => [
+                'label' => __('candidate_payment_lists.columns.no'),
+                'field_key' => 'row_number',
+            ],
+            'form_name' => [
+                'label' => __('candidate_payment_lists.columns.application_form_type'),
+                'field_key' => 'form_name',
+            ],
+            'name_khmer' => [
+                'label' => __('candidate_payment_lists.columns.name_khmer'),
+                'field_key' => 'name_khmer',
+            ],
+            'name_latin' => [
+                'label' => __('candidate_payment_lists.columns.name_latin'),
+                'field_key' => 'name_latin',
+            ],
+            'gender' => [
+                'label' => __('candidate_payment_lists.columns.gender'),
+                'field_key' => 'gender',
+            ],
+            'phone_number' => [
+                'label' => __('candidate_payment_lists.columns.phone_number'),
+                'field_key' => 'phone_number',
+            ],
+            'date_of_birth' => [
+                'label' => __('candidate_payment_lists.columns.date_of_birth'),
+                'field_key' => 'date_of_birth',
+            ],
+            'major' => [
+                'label' => __('candidate_payment_lists.columns.major'),
+                'field_key' => 'major',
+            ],
+            'academic_year' => [
+                'label' => __('candidate_payment_lists.columns.academic_year'),
+                'field_key' => 'academic_year',
+            ],
+            'status_payt' => [
+                'label' => __('candidate_payment_lists.columns.payment_status'),
+                'field_key' => 'status_payt',
+            ],
+        ];
+    }
+
+    protected static function excelHeadings(array $columnKeys): array
+    {
+        $definitions = self::exportColumnDefinitions();
+
+        return collect($columnKeys)
+            ->filter(fn (string $key): bool => array_key_exists($key, $definitions))
+            ->map(fn (string $key): string => $definitions[$key]['label'])
+            ->values()
+            ->all();
+    }
+
+    protected static function cleanDataHeadings(array $columnKeys): array
+    {
+        $definitions = self::exportColumnDefinitions();
+
+        return collect($columnKeys)
+            ->filter(fn (string $key): bool => array_key_exists($key, $definitions))
+            ->map(fn (string $key): string => $definitions[$key]['field_key'])
+            ->values()
+            ->all();
+    }
+
+    protected static function exportRow(CandidatePaymentList $record, int $rowNumber, array $columnKeys): array
+    {
+        $values = [
+            'row_number' => (string) $rowNumber,
+            'form_name' => self::localizedFormName($record->customForm?->name),
+            'name_khmer' => self::khmerName($record),
+            'name_latin' => self::latinName($record),
+            'gender' => self::genderLabel(self::entryValue($record, 'gender')),
+            'phone_number' => self::entryValue($record, 'phone_number', $record->creator?->phone),
+            'date_of_birth' => self::dateOfBirth($record),
+            'major' => self::entryValue(
+                $record,
+                filled(data_get($record->data, 'selected_major')) ? 'selected_major' : 'degree_level_major'
+            ),
+            'academic_year' => self::entryValue($record, 'academic_year', $record->creator?->academic_year),
+            'status_payt' => strtolower(self::paymentStatus($record)) === 'paid'
+                ? __('payments.options.status_payt.paid')
+                : __('payments.options.status_payt.unpaid'),
+        ];
+
+        return collect($columnKeys)
+            ->filter(fn (string $key): bool => array_key_exists($key, $values))
+            ->map(fn (string $key): string => (string) ($values[$key] ?? ''))
+            ->values()
+            ->all();
+    }
+
+    protected static function cleanDataRow(CandidatePaymentList $record, int $rowNumber, array $columnKeys): array
+    {
+        $values = [
+            'row_number' => (string) $rowNumber,
+            'form_name' => (string) $record->custom_form_id,
+            'name_khmer' => trim((string) data_get($record->data, 'full_name_kh')) ?: self::khmerName($record),
+            'name_latin' => trim((string) data_get($record->data, 'full_name_en')) ?: self::latinName($record),
+            'gender' => self::entryValue($record, 'gender'),
+            'phone_number' => self::entryValue($record, 'phone_number', $record->creator?->phone),
+            'date_of_birth' => self::entryValue($record, 'date_of_birth', $record->creator?->date_of_birth),
+            'major' => self::entryValue(
+                $record,
+                filled(data_get($record->data, 'selected_major')) ? 'selected_major' : 'degree_level_major'
+            ),
+            'academic_year' => self::entryValue($record, 'academic_year', $record->creator?->academic_year),
+            'status_payt' => strtolower(self::paymentStatus($record)),
+        ];
+
+        return collect($columnKeys)
+            ->filter(fn (string $key): bool => array_key_exists($key, $values))
+            ->map(fn (string $key): string => (string) ($values[$key] ?? ''))
+            ->values()
+            ->all();
+    }
+
+    protected static function writeXlsx(string $path, array $sheets): void
+    {
+        $zip = new \ZipArchive();
+        $zip->open($path, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
+
+        $zip->addFromString('[Content_Types].xml', self::contentTypesXml($sheets));
+        $zip->addFromString('_rels/.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            . '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
+            . '</Relationships>');
+        $zip->addFromString('xl/workbook.xml', self::workbookXml($sheets));
+        $zip->addFromString('xl/_rels/workbook.xml.rels', self::workbookRelsXml($sheets));
+
+        foreach (array_values($sheets) as $index => $sheet) {
+            $zip->addFromString(
+                'xl/worksheets/sheet' . ($index + 1) . '.xml',
+                self::worksheetXml($sheet['rows'])
+            );
+        }
+
+        $zip->close();
+    }
+
+    protected static function worksheetXml(array $rows): string
+    {
+        $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+            . '<sheetData>';
+
+        foreach ($rows as $rowIndex => $row) {
+            $excelRow = $rowIndex + 1;
+            $xml .= '<row r="' . $excelRow . '">';
+
+            foreach (array_values($row) as $columnIndex => $value) {
+                $cell = self::columnName($columnIndex + 1) . $excelRow;
+                $xml .= '<c r="' . $cell . '" t="inlineStr"><is><t>' . self::xmlValue($value) . '</t></is></c>';
+            }
+
+            $xml .= '</row>';
+        }
+
+        return $xml . '</sheetData></worksheet>';
+    }
+
+    protected static function contentTypesXml(array $sheets): string
+    {
+        $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+            . '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+            . '<Default Extension="xml" ContentType="application/xml"/>'
+            . '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>';
+
+        foreach (array_values($sheets) as $index => $_sheet) {
+            $xml .= '<Override PartName="/xl/worksheets/sheet' . ($index + 1) . '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>';
+        }
+
+        return $xml . '</Types>';
+    }
+
+    protected static function workbookXml(array $sheets): string
+    {
+        $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>';
+
+        foreach (array_values($sheets) as $index => $sheet) {
+            $name = self::xmlValue($sheet['name'] ?? ('Sheet ' . ($index + 1)));
+            $xml .= '<sheet name="' . $name . '" sheetId="' . ($index + 1) . '" r:id="rId' . ($index + 1) . '"/>';
+        }
+
+        return $xml . '</sheets></workbook>';
+    }
+
+    protected static function workbookRelsXml(array $sheets): string
+    {
+        $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">';
+
+        foreach (array_values($sheets) as $index => $_sheet) {
+            $xml .= '<Relationship Id="rId' . ($index + 1) . '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' . ($index + 1) . '.xml"/>';
+        }
+
+        return $xml . '</Relationships>';
+    }
+
+    protected static function columnName(int $index): string
+    {
+        $name = '';
+
+        while ($index > 0) {
+            $index--;
+            $name = chr(65 + ($index % 26)) . $name;
+            $index = intdiv($index, 26);
+        }
+
+        return $name;
+    }
+
+    protected static function xmlValue(mixed $value): string
+    {
+        return htmlspecialchars((string) $value, ENT_QUOTES | ENT_XML1, 'UTF-8');
     }
 
     protected static function entryValue(?CandidatePaymentList $record, string $key, mixed $fallback = null): string
@@ -335,69 +492,6 @@ class CandidatePaymentListsTable
         }
 
         return strtolower((string) $payment->status_payt) === 'paid' ? 'paid' : 'unpaid';
-    }
-
-    protected static function normalizeUsdAmount(mixed $value): ?string
-    {
-        if ($value === null) {
-            return null;
-        }
-
-        $normalized = trim((string) $value);
-
-        if ($normalized === '') {
-            return null;
-        }
-
-        $normalized = str_replace(',', '', $normalized);
-
-        if (! is_numeric($normalized)) {
-            return $normalized;
-        }
-
-        return number_format((float) $normalized, 2, '.', '');
-    }
-
-    protected static function normalizeKhrAmount(mixed $value): ?string
-    {
-        if ($value === null) {
-            return null;
-        }
-
-        $normalized = trim((string) $value);
-
-        if ($normalized === '') {
-            return null;
-        }
-
-        $normalized = str_replace(',', '', $normalized);
-
-        if (! is_numeric($normalized)) {
-            return $normalized;
-        }
-
-        $number = (float) $normalized;
-
-        if (floor($number) === $number) {
-            return number_format($number, 0, '.', ',');
-        }
-
-        return number_format($number, 2, '.', ',');
-    }
-
-    protected static function dehydrateKhrAmount(mixed $value): ?string
-    {
-        if ($value === null) {
-            return null;
-        }
-
-        $normalized = trim((string) $value);
-
-        if ($normalized === '') {
-            return null;
-        }
-
-        return str_replace(',', '', $normalized);
     }
 
     protected static function ownerId(CandidatePaymentList $record): ?int

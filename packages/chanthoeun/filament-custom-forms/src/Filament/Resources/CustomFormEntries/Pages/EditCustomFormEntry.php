@@ -36,8 +36,8 @@ class EditCustomFormEntry extends EditRecord
         $status = $this->entryStatus();
 
         if ($slug === 'profile') {
-            return in_array($status, ['approved', 'pending'], true)
-                || $this->studentHasAcceptedNationalExam();
+            return in_array($status, ['approved', 'rejected'], true)
+                || $this->studentHasReviewedNonProfileApplication();
         }
 
         if (in_array($status, ['passed', 'accepted', 'approved', 'pending'], true)) {
@@ -203,25 +203,19 @@ class EditCustomFormEntry extends EditRecord
         $this->record->refresh();
     }
 
-    protected function studentHasAcceptedNationalExam(): bool
+    protected function studentHasReviewedNonProfileApplication(): bool
     {
         if (! auth()->check()) {
-            return false;
-        }
-
-        $formId = CustomForm::query()
-            ->where('slug', 'national-examination-registration')
-            ->value('id');
-
-        if (! $formId) {
             return false;
         }
 
         $userId = auth()->id();
 
         return CustomFormEntry::query()
-            ->where('custom_form_id', $formId)
-            ->whereIn('review_status', ['passed', 'accepted', 'approved'])
+            ->whereHas('customForm', function ($query): void {
+                $query->where('slug', '!=', 'profile');
+            })
+            ->whereIn('review_status', ['passed', 'accepted', 'approved', 'rejected', 'send_back', 'returned', 'failed'])
             ->where(function ($query) use ($userId): void {
                 if (Schema::hasColumn('custom_form_entries', 'created_by')) {
                     $query->orWhere('created_by', $userId);
