@@ -128,7 +128,6 @@ class CandidatePaymentListsTable
                         'paid' => 'success',
                         default => 'warning',
                     })
-                    ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
             ])
             ->filters([
