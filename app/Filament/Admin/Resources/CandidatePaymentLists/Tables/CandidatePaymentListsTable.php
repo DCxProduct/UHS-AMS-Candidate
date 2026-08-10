@@ -5,16 +5,9 @@ namespace App\Filament\Admin\Resources\CandidatePaymentLists\Tables;
 use App\Filament\Admin\Resources\CandidatePaymentLists\CandidatePaymentListResource;
 use App\Models\CandidatePaymentList;
 use App\Models\Payment;
-use App\Models\PaymentType;
 use App\Support\LocalizedNumber;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
-use Filament\Actions\Action;
-use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\TextInput;
-use Filament\Notifications\Notification;
-use Filament\Schemas\Components\Grid;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
@@ -166,121 +159,7 @@ class CandidatePaymentListsTable
             ], layout: FiltersLayout::AboveContent)
             ->deferFilters(false)
             ->filtersFormColumns(3)
-            ->recordActions([
-                Action::make('pay')
-                    ->label(__('payments.actions.pay'))
-                    ->icon('heroicon-o-banknotes')
-                    ->color('success')
-                    ->link()
-                    ->modalWidth('4xl')
-                    ->modalHeading(__('payments.actions.create_payment'))
-                    ->modalSubmitActionLabel(__('payments.actions.submit_payment'))
-                    ->fillForm(fn (CandidatePaymentList $record): array => [
-                        'users_id' => self::ownerId($record),
-                        'form_id' => $record->custom_form_id,
-                        'status' => true,
-                    ])
-                    ->form([
-                        Grid::make([
-                            'default' => 1,
-                            'md' => 2,
-                        ])->schema([
-                            Select::make('type_payment')
-                                ->label(__('payments.fields.type_payment'))
-                                ->placeholder(__('payments.placeholders.type_payment'))
-                                ->options(fn (): array => PaymentType::activeOptions())
-                                ->native(false)
-                                ->searchable()
-                                ->preload()
-                                ->required(),
-
-                            DatePicker::make('datetime_pay')
-                                ->label(__('payments.fields.datetime_pay'))
-                                ->placeholder(__('payments.placeholders.datetime_pay'))
-                                ->native(false)
-                                ->suffixIcon('heroicon-o-calendar-days')
-                                ->maxDate(now()->toDateString())
-                                ->required(),
-
-                            TextInput::make('receipt_number')
-                                ->label(__('payments.fields.receipt_number'))
-                                ->placeholder(__('payments.placeholders.receipt_number'))
-                                ->required()
-                                ->maxLength(255),
-
-                            TextInput::make('amount_usd')
-                                ->label(__('payments.fields.amount_usd'))
-                                ->placeholder(__('payments.placeholders.amount_usd'))
-                                ->suffix('$')
-                                ->inputMode('decimal')
-                                ->extraInputAttributes([
-                                    'oninput' => "this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\\..*)\\./g, '$1')",
-                                ])
-                                ->rule('numeric')
-                                ->live(onBlur: true)
-                                ->afterStateHydrated(function (TextInput $component, mixed $state): void {
-                                    $component->state(self::normalizeUsdAmount($state));
-                                })
-                                ->afterStateUpdated(function (mixed $state, callable $set): void {
-                                    $set('amount_usd', self::normalizeUsdAmount($state));
-                                })
-                                ->dehydrateStateUsing(fn (mixed $state): ?string => self::normalizeUsdAmount($state)),
-
-                            TextInput::make('amount_kh')
-                                ->label(__('payments.fields.amount_kh'))
-                                ->placeholder(__('payments.placeholders.amount_kh'))
-                                ->suffix('KHR')
-                                ->inputMode('decimal')
-                                ->extraInputAttributes([
-                                    'oninput' => "this.value = this.value.replace(/[^0-9,]/g, '')",
-                                ])
-                                ->rule(static function (): \Closure {
-                                    return static function (string $attribute, mixed $value, \Closure $fail): void {
-                                        if ($value === null || trim((string) $value) === '') {
-                                            return;
-                                        }
-
-                                        if (! is_numeric(str_replace(',', '', (string) $value))) {
-                                            $fail(__('validation.numeric', ['attribute' => $attribute]));
-                                        }
-                                    };
-                                })
-                                ->live(onBlur: true)
-                                ->afterStateHydrated(function (TextInput $component, mixed $state): void {
-                                    $component->state(self::normalizeKhrAmount($state));
-                                })
-                                ->afterStateUpdated(function (mixed $state, callable $set): void {
-                                    $set('amount_kh', self::normalizeKhrAmount($state));
-                                })
-                                ->dehydrateStateUsing(fn (mixed $state): ?string => self::dehydrateKhrAmount($state)),
-                        ]),
-
-                        Textarea::make('description')
-                            ->label(__('payments.fields.description'))
-                            ->placeholder(__('payments.placeholders.description'))
-                            ->rows(4),
-                    ])
-                    ->action(function (CandidatePaymentList $record, array $data): void {
-                        Payment::create([
-                            'users_id' => self::ownerId($record),
-                            'form_id' => $record->custom_form_id,
-                            'receipt_number' => $data['receipt_number'],
-                            'type_payment' => $data['type_payment'],
-                            'status_payt' => 'paid',
-                            'amount_usd' => $data['amount_usd'] ?? null,
-                            'amount_kh' => $data['amount_kh'] ?? null,
-                            'datetime_pay' => $data['datetime_pay'] ?? null,
-                            'status' => true,
-                            'description' => $data['description'] ?? null,
-                        ]);
-
-                        Notification::make()
-                            ->title(__('payments.actions.record_payment'))
-                            ->success()
-                            ->send();
-                    })
-                    ->visible(fn (CandidatePaymentList $record): bool => self::latestPaymentRecord($record) === null),
-            ]);
+            ->recordActions([]);
     }
 
     protected static function entryValue(?CandidatePaymentList $record, string $key, mixed $fallback = null): string
@@ -335,69 +214,6 @@ class CandidatePaymentListsTable
         }
 
         return strtolower((string) $payment->status_payt) === 'paid' ? 'paid' : 'unpaid';
-    }
-
-    protected static function normalizeUsdAmount(mixed $value): ?string
-    {
-        if ($value === null) {
-            return null;
-        }
-
-        $normalized = trim((string) $value);
-
-        if ($normalized === '') {
-            return null;
-        }
-
-        $normalized = str_replace(',', '', $normalized);
-
-        if (! is_numeric($normalized)) {
-            return $normalized;
-        }
-
-        return number_format((float) $normalized, 2, '.', '');
-    }
-
-    protected static function normalizeKhrAmount(mixed $value): ?string
-    {
-        if ($value === null) {
-            return null;
-        }
-
-        $normalized = trim((string) $value);
-
-        if ($normalized === '') {
-            return null;
-        }
-
-        $normalized = str_replace(',', '', $normalized);
-
-        if (! is_numeric($normalized)) {
-            return $normalized;
-        }
-
-        $number = (float) $normalized;
-
-        if (floor($number) === $number) {
-            return number_format($number, 0, '.', ',');
-        }
-
-        return number_format($number, 2, '.', ',');
-    }
-
-    protected static function dehydrateKhrAmount(mixed $value): ?string
-    {
-        if ($value === null) {
-            return null;
-        }
-
-        $normalized = trim((string) $value);
-
-        if ($normalized === '') {
-            return null;
-        }
-
-        return str_replace(',', '', $normalized);
     }
 
     protected static function ownerId(CandidatePaymentList $record): ?int
