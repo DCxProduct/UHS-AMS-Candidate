@@ -90,6 +90,7 @@ return [
         'bulk_passed_success_title' => 'បេក្ខជន :count នាក់បានជាប់។',
         'admin_failed_success_title' => 'ពាក្យស្នើសុំបានធ្លាក់',
         'admin_failed_success_body' => 'ពាក្យស្នើសុំត្រូវបានកត់សម្គាល់ថាបានធ្លាក់។',
+        'bulk_pending_success_body' => 'បានកែប្រែ :count ទិន្នន័យ។',
 
         'national_exam_approved_title' => 'ការចុះឈ្មោះប្រឡងជាតិ',
         'national_exam_approved_body' => 'ការចុះឈ្មោះប្រឡងជាតិរបស់អ្នកត្រូវបានអនុម័ត។',
@@ -98,6 +99,8 @@ return [
     ],
 
     'form_type' => 'ទម្រង់ប្រភេទ',
+    'user_type' => 'ប្រភេទអ្នកប្រើ',
+    'major' => 'ផ្នែក/ជំនាញ',
     'reviewed_year' => 'ឆ្នាំ',
     'national_registration_number' => 'លេខចុះឈ្មោះថ្នាក់ជាតិ',
     'not_reviewed_yet' => 'មិនទាន់បានពិនិត្យ',
@@ -122,6 +125,18 @@ return [
     'request_at' => 'ស្នើសុំនៅ',
     'approve_at' => 'បានពិនិត្យ',
     'review_status_result' => 'លទ្ធផលប្រលង',
+
+    'form_types' => [
+        'associate' => 'បរិញ្ញាបត្ររង',
+        'bachelor' => 'បរិញ្ញាបត្រ',
+        'master' => 'អនុបណ្ឌិត',
+        'phd' => 'បណ្ឌិត',
+    ],
+
+    'genders' => [
+        'male' => 'ប្រុស',
+        'female' => 'ស្រី',
+    ],
 
     'view_pdf' => 'ចូលពិនិត្យ',
 ];

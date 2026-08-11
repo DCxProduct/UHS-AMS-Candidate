@@ -19,6 +19,7 @@ return [
     'custom_forms' => 'បង្កើតទម្រង់បំពេញ',
     'document_templates' => 'បង្កើតគំរូឯកសារ',
     'closing_date' => 'បិទ/បើក ទទួលពាក្យ',
+    'exchange_rates' => 'អត្រាប្តូរប្រាក់',
     'users' => 'អ្នកប្រើប្រាស់',
     'payment_types' => 'ប្រភេទការទូទាត់',
     'system_users' => 'អ្នកប្រើប្រាស់ប្រព័ន្ធ',

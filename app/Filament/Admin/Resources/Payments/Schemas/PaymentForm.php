@@ -4,12 +4,15 @@ namespace App\Filament\Admin\Resources\Payments\Schemas;
 
 use App\Filament\Admin\Resources\CandidatePaymentLists\CandidatePaymentListResource;
 use App\Filament\Admin\Resources\Users\UserResource;
+use App\Models\ExchangeRate;
 use App\Models\PaymentType;
 use App\Models\SystemUser;
 use App\Models\User;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -116,8 +119,10 @@ class PaymentForm
                                     ->afterStateHydrated(function (TextInput $component, mixed $state): void {
                                         $component->state(self::normalizeKhrAmount($state));
                                     })
-                                    ->afterStateUpdated(function (mixed $state, callable $set): void {
-                                        $set('amount_kh', self::normalizeKhrAmount($state));
+                                    ->afterStateUpdated(function ($state, $set, $get): void {
+                                        $normalized = self::normalizeKhrAmount($state);
+                                        $set('amount_kh', $normalized);
+                                        self::syncUsdFromKhr($get, $set);
                                     })
                                     ->dehydrateStateUsing(fn (mixed $state): ?string => self::dehydrateKhrAmount($state))
                                     ->validationMessages([
@@ -137,12 +142,31 @@ class PaymentForm
                                     ->afterStateHydrated(function (TextInput $component, mixed $state): void {
                                         $component->state(self::normalizeUsdAmount($state));
                                     })
-                                    ->afterStateUpdated(function (mixed $state, callable $set): void {
-                                        $set('amount_usd', self::normalizeUsdAmount($state));
+                                    ->afterStateUpdated(function ($state, $set, $get): void {
+                                        $normalized = self::normalizeUsdAmount($state);
+                                        $set('amount_usd', $normalized);
+                                        self::syncKhrFromUsd($get, $set);
                                     })
                                     ->dehydrateStateUsing(fn (mixed $state): ?string => self::normalizeUsdAmount($state))
                                     ->nullable(),
+
                             ]),
+
+                        Hidden::make('exchange_rate')
+                            ->default(fn (): string => self::defaultExchangeRate())
+                            ->afterStateHydrated(function (Hidden $component, mixed $state): void {
+                                $component->state(self::normalizeExchangeRate($state) ?? self::defaultExchangeRate());
+                            })
+                            ->dehydrateStateUsing(fn (mixed $state): ?string => self::normalizeExchangeRate($state)),
+
+                        Placeholder::make('exchange_rate_display')
+                            ->label(__('payments.fields.exchange_rate'))
+                            ->helperText(__('payments.help.exchange_rate'))
+                            ->content(function ($get): string {
+                                $rate = self::normalizeExchangeRate($get('exchange_rate')) ?? self::defaultExchangeRate();
+
+                                return sprintf('1 USD = %s KHR', $rate);
+                            }),
 
                         Textarea::make('description')
                             ->label(__('payments.fields.description'))
@@ -214,6 +238,72 @@ class PaymentForm
         }
 
         return str_replace(',', '', $normalized);
+    }
+
+    protected static function defaultExchangeRate(): string
+    {
+        return ExchangeRate::activeUsdToKhrRate() ?? '4100.00';
+    }
+
+    protected static function normalizeExchangeRate(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $normalized = trim((string) $value);
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        $normalized = str_replace(',', '', $normalized);
+
+        if (! is_numeric($normalized)) {
+            return $normalized;
+        }
+
+        return number_format((float) $normalized, 2, '.', '');
+    }
+
+    protected static function syncKhrFromUsd(callable $get, callable $set): void
+    {
+        $usdAmount = self::normalizeUsdAmount($get('amount_usd'));
+        $rate = self::normalizeExchangeRate($get('exchange_rate'));
+
+        if (blank($usdAmount) || blank($rate) || ! is_numeric($usdAmount) || ! is_numeric($rate) || (float) $rate <= 0) {
+            return;
+        }
+
+        $set('amount_kh', self::normalizeKhrAmount((float) $usdAmount * (float) $rate));
+    }
+
+    protected static function syncUsdFromKhr(callable $get, callable $set): void
+    {
+        $khrAmount = self::dehydrateKhrAmount($get('amount_kh'));
+        $rate = self::normalizeExchangeRate($get('exchange_rate'));
+
+        if (blank($khrAmount) || blank($rate) || ! is_numeric($khrAmount) || ! is_numeric($rate) || (float) $rate <= 0) {
+            return;
+        }
+
+        $set('amount_usd', self::normalizeUsdAmount((float) $khrAmount / (float) $rate));
+    }
+
+    protected static function syncAmountsFromRate(callable $get, callable $set): void
+    {
+        $usdAmount = self::normalizeUsdAmount($get('amount_usd'));
+        $khrAmount = self::dehydrateKhrAmount($get('amount_kh'));
+
+        if (filled($usdAmount) && is_numeric($usdAmount)) {
+            self::syncKhrFromUsd($get, $set);
+
+            return;
+        }
+
+        if (filled($khrAmount) && is_numeric($khrAmount)) {
+            self::syncUsdFromKhr($get, $set);
+        }
     }
 
     protected static function candidateUserOptions(bool $restrictToUnpaidApplications = false): array

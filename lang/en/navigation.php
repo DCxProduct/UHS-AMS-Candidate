@@ -19,6 +19,7 @@ return [
     'custom_forms' => 'Custom Forms',
     'document_templates' => 'Document Templates',
     'closing_date' => 'Closing Date',
+    'exchange_rates' => 'Exchange Rates',
     'users' => 'Users',
     'payment_types' => 'Payment Types',
     'system_users' => 'System Users',
