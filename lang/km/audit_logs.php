@@ -9,9 +9,11 @@ return [
         'no' => 'ល.រ',
         'created_at' => 'កាលបរិច្ឆេទ',
         'actor' => 'អ្នកប្រើ',
+        'role' => 'តួនាទី',
         'module' => 'មុខងារ',
         'action' => 'សកម្មភាព',
         'description' => 'ការពិពណ៌នា',
+        'ip_address' => 'អាសយដ្ឋាន IP',
     ],
     'placeholders' => [
         'date' => 'សូមជ្រើសរើសកាលបរិច្ឆេទ',

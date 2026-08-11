@@ -3,8 +3,11 @@
 namespace App\Filament\Admin\Resources\AuditLogs\Tables;
 
 use App\Models\AuditLog;
+use App\Models\SystemUser;
+use App\Models\User;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
+use App\Support\UserTypeOptions;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Tables\Columns\TextColumn;
@@ -50,6 +53,18 @@ class AuditLogsTable
                     ->limit(70)
                     ->tooltip(fn (?string $state, AuditLog $record): ?string => filled($state) ? self::translateDescription($record, $state) : null)
                     ->wrap(),
+
+                TextColumn::make('ip_address')
+                    ->label(__('audit_logs.fields.ip_address'))
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: false),
+
+                TextColumn::make('role')
+                    ->label(__('audit_logs.fields.role'))
+                    ->getStateUsing(fn (AuditLog $record): string => self::actorRoleLabel($record))
+                    ->placeholder('-')
+                    ->wrap()
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('created_at')
                     ->label(__('audit_logs.fields.created_at'))
@@ -180,15 +195,64 @@ class AuditLogsTable
 
     protected static function scopedQuery(): Builder
     {
-        $query = AuditLog::query();
-        $user = auth()->user();
+        return AuditLog::query();
+    }
 
-        if (! $user) {
-            return $query->whereRaw('1 = 0');
+    protected static function actorRoleLabel(AuditLog $record): string
+    {
+        $actor = $record->actor;
+
+        if (! $actor) {
+            return __('audit_logs.values.system');
         }
 
-        return $query
-            ->where('actor_type', $user::class)
-            ->where('actor_id', $user->getKey());
+        $systemUser = match (true) {
+            $actor instanceof SystemUser => $actor,
+            $actor instanceof User => static::findLinkedSystemUser($actor),
+            default => null,
+        };
+
+        if (! $systemUser) {
+            return '-';
+        }
+
+        $roles = collect($systemUser->roles ?? [])
+            ->when(is_string($systemUser->roles), function ($collection) use ($systemUser) {
+                $decoded = json_decode((string) $systemUser->roles, true);
+
+                return collect(is_array($decoded) ? $decoded : [$systemUser->roles]);
+            })
+            ->filter(fn ($role): bool => filled($role))
+            ->map(fn ($role): string => strtolower(trim((string) $role)))
+            ->reject(fn (string $role): bool => UserTypeOptions::isCandidateManagedRole($role))
+            ->map(fn ($role): string => self::formatRoleLabel((string) $role))
+            ->unique()
+            ->values();
+
+        return $roles->isNotEmpty() ? $roles->join(', ') : '-';
+    }
+
+    protected static function findLinkedSystemUser(User $user): ?SystemUser
+    {
+        return SystemUser::query()
+            ->when(filled($user->username), fn ($query) => $query->orWhere('username', $user->username))
+            ->when(filled($user->email), fn ($query) => $query->orWhere('email', $user->email))
+            ->when(filled($user->phone), fn ($query) => $query->orWhere('phone', $user->phone))
+            ->first();
+    }
+
+    protected static function formatRoleLabel(string $role): string
+    {
+        $normalized = strtolower(trim($role));
+
+        if ($normalized === '') {
+            return '';
+        }
+
+        $formatted = UserTypeOptions::formatLabel($normalized);
+
+        return $formatted !== ucfirst($normalized)
+            ? $formatted
+            : str($role)->headline()->toString();
     }
 }

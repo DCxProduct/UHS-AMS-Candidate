@@ -9,9 +9,11 @@ return [
         'no' => 'No.',
         'created_at' => 'Date',
         'actor' => 'User',
+        'role' => 'Role',
         'module' => 'Module',
         'action' => 'Action',
         'description' => 'Description',
+        'ip_address' => 'IP Address',
     ],
     'placeholders' => [
         'date' => 'Select date',
