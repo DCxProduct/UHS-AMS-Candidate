@@ -73,8 +73,11 @@ return [
 
     'validation' => [
         'user_required' => 'សូមជ្រើសរើសអ្នកប្រើប្រាស់។',
+        'form_required' => 'សូមជ្រើសរើសប្រភេទទម្រង់ពាក្យស្នើសុំ។',
         'receipt_number_required' => 'សូមបញ្ចូលលេខបង្កាន់ដៃ។',
         'type_payment_required' => 'សូមជ្រើសរើសប្រភេទទូទាត់។',
+        'datetime_pay_required' => 'សូមជ្រើសរើសថ្ងៃបង់ប្រាក់។',
+        'amount_kh_required' => 'សូមបញ្ចូលចំនួនទឹកប្រាក់រៀល។',
         'status_payt_required' => 'សូមជ្រើសរើសស្ថានភាពទូទាត់។',
     ],
 

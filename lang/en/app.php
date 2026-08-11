@@ -322,8 +322,11 @@ return [
         ],
         'notifications' => [
             'application' => 'Application',
+            'application_submitted_payment_title' => 'Application :form Submitted',
+            'application_submitted_payment_body' => 'Your application for :form has been submitted. Please go to pay in the student system.',
             'application_approved_title' => 'Application :form Approved',
             'application_approved_body' => 'Your application for :form has been approved. Please go to Unpaid Applications to pay your fee.',
+            'application_approved_body_no_payment' => 'Your application for :form has been approved.',
             'application_rejected_title' => 'Application :form Rejected',
             'application_rejected_body' => 'Your application for :form has been rejected. Please revise and submit again.<br>Reason: :note',
             'no_note' => 'None',
@@ -396,7 +399,7 @@ return [
     'no' => 'No',
     'please_input_data_before_save' => 'Please input data before saving.',
     'confirm_submit_data' => 'Are you sure you want to submit this data?',
-    'confirm_submit_data_description' => 'Please confirm before submitting this form data.',
+    'confirm_submit_data_description' => 'Your application will be submitted. Please go to pay in the student system.',
 
     'enrollment_not_in_national_exam_list' => 'Your name is not in the national examination list.',
     'already_registered' => 'You have already registered.',

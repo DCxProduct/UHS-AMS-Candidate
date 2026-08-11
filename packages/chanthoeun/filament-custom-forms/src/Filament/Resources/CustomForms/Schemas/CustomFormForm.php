@@ -214,10 +214,14 @@ class CustomFormForm
                                                 return 'candidate';
                                             }
 
-                                            return collect($availableRoles)
-                                                ->first(fn (string $availableRole): bool => strcasecmp($availableRole, $normalized) === 0);
+                                            /** @var string|null $matchedRole */
+                                            $matchedRole = collect($availableRoles)->first(
+                                                fn (string $availableRole): bool => strcasecmp($availableRole, $normalized) === 0
+                                            );
+
+                                            return $matchedRole;
                                         })
-                                        ->filter(fn ($role): bool => filled($role))
+                                        ->filter(fn (?string $role): bool => filled($role))
                                         ->unique()
                                         ->values()
                                         ->all()
@@ -241,6 +245,11 @@ class CustomFormForm
 
                          Toggle::make('is_active')
                             ->label(__('filament-custom-forms::fcf.form.is_active'))
+                            ->default(true)
+                            ->required(),
+
+                        Toggle::make('requires_payment')
+                            ->label(__('filament-custom-forms::fcf.form.requires_payment'))
                             ->default(true)
                             ->required(),
                     ]),

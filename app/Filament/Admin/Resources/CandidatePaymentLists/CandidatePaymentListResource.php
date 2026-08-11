@@ -2,7 +2,9 @@
 
 namespace App\Filament\Admin\Resources\CandidatePaymentLists;
 
+use App\Filament\Admin\Resources\CandidatePaymentLists\Pages\CreateCandidatePaymentList;
 use App\Filament\Admin\Resources\CandidatePaymentLists\Pages\ListCandidatePaymentLists;
+use App\Filament\Admin\Resources\Payments\Schemas\PaymentForm;
 use App\Filament\Admin\Resources\CandidatePaymentLists\Tables\CandidatePaymentListsTable;
 use App\Filament\Concerns\AdminOnly;
 use App\Models\CandidatePaymentList;
@@ -51,7 +53,7 @@ class CandidatePaymentListResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return $schema->components([]);
+        return PaymentForm::configure($schema, true);
     }
 
     public static function table(Table $table): Table
@@ -71,11 +73,13 @@ class CandidatePaymentListResource extends Resource
                     ->where(function (Builder $query): void {
                         $query->where('menu_placement', 'sidebar')
                             ->where('is_active', true)
+                            ->where('requires_payment', true)
                             ->where('slug', '!=', 'profile');
                     })
                     ->orWhere(function (Builder $query): void {
                         $query->where('menu_placement', 'sub_item')
                             ->where('is_active', true)
+                            ->where('requires_payment', true)
                             ->whereHas('parentForm', function (Builder $query): void {
                                 $query->where('menu_placement', 'sidebar')
                                     ->where('is_active', true)
@@ -177,6 +181,7 @@ class CandidatePaymentListResource extends Resource
     {
         return [
             'index' => ListCandidatePaymentLists::route('/'),
+            'create' => CreateCandidatePaymentList::route('/create'),
         ];
     }
 }

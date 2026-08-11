@@ -18,6 +18,7 @@ class CustomForm extends Model
         'schema',
         'is_active',
         'allowed_roles',
+        'requires_payment',
         'menu_placement',
         'parent_sidebar',
         'sub_item_type',
@@ -28,6 +29,7 @@ class CustomForm extends Model
         'schema' => 'array',
         'is_active' => 'boolean',
         'allowed_roles' => 'array',
+        'requires_payment' => 'boolean',
         'display_order' => 'integer',
     ];
 

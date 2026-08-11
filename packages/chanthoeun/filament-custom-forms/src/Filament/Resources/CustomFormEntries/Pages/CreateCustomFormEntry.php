@@ -197,6 +197,7 @@ class CreateCustomFormEntry extends CreateRecord
                             ->update($data);
 
                         $this->record = CustomFormEntry::find($this->draftEntryId);
+                        $this->sendStudentSubmitPaymentNotificationIfNeeded($this->record);
 
                         $this->redirect($this->getRedirectUrl());
 
@@ -432,17 +433,28 @@ class CreateCustomFormEntry extends CreateRecord
 
     protected function getCreatedNotificationTitle(): ?string
     {
-        if ($this->form_id) {
-            $customForm = CustomForm::find($this->form_id);
-            if ($customForm) {
-                $formName = $this->transText($customForm->name);
-                return app()->getLocale() === 'km'
-                    ? "បានបង្កើត {$formName} បានជោគជ័យ"
-                    : "Created {$formName} successfully";
-            }
+        $customForm = $this->form_id ? CustomForm::find($this->form_id) : null;
+
+        if ($customForm && ! (bool) ($customForm->requires_payment ?? true)) {
+            return __('app.custom_form_entry_ui.notifications.application_submitted_payment_body', [
+                'form' => $this->transText($customForm->name),
+            ]);
+        }
+
+        if ($customForm) {
+            $formName = $this->transText($customForm->name);
+
+            return app()->getLocale() === 'km'
+                ? "បានបង្កើត {$formName} បានជោគជ័យ"
+                : "Created {$formName} successfully";
         }
 
         return parent::getCreatedNotificationTitle();
+    }
+
+    protected function afterCreate(): void
+    {
+        $this->sendStudentSubmitPaymentNotificationIfNeeded($this->record);
     }
 
     protected function handleSubmitValidationException(ValidationException $exception): never
@@ -450,5 +462,36 @@ class CreateCustomFormEntry extends CreateRecord
         $this->unmountAction(cancelParentActions: false);
 
         throw $exception;
+    }
+
+    protected function sendStudentSubmitPaymentNotificationIfNeeded(?CustomFormEntry $entry): void
+    {
+        $student = auth()->user();
+
+        if (! $student || ! $entry || ! $this->shouldSendSubmitPaymentNotification($entry)) {
+            return;
+        }
+
+        $formName = $entry->customForm?->display_name
+            ?: $this->transText($entry->customForm?->name);
+
+        Notification::make()
+            ->title(__('app.custom_form_entry_ui.notifications.application_submitted_payment_title', ['form' => $formName]))
+            ->body(__('app.custom_form_entry_ui.notifications.application_submitted_payment_body', ['form' => $formName]))
+            ->icon('heroicon-o-bell-alert')
+            ->iconColor('warning')
+            ->warning()
+            ->sendToDatabase($student);
+    }
+
+    protected function shouldSendSubmitPaymentNotification(CustomFormEntry $entry): bool
+    {
+        $customForm = $entry->customForm;
+
+        if (! $customForm || (string) $customForm->slug === 'profile') {
+            return false;
+        }
+
+        return ! (bool) ($customForm->requires_payment ?? true);
     }
 }

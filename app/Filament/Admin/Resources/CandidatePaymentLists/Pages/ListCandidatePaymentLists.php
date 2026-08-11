@@ -6,6 +6,7 @@ use App\Filament\Admin\Resources\CandidatePaymentLists\CandidatePaymentListResou
 use App\Filament\Admin\Resources\CandidatePaymentLists\Tables\CandidatePaymentListsTable;
 use App\Support\AuditLogger;
 use Filament\Actions\Action;
+use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Database\Eloquent\Model;
 
@@ -16,6 +17,9 @@ class ListCandidatePaymentLists extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            CreateAction::make()
+                ->label(__('payments.actions.new'))
+                ->url(CandidatePaymentListResource::getUrl('create')),
             Action::make('download_excel')
                 ->label(__('candidate_payment_lists.download_excel'))
                 ->color('success')
