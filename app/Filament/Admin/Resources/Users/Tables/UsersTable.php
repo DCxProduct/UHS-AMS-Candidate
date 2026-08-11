@@ -157,8 +157,8 @@ class UsersTable
                         ->icon('heroicon-o-check-circle')
                         ->color('success')
                         ->requiresConfirmation()
-                        ->visible(fn ($record): bool => ! (bool) $record->is_active)
-                        ->action(function ($record): void {
+                        ->visible(fn (SystemUser $record): bool => ! (bool) $record->is_active)
+                        ->action(function (SystemUser $record): void {
                             $record->activateAccount();
 
                             Notification::make()
@@ -172,8 +172,8 @@ class UsersTable
                         ->icon('heroicon-o-x-circle')
                         ->color('danger')
                         ->requiresConfirmation()
-                        ->visible(fn ($record): bool => (bool) $record->is_active)
-                        ->action(function ($record): void {
+                        ->visible(fn (SystemUser $record): bool => (bool) $record->is_active)
+                        ->action(function (SystemUser $record): void {
                             $record->deactivateAccount();
 
                             Notification::make()
@@ -186,7 +186,7 @@ class UsersTable
                         ->label(__('users.actions.delete'))
                         ->icon('heroicon-o-trash')
                         ->color('danger')
-                        ->action(fn (User $record) => $record->forceDelete()),
+                        ->action(fn (SystemUser $record) => $record->forceDelete()),
                 ])
                     ->label('')
                     ->icon('heroicon-m-ellipsis-vertical')
