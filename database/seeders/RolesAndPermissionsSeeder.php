@@ -26,7 +26,7 @@ class RolesAndPermissionsSeeder extends Seeder
 
         $systemAdminRoles = collect([
             'admin' => 'អ្នកគ្រប់គ្រង',
-            'cashier' => 'មន្ត្រីគណនី',
+            'cashier' => 'បេឡា',
         ])->mapWithKeys(fn (string $nameKh, string $role): array => [
             $role => Role::query()->updateOrCreate(
                 [
