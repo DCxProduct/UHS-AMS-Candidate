@@ -322,8 +322,11 @@ return [
         ],
         'notifications' => [
             'application' => 'ពាក្យស្នើសុំ',
+            'application_submitted_payment_title' => 'បានដាក់ស្នើពាក្យស្នើសុំ :form',
+            'application_submitted_payment_body' => 'ពាក្យស្នើសុំ :form របស់អ្នកត្រូវបានដាក់ស្នើរួចរាល់ហើយ។ សូមទៅបង់ប្រាក់ក្នុងប្រព័ន្ធនិស្សិត។',
             'application_approved_title' => 'ពាក្យស្នើសុំ :form ត្រូវបានអនុម័ត',
             'application_approved_body' => 'ពាក្យស្នើសុំ :form របស់អ្នកត្រូវបានអនុម័តរួចរាល់ហើយ។ សូមទៅកាន់ពាក្យស្នើសុំមិនទាន់បង់ប្រាក់ ដើម្បីបង់ថ្លៃសេវា។',
+            'application_approved_body_no_payment' => 'ពាក្យស្នើសុំ :form របស់អ្នកត្រូវបានអនុម័តរួចរាល់ហើយ។',
             'application_rejected_title' => 'ពាក្យស្នើសុំ :form ត្រូវបានបដិសេធ',
             'application_rejected_body' => 'ពាក្យស្នើសុំ :form របស់អ្នកត្រូវបានបដិសេធ។ សូមកែប្រែឡើងវិញម្ដងទៀត។<br>មូលហេតុ៖ :note',
             'no_note' => 'គ្មាន',
@@ -396,7 +399,7 @@ return [
     'no' => 'ទេ',
     'please_input_data_before_save' => 'សូមបញ្ចូលទិន្នន័យមុនពេលរក្សាទុក។',
     'confirm_submit_data' => 'តើអ្នកពិតជាចង់ដាក់ស្នើទិន្នន័យនេះមែនទេ?',
-    'confirm_submit_data_description' => 'សូមបញ្ជាក់ម្តងទៀត មុនពេលដាក់ស្នើទិន្នន័យទម្រង់នេះ។',
+    'confirm_submit_data_description' => 'ពាក្យស្នើសុំរបស់អ្នកនឹងត្រូវបានដាក់ស្នើ។ សូមទៅបង់ប្រាក់ក្នុងប្រព័ន្ធនិស្សិត។',
 
     'enrollment_not_in_national_exam_list' => 'ឈ្មោះរបស់អ្នកមិនមាននៅក្នុងបញ្ជីប្រឡងថ្នាក់ជាតិ',
     'already_registered' => 'អ្នកបានចុះឈ្មោះរួចហើយ',

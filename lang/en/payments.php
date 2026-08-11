@@ -73,8 +73,11 @@ return [
 
     'validation' => [
         'user_required' => 'User is required.',
+        'form_required' => 'Application form type is required.',
         'receipt_number_required' => 'Receipt is required.',
         'type_payment_required' => 'Payment type is required.',
+        'datetime_pay_required' => 'Payment date is required.',
+        'amount_kh_required' => 'Amount KHR is required.',
         'status_payt_required' => 'Payment status is required.',
     ],
 

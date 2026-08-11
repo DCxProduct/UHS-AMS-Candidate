@@ -88,12 +88,24 @@ class ReviewApplicationResource extends Resource
                     ->orWhere('data->candidate_status', '')
                     ->orWhere('data->candidate_status', 'pending');
             })
-            ->whereExists(function (QueryBuilder $subQuery): void {
-                $subQuery->selectRaw('1')
-                    ->from('payments')
-                    ->whereColumn('payments.form_id', 'custom_form_entries.custom_form_id')
-                    ->where(fn (QueryBuilder $matchQuery): QueryBuilder => static::applyPaymentOwnerMatch($matchQuery))
-                    ->where('payments.status_payt', 'paid');
+            ->where(function (Builder $query): void {
+                $query
+                    ->whereHas('customForm', function (Builder $query): void {
+                        $query->where('requires_payment', false);
+                    })
+                    ->orWhere(function (Builder $query): void {
+                        $query
+                            ->whereHas('customForm', function (Builder $query): void {
+                                $query->where('requires_payment', true);
+                            })
+                            ->whereExists(function (QueryBuilder $subQuery): void {
+                                $subQuery->selectRaw('1')
+                                    ->from('payments')
+                                    ->whereColumn('payments.form_id', 'custom_form_entries.custom_form_id')
+                                    ->where(fn (QueryBuilder $matchQuery): QueryBuilder => static::applyPaymentOwnerMatch($matchQuery))
+                                    ->where('payments.status_payt', 'paid');
+                            });
+                    });
             })
             ->where(function (Builder $query): void {
                 $query->whereNull('data->' . static::HIDDEN_FLAG)

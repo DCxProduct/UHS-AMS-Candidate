@@ -75,6 +75,7 @@
          'slug' => 'Slug',
          'is_active' => 'Is Active',
          'allowed_roles' => 'Allowed Roles',
+         'requires_payment' => 'Require Payment for This Form',
          'details' => 'Form Details',
          'names' => [],
      ],

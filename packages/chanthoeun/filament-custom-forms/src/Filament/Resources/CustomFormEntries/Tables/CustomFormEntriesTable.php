@@ -1414,6 +1414,7 @@ class CustomFormEntriesTable
         $formName = $record->customForm
             ? ($record->customForm->display_name ?: NotificationLanguage::transForUser($student, 'app.custom_form_entry_ui.notifications.application'))
             : NotificationLanguage::transForUser($student, 'app.custom_form_entry_ui.notifications.application');
+        $requiresPayment = self::entryRequiresPayment($record);
 
         if ($status === 'approved') {
             Notification::make()
@@ -1425,10 +1426,16 @@ class CustomFormEntriesTable
                 ->body(
                     self::recordIsNationalExam($record)
                         ? NotificationLanguage::transForUser($student, 'review_applications.notifications.national_exam_approved_body')
-                        : NotificationLanguage::transForUser($student, 'app.custom_form_entry_ui.notifications.application_approved_body', ['form' => $formName])
+                        : NotificationLanguage::transForUser(
+                            $student,
+                            $requiresPayment
+                                ? 'app.custom_form_entry_ui.notifications.application_approved_body'
+                                : 'app.custom_form_entry_ui.notifications.application_approved_body_no_payment',
+                            ['form' => $formName]
+                        )
                 )
                 ->actions(array_filter([
-                    self::studentPaymentNotificationAction($studentLocale),
+                    $requiresPayment ? self::studentPaymentNotificationAction($studentLocale) : null,
                 ]))
                 ->icon('heroicon-o-check-circle')
                 ->iconColor('success')
@@ -1463,6 +1470,11 @@ class CustomFormEntriesTable
             ->iconColor('danger')
             ->danger()
             ->sendToDatabase($student);
+    }
+
+    protected static function entryRequiresPayment($record): bool
+    {
+        return (bool) ($record->customForm?->requires_payment ?? true);
     }
 
     protected static function studentEditNotificationAction($record, string $locale): ?Action

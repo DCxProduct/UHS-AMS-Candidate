@@ -2,11 +2,13 @@
 
 namespace App\Filament\Admin\Resources\Payments\Schemas;
 
+use App\Filament\Admin\Resources\CandidatePaymentLists\CandidatePaymentListResource;
 use App\Filament\Admin\Resources\Users\UserResource;
 use App\Models\PaymentType;
 use App\Models\SystemUser;
 use App\Models\User;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
+use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -14,10 +16,11 @@ use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Schema as DatabaseSchema;
 
 class PaymentForm
 {
-    public static function configure(Schema $schema): Schema
+    public static function configure(Schema $schema, bool $restrictToUnpaidApplications = false): Schema
     {
         return $schema
             ->columns(1)
@@ -32,8 +35,8 @@ class PaymentForm
                                 Select::make('users_id')
                                     ->label(__('payments.fields.user'))
                                     ->placeholder(__('payments.placeholders.user'))
-                                    ->options(fn (): array => self::candidateUserOptions())
-                                    ->default(fn (): ?int => request()->integer('users_id') ?: null)
+                                    ->options(fn (): array => self::candidateUserOptions($restrictToUnpaidApplications))
+                                    ->default(fn (): ?int => self::defaultUserId($restrictToUnpaidApplications))
                                     ->searchable()
                                     ->native(false)
                                     ->preload()
@@ -44,21 +47,16 @@ class PaymentForm
 
                                 Select::make('form_id')
                                     ->label(__('payments.fields.form'))
+                                    ->markAsRequired()
+                                    ->required()
                                     ->placeholder(__('payments.placeholders.form'))
-                                    ->options(fn (): array => CustomForm::query()
-                                        ->whereNotNull('name')
-                                        ->where('slug', '!=', 'profile')
-                                        ->orderBy('id')
-                                        ->get()
-                                        ->mapWithKeys(fn (CustomForm $form): array => [
-                                            $form->id => (string) ($form->display_name ?: $form->name),
-                                        ])
-                                        ->toArray())
-                                    ->default(fn (): ?int => request()->integer('form_id') ?: null)
+                                    ->options(fn (): array => self::formOptions($restrictToUnpaidApplications))
                                     ->searchable()
                                     ->native(false)
                                     ->preload()
-                                    ->nullable(),
+                                    ->validationMessages([
+                                        'required' => __('payments.validation.form_required'),
+                                    ]),
 
                                 TextInput::make('receipt_number')
                                     ->label(__('payments.fields.receipt_number'))
@@ -83,35 +81,23 @@ class PaymentForm
 
                                 DatePicker::make('datetime_pay')
                                     ->label(__('payments.fields.datetime_pay'))
+                                    ->markAsRequired()
                                     ->placeholder(__('payments.placeholders.datetime_pay'))
                                     ->native(false)
+                                    ->maxDate(now()->toDateString())
                                     ->suffixIcon('heroicon-o-calendar-days')
-                                    ->nullable(),
-
-                                TextInput::make('amount_usd')
-                                    ->label(__('payments.fields.amount_usd'))
-                                    ->placeholder(__('payments.placeholders.amount_usd'))
-                                    ->suffix('$')
-                                    ->inputMode('decimal')
-                                    ->extraInputAttributes([
-                                        'oninput' => "this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\\..*)\\./g, '$1')",
-                                    ])
-                                    ->rule('numeric')
-                                    ->live(onBlur: true)
-                                    ->afterStateHydrated(function (TextInput $component, mixed $state): void {
-                                        $component->state(self::normalizeUsdAmount($state));
-                                    })
-                                    ->afterStateUpdated(function (mixed $state, callable $set): void {
-                                        $set('amount_usd', self::normalizeUsdAmount($state));
-                                    })
-                                    ->dehydrateStateUsing(fn (mixed $state): ?string => self::normalizeUsdAmount($state))
-                                    ->nullable(),
+                                    ->required()
+                                    ->validationMessages([
+                                        'required' => __('payments.validation.datetime_pay_required'),
+                                    ]),
 
                                 TextInput::make('amount_kh')
                                     ->label(__('payments.fields.amount_kh'))
+                                    ->markAsRequired()
                                     ->placeholder(__('payments.placeholders.amount_kh'))
                                     ->suffix('KHR')
                                     ->inputMode('decimal')
+                                    ->required()
                                     ->extraInputAttributes([
                                         'oninput' => "this.value = this.value.replace(/[^0-9,]/g, '')",
                                     ])
@@ -134,8 +120,28 @@ class PaymentForm
                                         $set('amount_kh', self::normalizeKhrAmount($state));
                                     })
                                     ->dehydrateStateUsing(fn (mixed $state): ?string => self::dehydrateKhrAmount($state))
-                                    ->nullable(),
+                                    ->validationMessages([
+                                        'required' => __('payments.validation.amount_kh_required'),
+                                    ]),
 
+                                TextInput::make('amount_usd')
+                                    ->label(__('payments.fields.amount_usd'))
+                                    ->placeholder(__('payments.placeholders.amount_usd'))
+                                    ->suffix('$')
+                                    ->inputMode('decimal')
+                                    ->extraInputAttributes([
+                                        'oninput' => "this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\\..*)\\./g, '$1')",
+                                    ])
+                                    ->rule('numeric')
+                                    ->live(onBlur: true)
+                                    ->afterStateHydrated(function (TextInput $component, mixed $state): void {
+                                        $component->state(self::normalizeUsdAmount($state));
+                                    })
+                                    ->afterStateUpdated(function (mixed $state, callable $set): void {
+                                        $set('amount_usd', self::normalizeUsdAmount($state));
+                                    })
+                                    ->dehydrateStateUsing(fn (mixed $state): ?string => self::normalizeUsdAmount($state))
+                                    ->nullable(),
                             ]),
 
                         Textarea::make('description')
@@ -210,8 +216,12 @@ class PaymentForm
         return str_replace(',', '', $normalized);
     }
 
-    protected static function candidateUserOptions(): array
+    protected static function candidateUserOptions(bool $restrictToUnpaidApplications = false): array
     {
+        if ($restrictToUnpaidApplications) {
+            return static::unpaidApplicationUserOptions();
+        }
+
         return UserResource::getEloquentQuery()
             ->orderBy('name')
             ->get()
@@ -223,9 +233,206 @@ class PaymentForm
                 }
 
                 return [
-                    $loginUser->id => trim((string) ($systemUser->name ?: $systemUser->username ?: $systemUser->email ?: $systemUser->phone ?: '-')),
+                    $loginUser->id => self::candidateDisplayName($loginUser, $systemUser),
                 ];
             })
+            ->toArray();
+    }
+
+    protected static function formOptions(bool $restrictToUnpaidApplications = false): array
+    {
+        if ($restrictToUnpaidApplications) {
+            return static::unpaidApplicationFormOptions();
+        }
+
+        return CustomForm::query()
+            ->whereNotNull('name')
+            ->where('slug', '!=', 'profile')
+            ->orderBy('id')
+            ->get()
+            ->mapWithKeys(fn (CustomForm $form): array => [
+                $form->id => (string) ($form->display_name ?: $form->name),
+            ])
+            ->toArray();
+    }
+
+    protected static function defaultUserId(bool $restrictToUnpaidApplications = false): ?int
+    {
+        $requested = request()->integer('users_id') ?: null;
+
+        if (! $restrictToUnpaidApplications) {
+            return $requested;
+        }
+
+        $options = static::candidateUserOptions(true);
+
+        if ($requested && array_key_exists($requested, $options)) {
+            return $requested;
+        }
+
+        return count($options) === 1 ? (int) array_key_first($options) : $requested;
+    }
+
+    protected static function defaultFormId(bool $restrictToUnpaidApplications = false): ?int
+    {
+        $requested = request()->integer('form_id') ?: null;
+
+        if (! $restrictToUnpaidApplications) {
+            return $requested;
+        }
+
+        $options = static::formOptions(true);
+
+        if ($requested && array_key_exists($requested, $options)) {
+            return $requested;
+        }
+
+        return count($options) === 1 ? (int) array_key_first($options) : $requested;
+    }
+
+    protected static function candidateDisplayName(User $loginUser, ?SystemUser $systemUser = null): string
+    {
+        $profileName = self::latestProfileNameForUser($loginUser->id);
+
+        if (filled($profileName)) {
+            return $profileName;
+        }
+
+        return trim((string) (
+            $loginUser->name
+            ?: $systemUser?->name
+            ?: $loginUser->username
+            ?: $systemUser?->username
+            ?: $loginUser->email
+            ?: $systemUser?->email
+            ?: $loginUser->phone
+            ?: $systemUser?->phone
+            ?: '-'
+        ));
+    }
+
+    protected static function latestProfileNameForUser(int $userId): ?string
+    {
+        if (
+            $userId <= 0
+            || ! DatabaseSchema::hasTable('custom_forms')
+            || ! DatabaseSchema::hasTable('custom_form_entries')
+        ) {
+            return null;
+        }
+
+        $profileFormId = CustomForm::query()
+            ->where('slug', 'profile')
+            ->value('id');
+
+        if (! $profileFormId) {
+            return null;
+        }
+
+        $ownerColumns = collect(['created_by', 'user_id', 'created_by_id'])
+            ->filter(fn (string $column): bool => DatabaseSchema::hasColumn('custom_form_entries', $column))
+            ->values()
+            ->all();
+
+        if ($ownerColumns === []) {
+            return null;
+        }
+
+        $entry = CustomFormEntry::query()
+            ->where('custom_form_id', $profileFormId)
+            ->where(function ($query) use ($ownerColumns, $userId): void {
+                foreach ($ownerColumns as $ownerColumn) {
+                    $query->orWhere($ownerColumn, $userId);
+                }
+            })
+            ->where(function ($query): void {
+                $query->whereNull('review_status')
+                    ->orWhere('review_status', '!=', 'draft');
+            })
+            ->latest('id')
+            ->first();
+
+        if (! $entry) {
+            return null;
+        }
+
+        $data = is_array($entry->data)
+            ? $entry->data
+            : json_decode((string) $entry->data, true);
+
+        if (! is_array($data)) {
+            return null;
+        }
+
+        if (app()->getLocale() === 'km') {
+            $khmerFullName = trim((string) ($data['full_name_kh'] ?? ''));
+
+            if ($khmerFullName !== '') {
+                return $khmerFullName;
+            }
+
+            $khmerName = trim(implode(' ', array_filter([
+                $data['first_name_kh'] ?? null,
+                $data['last_name_kh'] ?? null,
+            ])));
+
+            if ($khmerName !== '') {
+                return $khmerName;
+            }
+        }
+
+        $latinFullName = trim((string) ($data['full_name_en'] ?? ''));
+
+        if ($latinFullName !== '') {
+            return $latinFullName;
+        }
+
+        $latinName = trim(implode(' ', array_filter([
+            $data['first_name_en'] ?? null,
+            $data['last_name_en'] ?? null,
+        ])));
+
+        if ($latinName !== '') {
+            return $latinName;
+        }
+
+        return null;
+    }
+
+    protected static function unpaidApplicationUserOptions(): array
+    {
+        return CandidatePaymentListResource::getEloquentQuery()
+            ->with(['creator'])
+            ->get()
+            ->map(function ($record): array {
+                $userId = (int) ($record->creator?->id ?? 0);
+
+                if ($userId <= 0) {
+                    return [];
+                }
+
+                $systemUser = $record->creator?->linkedSystemUser();
+
+                return [
+                    'id' => $userId,
+                    'label' => static::candidateDisplayName($record->creator, $systemUser instanceof SystemUser ? $systemUser : null),
+                ];
+            })
+            ->filter(fn (array $item): bool => filled($item['id'] ?? null))
+            ->keyBy('id')
+            ->map(fn (array $item): string => (string) $item['label'])
+            ->toArray();
+    }
+
+    protected static function unpaidApplicationFormOptions(): array
+    {
+        return CandidatePaymentListResource::getEloquentQuery()
+            ->with(['customForm'])
+            ->get()
+            ->filter(fn ($record): bool => filled($record->custom_form_id) && $record->customForm !== null)
+            ->mapWithKeys(fn ($record): array => [
+                (int) $record->custom_form_id => (string) ($record->customForm->display_name ?: $record->customForm->name ?: '-'),
+            ])
             ->toArray();
     }
 }

@@ -5,7 +5,6 @@ namespace App\Filament\Admin\Resources\Payments\Pages;
 use App\Filament\Admin\Resources\Payments\PaymentResource;
 use App\Filament\Admin\Resources\Payments\Tables\PaymentsTable;
 use Filament\Actions\Action;
-use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 
 class ListPayments extends ListRecords
@@ -15,8 +14,6 @@ class ListPayments extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make()
-                ->label(__('payments.actions.new')),
             Action::make('download_excel')
                 ->label(__('payments.actions.download_excel'))
                 ->color('success')
