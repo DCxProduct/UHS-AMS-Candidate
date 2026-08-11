@@ -60,7 +60,7 @@ class AdminUserSeeder extends Seeder
                 'guard_name' => 'web',
             ],
             [
-                'name_kh' => 'មន្ត្រីគណនី',
+                'name_kh' => 'បេឡា',
             ]
         );
 
