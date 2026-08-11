@@ -54,13 +54,9 @@ class AuditLogsTable
                     ->tooltip(fn (?string $state, AuditLog $record): ?string => filled($state) ? self::translateDescription($record, $state) : null)
                     ->wrap(),
 
-                TextColumn::make('ip_address')
-                    ->label(__('audit_logs.fields.ip_address'))
-                    ->placeholder('-')
-                    ->toggleable(isToggledHiddenByDefault: false),
-
                 TextColumn::make('role')
                     ->label(__('audit_logs.fields.role'))
+                    ->badge()
                     ->getStateUsing(fn (AuditLog $record): string => self::actorRoleLabel($record))
                     ->placeholder('-')
                     ->wrap()
@@ -70,6 +66,11 @@ class AuditLogsTable
                     ->label(__('audit_logs.fields.created_at'))
                     ->formatStateUsing(fn ($state): string => LocalizedDate::fullDateTime($state))
                     ->color('primary'),
+
+                TextColumn::make('ip_address')
+                    ->label(__('audit_logs.fields.ip_address'))
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: false),
             ])
             ->filters([
                 Filter::make('audit_log_filters')
