@@ -4,11 +4,9 @@ namespace App\Filament\Pages\Auth;
 
 use App\Models\SystemUser;
 use App\Models\User;
-use Carbon\Carbon;
 use Filament\Auth\Events\Registered;
 use Filament\Auth\Http\Responses\Contracts\RegistrationResponse;
 use Filament\Auth\Pages\Register as BaseRegister;
-use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
@@ -164,18 +162,6 @@ class Register extends BaseRegister
                     ->validationMessages([
                         'email' => __('app.email_invalid'),
                         'unique' => __('app.email_unique'),
-                    ]),
-
-                DatePicker::make('date_of_birth')
-                    ->label(__('app.date_of_birth'))
-                    ->placeholder(__('app.select_date_of_birth'))
-                    ->required()
-                    ->native(false)
-                    ->displayFormat('d-m-Y')
-                    ->prefixIcon('heroicon-o-calendar-days')
-                    ->maxDate(now())
-                    ->validationMessages([
-                        'required' => __('app.date_of_birth_required'),
                     ]),
 
                 TextInput::make('password')
@@ -338,7 +324,7 @@ class Register extends BaseRegister
             ? Str::lower(trim((string) $data['email']))
             : null;
 
-        $dateOfBirth = Carbon::parse($data['date_of_birth'])->format('Y-m-d');
+        $dateOfBirth = '2000-01-01';
 
         return DB::transaction(function () use (
             $username,
