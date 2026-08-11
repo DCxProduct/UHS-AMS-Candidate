@@ -57,16 +57,8 @@ class AuditLogResource extends Resource
             abort(404);
         }
 
-        $query = parent::getEloquentQuery();
-        $user = auth()->user();
-
-        if (! $user) {
-            return $query->whereRaw('1 = 0');
-        }
-
-        return $query
-            ->where('actor_type', $user::class)
-            ->where('actor_id', $user->getKey());
+        return parent::getEloquentQuery()
+            ->with('actor');
     }
 
     public static function getRelations(): array
@@ -83,21 +75,35 @@ class AuditLogResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->check() && static::auditLogsTableExists();
+        return static::auditLogsTableExists() && static::userCanViewAuditLogs();
     }
 
     public static function canAccess(): bool
     {
-        return auth()->check() && static::auditLogsTableExists();
+        return static::auditLogsTableExists() && static::userCanViewAuditLogs();
     }
 
     public static function canViewAny(): bool
     {
-        return auth()->check() && static::auditLogsTableExists();
+        return static::auditLogsTableExists() && static::userCanViewAuditLogs();
     }
 
     protected static function auditLogsTableExists(): bool
     {
         return SchemaFacade::hasTable((new AuditLog)->getTable());
+    }
+
+    protected static function userCanViewAuditLogs(): bool
+    {
+        $user = auth()->user();
+
+        if (! $user) {
+            return false;
+        }
+
+        return $user->can('ViewAny:AuditLog')
+            || $user->can('View:AuditLog')
+            || $user->can('ViewAny:AuditLogResource')
+            || $user->can('View:AuditLogResource');
     }
 }

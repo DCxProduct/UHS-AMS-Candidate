@@ -31,6 +31,7 @@ class AuditLogger
             'action' => $action,
             'module' => self::moduleName($auditable, $metadata),
             'description' => $description ?: self::defaultDescription($action, $auditable, $actor),
+            'ip_address' => request()?->ip(),
         ]);
     }
 

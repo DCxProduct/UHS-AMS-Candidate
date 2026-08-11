@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class AuditLog extends Model
 {
@@ -13,5 +14,11 @@ class AuditLog extends Model
         'action',
         'module',
         'description',
+        'ip_address',
     ];
+
+    public function actor(): MorphTo
+    {
+        return $this->morphTo();
+    }
 }
