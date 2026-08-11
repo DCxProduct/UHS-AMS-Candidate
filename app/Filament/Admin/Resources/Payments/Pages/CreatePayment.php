@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Resources\Payments\Pages;
 use App\Filament\Admin\Resources\Payments\PaymentResource;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Support\Facades\Schema;
 
 class CreatePayment extends CreateRecord
 {
@@ -14,6 +15,10 @@ class CreatePayment extends CreateRecord
     {
         $data['status_payt'] = 'paid';
         $data['status'] ??= true;
+
+        if (! Schema::hasColumn('payments', 'exchange_rate')) {
+            unset($data['exchange_rate']);
+        }
 
         return $data;
     }

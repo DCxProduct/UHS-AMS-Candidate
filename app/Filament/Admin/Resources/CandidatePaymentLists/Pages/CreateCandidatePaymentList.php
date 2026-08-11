@@ -7,6 +7,7 @@ use App\Models\Payment;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Schema;
 
 class CreateCandidatePaymentList extends CreateRecord
 {
@@ -16,6 +17,10 @@ class CreateCandidatePaymentList extends CreateRecord
     {
         $data['status_payt'] = 'paid';
         $data['status'] ??= true;
+
+        if (! Schema::hasColumn('payments', 'exchange_rate')) {
+            unset($data['exchange_rate']);
+        }
 
         return Payment::query()->create($data);
     }
