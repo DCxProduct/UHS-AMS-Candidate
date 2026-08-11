@@ -8,4 +8,9 @@ use Filament\Resources\Pages\EditRecord;
 class EditPayment extends EditRecord
 {
     protected static string $resource = PaymentResource::class;
+
+    protected function getRedirectUrl(): string
+    {
+        return PaymentResource::getUrl('index');
+    }
 }
