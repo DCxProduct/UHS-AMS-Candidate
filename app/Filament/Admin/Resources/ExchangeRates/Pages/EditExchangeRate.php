@@ -3,7 +3,6 @@
 namespace App\Filament\Admin\Resources\ExchangeRates\Pages;
 
 use App\Filament\Admin\Resources\ExchangeRates\ExchangeRateResource;
-use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 
 class EditExchangeRate extends EditRecord
@@ -22,8 +21,6 @@ class EditExchangeRate extends EditRecord
 
     protected function getHeaderActions(): array
     {
-        return [
-            DeleteAction::make(),
-        ];
+        return [];
     }
 }
