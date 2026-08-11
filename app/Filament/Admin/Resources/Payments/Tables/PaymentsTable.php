@@ -92,6 +92,12 @@ class PaymentsTable
                     ->color('info')
                     ->toggleable(isToggledHiddenByDefault: false),
 
+                TextColumn::make('exchange_rate')
+                    ->label(__('payments.table.exchange_rate'))
+                    ->badge()
+                    ->formatStateUsing(fn ($state): string => blank($state) ? '-' : number_format((float) $state, 2) . ' KHR')
+                    ->toggleable(isToggledHiddenByDefault: false),
+
                 TextColumn::make('status_payt')
                     ->label(__('payments.table.status_payt'))
                     ->badge()
@@ -138,14 +144,6 @@ class PaymentsTable
                             ->searchable()
                             ->live(),
 
-                        Select::make('amount_usd')
-                            ->label(__('payments.table.amount_usd'))
-                            ->placeholder(__('payments.placeholders.amount_usd'))
-                            ->options(fn (): array => self::dynamicAmountUsdOptions())
-                            ->native(false)
-                            ->searchable()
-                            ->live(),
-
                         Select::make('amount_kh')
                             ->label(__('payments.table.amount_kh'))
                             ->placeholder(__('payments.placeholders.amount_kh'))
@@ -174,10 +172,6 @@ class PaymentsTable
                             ->when(
                                 filled($data['major'] ?? null),
                                 fn (Builder $query): Builder => $query->whereIn('id', self::paymentIdsForMajor((string) $data['major']))
-                            )
-                            ->when(
-                                filled($data['amount_usd'] ?? null),
-                                fn (Builder $query): Builder => $query->where('amount_usd', $data['amount_usd'])
                             )
                             ->when(
                                 filled($data['amount_kh'] ?? null),

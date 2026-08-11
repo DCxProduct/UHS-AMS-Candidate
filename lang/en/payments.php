@@ -15,6 +15,7 @@ return [
         'form' => 'Application Form Type',
         'receipt_number' => 'Receipt',
         'type_payment' => 'Payment Type',
+        'exchange_rate' => 'Exchange Rate',
         'status_payt' => 'Payment Status',
         'amount_usd' => 'Amount USD',
         'amount_kh' => 'Amount KHR',
@@ -28,12 +29,17 @@ return [
         'form' => 'Select application form type',
         'major' => 'Select major',
         'type_payment' => 'Select payment type',
+        'exchange_rate' => 'Enter KHR amount for 1 USD',
         'datetime_pay' => 'Select payment date',
         'receipt_number' => 'Enter receipt number',
         'amount_usd' => 'Enter amount in USD',
         'amount_kh' => 'Enter amount in KHR',
         'status_payt' => 'Select payment status',
         'description' => 'Enter description',
+    ],
+
+    'help' => [
+        'exchange_rate' => 'Managed from the Exchange Rates menu.',
     ],
 
     'table' => [
@@ -48,6 +54,7 @@ return [
         'date_of_birth' => 'Date of Birth',
         'receipt_number' => 'Receipt',
         'type_payment' => 'Payment Type',
+        'exchange_rate' => 'Exchange Rate',
         'status_payt' => 'Payment Status',
         'amount_usd' => 'Amount USD',
         'amount_kh' => 'Amount KHR',
@@ -76,6 +83,8 @@ return [
         'form_required' => 'Application form type is required.',
         'receipt_number_required' => 'Receipt is required.',
         'type_payment_required' => 'Payment type is required.',
+        'exchange_rate_required' => 'Exchange rate is required.',
+        'exchange_rate_numeric' => 'Exchange rate must be a number.',
         'datetime_pay_required' => 'Payment date is required.',
         'amount_kh_required' => 'Amount KHR is required.',
         'status_payt_required' => 'Payment status is required.',

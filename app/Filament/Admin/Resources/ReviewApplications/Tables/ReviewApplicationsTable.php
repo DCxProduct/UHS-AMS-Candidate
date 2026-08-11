@@ -85,7 +85,7 @@ class ReviewApplicationsTable
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('user_type')
-                    ->label(app()->getLocale() === 'km' ? 'ប្រភេទអ្នកប្រើ' : 'User Type')
+                    ->label(__('review_applications.user_type'))
                     ->getStateUsing(fn ($record): string => self::userTypeLabel(
                         self::resolveCandidateRole($record->creator)
                     ))
@@ -123,7 +123,8 @@ class ReviewApplicationsTable
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('major')
-                    ->label(app()->getLocale() === 'km' ? 'ផ្នែក/ជំនាញ' : 'Major')
+                    ->label(__('review_applications.major'))
+                    ->badge()
                     ->getStateUsing(fn ($record): string => self::entryValue(
                         $record,
                         filled(data_get($record->data, 'selected_major')) ? 'selected_major' : 'degree_level_major'
@@ -184,14 +185,14 @@ class ReviewApplicationsTable
                             ->live(),
 
                         Select::make('user_type')
-                            ->label(app()->getLocale() === 'km' ? 'ប្រភេទអ្នកប្រើ' : 'User Type')
+                            ->label(__('review_applications.user_type'))
                             ->options(fn (): array => self::dynamicUserTypeOptions())
                             ->native(false)
                             ->searchable()
                             ->live(),
 
                         Select::make('major')
-                            ->label(app()->getLocale() === 'km' ? 'ផ្នែក/ជំនាញ' : 'Major')
+                            ->label(__('review_applications.major'))
                             ->options(fn (): array => self::dynamicMajorOptions())
                             ->native(false)
                             ->searchable()
@@ -371,9 +372,7 @@ class ReviewApplicationsTable
 
                         Notification::make()
                             ->title(NotificationLanguage::trans('review_applications.actions.edit_result'))
-                            ->body(app()->getLocale() === 'km'
-                                ? "បានកែប្រែ {$editedCount} ទិន្នន័យ។"
-                                : "Updated {$editedCount} record(s).")
+                            ->body(__('review_applications.notifications.bulk_pending_success_body', ['count' => $editedCount]))
                             ->success()
                             ->send();
                     }),
@@ -541,7 +540,7 @@ class ReviewApplicationsTable
                 'clean' => fn (CustomFormEntry $record): string => self::entryValue($record, 'academic_year', $record->creator?->academic_year),
             ],
             'user_type' => [
-                'label' => app()->getLocale() === 'km' ? 'ប្រភេទអ្នកប្រើ' : 'User Type',
+                'label' => __('review_applications.user_type'),
                 'field_key' => 'user_type',
                 'value' => fn (CustomFormEntry $record): string => self::userTypeLabel(self::resolveCandidateRole($record->creator)),
                 'clean' => fn (CustomFormEntry $record): string => (string) self::resolveCandidateRole($record->creator),
@@ -571,7 +570,7 @@ class ReviewApplicationsTable
                 'clean' => fn (CustomFormEntry $record): string => self::entryValue($record, 'gender'),
             ],
             'major' => [
-                'label' => app()->getLocale() === 'km' ? 'ផ្នែក/ជំនាញ' : 'Major',
+                'label' => __('review_applications.major'),
                 'field_key' => 'major',
                 'value' => fn (CustomFormEntry $record): string => self::entryValue(
                     $record,
@@ -981,10 +980,10 @@ class ReviewApplicationsTable
         }
 
         return match ((string) $state) {
-            'associate' => app()->getLocale() === 'km' ? 'បរិញ្ញាបត្ររង' : 'Associate',
-            'bachelor' => app()->getLocale() === 'km' ? 'បរិញ្ញាបត្រ' : 'Bachelor',
-            'master' => app()->getLocale() === 'km' ? 'អនុបណ្ឌិត' : 'Master',
-            'phd' => app()->getLocale() === 'km' ? 'បណ្ឌិត' : 'PhD',
+            'associate' => __('review_applications.form_types.associate'),
+            'bachelor' => __('review_applications.form_types.bachelor'),
+            'master' => __('review_applications.form_types.master'),
+            'phd' => __('review_applications.form_types.phd'),
             default => filled($state) ? ucfirst((string) $state) : '-',
         };
     }
@@ -1071,8 +1070,8 @@ class ReviewApplicationsTable
     protected static function genderLabel(string $state): string
     {
         return match (strtolower($state)) {
-            'male' => app()->getLocale() === 'km' ? 'ប្រុស' : 'Male',
-            'female' => app()->getLocale() === 'km' ? 'ស្រី' : 'Female',
+            'male' => __('review_applications.genders.male'),
+            'female' => __('review_applications.genders.female'),
             default => $state,
         };
     }

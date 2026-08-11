@@ -13,6 +13,7 @@ class Payment extends Model
         'form_id',
         'receipt_number',
         'type_payment',
+        'exchange_rate',
         'status_payt',
         'amount_usd',
         'amount_kh',
@@ -24,6 +25,7 @@ class Payment extends Model
     protected function casts(): array
     {
         return [
+            'exchange_rate' => 'decimal:2',
             'amount_usd' => 'decimal:2',
             'amount_kh' => 'decimal:2',
             'datetime_pay' => 'datetime',

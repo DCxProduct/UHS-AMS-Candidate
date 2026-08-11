@@ -89,6 +89,7 @@ return [
         'bulk_passed_success_title' => ':count candidates passed.',
         'admin_failed_success_title' => 'Application Failed',
         'admin_failed_success_body' => 'The application has been marked as failed.',
+        'bulk_pending_success_body' => 'Updated :count record(s).',
 
         'national_exam_approved_title' => 'National Examination Approved',
         'national_exam_approved_body' => 'Your National Examination Registration has been approved.',
@@ -97,6 +98,8 @@ return [
     ],
 
     'form_type' => 'Form Type',
+    'user_type' => 'User Type',
+    'major' => 'Major',
     'reviewed_year' => 'Year',
     'national_registration_number' => 'National Registration Number',
     'not_reviewed_yet' => 'Not reviewed yet',
@@ -121,6 +124,18 @@ return [
     'request_at' => 'Requested At',
     'approve_at' => 'Checked At',
     'review_status_result' => 'Status Result',
+
+    'form_types' => [
+        'associate' => 'Associate',
+        'bachelor' => 'Bachelor',
+        'master' => 'Master',
+        'phd' => 'PhD',
+    ],
+
+    'genders' => [
+        'male' => 'Male',
+        'female' => 'Female',
+    ],
 
     'view_pdf' => 'Check',
 ];
