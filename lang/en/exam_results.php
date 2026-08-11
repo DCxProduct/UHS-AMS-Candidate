@@ -30,4 +30,17 @@ return [
     'gender' => 'Gender',
     'date_of_birth' => 'Date of Birth',
     'exam_date' => 'Exam Date',
+    'major' => 'Major',
+    'options' => [
+        'form_type' => [
+            'associate' => 'Associate',
+            'bachelor' => 'Bachelor',
+            'master' => 'Master',
+            'phd' => 'PhD',
+        ],
+        'gender' => [
+            'male' => 'Male',
+            'female' => 'Female',
+        ],
+    ],
 ];

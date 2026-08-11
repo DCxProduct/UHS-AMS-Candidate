@@ -30,4 +30,17 @@ return [
     'gender' => 'ភេទ',
     'date_of_birth' => 'ថ្ងៃខែឆ្នាំកំណើត',
     'exam_date' => 'ថ្ងៃប្រឡង',
+    'major' => 'ផ្នែក/ជំនាញ',
+    'options' => [
+        'form_type' => [
+            'associate' => 'បរិញ្ញាបត្ររង',
+            'bachelor' => 'បរិញ្ញាបត្រ',
+            'master' => 'អនុបណ្ឌិត',
+            'phd' => 'បណ្ឌិត',
+        ],
+        'gender' => [
+            'male' => 'ប្រុស',
+            'female' => 'ស្រី',
+        ],
+    ],
 ];

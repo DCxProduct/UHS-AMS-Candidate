@@ -79,7 +79,8 @@ class ExamResultsTable
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('major')
-                    ->label(app()->getLocale() === 'km' ? 'ផ្នែក/ជំនាញ' : 'Major')
+                    ->label(__('exam_results.major'))
+                    ->badge()
                     ->getStateUsing(fn ($record): string => self::entryValue(
                         $record,
                         filled(data_get($record->data, 'selected_major')) ? 'selected_major' : 'degree_level_major'
@@ -102,7 +103,7 @@ class ExamResultsTable
                             ->live(),
 
                         Select::make('major')
-                            ->label(app()->getLocale() === 'km' ? 'ផ្នែក/ជំនាញ' : 'Major')
+                            ->label(__('exam_results.major'))
                             ->options(fn (): array => self::dynamicMajorOptions())
                             ->native(false)
                             ->searchable()
@@ -369,7 +370,7 @@ class ExamResultsTable
                 'clean' => fn (CustomFormEntry $record): string => self::entryValue($record, 'gender'),
             ],
             'major' => [
-                'label' => app()->getLocale() === 'km' ? 'ផ្នែក/ជំនាញ' : 'Major',
+                'label' => __('exam_results.major'),
                 'field_key' => 'major',
                 'value' => fn (CustomFormEntry $record): string => self::entryValue(
                     $record,
@@ -741,10 +742,10 @@ class ExamResultsTable
         }
 
         return match ($state) {
-            'associate' => app()->getLocale() === 'km' ? 'បរិញ្ញាបត្ររង' : 'Associate',
-            'bachelor' => app()->getLocale() === 'km' ? 'បរិញ្ញាបត្រ' : 'Bachelor',
-            'master' => app()->getLocale() === 'km' ? 'អនុបណ្ឌិត' : 'Master',
-            'phd' => app()->getLocale() === 'km' ? 'បណ្ឌិត' : 'PhD',
+            'associate' => __('exam_results.options.form_type.associate'),
+            'bachelor' => __('exam_results.options.form_type.bachelor'),
+            'master' => __('exam_results.options.form_type.master'),
+            'phd' => __('exam_results.options.form_type.phd'),
             default => filled($state) ? ucfirst((string) $state) : '-',
         };
     }
@@ -791,8 +792,8 @@ class ExamResultsTable
     protected static function genderLabel(string $state): string
     {
         return match (strtolower($state)) {
-            'male' => app()->getLocale() === 'km' ? 'ប្រុស' : 'Male',
-            'female' => app()->getLocale() === 'km' ? 'ស្រី' : 'Female',
+            'male' => __('exam_results.options.gender.male'),
+            'female' => __('exam_results.options.gender.female'),
             default => $state,
         };
     }
