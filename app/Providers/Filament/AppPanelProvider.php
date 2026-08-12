@@ -321,15 +321,13 @@ class AppPanelProvider extends PanelProvider
                     | /custom-form-entries?tableFilters[custom_form_id][value]=1
                     |--------------------------------------------------------------------------
                     */
-                    $url = ClosingDateWorkflow::shouldShowContact($formId)
-                        ? url('/contact-us?form_id='.$formId)
-                        : PackageCustomFormEntryResource::getUrl('index', [
-                            'tableFilters' => [
-                                'custom_form_id' => [
-                                    'value' => $formId,
-                                ],
+                    $url = PackageCustomFormEntryResource::getUrl('index', [
+                        'tableFilters' => [
+                            'custom_form_id' => [
+                                'value' => $formId,
                             ],
-                        ]);
+                        ],
+                    ]);
 
                     return NavigationItem::make('student-form-'.$formId)
                         ->label(fn (): string => $this->getDynamicFormNavigationLabel($slug, $name))

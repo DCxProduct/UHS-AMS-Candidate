@@ -26,25 +26,31 @@ class ClosingDateWorkflow
             return self::openWithoutRule();
         }
 
-        $typeKeys = [
+        $exactTypeKeys = [
             self::customFormTypeKey($customFormId),
             'custom_form:' . $customFormId,
             (string) $customFormId,
-            (string) $form->name,
-            (string) $form->slug,
-            Str::slug((string) $form->name),
         ];
 
         $closingDate = ClosingDate::query()
-            ->where(function ($query) use ($typeKeys, $form): void {
-                $query
-                    ->whereIn('type', $typeKeys)
-                    ->orWhere('name', $form->name)
-                    ->orWhere('name', $form->slug)
-                    ->orWhere('name', Str::slug((string) $form->name));
-            })
+            ->whereIn('type', $exactTypeKeys)
             ->latest('id')
             ->first();
+
+        if (! $closingDate) {
+            $closingDate = ClosingDate::query()
+                ->where(function ($query) use ($form): void {
+                    $query
+                        ->where('name', $form->name)
+                        ->orWhere('name', $form->slug)
+                        ->orWhere('name', Str::slug((string) $form->name))
+                        ->orWhere('type', (string) $form->name)
+                        ->orWhere('type', (string) $form->slug)
+                        ->orWhere('type', Str::slug((string) $form->name));
+                })
+                ->latest('id')
+                ->first();
+        }
 
         if (! $closingDate) {
             return self::openWithoutRule();

@@ -200,79 +200,25 @@ class ClosingDate extends Model
     public static function isCustomFormOpen(
         int|string|null $customFormId
     ): bool {
-        $deadline = self::getDeadlineByCustomFormId(
-            $customFormId
-        );
-
-        if (! $deadline) {
-            return false;
-        }
-
-        return $deadline->status === self::STATUS_OPEN
-            && now()->toDateString()
-            >= $deadline->start_date?->toDateString()
-            && now()->toDateString()
-            <= $deadline->end_date?->toDateString();
+        return \App\Support\ClosingDateWorkflow::isOpen((int) $customFormId);
     }
 
     public static function shouldShowCustomForm(
         int|string|null $customFormId
     ): bool {
-        return self::isCustomFormOpen($customFormId);
+        return \App\Support\ClosingDateWorkflow::shouldShowFeature((int) $customFormId);
     }
 
     public static function shouldShowContact(
         int|string|null $customFormId
     ): bool {
-        $deadline = self::getDeadlineByCustomFormId(
-            $customFormId
-        );
-
-        if (! $deadline) {
-            return false;
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Manually Closed
-        |--------------------------------------------------------------------------
-        */
-        if ($deadline->status === self::STATUS_CLOSED) {
-            return true;
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Automatically expired
-        |--------------------------------------------------------------------------
-        | The form remains open during its complete end date.
-        |--------------------------------------------------------------------------
-        */
-        return $deadline->end_date
-            && now()->startOfDay()->gt(
-                $deadline->end_date->copy()->startOfDay()
-            );
+        return \App\Support\ClosingDateWorkflow::shouldShowContact((int) $customFormId);
     }
 
     public static function isCustomFormClosed(
         int|string|null $customFormId
     ): bool {
-        $deadline = self::getDeadlineByCustomFormId(
-            $customFormId
-        );
-
-        if (! $deadline) {
-            return false;
-        }
-
-        if ($deadline->status === self::STATUS_CLOSED) {
-            return true;
-        }
-
-        return $deadline->end_date
-            && now()->startOfDay()->gt(
-                $deadline->end_date->copy()->startOfDay()
-            );
+        return \App\Support\ClosingDateWorkflow::isContact((int) $customFormId);
     }
 
     public static function getOpenDynamicForms()
