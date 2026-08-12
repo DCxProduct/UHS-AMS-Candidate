@@ -30,6 +30,15 @@ class EditCustomFormEntry extends EditRecord
         }
     }
 
+    public function hydrate(): void
+    {
+        if (! is_array($this->data)) {
+            $this->data = [];
+        }
+
+        parent::hydrate();
+    }
+
     public function isLockedForEditing(): bool
     {
         $slug = $this->record->customForm?->slug;
