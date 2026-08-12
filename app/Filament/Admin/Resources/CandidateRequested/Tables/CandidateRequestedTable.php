@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Admin\Resources\ReviewApplications\Tables;
+namespace App\Filament\Admin\Resources\CandidateRequested\Tables;
 
 use App\Models\User;
 use App\Support\AuditLogger;
@@ -27,7 +27,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\HtmlString;
 
-class ReviewApplicationsTable
+class CandidateRequestedTable
 {
     public static function downloadExcel(iterable $records, ?array $columnKeys = null)
     {

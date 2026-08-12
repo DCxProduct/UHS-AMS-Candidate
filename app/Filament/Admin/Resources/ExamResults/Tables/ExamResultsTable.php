@@ -2,7 +2,7 @@
 
 namespace App\Filament\Admin\Resources\ExamResults\Tables;
 
-use App\Filament\Admin\Resources\ReviewApplications\Tables\ReviewApplicationsTable;
+use App\Filament\Admin\Resources\CandidateRequested\Tables\CandidateRequestedTable;
 use App\Support\LocalizedNumber;
 use Carbon\Carbon;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
@@ -141,9 +141,9 @@ class ExamResultsTable
                     ->modalDescription(__('exam_results.notify_student_confirm_description'))
                     ->modalSubmitActionLabel(__('exam_results.send_notification'))
                     ->modalCancelActionLabel(__('app.cancel'))
-                    ->visible(fn (CustomFormEntry $record): bool => ! ReviewApplicationsTable::hasStudentReviewResultNotification($record, 'passed'))
+                    ->visible(fn (CustomFormEntry $record): bool => ! CandidateRequestedTable::hasStudentReviewResultNotification($record, 'passed'))
                     ->action(function (CustomFormEntry $record, $livewire): void {
-                        $sent = ReviewApplicationsTable::notifyStudentReviewResult(
+                        $sent = CandidateRequestedTable::notifyStudentReviewResult(
                             record: $record,
                             status: 'passed',
                             note: null,
@@ -483,7 +483,7 @@ class ExamResultsTable
                 continue;
             }
 
-            $sent = ReviewApplicationsTable::notifyStudentReviewResult(
+            $sent = CandidateRequestedTable::notifyStudentReviewResult(
                 record: $record,
                 status: 'passed',
                 note: null,
@@ -508,7 +508,7 @@ class ExamResultsTable
 
     public static function hasStudentPassedNotification(CustomFormEntry $record): bool
     {
-        return ReviewApplicationsTable::hasStudentReviewResultNotification($record, 'passed');
+        return CandidateRequestedTable::hasStudentReviewResultNotification($record, 'passed');
     }
 
     protected static function dynamicAcademicYearOptions(): array

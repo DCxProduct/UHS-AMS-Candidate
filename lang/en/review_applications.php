@@ -1,16 +1,16 @@
 <?php
 
 return [
-    'navigation_label' => 'Candidate Lists',
+    'navigation_label' => 'Candidate Requested',
     'navigation_group' => 'Review Document',
 
     'model_label' => 'Review Application',
-    'plural_model_label' => 'Candidate Lists',
+    'plural_model_label' => 'Candidate Requested',
 
     'all_fields' => 'All Fields',
     'fields_count' => 'fields',
 
-    'list_title' => 'Candidate Lists',
+    'list_title' => 'Candidate Requested',
     'breadcrumb_list' => 'List',
 
     'id' => 'ID',
