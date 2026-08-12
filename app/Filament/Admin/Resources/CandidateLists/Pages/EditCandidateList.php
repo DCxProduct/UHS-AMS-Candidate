@@ -1,22 +1,23 @@
 <?php
 
-namespace App\Filament\Admin\Resources\Users\Pages;
+namespace App\Filament\Admin\Resources\CandidateLists\Pages;
 
-use App\Filament\Admin\Resources\Users\UserResource;
+use App\Filament\Admin\Resources\CandidateLists\CandidateListResource;
 use App\Support\UserTypeOptions;
-use Filament\Resources\Pages\CreateRecord;
+use Filament\Actions;
+use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Enums\Width;
 use Illuminate\Support\Str;
 
-class CreateUser extends CreateRecord
+class EditCandidateList extends EditRecord
 {
-    protected static string $resource = UserResource::class;
+    protected static string $resource = CandidateListResource::class;
 
     protected ?string $selectedCandidateType = null;
 
     protected function getRedirectUrl(): string
     {
-        return UserResource::getUrl('index');
+        return CandidateListResource::getUrl('index');
     }
 
     public function getMaxContentWidth(): Width | string | null
@@ -24,7 +25,35 @@ class CreateUser extends CreateRecord
         return Width::Full;
     }
 
-    protected function mutateFormDataBeforeCreate(array $data): array
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\DeleteAction::make()
+                ->label(__('candidate_lists.actions.delete'))
+                ->action(fn () => $this->record->forceDelete()),
+        ];
+    }
+
+    protected function mutateFormDataBeforeFill(array $data): array
+    {
+        $storedRoles = $this->record->roles;
+
+        if (is_string($storedRoles)) {
+            $decoded = json_decode($storedRoles, true);
+            $storedRoles = is_array($decoded) ? $decoded : [$storedRoles];
+        }
+
+        $candidateType = collect(is_array($storedRoles) ? $storedRoles : [])
+            ->filter(fn ($role): bool => filled($role))
+            ->map(fn ($role): string => trim((string) $role))
+            ->first(fn (string $role): bool => UserTypeOptions::isCandidateManagedRole($role));
+
+        $data['candidate_type'] = UserTypeOptions::resolve($candidateType ?? UserTypeOptions::BASE_ROLE);
+
+        return $data;
+    }
+
+    protected function mutateFormDataBeforeSave(array $data): array
     {
         $candidateType = UserTypeOptions::resolve($data['candidate_type'] ?? null);
         $this->selectedCandidateType = $candidateType;
@@ -52,12 +81,11 @@ class CreateUser extends CreateRecord
 
         $data['permissions'] = null;
         $data['is_active'] = (bool) ($data['is_active'] ?? true);
-        $data['email_verified_at'] = $data['email_verified_at'] ?? now();
 
         return $data;
     }
 
-    protected function afterCreate(): void
+    protected function afterSave(): void
     {
         if ($this->selectedCandidateType) {
             $this->record->forceFill([

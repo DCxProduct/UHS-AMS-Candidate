@@ -20,7 +20,7 @@ return [
     'document_templates' => 'Document Templates',
     'closing_date' => 'Closing Date',
     'exchange_rates' => 'Exchange Rates',
-    'users' => 'Users',
+    'users' => 'Candidate Lists',
     'payment_types' => 'Payment Types',
     'system_users' => 'System Users',
 

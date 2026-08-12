@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Filament\Admin\Resources\Users;
+namespace App\Filament\Admin\Resources\CandidateLists;
 
-use App\Filament\Admin\Resources\Users\Pages\CreateUser;
-use App\Filament\Admin\Resources\Users\Pages\EditUser;
-use App\Filament\Admin\Resources\Users\Pages\ListUsers;
-use App\Filament\Admin\Resources\Users\Schemas\UserForm;
-use App\Filament\Admin\Resources\Users\Tables\UsersTable;
+use App\Filament\Admin\Resources\CandidateLists\Pages\CreateCandidateList;
+use App\Filament\Admin\Resources\CandidateLists\Pages\EditCandidateList;
+use App\Filament\Admin\Resources\CandidateLists\Pages\ListCandidateLists;
+use App\Filament\Admin\Resources\CandidateLists\Schemas\CandidateListForm;
+use App\Filament\Admin\Resources\CandidateLists\Tables\CandidateListsTable;
 use App\Filament\Concerns\AdminOnly;
 use App\Models\SystemUser;
 use App\Support\UserTypeOptions;
@@ -19,7 +19,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use UnitEnum;
 
-class UserResource extends Resource
+class CandidateListResource extends Resource
 {
     use AdminOnly;
 
@@ -32,7 +32,7 @@ class UserResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'name';
 
-    protected static ?string $slug = 'users';
+    protected static ?string $slug = 'candidate-lists';
 
     public static function getNavigationLabel(): string
     {
@@ -51,22 +51,22 @@ class UserResource extends Resource
 
     public static function getModelLabel(): string
     {
-        return __('users.resource_label');
+        return __('candidate_lists.resource_label');
     }
 
     public static function getPluralModelLabel(): string
     {
-        return __('users.resource_plural_label');
+        return __('candidate_lists.resource_plural_label');
     }
 
     public static function form(Schema $schema): Schema
     {
-        return UserForm::configure($schema);
+        return CandidateListForm::configure($schema);
     }
 
     public static function table(Table $table): Table
     {
-        return UsersTable::configure($table);
+        return CandidateListsTable::configure($table);
     }
 
     public static function getRelations(): array
@@ -126,9 +126,9 @@ class UserResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => ListUsers::route('/'),
-            'create' => CreateUser::route('/create'),
-            'edit' => EditUser::route('/{record}/edit'),
+            'index' => ListCandidateLists::route('/'),
+            'create' => CreateCandidateList::route('/create'),
+            'edit' => EditCandidateList::route('/{record}/edit'),
         ];
     }
 }

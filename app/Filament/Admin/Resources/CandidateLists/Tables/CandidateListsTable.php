@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Admin\Resources\Users\Tables;
+namespace App\Filament\Admin\Resources\CandidateLists\Tables;
 
 use App\Models\SystemUser;
 use App\Models\User;
@@ -20,40 +20,40 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\DB;
 
-class UsersTable
+class CandidateListsTable
 {
     public static function configure(Table $table): Table
     {
         return $table
-            ->searchPlaceholder(__('users.search'))
+            ->searchPlaceholder(__('candidate_lists.search'))
             ->columns([
                 TextColumn::make('row_number')
-                    ->label(__('users.fields.no'))
+                    ->label(__('candidate_lists.fields.no'))
                     ->rowIndex()
                     ->formatStateUsing(fn ($state): string => LocalizedNumber::digits($state))
                     ->alignCenter()
                     ->width('60px'),
 
                 TextColumn::make('email')
-                    ->label(__('users.fields.email'))
+                    ->label(__('candidate_lists.fields.email'))
                     ->placeholder('-')
                     ->searchable()
                     ->sortable(),
 
                 TextColumn::make('phone')
-                    ->label(__('users.fields.phone'))
+                    ->label(__('candidate_lists.fields.phone'))
                     ->placeholder('-')
                     ->searchable()
                     ->sortable(),
 
                 TextColumn::make('username')
-                    ->label(__('users.fields.username'))
+                    ->label(__('candidate_lists.fields.username'))
                     ->placeholder('-')
                     ->searchable()
                     ->sortable(),
 
                 TextColumn::make('candidate_type')
-                    ->label(__('users.fields.candidate_type'))
+                    ->label(__('candidate_lists.fields.candidate_type'))
                     ->getStateUsing(function (SystemUser $record): string {
                         $candidateRole = static::resolveCandidateRole($record);
 
@@ -87,24 +87,24 @@ class UsersTable
                     }),
 
                 IconColumn::make('is_active')
-                    ->label(__('users.fields.is_active'))
+                    ->label(__('candidate_lists.fields.is_active'))
                     ->boolean()
                     ->alignCenter()
                     ->sortable(),
 
                 TextColumn::make('created_at')
-                    ->label(__('users.fields.created_at'))
+                    ->label(__('candidate_lists.fields.created_at'))
                     ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
                     ->sortable(),
 
                 TextColumn::make('updated_at')
-                    ->label(__('users.fields.updated_at'))
+                    ->label(__('candidate_lists.fields.updated_at'))
                     ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
                     ->sortable(),
             ])
             ->filters([
                 SelectFilter::make('roles')
-                    ->label(__('users.fields.candidate_type'))
+                    ->label(__('candidate_lists.fields.candidate_type'))
                     ->options(fn (): array => UserTypeOptions::options())
                     ->native(false)
                     ->searchable()
@@ -126,10 +126,10 @@ class UsersTable
                     }),
 
                 SelectFilter::make('is_active')
-                    ->label(__('users.fields.is_active'))
+                    ->label(__('candidate_lists.fields.is_active'))
                     ->options([
-                        '1' => __('users.filters.active'),
-                        '0' => __('users.filters.inactive'),
+                        '1' => __('candidate_lists.filters.active'),
+                        '0' => __('candidate_lists.filters.inactive'),
                     ])
                     ->native(false)
                     ->query(function ($query, array $data) {
@@ -148,12 +148,12 @@ class UsersTable
             ->recordActions([
                 ActionGroup::make([
                     EditAction::make()
-                        ->label(__('users.actions.edit'))
+                        ->label(__('candidate_lists.actions.edit'))
                         ->icon('heroicon-o-pencil-square')
                         ->color('warning'),
 
                     Action::make('activate_account')
-                        ->label(__('users.actions.activate'))
+                        ->label(__('candidate_lists.actions.activate'))
                         ->icon('heroicon-o-check-circle')
                         ->color('success')
                         ->requiresConfirmation()
@@ -162,13 +162,13 @@ class UsersTable
                             $record->activateAccount();
 
                             Notification::make()
-                                ->title(NotificationLanguage::trans('users.notifications.activated'))
+                                ->title(NotificationLanguage::trans('candidate_lists.notifications.activated'))
                                 ->success()
                                 ->send();
                         }),
 
                     Action::make('deactivate_account')
-                        ->label(__('users.actions.deactivate'))
+                        ->label(__('candidate_lists.actions.deactivate'))
                         ->icon('heroicon-o-x-circle')
                         ->color('danger')
                         ->requiresConfirmation()
@@ -177,13 +177,13 @@ class UsersTable
                             $record->deactivateAccount();
 
                             Notification::make()
-                                ->title(NotificationLanguage::trans('users.notifications.deactivated'))
+                                ->title(NotificationLanguage::trans('candidate_lists.notifications.deactivated'))
                                 ->success()
                                 ->send();
                         }),
 
                     DeleteAction::make()
-                        ->label(__('users.actions.delete'))
+                        ->label(__('candidate_lists.actions.delete'))
                         ->icon('heroicon-o-trash')
                         ->color('danger')
                         ->action(fn (SystemUser $record) => $record->forceDelete()),
@@ -191,7 +191,7 @@ class UsersTable
                     ->label('')
                     ->icon('heroicon-m-ellipsis-vertical')
                     ->color('warning')
-                    ->tooltip(__('users.actions.actions')),
+                    ->tooltip(__('candidate_lists.actions.actions')),
             ]);
     }
 
