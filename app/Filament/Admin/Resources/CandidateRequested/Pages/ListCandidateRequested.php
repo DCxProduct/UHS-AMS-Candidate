@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Filament\Admin\Resources\ReviewApplications\Pages;
+namespace App\Filament\Admin\Resources\CandidateRequested\Pages;
 
-use App\Filament\Admin\Resources\ReviewApplications\ReviewApplicationResource;
-use App\Filament\Admin\Resources\ReviewApplications\Tables\ReviewApplicationsTable;
+use App\Filament\Admin\Resources\CandidateRequested\CandidateRequestedResource;
+use App\Filament\Admin\Resources\CandidateRequested\Tables\CandidateRequestedTable;
 use App\Support\AuditLogger;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Actions\Action;
@@ -11,9 +11,9 @@ use Filament\Resources\Pages\ListRecords;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Model;
 
-class ListReviewApplications extends ListRecords
+class ListCandidateRequested extends ListRecords
 {
-    protected static string $resource = ReviewApplicationResource::class;
+    protected static string $resource = CandidateRequestedResource::class;
 
     public function getTitle(): string | Htmlable
     {
@@ -119,7 +119,7 @@ class ListReviewApplications extends ListRecords
                 ->get();
         }
 
-        return ReviewApplicationsTable::downloadExcel($records, $this->visibleExportColumnKeys());
+        return CandidateRequestedTable::downloadExcel($records, $this->visibleExportColumnKeys());
     }
 
     public function clearDataFromTableSelection(
@@ -138,7 +138,7 @@ class ListReviewApplications extends ListRecords
                 $data = [];
             }
 
-            $data[ReviewApplicationResource::HIDDEN_FLAG] = true;
+            $data[CandidateRequestedResource::HIDDEN_FLAG] = true;
 
             $record->forceFill([
                 'data' => $data,
@@ -147,8 +147,8 @@ class ListReviewApplications extends ListRecords
             AuditLogger::log(
                 action: 'cleared',
                 auditable: $record,
-                description: 'Cleared from Candidate Lists',
-                metadata: ['module' => 'Candidate Lists'],
+                description: 'Cleared from Candidate Requested',
+                metadata: ['module' => 'Candidate Requested'],
             );
         });
 

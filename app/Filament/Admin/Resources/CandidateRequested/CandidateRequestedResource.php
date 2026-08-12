@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Filament\Admin\Resources\ReviewApplications;
+namespace App\Filament\Admin\Resources\CandidateRequested;
 
-use App\Filament\Admin\Resources\ReviewApplications\Pages;
-use App\Filament\Admin\Resources\ReviewApplications\Tables\ReviewApplicationsTable;
+use App\Filament\Admin\Resources\CandidateRequested\Pages;
+use App\Filament\Admin\Resources\CandidateRequested\Tables\CandidateRequestedTable;
 use App\Filament\Concerns\AdminOnly;
 use App\Models\ReviewApplication;
 use BackedEnum;
@@ -15,7 +15,7 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\Schema as DbSchema;
 use UnitEnum;
 
-class ReviewApplicationResource extends Resource
+class CandidateRequestedResource extends Resource
 {
     use AdminOnly;
 
@@ -23,7 +23,7 @@ class ReviewApplicationResource extends Resource
 
     protected static ?string $model = ReviewApplication::class;
 
-    protected static ?string $slug = 'candidate-lists';
+    protected static ?string $slug = 'candidate-requested';
 
     protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-clipboard-document-check';
 
@@ -145,13 +145,13 @@ class ReviewApplicationResource extends Resource
 
     public static function table(Table $table): Table
     {
-        return ReviewApplicationsTable::configure($table);
+        return CandidateRequestedTable::configure($table);
     }
 
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListReviewApplications::route('/'),
+            'index' => Pages\ListCandidateRequested::route('/'),
         ];
     }
 }

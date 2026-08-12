@@ -6,7 +6,7 @@ use App\Filament\Admin\Resources\AuditLogs\AuditLogResource;
 use App\Filament\Admin\Resources\CandidatePaymentLists\CandidatePaymentListResource;
 use App\Filament\Admin\Resources\ExamResults\ExamResultResource;
 use App\Filament\Admin\Resources\Payments\PaymentResource;
-use App\Filament\Admin\Resources\ReviewApplications\ReviewApplicationResource;
+use App\Filament\Admin\Resources\CandidateRequested\CandidateRequestedResource;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Facades\Filament;
@@ -160,7 +160,7 @@ class AdminMenuOverview extends Widget
     protected function toneForResource(string $resourceClass): string
     {
         return match ($resourceClass) {
-            ReviewApplicationResource::class => 'sky',
+            CandidateRequestedResource::class => 'sky',
             ExamResultResource::class => 'violet',
             CandidatePaymentListResource::class => 'lime',
             PaymentResource::class => 'teal',
@@ -173,7 +173,7 @@ class AdminMenuOverview extends Widget
     protected function descriptionForResource(string $resourceClass, string $label): string
     {
         return match ($resourceClass) {
-            ReviewApplicationResource::class => __('dashboard.candidate_lists_description'),
+            CandidateRequestedResource::class => __('dashboard.candidate_lists_description'),
             ExamResultResource::class => __('dashboard.exam_results_description'),
             CandidatePaymentListResource::class => __('dashboard.payment_lists_description'),
             PaymentResource::class => __('dashboard.payment_records_description'),
