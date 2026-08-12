@@ -13,7 +13,7 @@ return [
     'student_type' => 'Student type',
     'student_type_required' => 'Please select a student type.',
     'candidate_type' => 'As a Candidate',
-    'select_candidate_type' => 'Please select a role',
+    'select_candidate_type' => 'Please Select a Request',
     'candidate_type_required' => 'Please select a user type.',
 
     'national_examination' => 'National Examination',

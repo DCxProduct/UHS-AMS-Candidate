@@ -13,7 +13,7 @@ return [
     'student_type' => 'ប្រភេទនិស្សិត',
     'student_type_required' => 'សូមជ្រើសរើសប្រភេទនិស្សិត។',
     'candidate_type' => 'ជាបេក្ខជន',
-    'select_candidate_type' => 'សូមជ្រើសរើសតួនាទី',
+    'select_candidate_type' => 'សូមជ្រើសរើសពាក្យស្នើសុំ',
     'candidate_type_required' => 'សូមជ្រើសរើសប្រភេទអ្នកប្រើប្រាស់។',
 
     'national_examination' => 'ប្រឡងថ្នាក់ជាតិ',
@@ -25,8 +25,8 @@ return [
     'username_email_phone' => 'ឈ្មោះអ្នកប្រើប្រាស់ អ៊ីមែល ឬលេខទូរស័ព្ទ',
     'enter_username_email_phone' => 'បញ្ចូលឈ្មោះអ្នកប្រើប្រាស់ អ៊ីមែល ឬលេខទូរស័ព្ទ',
 
-    'username' => 'ឈ្មោះអ្នកប្រើ',
-    'enter_username' => 'បញ្ចូលឈ្មោះអ្នកប្រើ',
+    'username' => 'ឈ្មោះអ្នកប្រើប្រាស់',
+    'enter_username' => 'បញ្ចូលឈ្មោះអ្នកប្រើប្រាស់',
     'username_required' => 'សូមបញ្ចូលឈ្មោះអ្នកប្រើ។',
     'username_unique' => 'ឈ្មោះអ្នកប្រើនេះត្រូវបានប្រើរួចហើយ។',
     'username_min' => 'ឈ្មោះអ្នកប្រើប្រាស់ត្រូវមានយ៉ាងហោចណាស់ 6 តួអក្សរ។',
