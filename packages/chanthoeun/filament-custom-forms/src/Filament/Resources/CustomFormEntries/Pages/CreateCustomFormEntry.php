@@ -54,6 +54,15 @@ class CreateCustomFormEntry extends CreateRecord
         }
     }
 
+    public function hydrate(): void
+    {
+        if (! is_array($this->data)) {
+            $this->data = [];
+        }
+
+        parent::hydrate();
+    }
+
     protected function getHeaderActions(): array
     {
         return [
