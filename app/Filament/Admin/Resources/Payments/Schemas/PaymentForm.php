@@ -3,7 +3,7 @@
 namespace App\Filament\Admin\Resources\Payments\Schemas;
 
 use App\Filament\Admin\Resources\CandidatePaymentLists\CandidatePaymentListResource;
-use App\Filament\Admin\Resources\Users\UserResource;
+use App\Filament\Admin\Resources\CandidateLists\CandidateListResource;
 use App\Models\ExchangeRate;
 use App\Models\PaymentType;
 use App\Models\SystemUser;
@@ -312,7 +312,7 @@ class PaymentForm
             return static::unpaidApplicationUserOptions();
         }
 
-        return UserResource::getEloquentQuery()
+        return CandidateListResource::getEloquentQuery()
             ->orderBy('name')
             ->get()
             ->mapWithKeys(function (SystemUser $systemUser): array {

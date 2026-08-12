@@ -1,9 +1,9 @@
 <?php
 
 return [
-    'navigation_label' => 'Users',
-    'resource_label' => 'User',
-    'resource_plural_label' => 'Users',
+    'navigation_label' => 'Candidate Lists',
+    'resource_label' => 'Candidate List',
+    'resource_plural_label' => 'Candidate Lists',
     'search' => 'Search',
 
     'sections' => [

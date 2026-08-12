@@ -1,9 +1,9 @@
 <?php
 
 return [
-    'navigation_label' => 'អ្នកប្រើប្រាស់',
-    'resource_label' => 'អ្នកប្រើប្រាស់',
-    'resource_plural_label' => 'អ្នកប្រើប្រាស់',
+    'navigation_label' => 'បញ្ជីបេក្ខជន',
+    'resource_label' => 'បញ្ជីបេក្ខជន',
+    'resource_plural_label' => 'បញ្ជីបេក្ខជន',
     'search' => 'ស្វែងរក',
 
     'sections' => [
