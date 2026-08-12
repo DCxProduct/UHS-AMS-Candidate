@@ -85,75 +85,17 @@ class CustomFormEntryResource extends Resource
             (int) $form->id
         );
 
-        $canSeeForm = (bool) ($workflow['can_see_form'] ?? true);
-        $canOpenForm = (bool) ($workflow['can_open_form'] ?? $canSeeForm);
-        $showContact = (bool) ($workflow['show_contact'] ?? false);
-
         /*
         |--------------------------------------------------------------------------
-        | Prevent hidden forms, but allow closed forms through so the list page
-        | can redirect to Contact Us.
+        | Prevent opening closed/not-open forms directly
         |--------------------------------------------------------------------------
         */
-        if (! $canSeeForm && ! $showContact) {
-            return false;
-        }
-
-        if (static::currentUserIsStudent() && (string) $form->slug === 'profile') {
-            return true;
-        }
-
-        if ($showContact) {
-            return true;
-        }
-
-        if (
-            static::currentUserIsStudent()
-            && (
-            static::profileFeatureIsHidden()
-            || static::profileFeatureShowsContact()
-            )
-        ) {
-            return false;
-        }
-
-        return static::currentUserIsStudent()
-            ? ($canOpenForm ? static::studentHasCompletedProfile() : true)
-            : true;
-    }
-
-    public static function canCreate(): bool
-    {
-        if (static::currentUserIsAdmin()) {
-            return parent::canCreate();
-        }
-
-        if (! static::currentUserCanUseDynamicForms()) {
-            return false;
-        }
-
-        $formId = request()->query('form_id')
-            ?? request()->input('form_id')
-            ?? data_get(request()->query('tableFilters'), 'custom_form_id.value')
-            ?? request()->input('tableFilters.custom_form_id.value');
-
-        if (! $formId) {
-            return parent::canCreate();
-        }
-
-        $form = CustomForm::query()->find($formId);
-
-        if (! $form) {
-            return false;
-        }
-
-        if (! static::canCurrentUserAccessForm($form)) {
-            return false;
-        }
-
-        $workflow = ClosingDateWorkflow::checkByCustomFormId((int) $form->id);
-
-        if (! ($workflow['can_open_form'] ?? $workflow['can_submit'] ?? $workflow['can_see_form'] ?? true)) {
+        if (! (
+            $workflow['can_open_form']
+            ?? $workflow['can_submit']
+            ?? $workflow['can_see_form']
+            ?? true
+        )) {
             return false;
         }
 
@@ -173,7 +115,7 @@ class CustomFormEntryResource extends Resource
 
         return static::currentUserIsStudent()
             ? static::studentHasCompletedProfile()
-            : parent::canCreate();
+            : true;
     }
 
     protected static function currentUserCanAccessAdminResource(): bool
@@ -392,13 +334,15 @@ class CustomFormEntryResource extends Resource
 
                 $formId = (int) $form->id;
 
-                $url = static::getUrl('index', [
-                    'tableFilters' => [
-                        'custom_form_id' => [
-                            'value' => $formId,
+                $url = static::formShouldShowContact($formId)
+                    ? url('/contact-us?form_id=' . $formId)
+                    : static::getUrl('index', [
+                        'tableFilters' => [
+                            'custom_form_id' => [
+                                'value' => $formId,
+                            ],
                         ],
-                    ],
-                ]);
+                    ]);
 
                 $items[] = NavigationItem::make('custom-form-entry-' . $formId)
                     ->label(static::getNavigationTitle($form))

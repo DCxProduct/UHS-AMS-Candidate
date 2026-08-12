@@ -3,10 +3,8 @@
 namespace App\Filament\Student\Pages;
 
 use App\Models\ClosingDate;
-use App\Support\ClosingDateWorkflow;
 use BackedEnum;
 use Carbon\Carbon;
-use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
@@ -21,33 +19,6 @@ class ContactUs extends Page
     protected static bool $shouldRegisterNavigation = false;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedPhone;
-
-    public function mount(): void
-    {
-        $formId = $this->getFormId();
-
-        if (! $formId) {
-            return;
-        }
-
-        $workflow = ClosingDateWorkflow::checkByCustomFormId($formId);
-
-        if (
-            ($workflow['can_open_form'] ?? false)
-            && ! ($workflow['show_contact'] ?? false)
-        ) {
-            $this->redirect(
-                CustomFormEntryResource::getUrl('index', [
-                    'tableFilters' => [
-                        'custom_form_id' => [
-                            'value' => $formId,
-                        ],
-                    ],
-                ]),
-                navigate: true,
-            );
-        }
-    }
 
     public static function canAccess(): bool
     {
