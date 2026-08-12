@@ -88,7 +88,7 @@ class EditCustomFormEntry extends EditRecord
                 ->color('info')
                 ->hidden(fn () => $this->isLockedForEditing() || $this->hasWizardOnFirstStep() || $this->entryStatus() !== 'draft')
                 ->action(function (): void {
-                    $data = $this->form->getRawState();
+                    $data = $this->rawFormState();
                     $data = $this->mutateFormDataBeforeSave($data);
 
                     $data['review_status'] = 'draft';
@@ -339,7 +339,7 @@ class EditCustomFormEntry extends EditRecord
         $this->form->fill(
             app(ProfileFormData::class)->prefillStateForForm(
                 $this->record->custom_form_id,
-                $this->form->getRawState()
+                $this->rawFormState()
             )
         );
 
@@ -379,7 +379,7 @@ class EditCustomFormEntry extends EditRecord
             return false;
         }
 
-        if (filled(data_get($this->form->getRawState(), 'data.form_selection'))) {
+        if (filled(data_get($this->rawFormState(), 'data.form_selection'))) {
             return false;
         }
 
@@ -394,6 +394,11 @@ class EditCustomFormEntry extends EditRecord
         }
 
         return $wizard->getCurrentStepIndex() === 0;
+    }
+
+    protected function rawFormState(): array
+    {
+        return is_array($this->data) ? $this->data : [];
     }
 
     protected function entryStatus(): string

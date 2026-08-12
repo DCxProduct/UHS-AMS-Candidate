@@ -64,7 +64,7 @@ class CreateCustomFormEntry extends CreateRecord
                 ->action(function (): void {
                     $this->isSavingDraft = true;
 
-                    $data = $this->form->getRawState();
+                    $data = $this->rawFormState();
                     $data = $this->mutateFormDataBeforeCreate($data);
 
                     $data['review_status'] = 'draft';
@@ -110,7 +110,7 @@ class CreateCustomFormEntry extends CreateRecord
             return;
         }
 
-        $state = $this->form->getRawState();
+        $state = $this->rawFormState();
 
         $state['custom_form_id'] = $currentFormId;
         $state['data'] = $state['data'] ?? [];
@@ -135,7 +135,7 @@ class CreateCustomFormEntry extends CreateRecord
                 ->modalCancelActionLabel(__('app.no'))
                 ->hidden(fn () => $this->hasWizardOnFirstStep())
                 ->action(function (): void {
-                    $state = $this->form->getRawState();
+                    $state = $this->rawFormState();
 
                     $customFormId = $this->form_id
                         ?? data_get($state, 'custom_form_id');
@@ -414,7 +414,7 @@ class CreateCustomFormEntry extends CreateRecord
             return false;
         }
 
-        if (filled(data_get($this->form->getRawState(), 'data.form_selection'))) {
+        if (filled(data_get($this->rawFormState(), 'data.form_selection'))) {
             return false;
         }
 
@@ -429,6 +429,11 @@ class CreateCustomFormEntry extends CreateRecord
         }
 
         return $wizard->getCurrentStepIndex() === 0;
+    }
+
+    protected function rawFormState(): array
+    {
+        return is_array($this->data) ? $this->data : [];
     }
 
     protected function getCreatedNotificationTitle(): ?string
