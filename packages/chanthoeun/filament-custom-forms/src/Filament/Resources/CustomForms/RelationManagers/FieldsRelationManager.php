@@ -304,7 +304,7 @@ class FieldsRelationManager extends RelationManager
                                     ->default('2')
                                     ->native(false),
 
-                                \Filament\Forms\Components\Repeater::make('options.choice_rows')
+                                \Filament\Forms\Components\Repeater::make('choice_rows')
                                     ->label(__('filament-custom-forms::fcf.admin.select_options'))
                                     ->visible(function ($get): bool {
                                         return in_array((string) $get('type'), self::CHOICE_TYPES, true)
@@ -325,16 +325,7 @@ class FieldsRelationManager extends RelationManager
                                             ->label(__('filament-custom-forms::fcf.admin.label_khmer'))
                                             ->required(),
                                     ])
-                                    ->afterStateHydrated(function ($component, $state, $record): void {
-                                        if (filled($state)) {
-                                            return;
-                                        }
-
-                                        $options = self::normalizeOptions($record?->options ?? []);
-                                        $choices = $options['choices'] ?? [];
-
-                                        $component->state(self::choicesToRows(is_array($choices) ? $choices : []));
-                                    })
+                                    ->default([])
                                     ->dehydrated(true)
                                     ->helperText(__('filament-custom-forms::fcf.admin.choice_rows_help')),
 
@@ -520,10 +511,10 @@ class FieldsRelationManager extends RelationManager
                     ->onColor('success')
                     ->offColor('gray')
                     ->disabled(fn ($record) => in_array(
-                        $record->type,
-                        self::CONTAINER_TYPES,
-                        true
-                    ) || (string) $record->type === 'info'),
+                            $record->type,
+                            self::CONTAINER_TYPES,
+                            true
+                        ) || (string) $record->type === 'info'),
 
                 TextColumn::make('type')
                     ->label(__('filament-custom-forms::fcf.field.type'))
@@ -696,6 +687,20 @@ class FieldsRelationManager extends RelationManager
             ->actions([
                 EditAction::make()
                     ->modalHeading(__('filament-custom-forms::fcf.admin.edit_custom_form_field'))
+                    ->fillForm(function ($record): array {
+                        $data = $record->toArray();
+                        $options = self::normalizeOptions($record->options ?? []);
+                        $choices = $options['choices'] ?? [];
+
+                        $data['options'] = $options;
+                        $data['label_en'] = self::getLangValue($record->label, 'en');
+                        $data['label_km'] = self::getLangValue($record->label, 'km');
+                        $data['choice_rows'] = self::choicesToRows(
+                            is_array($choices) ? $choices : []
+                        );
+
+                        return $data;
+                    })
                     ->using(function ($record, array $data) {
                         $this->syncFieldDataAcrossSelectedForms($record, $data);
 
@@ -823,12 +828,16 @@ class FieldsRelationManager extends RelationManager
 
         unset($data['label_en'], $data['label_km']);
 
-        $choiceRows = data_get($data, 'options.choice_rows');
+        $choiceRows = $data['choice_rows'] ?? [];
 
         if (is_array($choiceRows)) {
             $choices = [];
 
             foreach ($choiceRows as $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+
                 $value = trim((string) ($row['key'] ?? ''));
 
                 if ($value === '') {
@@ -845,8 +854,9 @@ class FieldsRelationManager extends RelationManager
             }
 
             data_set($data, 'options.choices', $choices);
-            data_forget($data, 'options.choice_rows');
         }
+
+        unset($data['choice_rows']);
 
         $conditionalField = data_get($data, 'options.conditional_when.field');
         $conditionalValues = data_get($data, 'options.conditional_when.values', []);
