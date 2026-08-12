@@ -321,13 +321,15 @@ class AppPanelProvider extends PanelProvider
                     | /custom-form-entries?tableFilters[custom_form_id][value]=1
                     |--------------------------------------------------------------------------
                     */
-                    $url = PackageCustomFormEntryResource::getUrl('index', [
-                        'tableFilters' => [
-                            'custom_form_id' => [
-                                'value' => $formId,
+                    $url = ClosingDateWorkflow::shouldShowContact($formId)
+                        ? url('/contact-us?form_id='.$formId)
+                        : PackageCustomFormEntryResource::getUrl('index', [
+                            'tableFilters' => [
+                                'custom_form_id' => [
+                                    'value' => $formId,
+                                ],
                             ],
-                        ],
-                    ]);
+                        ]);
 
                     return NavigationItem::make('student-form-'.$formId)
                         ->label(fn (): string => $this->getDynamicFormNavigationLabel($slug, $name))
@@ -342,9 +344,9 @@ class AppPanelProvider extends PanelProvider
                             && $this->canShowDynamicForm($slug))
                         ->isActiveWhen(
                             fn (): bool => (
-                                request()->is('custom-form-entries*')
-                                && (int) data_get(request()->query('tableFilters'), 'custom_form_id.value') === $formId
-                            )
+                                    request()->is('custom-form-entries*')
+                                    && (int) data_get(request()->query('tableFilters'), 'custom_form_id.value') === $formId
+                                )
                                 || (
                                     request()->is('contact-us*')
                                     && (int) request()->query('form_id') === $formId
@@ -696,13 +698,13 @@ class AppPanelProvider extends PanelProvider
         ];
 
         foreach ([
-            'display_order',
-            'sort',
-            'sort_order',
-            'order_column',
-            'ordering',
-            'position',
-        ] as $column) {
+                     'display_order',
+                     'sort',
+                     'sort_order',
+                     'order_column',
+                     'ordering',
+                     'position',
+                 ] as $column) {
             if (isset($form->{$column}) && is_numeric($form->{$column}) && (int) $form->{$column} > 0) {
                 return (int) $form->{$column};
             }
