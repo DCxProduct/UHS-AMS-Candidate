@@ -186,7 +186,7 @@ class CandidateListsTable
                         ->label(__('candidate_lists.actions.delete'))
                         ->icon('heroicon-o-trash')
                         ->color('danger')
-                        ->action(fn (SystemUser $record) => $record->forceDelete()),
+                        ->action(fn (SystemUser $record) => $record->deleteWithLinkedLoginUsers()),
                 ])
                     ->label('')
                     ->icon('heroicon-m-ellipsis-vertical')
@@ -229,10 +229,6 @@ class CandidateListsTable
 
     protected static function findLinkedLoginUser(SystemUser $record): ?User
     {
-        return User::query()
-            ->when(filled($record->username), fn ($query) => $query->orWhere('username', $record->username))
-            ->when(filled($record->email), fn ($query) => $query->orWhere('email', $record->email))
-            ->when(filled($record->phone), fn ($query) => $query->orWhere('phone', $record->phone))
-            ->first();
+        return $record->findLinkedLoginUser();
     }
 }
