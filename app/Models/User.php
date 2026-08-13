@@ -5,6 +5,7 @@ namespace App\Models;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Models\Contracts\HasAvatar;
 use Filament\Panel;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -130,10 +131,22 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
 
     public function linkedSystemUser(): ?SystemUser
     {
+        $identifiers = array_filter([
+            'username' => filled($this->username) ? $this->username : null,
+            'email' => filled($this->email) ? $this->email : null,
+            'phone' => filled($this->phone) ? $this->phone : null,
+        ], fn ($value): bool => filled($value));
+
+        if ($identifiers === []) {
+            return null;
+        }
+
         return SystemUser::query()
-            ->when(filled($this->username), fn ($query) => $query->orWhere('username', $this->username))
-            ->when(filled($this->email), fn ($query) => $query->orWhere('email', $this->email))
-            ->when(filled($this->phone), fn ($query) => $query->orWhere('phone', $this->phone))
+            ->where(function (Builder $query) use ($identifiers): void {
+                foreach ($identifiers as $column => $value) {
+                    $query->orWhere($column, $value);
+                }
+            })
             ->first();
     }
 

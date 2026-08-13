@@ -8,12 +8,14 @@ use Filament\Models\Contracts\HasAvatar;
 use Filament\Models\Contracts\HasName;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Auth\Passwords\CanResetPassword;
 use Illuminate\Contracts\Auth\CanResetPassword as CanResetPasswordContract;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Spatie\Permission\Models\Permission;
@@ -63,17 +65,7 @@ class SystemUser extends Authenticatable implements FilamentUser, HasAvatar, Has
     protected static function booted(): void
     {
         static::deleting(function (SystemUser $systemUser): void {
-            $linkedLoginUser = $systemUser->findLinkedLoginUser();
-
-            if (! $linkedLoginUser || $linkedLoginUser->trashed()) {
-                return;
-            }
-
-            if ($linkedLoginUser->registration_type === 'admin') {
-                $systemUser->isForceDeleting()
-                    ? $linkedLoginUser->forceDelete()
-                    : $linkedLoginUser->delete();
-            }
+            $systemUser->deleteLinkedLoginUsers($systemUser->isForceDeleting());
         });
     }
 
@@ -186,6 +178,13 @@ class SystemUser extends Authenticatable implements FilamentUser, HasAvatar, Has
         $this->syncLoginUserAuthorizations($loginUser);
     }
 
+    public function deleteWithLinkedLoginUsers(bool $forceDelete = true): void
+    {
+        DB::transaction(function () use ($forceDelete): void {
+            $forceDelete ? $this->forceDelete() : $this->delete();
+        });
+    }
+
     protected function getLoginUserLookup(): array
     {
         if (filled($this->username)) {
@@ -269,11 +268,38 @@ class SystemUser extends Authenticatable implements FilamentUser, HasAvatar, Has
 
     public function findLinkedLoginUser(): ?User
     {
-        return User::query()
-            ->when(filled($this->username), fn ($query) => $query->orWhere('username', $this->username))
-            ->when(filled($this->email), fn ($query) => $query->orWhere('email', $this->email))
-            ->when(filled($this->phone), fn ($query) => $query->orWhere('phone', $this->phone))
+        return $this->linkedLoginUsersQuery()
             ->first();
+    }
+
+    protected function deleteLinkedLoginUsers(bool $forceDelete): void
+    {
+        $this->linkedLoginUsersQuery(withTrashed: $forceDelete)
+            ->get()
+            ->each(function (User $loginUser) use ($forceDelete): void {
+                $forceDelete ? $loginUser->forceDelete() : $loginUser->delete();
+            });
+    }
+
+    protected function linkedLoginUsersQuery(bool $withTrashed = false): Builder
+    {
+        $identifiers = array_filter([
+            'username' => filled($this->username) ? $this->username : null,
+            'email' => filled($this->email) ? $this->email : null,
+            'phone' => filled($this->phone) ? $this->phone : null,
+        ], fn ($value): bool => filled($value));
+
+        $query = $withTrashed ? User::withTrashed() : User::query();
+
+        if ($identifiers === []) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->where(function (Builder $query) use ($identifiers): void {
+            foreach ($identifiers as $column => $value) {
+                $query->orWhere($column, $value);
+            }
+        });
     }
 
     public static function syncStaffLoginUsers(): void
