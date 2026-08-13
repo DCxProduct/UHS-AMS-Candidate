@@ -9,6 +9,7 @@ use App\Support\ClosingDateWorkflow;
 use App\Support\NotificationLanguage;
 use App\Support\ProfileFormData;
 use App\Support\StudentDynamicFormSchema;
+use App\Models\CandidateSubmitPopupSetting;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -374,6 +375,30 @@ class StudentDynamicFormPage extends Page implements HasForms
         return Width::Full;
     }
 
+    public function submitPopupTitle(): string
+    {
+        return $this->submitPopupSetting()?->localizedTitle()
+            ?: __('app.confirm_submit_data');
+    }
+
+    public function submitPopupDescription(): string
+    {
+        return $this->submitPopupSetting()?->localizedDescription()
+            ?: __('app.confirm_submit_data_description');
+    }
+
+    public function submitPopupConfirmLabel(): string
+    {
+        return $this->submitPopupSetting()?->localizedConfirmLabel()
+            ?: __('app.save');
+    }
+
+    public function submitPopupCancelLabel(): string
+    {
+        return $this->submitPopupSetting()?->localizedCancelLabel()
+            ?: __('app.cancel');
+    }
+
     protected function getTranslatedFormName(): string
     {
         $name = (string) ($this->customForm->name ?? 'Form');
@@ -515,6 +540,15 @@ class StudentDynamicFormPage extends Page implements HasForms
     protected function cleanSectionLabel(string $label): string
     {
         return trim(preg_replace('/^[IVX]+\.\s*/i', '', $label) ?? $label);
+    }
+
+    protected function submitPopupSetting(): ?CandidateSubmitPopupSetting
+    {
+        if (! DatabaseSchema::hasTable('candidate_submit_popup_settings')) {
+            return null;
+        }
+
+        return CandidateSubmitPopupSetting::singleton();
     }
 
     protected function firstExistingColumn(array $columns, array $names): ?string

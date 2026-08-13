@@ -3,6 +3,7 @@
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Pages;
 
 use App\Models\ClosingDate;
+use App\Models\CandidateSubmitPopupSetting;
 use App\Support\ProfileFormData;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
@@ -138,10 +139,10 @@ class CreateCustomFormEntry extends CreateRecord
                 ->label(__('app.done'))
                 ->color('primary')
                 ->requiresConfirmation()
-                ->modalHeading(__('app.confirm_submit_data'))
-                ->modalDescription(__('app.confirm_submit_data_description'))
-                ->modalSubmitActionLabel(__('app.yes'))
-                ->modalCancelActionLabel(__('app.no'))
+                ->modalHeading($this->submitPopupTitle())
+                ->modalDescription($this->submitPopupDescription())
+                ->modalSubmitActionLabel($this->submitPopupConfirmLabel())
+                ->modalCancelActionLabel($this->submitPopupCancelLabel())
                 ->hidden(fn () => $this->hasWizardOnFirstStep())
                 ->action(function (): void {
                     $state = $this->rawFormState();
@@ -476,6 +477,39 @@ class CreateCustomFormEntry extends CreateRecord
         $this->unmountAction(cancelParentActions: false);
 
         throw $exception;
+    }
+
+    protected function submitPopupTitle(): string
+    {
+        return $this->submitPopupSetting()?->localizedTitle()
+            ?: __('app.confirm_submit_data');
+    }
+
+    protected function submitPopupDescription(): string
+    {
+        return $this->submitPopupSetting()?->localizedDescription()
+            ?: __('app.confirm_submit_data_description');
+    }
+
+    protected function submitPopupConfirmLabel(): string
+    {
+        return $this->submitPopupSetting()?->localizedConfirmLabel()
+            ?: __('app.yes');
+    }
+
+    protected function submitPopupCancelLabel(): string
+    {
+        return $this->submitPopupSetting()?->localizedCancelLabel()
+            ?: __('app.no');
+    }
+
+    protected function submitPopupSetting(): ?CandidateSubmitPopupSetting
+    {
+        if (! Schema::hasTable('candidate_submit_popup_settings')) {
+            return null;
+        }
+
+        return CandidateSubmitPopupSetting::singleton();
     }
 
     protected function sendStudentSubmitPaymentNotificationIfNeeded(?CustomFormEntry $entry): void
