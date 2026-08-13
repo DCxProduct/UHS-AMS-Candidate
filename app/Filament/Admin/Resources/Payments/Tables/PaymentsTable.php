@@ -61,6 +61,8 @@ class PaymentsTable
 
                 TextColumn::make('gender')
                     ->label(__('payments.table.gender'))
+                    ->badge()
+                    ->alignCenter()
                     ->getStateUsing(fn (Payment $record): string => self::genderLabel(self::entryValue($record, 'gender')))
                     ->toggleable(isToggledHiddenByDefault: false),
 
@@ -85,28 +87,17 @@ class PaymentsTable
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: false),
 
-                TextColumn::make('type_payment')
-                    ->label(__('payments.table.type_payment'))
-                    ->badge()
-                    ->formatStateUsing(fn (?string $state): string => PaymentType::localizedLabelFor($state))
-                    ->color('info')
-                    ->toggleable(isToggledHiddenByDefault: false),
-
                 TextColumn::make('exchange_rate')
                     ->label(__('payments.table.exchange_rate'))
                     ->badge()
                     ->formatStateUsing(fn ($state): string => blank($state) ? '-' : number_format((float) $state, 2) . ' KHR')
                     ->toggleable(isToggledHiddenByDefault: false),
 
-                TextColumn::make('status_payt')
-                    ->label(__('payments.table.status_payt'))
+                TextColumn::make('type_payment')
+                    ->label(__('payments.table.type_payment'))
                     ->badge()
-                    ->formatStateUsing(fn (?string $state): string => __('payments.options.status_payt.' . strtolower((string) $state)))
-                    ->color(fn (?string $state): string => match (strtolower((string) $state)) {
-                        'paid' => 'success',
-                        'return' => 'danger',
-                        default => 'warning',
-                    })
+                    ->formatStateUsing(fn (?string $state): string => PaymentType::localizedLabelFor($state))
+                    ->color('info')
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('amount_usd')
@@ -117,6 +108,18 @@ class PaymentsTable
                 TextColumn::make('amount_kh')
                     ->label(__('payments.table.amount_kh'))
                     ->formatStateUsing(fn ($state): string => blank($state) ? '-' : number_format((float) $state, 2) . ' KHR')
+                    ->toggleable(isToggledHiddenByDefault: false),
+
+                TextColumn::make('status_payt')
+                    ->label(__('payments.table.status_payt'))
+                    ->badge()
+                    ->alignCenter()
+                    ->formatStateUsing(fn (?string $state): string => __('payments.options.status_payt.' . strtolower((string) $state)))
+                    ->color(fn (?string $state): string => match (strtolower((string) $state)) {
+                        'paid' => 'success',
+                        'return' => 'danger',
+                        default => 'warning',
+                    })
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('datetime_pay')

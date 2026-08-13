@@ -4,10 +4,21 @@ namespace App\Filament\Admin\Resources\CandidatePaymentLists\Tables;
 
 use App\Filament\Admin\Resources\CandidatePaymentLists\CandidatePaymentListResource;
 use App\Models\CandidatePaymentList;
+use App\Models\ExchangeRate;
 use App\Models\Payment;
+use App\Models\PaymentType;
+use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
+use Filament\Actions\Action;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Grid;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
@@ -181,7 +192,166 @@ class CandidatePaymentListsTable
             ], layout: FiltersLayout::AboveContent)
             ->deferFilters(false)
             ->filtersFormColumns(3)
-            ->recordActions([]);
+            ->recordActions([
+                Action::make('pay')
+                    ->label(__('payments.actions.pay'))
+                    ->icon('heroicon-o-banknotes')
+                    ->color('success')
+                    ->link()
+                    ->modalWidth('4xl')
+                    ->modalHeading(__('payments.actions.create_payment'))
+                    ->modalSubmitActionLabel(__('payments.actions.submit_payment'))
+                    ->fillForm(fn (CandidatePaymentList $record): array => [
+                        'users_id' => self::ownerId($record),
+                        'form_id' => $record->custom_form_id,
+                        'candidate_name' => self::candidateDisplayName($record),
+                        'exchange_rate' => self::defaultExchangeRate(),
+                        'datetime_pay' => now()->toDateString(),
+                        'status' => true,
+                    ])
+                    ->form([
+                        Hidden::make('users_id'),
+                        Hidden::make('form_id'),
+                        Hidden::make('exchange_rate')
+                            ->dehydrateStateUsing(fn (mixed $state): ?string => self::normalizeExchangeRate($state)),
+
+                        Grid::make([
+                            'default' => 1,
+                            'md' => 2,
+                        ])->schema([
+                            TextInput::make('candidate_name')
+                                ->label(__('payments.fields.user'))
+                                ->disabled()
+                                ->dehydrated(false),
+
+                            TextInput::make('receipt_number')
+                                ->label(__('payments.fields.receipt_number'))
+                                ->placeholder(__('payments.placeholders.receipt_number'))
+                                ->required()
+                                ->maxLength(255)
+                                ->validationMessages([
+                                    'required' => __('payments.validation.receipt_number_required'),
+                                ]),
+
+                            Select::make('type_payment')
+                                ->label(__('payments.fields.type_payment'))
+                                ->placeholder(__('payments.placeholders.type_payment'))
+                                ->options(fn (): array => PaymentType::activeOptions())
+                                ->native(false)
+                                ->searchable()
+                                ->preload()
+                                ->required()
+                                ->validationMessages([
+                                    'required' => __('payments.validation.type_payment_required'),
+                                ]),
+
+                            DatePicker::make('datetime_pay')
+                                ->label(__('payments.fields.datetime_pay'))
+                                ->placeholder(__('payments.placeholders.datetime_pay'))
+                                ->default(now()->toDateString())
+                                ->format('Y-m-d')
+                                ->displayFormat('d-M-Y')
+                                ->native(false)
+                                ->suffixIcon('heroicon-o-calendar-days')
+                                ->validationMessages([
+                                    'required' => __('payments.validation.datetime_pay_required'),
+                                ])
+                                ->required(),
+
+                            TextInput::make('amount_kh')
+                                ->label(__('payments.fields.amount_kh'))
+                                ->placeholder(__('payments.placeholders.amount_kh'))
+                                ->suffix('KHR')
+                                ->inputMode('decimal')
+                                ->extraInputAttributes([
+                                    'oninput' => "this.value = this.value.replace(/[^0-9,]/g, '')",
+                                ])
+                                ->rule(static function (): \Closure {
+                                    return static function (string $attribute, mixed $value, \Closure $fail): void {
+                                        if ($value === null || trim((string) $value) === '') {
+                                            return;
+                                        }
+
+                                        if (! is_numeric(str_replace(',', '', (string) $value))) {
+                                            $fail(__('validation.numeric', ['attribute' => $attribute]));
+                                        }
+                                    };
+                                })
+                                ->live(onBlur: true)
+                                ->afterStateHydrated(function (TextInput $component, mixed $state): void {
+                                    $component->state(self::normalizeKhrAmount($state));
+                                })
+                                ->afterStateUpdated(function (mixed $state, callable $set, callable $get): void {
+                                    $set('amount_kh', self::normalizeKhrAmount($state));
+                                    self::syncUsdFromKhr($get, $set);
+                                })
+                                ->dehydrateStateUsing(fn (mixed $state): ?string => self::dehydrateKhrAmount($state))
+                                ->required()
+                                ->validationMessages([
+                                    'required' => __('payments.validation.amount_kh_required'),
+                                ]),
+
+                            TextInput::make('amount_usd')
+                                ->label(__('payments.fields.amount_usd'))
+                                ->placeholder(__('payments.placeholders.amount_usd'))
+                                ->suffix('$')
+                                ->inputMode('decimal')
+                                ->extraInputAttributes([
+                                    'oninput' => "this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\\..*)\\./g, '$1')",
+                                ])
+                                ->rule('numeric')
+                                ->live(onBlur: true)
+                                ->afterStateHydrated(function (TextInput $component, mixed $state): void {
+                                    $component->state(self::normalizeUsdAmount($state));
+                                })
+                                ->afterStateUpdated(function (mixed $state, callable $set, callable $get): void {
+                                    $set('amount_usd', self::normalizeUsdAmount($state));
+                                    self::syncKhrFromUsd($get, $set);
+                                })
+                                ->dehydrateStateUsing(fn (mixed $state): ?string => self::normalizeUsdAmount($state)),
+                        ]),
+
+                        Placeholder::make('exchange_rate_display')
+                            ->label(__('payments.fields.exchange_rate'))
+                            ->helperText(__('payments.help.exchange_rate'))
+                            ->content(function (callable $get): string {
+                                $rate = self::normalizeExchangeRate($get('exchange_rate')) ?? self::defaultExchangeRate();
+
+                                return sprintf('1 USD = %s KHR', $rate);
+                            }),
+
+                        Textarea::make('description')
+                            ->label(__('payments.fields.description'))
+                            ->placeholder(__('payments.placeholders.description'))
+                            ->rows(4),
+                    ])
+                    ->action(function (CandidatePaymentList $record, array $data): void {
+                        $paymentData = [
+                            'users_id' => self::ownerId($record),
+                            'form_id' => $record->custom_form_id,
+                            'receipt_number' => $data['receipt_number'],
+                            'type_payment' => $data['type_payment'],
+                            'status_payt' => 'paid',
+                            'amount_usd' => $data['amount_usd'] ?? null,
+                            'amount_kh' => $data['amount_kh'] ?? null,
+                            'datetime_pay' => $data['datetime_pay'] ?? null,
+                            'status' => true,
+                            'description' => $data['description'] ?? null,
+                        ];
+
+                        if (Schema::hasColumn('payments', 'exchange_rate')) {
+                            $paymentData['exchange_rate'] = $data['exchange_rate'] ?? self::defaultExchangeRate();
+                        }
+
+                        Payment::query()->create($paymentData);
+
+                        Notification::make()
+                            ->title(__('payments.actions.record_payment'))
+                            ->success()
+                            ->send();
+                    })
+                    ->visible(fn (CandidatePaymentList $record): bool => self::latestPaymentRecord($record) === null),
+            ]);
     }
 
     protected static function excelRows(iterable $records, ?array $columnKeys = null): array
@@ -493,6 +663,113 @@ class CandidatePaymentListsTable
         return strtolower((string) $payment->status_payt) === 'paid' ? 'paid' : 'unpaid';
     }
 
+    protected static function normalizeUsdAmount(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $normalized = trim((string) $value);
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        $normalized = str_replace(',', '', $normalized);
+
+        if (! is_numeric($normalized)) {
+            return $normalized;
+        }
+
+        return number_format((float) $normalized, 2, '.', '');
+    }
+
+    protected static function normalizeKhrAmount(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $normalized = trim((string) $value);
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        $normalized = str_replace(',', '', $normalized);
+
+        if (! is_numeric($normalized)) {
+            return $normalized;
+        }
+
+        return number_format((float) $normalized, 0, '.', ',');
+    }
+
+    protected static function dehydrateKhrAmount(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $normalized = trim((string) $value);
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        return str_replace(',', '', $normalized);
+    }
+
+    protected static function defaultExchangeRate(): string
+    {
+        return ExchangeRate::activeUsdToKhrRate() ?? '4100.00';
+    }
+
+    protected static function normalizeExchangeRate(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $normalized = trim((string) $value);
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        $normalized = str_replace(',', '', $normalized);
+
+        if (! is_numeric($normalized)) {
+            return $normalized;
+        }
+
+        return number_format((float) $normalized, 2, '.', '');
+    }
+
+    protected static function syncKhrFromUsd(callable $get, callable $set): void
+    {
+        $usdAmount = self::normalizeUsdAmount($get('amount_usd'));
+        $rate = self::normalizeExchangeRate($get('exchange_rate'));
+
+        if (blank($usdAmount) || blank($rate) || ! is_numeric($usdAmount) || ! is_numeric($rate) || (float) $rate <= 0) {
+            return;
+        }
+
+        $set('amount_kh', self::normalizeKhrAmount((float) $usdAmount * (float) $rate));
+    }
+
+    protected static function syncUsdFromKhr(callable $get, callable $set): void
+    {
+        $khrAmount = self::dehydrateKhrAmount($get('amount_kh'));
+        $rate = self::normalizeExchangeRate($get('exchange_rate'));
+
+        if (blank($khrAmount) || blank($rate) || ! is_numeric($khrAmount) || ! is_numeric($rate) || (float) $rate <= 0) {
+            return;
+        }
+
+        $set('amount_usd', self::normalizeUsdAmount((float) $khrAmount / (float) $rate));
+    }
+
     protected static function ownerId(CandidatePaymentList $record): ?int
     {
         foreach (['created_by', 'user_id', 'created_by_id'] as $column) {
@@ -591,6 +868,23 @@ class CandidatePaymentListsTable
         $timestamp = strtotime($value);
 
         return $timestamp ? date('d-m-Y', $timestamp) : $value;
+    }
+
+    protected static function candidateDisplayName(CandidatePaymentList $record): string
+    {
+        $khmerName = self::khmerName($record);
+
+        if ($khmerName !== '-') {
+            return $khmerName;
+        }
+
+        $latinName = self::latinName($record);
+
+        if ($latinName !== '-') {
+            return $latinName;
+        }
+
+        return (string) ($record->creator?->name ?: $record->creator?->username ?: $record->creator?->email ?: '-');
     }
 
     protected static function dynamicFormOptions(): array

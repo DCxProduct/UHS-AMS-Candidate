@@ -42,7 +42,26 @@ class ExchangeRate extends Model
 
     public static function activeUsdToKhrRate(): ?string
     {
-        $record = static::usdToKhrRecord();
+        $record = static::query()
+            ->whereRaw('UPPER(base_currency) = ?', ['USD'])
+            ->whereRaw('UPPER(quote_currency) = ?', ['KHR'])
+            ->where('is_active', true)
+            ->latest('updated_at')
+            ->latest('id')
+            ->first();
+
+        if (! $record) {
+            $record = static::query()
+                ->whereRaw('UPPER(base_currency) = ?', ['USD'])
+                ->whereRaw('UPPER(quote_currency) = ?', ['KHR'])
+                ->latest('updated_at')
+                ->latest('id')
+                ->first();
+        }
+
+        if (! $record) {
+            $record = static::usdToKhrRecord();
+        }
 
         if (! $record || blank($record->rate)) {
             return null;
