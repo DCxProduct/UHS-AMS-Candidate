@@ -11,12 +11,17 @@ class SetLocale
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $locale = session('locale', config('app.locale', 'km'));
+        $locale = session('locale')
+            ?? $request->query('locale')
+            ?? $request->input('locale')
+            ?? $request->cookie('filament_language_switch_locale')
+            ?? config('app.locale', 'km');
 
         if (! in_array($locale, ['en', 'km'], true)) {
             $locale = 'km';
         }
 
+        session()->put('locale', $locale);
         App::setLocale($locale);
 
         return $next($request);

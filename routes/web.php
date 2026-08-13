@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\DbSyncController;
+use BezhanSalleh\LanguageSwitch\Events\LocaleChanged;
+use BezhanSalleh\LanguageSwitch\LanguageSwitch;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AdminEntryPdfReviewController;
 
@@ -10,29 +12,29 @@ Route::get('/', function () {
 });
 
 Route::get('/language/toggle', function () {
-    $currentLocale = session('locale', app()->getLocale());
+    $currentLocale = LanguageSwitch::make()->getPreferredLocale();
 
     $nextLocale = $currentLocale === 'km' ? 'en' : 'km';
 
-    session([
-        'locale' => $nextLocale,
-    ]);
-
+    session()->put('locale', $nextLocale);
     app()->setLocale($nextLocale);
+    cookie()->queue(cookie()->forever('filament_language_switch_locale', $nextLocale));
 
-    return back();
+    event(new LocaleChanged($nextLocale));
+
+    return redirect()->to(url()->previous('/login'));
 })->name('language.toggle');
 
 Route::get('/language/{locale}', function (string $locale) {
     if (in_array($locale, ['en', 'km'], true)) {
-        session([
-            'locale' => $locale,
-        ]);
-
+        session()->put('locale', $locale);
         app()->setLocale($locale);
+        cookie()->queue(cookie()->forever('filament_language_switch_locale', $locale));
+
+        event(new LocaleChanged($locale));
     }
 
-    return back();
+    return redirect()->to(url()->previous('/login'));
 })->name('language.set');
 
 
