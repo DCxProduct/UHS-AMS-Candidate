@@ -131,6 +131,14 @@ class PaymentsTable
                 Filter::make('payment_filters')
                     ->label(new HtmlString('&nbsp;'))
                     ->schema([
+                        Select::make('form_id')
+                            ->label(__('payments.table.form'))
+                            ->placeholder(__('payments.placeholders.form'))
+                            ->options(fn (): array => self::dynamicFormOptions())
+                            ->native(false)
+                            ->searchable()
+                            ->live(),
+
                         Select::make('receipt_number')
                             ->label(__('payments.table.receipt_number'))
                             ->placeholder(__('payments.placeholders.receipt_number'))
@@ -143,14 +151,6 @@ class PaymentsTable
                             ->label(__('payments.table.major'))
                             ->placeholder(__('payments.placeholders.major'))
                             ->options(fn (): array => self::dynamicMajorOptions())
-                            ->native(false)
-                            ->searchable()
-                            ->live(),
-
-                        Select::make('amount_kh')
-                            ->label(__('payments.table.amount_kh'))
-                            ->placeholder(__('payments.placeholders.amount_kh'))
-                            ->options(fn (): array => self::dynamicAmountKhOptions())
                             ->native(false)
                             ->searchable()
                             ->live(),
@@ -177,8 +177,8 @@ class PaymentsTable
                                 fn (Builder $query): Builder => $query->whereIn('id', self::paymentIdsForMajor((string) $data['major']))
                             )
                             ->when(
-                                filled($data['amount_kh'] ?? null),
-                                fn (Builder $query): Builder => $query->where('amount_kh', $data['amount_kh'])
+                                filled($data['form_id'] ?? null),
+                                fn (Builder $query): Builder => $query->where('form_id', $data['form_id'])
                             )
                             ->when(
                                 filled($data['datetime_pay'] ?? null),
