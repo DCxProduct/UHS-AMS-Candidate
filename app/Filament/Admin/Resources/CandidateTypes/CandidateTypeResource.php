@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Filament\Admin\Resources\UserTypes;
+namespace App\Filament\Admin\Resources\CandidateTypes;
 
-use App\Filament\Admin\Resources\UserTypes\Pages\CreateUserType;
-use App\Filament\Admin\Resources\UserTypes\Pages\EditUserType;
-use App\Filament\Admin\Resources\UserTypes\Pages\ListUserTypes;
-use App\Filament\Admin\Resources\UserTypes\Schemas\UserTypeForm;
-use App\Filament\Admin\Resources\UserTypes\Tables\UserTypesTable;
+use App\Filament\Admin\Resources\CandidateTypes\Pages\CreateCandidateType;
+use App\Filament\Admin\Resources\CandidateTypes\Pages\EditCandidateType;
+use App\Filament\Admin\Resources\CandidateTypes\Pages\ListCandidateTypes;
+use App\Filament\Admin\Resources\CandidateTypes\Schemas\CandidateTypeForm;
+use App\Filament\Admin\Resources\CandidateTypes\Tables\CandidateTypesTable;
 use App\Filament\Concerns\AdminOnly;
 use App\Models\UserType;
 use App\Support\UserTypeOptions;
@@ -17,7 +17,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
 
-class UserTypeResource extends Resource
+class CandidateTypeResource extends Resource
 {
     use AdminOnly;
 
@@ -34,7 +34,7 @@ class UserTypeResource extends Resource
 
     public static function getNavigationLabel(): string
     {
-        return __('user_types.navigation_label');
+        return __('candidate_types.navigation_label');
     }
 
     public static function getNavigationGroup(): string | UnitEnum | null
@@ -44,22 +44,22 @@ class UserTypeResource extends Resource
 
     public static function getModelLabel(): string
     {
-        return __('user_types.resource_label');
+        return __('candidate_types.resource_label');
     }
 
     public static function getPluralModelLabel(): string
     {
-        return __('user_types.resource_plural_label');
+        return __('candidate_types.resource_plural_label');
     }
 
     public static function form(Schema $schema): Schema
     {
-        return UserTypeForm::configure($schema);
+        return CandidateTypeForm::configure($schema);
     }
 
     public static function table(Table $table): Table
     {
-        return UserTypesTable::configure($table);
+        return CandidateTypesTable::configure($table);
     }
 
     public static function getEloquentQuery(): Builder
@@ -75,9 +75,9 @@ class UserTypeResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => ListUserTypes::route('/'),
-            'create' => CreateUserType::route('/create'),
-            'edit' => EditUserType::route('/{record}/edit'),
+            'index' => ListCandidateTypes::route('/'),
+            'create' => CreateCandidateType::route('/create'),
+            'edit' => EditCandidateType::route('/{record}/edit'),
         ];
     }
 }
