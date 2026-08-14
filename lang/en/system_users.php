@@ -92,14 +92,14 @@ return [
         'name_kh' => 'Name Khmer',
         'name_kh_placeholder' => 'Enter role name in Khmer',
         'help_user' => 'Use this for candidate or student-facing roles.',
-        'help_system_admin' => 'Use this for admin, cashier, finance, registrar, developer, and other staff roles.',
+        'help_staff' => 'Use this for admin, cashier, finance, registrar, developer, and other staff roles.',
         'name_en_help_user' => 'Examples: candidate, master, associate.',
-        'name_en_help_system_admin' => 'Examples: admin, cashier, finance, registrar.',
+        'name_en_help_staff' => 'Examples: admin, cashier, finance, registrar.',
         'name_kh_help_user' => 'Examples: បេក្ខជន, អនុបណ្ឌិត, បរិញ្ញាបត្ររង.',
-        'name_kh_help_system_admin' => 'Examples: អ្នកគ្រប់គ្រង, បេឡាករ, ហិរញ្ញវត្ថុ, ការិយាល័យចុះបញ្ជី.',
+        'name_kh_help_staff' => 'Examples: អ្នកគ្រប់គ្រង, បេឡាករ, ហិរញ្ញវត្ថុ, ការិយាល័យចុះបញ្ជី.',
         'options' => [
             'user' => 'User',
-            'system_admin' => 'Staff',
+            'staff' => 'Staff',
         ],
     ],
 ];

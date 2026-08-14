@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BezhanSalleh\FilamentShield\Resources\Roles;
 
+use App\Models\RoleType;
 use App\Models\UserType;
 use App\Support\LocalizedDate;
 use App\Support\UserTypeOptions;
@@ -56,8 +57,8 @@ class RoleResource extends Resource
                                 TextInput::make('name')
                                     ->label(__('system_users.role_menu.name_en'))
                                     ->placeholder(__('system_users.role_menu.name_en_placeholder'))
-                                    ->helperText(fn (Get $get): string => match ((string) $get('role_audience')) {
-                                        'system_admin' => __('system_users.role_menu.name_en_help_system_admin'),
+                                    ->helperText(fn (Get $get): string => match ((string) $get('role_type_key')) {
+                                        'staff' => __('system_users.role_menu.name_en_help_staff'),
                                         default => __('system_users.role_menu.name_en_help_user'),
                                     })
                                     ->unique(
@@ -70,33 +71,26 @@ class RoleResource extends Resource
                                 TextInput::make('name_kh')
                                     ->label(__('system_users.role_menu.name_kh'))
                                     ->placeholder(__('system_users.role_menu.name_kh_placeholder'))
-                                    ->helperText(fn (Get $get): string => match ((string) $get('role_audience')) {
-                                        'system_admin' => __('system_users.role_menu.name_kh_help_system_admin'),
+                                    ->helperText(fn (Get $get): string => match ((string) $get('role_type_key')) {
+                                        'staff' => __('system_users.role_menu.name_kh_help_staff'),
                                         default => __('system_users.role_menu.name_kh_help_user'),
                                     })
                                     ->maxLength(255),
 
-                                Select::make('role_audience')
+                                Select::make('role_type_key')
                                     ->label(__('system_users.role_menu.type'))
-                                    ->options([
-                                        'user' => __('system_users.role_menu.options.user'),
-                                        'system_admin' => __('system_users.role_menu.options.system_admin'),
-                                    ])
+                                    ->options(fn (): array => RoleType::options())
                                     ->placeholder(__('system_users.role_menu.type_placeholder'))
                                     ->afterStateHydrated(function (Select $component, mixed $state, $record): void {
                                         if (filled($state) || ! $record) {
                                             return;
                                         }
 
-                                        $component->state(static::resolveRoleAudience($record?->name));
+                                        $component->state($record?->role_type_key ?: static::resolveRoleAudience($record?->name));
                                     })
-                                    ->dehydrated(false)
                                     ->native(false)
                                     ->required()
-                                    ->helperText(fn (Get $get): string => match ((string) $get('role_audience')) {
-                                        'system_admin' => __('system_users.role_menu.help_system_admin'),
-                                        default => __('system_users.role_menu.help_user'),
-                                    }),
+                                    ->helperText(fn (Get $get): string => RoleType::descriptionFor((string) $get('role_type_key'))),
 
                                 TextInput::make('guard_name')
                                     ->label(__('filament-shield::filament-shield.field.guard_name'))
@@ -145,14 +139,12 @@ class RoleResource extends Resource
                     ->label(__('system_users.role_menu.table_name'))
                     ->state(fn ($record): string => $record->localized_name)
                     ->searchable(['name', 'name_kh']),
-                TextColumn::make('role_audience')
+                TextColumn::make('role_type_key')
                     ->label(__('system_users.role_menu.type'))
-                    ->state(fn ($record): string => static::resolveRoleAudience($record->name))
-                    ->formatStateUsing(fn (string $state): string => $state === 'system_admin'
-                        ? __('system_users.role_menu.options.system_admin')
-                        : __('system_users.role_menu.options.user'))
+                    ->state(fn ($record): string => $record->role_type_key ?: static::resolveRoleAudience($record->name))
+                    ->formatStateUsing(fn (string $state): string => RoleType::options()[$state] ?? $state)
                     ->badge()
-                    ->color(fn (string $state): string => $state === 'system_admin' ? 'warning' : 'primary'),
+                    ->color(fn (string $state): string => $state === 'staff' ? 'warning' : 'primary'),
                 TextColumn::make('guard_name')
                     ->badge()
                     ->color('warning')
@@ -230,6 +222,6 @@ class RoleResource extends Resource
             return 'user';
         }
 
-        return UserTypeOptions::isCandidateManagedRole($roleName) ? 'user' : 'system_admin';
+        return UserTypeOptions::isCandidateManagedRole($roleName) ? 'user' : 'staff';
     }
 }
