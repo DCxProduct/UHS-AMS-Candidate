@@ -22,7 +22,7 @@ class CandidateSubmitPopupSettingResource extends Resource
 
     protected static string | BackedEnum | null $navigationIcon = Heroicon::OutlinedChatBubbleBottomCenterText;
 
-    protected static ?int $navigationSort = 64;
+    protected static ?int $navigationSort = 7;
 
     public static function getNavigationLabel(): string
     {
