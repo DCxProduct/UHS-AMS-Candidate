@@ -2,6 +2,7 @@
 
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomForms\Tables;
 
+use App\Support\PassedResultMenuOptions;
 use App\Support\LocalizedDate;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
@@ -67,6 +68,12 @@ class CustomFormsTable
                     ->alignCenter()
                     ->formatStateUsing(fn ($state, $record): string => self::subItemTypeLabel($state, $record))
                     ->color('warning'),
+
+                TextColumn::make('passed_result_menu')
+                    ->label(__('filament-custom-forms::fcf.form.passed_result_menu'))
+                    ->badge()
+                    ->formatStateUsing(fn (?string $state): string => PassedResultMenuOptions::label($state))
+                    ->color(fn (?string $state): string => PassedResultMenuOptions::normalize($state) === PassedResultMenuOptions::EXIT_EXAM_RESULTS ? 'warning' : 'success'),
 
                 TextColumn::make('parentForm.name')
                     ->label(__('filament-custom-forms::fcf.form.form_field'))

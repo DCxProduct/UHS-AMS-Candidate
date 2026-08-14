@@ -50,7 +50,7 @@ class ListExamResults extends ListRecords
                 ->modalDescription(__('exam_results.notify_all_confirm_description'))
                 ->modalSubmitActionLabel(__('exam_results.send_notification'))
                 ->modalCancelActionLabel(__('app.cancel'))
-                ->visible(fn (): bool => ExamResultsTable::hasUnsentPassedNotifications())
+                ->visible(fn (): bool => ExamResultsTable::hasUnsentPassedNotifications(static::getResource()::getResultMenuTarget()))
                 ->action(fn (array $arguments) => $this->sendNotificationsFromTableSelection(
                     selectedRecordKeys: $arguments['selectedRecordKeys'] ?? [],
                     selectedRecordsCount: (int) ($arguments['selectedRecordsCount'] ?? 0),
@@ -154,7 +154,7 @@ class ListExamResults extends ListRecords
                 $data = [];
             }
 
-            $data[ExamResultResource::HIDDEN_FLAG] = true;
+            $data[static::getResource()::HIDDEN_FLAG] = true;
 
             $record->forceFill([
                 'data' => $data,
@@ -163,8 +163,8 @@ class ListExamResults extends ListRecords
             AuditLogger::log(
                 action: 'cleared',
                 auditable: $record,
-                description: 'Cleared from Exam Results',
-                metadata: ['module' => 'Exam Results'],
+                description: 'Cleared from ' . static::getResource()::getResultModuleLabel(),
+                metadata: ['module' => static::getResource()::getResultModuleLabel()],
             );
         });
 
@@ -235,9 +235,11 @@ class ListExamResults extends ListRecords
         $deselectedRecordKeys = array_values(array_filter($deselectedRecordKeys));
 
         if ($selectedRecordsCount < 1) {
-            $records = CustomFormEntry::query()
-                ->with(['creator', 'customForm'])
-                ->where('data->candidate_status', 'passed')
+            $records = ExamResultsTable::applyPassedResultMenuFilter(
+                query: CustomFormEntry::query()->with(['creator', 'customForm']),
+                resultMenu: static::getResource()::getResultMenuTarget(),
+                hiddenFlag: null,
+            )
                 ->get()
                 ->reject(fn (CustomFormEntry $record): bool => ExamResultsTable::hasStudentPassedNotification($record));
         } elseif ($isTrackingDeselectedRecords) {
@@ -253,7 +255,11 @@ class ListExamResults extends ListRecords
             $records = CustomFormEntry::query()
                 ->with(['creator', 'customForm'])
                 ->whereKey($selectedRecordKeys)
-                ->where('data->candidate_status', 'passed')
+                ->tap(fn ($query) => ExamResultsTable::applyPassedResultMenuFilter(
+                    query: $query,
+                    resultMenu: static::getResource()::getResultMenuTarget(),
+                    hiddenFlag: null,
+                ))
                 ->get();
         } else {
             Notification::make()
