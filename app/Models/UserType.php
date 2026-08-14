@@ -15,6 +15,7 @@ class UserType extends Model
         'key',
         'label_en',
         'label_kh',
+        'group_name',
         'color',
         'display_order',
         'is_active',
@@ -32,6 +33,7 @@ class UserType extends Model
     {
         static::saving(function (UserType $candidateType): void {
             $candidateType->color = UserTypeOptions::canonicalColor($candidateType->color);
+            $candidateType->group_name = UserTypeOptions::normalizeGroupName($candidateType->group_name);
         });
 
         static::deleting(function (UserType $candidateType): void {

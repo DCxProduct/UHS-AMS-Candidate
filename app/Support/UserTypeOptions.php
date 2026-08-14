@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use Illuminate\Contracts\Auth\Authenticatable;
+use App\Models\DegreeLevel;
 use App\Models\UserType;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -288,6 +289,44 @@ class UserTypeOptions
         ];
     }
 
+    public static function groupOptions(): array
+    {
+        return DegreeLevel::options();
+    }
+
+    public static function normalizeGroupName(mixed $groupName): ?string
+    {
+        $groupName = trim((string) $groupName);
+
+        if ($groupName === '') {
+            return null;
+        }
+
+        return Str::of($groupName)
+            ->lower()
+            ->replaceMatches('/[^a-z0-9_-]+/', '_')
+            ->replaceMatches('/_+/', '_')
+            ->trim('_')
+            ->toString() ?: null;
+    }
+
+    public static function formatGroupLabel(?string $groupName): string
+    {
+        $normalizedGroup = static::normalizeGroupName($groupName);
+
+        if ($normalizedGroup === null) {
+            return '';
+        }
+
+        if ($degreeLevel = DegreeLevel::findByKey($normalizedGroup)) {
+            return $degreeLevel->localized_label;
+        }
+
+        return (string) Str::of($normalizedGroup)
+            ->replace(['_', '-'], ' ')
+            ->title();
+    }
+
     public static function canonicalColor(?string $color): string
     {
         return match ((string) $color) {
@@ -411,15 +450,134 @@ class UserTypeOptions
             return;
         }
 
-        UserType::query()->updateOrCreate(
-            ['key' => 'master'],
+        foreach (static::defaultRecords() as $record) {
+            UserType::query()->updateOrCreate(
+                ['key' => $record['key']],
+                $record,
+            );
+        }
+    }
+
+    public static function defaultRecords(): array
+    {
+        return [
             [
-                'label_en' => 'Master',
-                'label_kh' => 'អនុបណ្ឌិត',
+                'key' => 'national_entrance_exam_application_bachelor',
+                'label_en' => 'National Entrance Exam Application-Bachelor',
+                'label_kh' => 'ប្រឡងចូលថ្នាក់ជាតិ-បរិញ្ញាបត្រ',
+                'group_name' => 'bachelor',
                 'color' => 'blue',
                 'display_order' => 1,
                 'is_active' => true,
             ],
-        );
+            [
+                'key' => 'national_entrance_exam_application_associate',
+                'label_en' => 'National Entrance Exam Application-Associate',
+                'label_kh' => 'ប្រឡងចូលថ្នាក់ជាតិ-បរិញ្ញាបត្ររង',
+                'group_name' => 'associate',
+                'color' => 'green',
+                'display_order' => 2,
+                'is_active' => true,
+            ],
+            [
+                'key' => 'national_entrance_exam_application_dental_surgeon',
+                'label_en' => 'National Entrance Exam Application-Dental Surgeon',
+                'label_kh' => 'ប្រឡងចូលថ្នាក់ជាតិ-ទន្តបណ្ឌិត',
+                'group_name' => 'dental_surgeon',
+                'color' => 'orange',
+                'display_order' => 3,
+                'is_active' => true,
+            ],
+            [
+                'key' => 'national_entrance_exam_application_doctor_of_medicine',
+                'label_en' => 'National Entrance Exam Application-Doctor of Medicine',
+                'label_kh' => 'ប្រឡងចូលថ្នាក់ជាតិ-វេជ្ជបណ្ឌិត',
+                'group_name' => 'doctor_of_medicine',
+                'color' => 'red',
+                'display_order' => 4,
+                'is_active' => true,
+            ],
+            [
+                'key' => 'national_exit_exam_application_bachelor',
+                'label_en' => 'National Exit Exam Application-Bachelor',
+                'label_kh' => 'ប្រឡងចេញថ្នាក់ជាតិ-បរិញ្ញាបត្រ',
+                'group_name' => 'bachelor',
+                'color' => 'blue',
+                'display_order' => 5,
+                'is_active' => true,
+            ],
+            [
+                'key' => 'national_exit_exam_application_associate',
+                'label_en' => 'National Exit Exam Application-Associate',
+                'label_kh' => 'ប្រឡងចេញថ្នាក់ជាតិ-បរិញ្ញាបត្ររង',
+                'group_name' => 'associate',
+                'color' => 'green',
+                'display_order' => 6,
+                'is_active' => true,
+            ],
+            [
+                'key' => 'national_exit_exam_application_master_of_science',
+                'label_en' => 'National Exit Exam Application-Master\'s Degree',
+                'label_kh' => 'ប្រឡងចេញថ្នាក់ជាតិ-បរិញ្ញាបត្រជាន់ខ្ពស់',
+                'group_name' => 'master_of_science',
+                'color' => 'orange',
+                'display_order' => 7,
+                'is_active' => true,
+            ],
+            [
+                'key' => 'national_exit_exam_application_dental_surgeon',
+                'label_en' => 'National Exit Exam Application-Dental Surgeon',
+                'label_kh' => 'ប្រឡងចេញថ្នាក់ជាតិ-ទន្តបណ្ឌិត',
+                'group_name' => 'dental_surgeon',
+                'color' => 'green',
+                'display_order' => 8,
+                'is_active' => true,
+            ],
+            [
+                'key' => 'national_exit_exam_application_doctor_of_medicine',
+                'label_en' => 'National Exit Exam Application-Doctor of Medicine',
+                'label_kh' => 'ប្រឡងចេញថ្នាក់ជាតិ-វេជ្ជបណ្ឌិត',
+                'group_name' => 'doctor_of_medicine',
+                'color' => 'red',
+                'display_order' => 9,
+                'is_active' => true,
+            ],
+            [
+                'key' => 'national_exit_exam_application_medical_specialty',
+                'label_en' => 'National Exit Exam Application-Medical Specialty',
+                'label_kh' => 'ប្រឡងចេញថ្នាក់ជាតិ-វេជ្ជបណ្ឌិតឯកទេស',
+                'group_name' => 'medical_specialty',
+                'color' => 'red',
+                'display_order' => 10,
+                'is_active' => true,
+            ],
+            [
+                'key' => 'continuing_bachelors_degree',
+                'label_en' => 'Continuing Bachelor\'s Degree',
+                'label_kh' => 'ជ្រើសរើសបន្ត-បរិញ្ញាបត្រ',
+                'group_name' => 'bachelor',
+                'color' => 'blue',
+                'display_order' => 11,
+                'is_active' => true,
+            ],
+            [
+                'key' => 'continuing_master_of_science',
+                'label_en' => 'Continuing Master\'s Degree',
+                'label_kh' => 'ជ្រើសរើសបន្ត-បរិញ្ញាបត្រជាន់ខ្ពស់',
+                'group_name' => 'master_of_science',
+                'color' => 'orange',
+                'display_order' => 12,
+                'is_active' => true,
+            ],
+            [
+                'key' => 'continuing_medical_specialty',
+                'label_en' => 'Continuing Medical Specialty',
+                'label_kh' => 'ជ្រើសរើសបន្ត-វេជ្ជបណ្ឌិតឯកទេស',
+                'group_name' => 'medical_specialty',
+                'color' => 'red',
+                'display_order' => 13,
+                'is_active' => true,
+            ],
+        ];
     }
 }
