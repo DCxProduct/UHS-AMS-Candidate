@@ -2,6 +2,7 @@
 
 namespace Chanthoeun\FilamentCustomForms\Models;
 
+use App\Support\PassedResultMenuOptions;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -22,6 +23,7 @@ class CustomForm extends Model
         'menu_placement',
         'parent_sidebar',
         'sub_item_type',
+        'passed_result_menu',
         'display_order',
     ];
 
@@ -60,6 +62,8 @@ class CustomForm extends Model
                 $customForm->parent_sidebar = null;
                 $customForm->sub_item_type = null;
             }
+
+            $customForm->passed_result_menu = PassedResultMenuOptions::normalize($customForm->passed_result_menu);
         });
     }
 

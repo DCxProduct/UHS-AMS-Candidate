@@ -15,6 +15,7 @@ return [
     'national_examination_registration' => 'National Examination Registration',
     'review_applications' => 'Candidate Requested',
     'exam_results' => 'Exam Results',
+    'exit_exam_results' => 'Exit Exam Results',
     'payments' => 'Payment Records',
     'custom_forms' => 'Custom Forms',
     'document_templates' => 'Document Templates',

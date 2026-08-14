@@ -1,36 +1,35 @@
 <?php
 
-namespace App\Filament\Admin\Resources\ExamResults;
+namespace App\Filament\Admin\Resources\ExitExamResults;
 
-use App\Filament\Admin\Resources\ExamResults\Pages;
 use App\Filament\Admin\Resources\ExamResults\Tables\ExamResultsTable;
+use App\Filament\Admin\Resources\ExitExamResults\Pages\ListExitExamResults;
 use App\Filament\Concerns\AdminOnly;
-use App\Models\ExamResult;
+use App\Models\ExitExamResult;
 use App\Support\PassedResultMenuOptions;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use UnitEnum;
 
-class ExamResultResource extends Resource
+class ExitExamResultResource extends Resource
 {
     use AdminOnly;
 
-    public const HIDDEN_FLAG = 'hidden_from_exam_results';
+    public const HIDDEN_FLAG = 'hidden_from_exit_exam_results';
 
-    protected static ?string $model = ExamResult::class;
+    protected static ?string $model = ExitExamResult::class;
 
-    protected static ?string $slug = 'exam-results';
+    protected static ?string $slug = 'exit-exam-results';
 
     protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-academic-cap';
 
-    protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 3;
 
     public static function getNavigationLabel(): string
     {
-        return __('navigation.exam_results');
+        return __('navigation.exit_exam_results');
     }
 
     public static function getNavigationGroup(): ?string
@@ -40,22 +39,22 @@ class ExamResultResource extends Resource
 
     public static function getModelLabel(): string
     {
-        return __('exam_results.model_label');
+        return __('exit_exam_results.model_label');
     }
 
     public static function getPluralModelLabel(): string
     {
-        return __('exam_results.plural_model_label');
+        return __('exit_exam_results.plural_model_label');
     }
 
     public static function getResultMenuTarget(): string
     {
-        return PassedResultMenuOptions::EXAM_RESULTS;
+        return PassedResultMenuOptions::EXIT_EXAM_RESULTS;
     }
 
     public static function getResultModuleLabel(): string
     {
-        return __('navigation.exam_results');
+        return __('navigation.exit_exam_results');
     }
 
     public static function getEloquentQuery(): Builder
@@ -83,7 +82,7 @@ class ExamResultResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListExamResults::route('/'),
+            'index' => ListExitExamResults::route('/'),
         ];
     }
 }
