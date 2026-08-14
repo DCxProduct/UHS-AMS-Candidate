@@ -23,7 +23,7 @@ class ExchangeRateResource extends Resource
 
     protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-arrows-right-left';
 
-    protected static ?int $navigationSort = 63;
+    protected static ?int $navigationSort = 6;
 
     public static function getNavigationLabel(): string
     {
