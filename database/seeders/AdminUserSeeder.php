@@ -47,6 +47,7 @@ class AdminUserSeeder extends Seeder
             ],
             [
                 'name_kh' => 'អ្នកគ្រប់គ្រង',
+                'role_type_key' => 'staff',
             ]
         );
 
@@ -61,6 +62,7 @@ class AdminUserSeeder extends Seeder
             ],
             [
                 'name_kh' => 'បេឡា',
+                'role_type_key' => 'staff',
             ]
         );
 
