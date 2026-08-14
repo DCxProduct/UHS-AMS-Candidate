@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Admin\Resources\UserTypes\Schemas;
+namespace App\Filament\Admin\Resources\CandidateTypes\Schemas;
 
 use App\Support\UserTypeOptions;
 use Filament\Forms\Components\Hidden;
@@ -11,14 +11,14 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Str;
 
-class UserTypeForm
+class CandidateTypeForm
 {
     public static function configure(Schema $schema): Schema
     {
         return $schema
             ->columns(1)
             ->components([
-                Section::make(__('user_types.form.section_title'))
+                Section::make(__('candidate_types.form.section_title'))
                     ->schema([
                         Grid::make([
                             'default' => 1,
@@ -26,8 +26,8 @@ class UserTypeForm
                         ])
                             ->schema([
                                 TextInput::make('key')
-                                    ->label(__('user_types.fields.key'))
-                                    ->placeholder(__('user_types.placeholders.key'))
+                                    ->label(__('candidate_types.fields.key'))
+                                    ->placeholder(__('candidate_types.placeholders.key'))
                                     ->required()
                                     ->maxLength(255)
                                     ->unique(column: 'key', ignoreRecord: true)
@@ -50,33 +50,33 @@ class UserTypeForm
                                                 $name = Str::lower(trim((string) $value));
 
                                                 if ($name === UserTypeOptions::BASE_ROLE) {
-                                                    $fail(__('user_types.validation.base_role_reserved'));
+                                                    $fail(__('candidate_types.validation.base_role_reserved'));
                                                 }
                                             };
                                         },
                                     ])
                                     ->validationMessages([
-                                        'required' => __('user_types.validation.name_required'),
-                                        'unique' => __('user_types.validation.name_unique'),
-                                        'regex' => __('user_types.validation.key_format'),
+                                        'required' => __('candidate_types.validation.name_required'),
+                                        'unique' => __('candidate_types.validation.name_unique'),
+                                        'regex' => __('candidate_types.validation.key_format'),
                                     ]),
 
                                 TextInput::make('label_en')
-                                    ->label(__('user_types.fields.label_en'))
-                                    ->placeholder(__('user_types.placeholders.label_en'))
+                                    ->label(__('candidate_types.fields.label_en'))
+                                    ->placeholder(__('candidate_types.placeholders.label_en'))
                                     ->required()
                                     ->maxLength(255)
                                     ->validationMessages([
-                                        'required' => __('user_types.validation.label_en_required'),
+                                        'required' => __('candidate_types.validation.label_en_required'),
                                     ]),
 
                                 TextInput::make('label_kh')
-                                    ->label(__('user_types.fields.label_kh'))
-                                    ->placeholder(__('user_types.placeholders.label_kh'))
+                                    ->label(__('candidate_types.fields.label_kh'))
+                                    ->placeholder(__('candidate_types.placeholders.label_kh'))
                                     ->required()
                                     ->maxLength(255)
                                     ->validationMessages([
-                                        'required' => __('user_types.validation.label_kh_required'),
+                                        'required' => __('candidate_types.validation.label_kh_required'),
                                     ]),
                             ]),
 
@@ -91,7 +91,7 @@ class UserTypeForm
                                     ->dehydrateStateUsing(fn (): string => 'blue'),
 
                                 Toggle::make('is_active')
-                                    ->label(__('user_types.fields.is_active'))
+                                    ->label(__('candidate_types.fields.is_active'))
                                     ->default(true)
                                     ->required(),
                             ]),

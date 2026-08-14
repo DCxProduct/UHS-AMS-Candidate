@@ -280,11 +280,11 @@ class UserTypeOptions
     public static function colorOptions(): array
     {
         return [
-            'blue' => __('user_types.colors.blue'),
-            'green' => __('user_types.colors.green'),
-            'orange' => __('user_types.colors.orange'),
-            'red' => __('user_types.colors.red'),
-            'black' => __('user_types.colors.black'),
+            'blue' => __('candidate_types.colors.blue'),
+            'green' => __('candidate_types.colors.green'),
+            'orange' => __('candidate_types.colors.orange'),
+            'red' => __('candidate_types.colors.red'),
+            'black' => __('candidate_types.colors.black'),
         ];
     }
 
