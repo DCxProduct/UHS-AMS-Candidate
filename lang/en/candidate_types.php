@@ -10,6 +10,7 @@ return [
         'key' => 'Key',
         'label_en' => 'Label English',
         'label_kh' => 'Label Khmer',
+        'group_name' => 'Group',
         'color' => 'Color',
         'is_active' => 'Active',
         'preview' => 'Register Selector Preview',
@@ -19,6 +20,7 @@ return [
         'no' => 'No',
         'key' => 'Role Key',
         'preview' => 'Candidate Type',
+        'group_name' => 'Group',
         'label_en' => 'Label English',
         'label_kh' => 'Label Khmer',
         'color' => 'Color',
@@ -31,6 +33,7 @@ return [
         'key' => 'Enter role key',
         'label_en' => 'Enter English label',
         'label_kh' => 'Enter Khmer label',
+        'group_name' => 'Select or create group',
     ],
 
     'form' => [

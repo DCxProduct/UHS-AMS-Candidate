@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Resources\CandidateTypes\Schemas;
 
 use App\Support\UserTypeOptions;
 use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
@@ -78,6 +79,14 @@ class CandidateTypeForm
                                     ->validationMessages([
                                         'required' => __('candidate_types.validation.label_kh_required'),
                                     ]),
+
+                                Select::make('group_name')
+                                    ->label(__('candidate_types.fields.group_name'))
+                                    ->placeholder(__('candidate_types.placeholders.group_name'))
+                                    ->options(fn (): array => UserTypeOptions::groupOptions())
+                                    ->searchable()
+                                    ->preload()
+                                    ->native(false),
                             ]),
 
                         Grid::make([
