@@ -399,41 +399,7 @@ class CustomFormEntriesTable
                     $fieldOptions = is_array($field->options) ? $field->options : json_decode((string) $field->options, true);
                     $choices = $fieldOptions['choices'] ?? null;
                     if (is_array($choices) && !empty($choices)) {
-                        $column->formatStateUsing(function (mixed $state) use ($choices): string {
-                            if (blank($state)) {
-                                return '-';
-                            }
-
-                            $transChoices = collect($choices)
-                                ->mapWithKeys(function ($label, $key): array {
-                                    if (is_array($label) && array_key_exists('value', $label)) {
-                                        return [
-                                            (string) $label['value'] => self::transText($label['label'] ?? $label['value']),
-                                        ];
-                                    }
-                                    return [
-                                        (string) $key => self::transText($label),
-                                    ];
-                                })
-                                ->toArray();
-
-                            if (is_array($state)) {
-                                return collect($state)
-                                    ->map(fn ($val) => $transChoices[(string)$val] ?? (string)$val)
-                                    ->join(', ');
-                            }
-
-                            if (is_string($state) && str_starts_with(trim($state), '[')) {
-                                $decoded = json_decode($state, true);
-                                if (is_array($decoded)) {
-                                    return collect($decoded)
-                                        ->map(fn ($val) => $transChoices[(string)$val] ?? (string)$val)
-                                        ->join(', ');
-                                }
-                            }
-
-                            return $transChoices[(string)$state] ?? (string)$state;
-                        });
+                        $column->formatStateUsing(fn (mixed $state): string => self::formatChoiceState($choices, $state));
                     }
                 }
 
@@ -624,6 +590,15 @@ class CustomFormEntriesTable
 
                     if (self::isGeoColumn((string) $key)) {
                         $column->formatStateUsing(fn (mixed $state): string => self::geoLocationName($state));
+                    }
+
+                    if (! self::isGeoColumn((string) $key)) {
+                        $fieldOptions = is_array($field->options) ? $field->options : json_decode((string) $field->options, true);
+                        $choices = $fieldOptions['choices'] ?? null;
+
+                        if (is_array($choices) && ! empty($choices)) {
+                            $column->formatStateUsing(fn (mixed $state): string => self::formatChoiceState($choices, $state));
+                        }
                     }
 
                     $columns[] = $column;
@@ -1617,10 +1592,16 @@ class CustomFormEntriesTable
             ->whereNotNull('options')
             ->first();
 
-        return self::fieldOptionLabel($field, $state, $formIds);
+        $label = self::fieldOptionLabel($field, $state, $formIds, $key);
+
+        if ($label !== '-' && $label !== (string) $state) {
+            return $label;
+        }
+
+        return self::globalFieldOptionLabel($key, $state) ?? $label;
     }
 
-    protected static function fieldOptionLabel($field, mixed $state, array $formIds = []): string
+    protected static function fieldOptionLabel($field, mixed $state, array $formIds = [], ?string $fieldName = null): string
     {
         if (blank($state)) {
             return '-';
@@ -1633,7 +1614,7 @@ class CustomFormEntriesTable
                 $stringValue = (string) $value;
 
                 return $choices[$stringValue]
-                    ?? self::optionLabelForValue($formIds, $stringValue)
+                    ?? self::optionLabelForValue($formIds, $stringValue, $fieldName)
                     ?? $stringValue;
             })
             ->filter(fn (string $value): bool => filled($value))
@@ -1682,14 +1663,52 @@ class CustomFormEntriesTable
         return [$state];
     }
 
-    protected static function optionLabelForValue(array $formIds, string $value): ?string
+    protected static function optionLabelForValue(array $formIds, string $value, ?string $fieldName = null): ?string
     {
-        if (empty($formIds)) {
+        $fields = collect();
+
+        if (! empty($formIds)) {
+            $fields = \Chanthoeun\FilamentCustomForms\Models\CustomFormField::query()
+                ->whereIn('custom_form_id', $formIds)
+                ->when($fieldName, fn ($query) => $query->where('name', $fieldName))
+                ->whereNotNull('options')
+                ->orderBy('sort')
+                ->get();
+        }
+
+        foreach ($fields as $field) {
+            $choices = self::fieldChoices($field);
+
+            if (array_key_exists($value, $choices)) {
+                return $choices[$value];
+            }
+        }
+
+        if ($fieldName) {
+            return self::globalOptionLabelForFieldName($fieldName, $value);
+        }
+
+        return null;
+    }
+
+    protected static function globalFieldOptionLabel(string $fieldName, mixed $state): ?string
+    {
+        if (blank($fieldName) || blank($state)) {
             return null;
         }
 
+        return collect(self::decodeJsonArray($state))
+            ->map(fn (mixed $value): ?string => self::globalOptionLabelForFieldName($fieldName, (string) $value))
+            ->filter(fn (?string $value): bool => filled($value))
+            ->values()
+            ->whenEmpty(fn ($collection) => $collection->push(null))
+            ->join(', ') ?: null;
+    }
+
+    protected static function globalOptionLabelForFieldName(string $fieldName, string $value): ?string
+    {
         $fields = \Chanthoeun\FilamentCustomForms\Models\CustomFormField::query()
-            ->whereIn('custom_form_id', $formIds)
+            ->where('name', $fieldName)
             ->whereNotNull('options')
             ->orderBy('sort')
             ->get();
@@ -1703,6 +1722,31 @@ class CustomFormEntriesTable
         }
 
         return null;
+    }
+
+    protected static function formatChoiceState(array $choices, mixed $state): string
+    {
+        if (blank($state)) {
+            return '-';
+        }
+
+        $transChoices = collect($choices)
+            ->mapWithKeys(function ($label, $key): array {
+                if (is_array($label) && array_key_exists('value', $label)) {
+                    return [
+                        (string) $label['value'] => self::transText($label['label'] ?? $label['value']),
+                    ];
+                }
+
+                return [
+                    (string) $key => self::transText($label),
+                ];
+            })
+            ->toArray();
+
+        return collect(self::decodeJsonArray($state))
+            ->map(fn ($value): string => $transChoices[(string) $value] ?? (string) $value)
+            ->join(', ');
     }
 
     protected static function formIdsForOptionLookup(array $formIds): array

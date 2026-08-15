@@ -17,45 +17,41 @@ class CandidateTypesTable
 {
     public static function configure(Table $table): Table
     {
-        $columns = [
-            TextColumn::make('row_number')
-                ->label(__('candidate_types.table.no'))
-                ->rowIndex()
-                ->formatStateUsing(fn ($state): string => LocalizedNumber::digits($state))
-                ->alignCenter()
-                ->width('60px'),
-
-            TextColumn::make('preview')
-                ->label(__('candidate_types.table.preview'))
-                ->getStateUsing(fn (UserType $record): string => UserTypeOptions::formatPreviewLabel($record->key))
-                ->searchable(['label_en', 'label_kh', 'key']),
-        ];
-
-        if (UserTypeOptions::hasGroupNameColumn()) {
-            $columns[] = TextColumn::make('group_name')
-                ->label(__('candidate_types.table.group_name'))
-                ->formatStateUsing(fn (?string $state): string => UserTypeOptions::formatGroupLabel($state))
-                ->badge()
-                ->searchable()
-                ->sortable();
-        }
-
-        $columns[] = IconColumn::make('is_active')
-            ->label(__('candidate_types.table.is_active'))
-            ->boolean()
-            ->alignCenter();
-
-        $columns[] = TextColumn::make('created_at')
-            ->label(__('candidate_types.table.created_at'))
-            ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state));
-
-        $columns[] = TextColumn::make('updated_at')
-            ->label(__('candidate_types.table.updated_at'))
-            ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state));
-
         return $table
             ->searchPlaceholder(__('candidate_types.search'))
-            ->columns($columns)
+            ->columns([
+                TextColumn::make('row_number')
+                    ->label(__('candidate_types.table.no'))
+                    ->rowIndex()
+                    ->formatStateUsing(fn ($state): string => LocalizedNumber::digits($state))
+                    ->alignCenter()
+                    ->width('60px'),
+
+                TextColumn::make('preview')
+                    ->label(__('candidate_types.table.preview'))
+                    ->getStateUsing(fn (UserType $record): string => UserTypeOptions::formatPreviewLabel($record->key))
+                    ->searchable(['label_en', 'label_kh', 'key']),
+
+                TextColumn::make('group_name')
+                    ->label(__('candidate_types.table.group_name'))
+                    ->formatStateUsing(fn (?string $state): string => UserTypeOptions::formatGroupLabel($state))
+                    ->badge()
+                    ->searchable()
+                    ->sortable(),
+
+                IconColumn::make('is_active')
+                    ->label(__('candidate_types.table.is_active'))
+                    ->boolean()
+                    ->alignCenter(),
+
+                TextColumn::make('created_at')
+                    ->label(__('candidate_types.table.created_at'))
+                    ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state)),
+
+                TextColumn::make('updated_at')
+                    ->label(__('candidate_types.table.updated_at'))
+                    ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state)),
+            ])
             ->recordActions([
                 ActionGroup::make([
                     EditAction::make()
