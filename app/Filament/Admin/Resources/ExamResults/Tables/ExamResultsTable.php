@@ -855,17 +855,6 @@ class ExamResultsTable
             return trim((string) $groupName);
         }
 
-        foreach ([
-            data_get($record->data, 'degree_level'),
-            data_get($record->data, 'selected_degree_level'),
-            data_get($record->data, 'form_selection'),
-            $record->customForm?->sub_item_type,
-        ] as $value) {
-            if (filled($value)) {
-                return trim((string) $value);
-            }
-        }
-
         return '-';
     }
 
