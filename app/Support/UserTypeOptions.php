@@ -450,10 +450,18 @@ class UserTypeOptions
             return;
         }
 
+        $availableColumns = collect(Schema::getColumnListing('user_types'))
+            ->map(fn (string $column): string => strtolower($column))
+            ->all();
+
         foreach (static::defaultRecords() as $record) {
             UserType::query()->updateOrCreate(
                 ['key' => $record['key']],
-                $record,
+                array_filter(
+                    $record,
+                    fn (string $column): bool => in_array(strtolower($column), $availableColumns, true),
+                    ARRAY_FILTER_USE_KEY,
+                ),
             );
         }
     }
