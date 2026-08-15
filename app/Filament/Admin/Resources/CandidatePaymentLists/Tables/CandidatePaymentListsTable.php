@@ -10,6 +10,7 @@ use App\Models\PaymentType;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
+use Chanthoeun\FilamentCustomForms\Models\CustomFormField;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
@@ -113,10 +114,7 @@ class CandidatePaymentListsTable
 
                 TextColumn::make('major')
                     ->label(__('candidate_payment_lists.columns.major'))
-                    ->getStateUsing(fn (CandidatePaymentList $record): string => self::entryValue(
-                        $record,
-                        filled(data_get($record->data, 'selected_major')) ? 'selected_major' : 'degree_level_major'
-                    ))
+                    ->getStateUsing(fn (CandidatePaymentList $record): string => self::majorLabel($record))
                     ->badge()
                     ->searchable(query: fn (Builder $query, string $search): Builder => $query
                         ->where('data->selected_major', 'like', "%{$search}%")
@@ -618,6 +616,61 @@ class CandidatePaymentListsTable
         }
 
         return blank($value) ? '-' : (string) $value;
+    }
+
+    protected static function majorLabel(CandidatePaymentList $record): string
+    {
+        $fieldName = filled(data_get($record->data, 'selected_major')) ? 'selected_major' : 'degree_level_major';
+        $value = self::entryValue($record, $fieldName);
+
+        if ($value === '-') {
+            return $value;
+        }
+
+        return self::optionLabelForFieldValue($fieldName, $value) ?? $value;
+    }
+
+    protected static function optionLabelForFieldValue(string $fieldName, string $value): ?string
+    {
+        $fields = CustomFormField::query()
+            ->where('name', $fieldName)
+            ->whereNotNull('options')
+            ->orderBy('sort')
+            ->get();
+
+        foreach ($fields as $field) {
+            $options = is_array($field->options) ? $field->options : json_decode((string) $field->options, true);
+            $choices = $options['choices'] ?? [];
+
+            if (! is_array($choices)) {
+                continue;
+            }
+
+            foreach ($choices as $choiceKey => $choiceLabel) {
+                if (is_array($choiceLabel) && array_key_exists('value', $choiceLabel)) {
+                    if ((string) $choiceLabel['value'] === $value) {
+                        return self::localizedOptionLabel($choiceLabel['label'] ?? $choiceLabel['value']);
+                    }
+
+                    continue;
+                }
+
+                if ((string) $choiceKey === $value) {
+                    return self::localizedOptionLabel($choiceLabel);
+                }
+            }
+        }
+
+        return null;
+    }
+
+    protected static function localizedOptionLabel(mixed $label): string
+    {
+        if (is_array($label)) {
+            return (string) ($label[app()->getLocale()] ?? $label['km'] ?? $label['kh'] ?? $label['en'] ?? collect($label)->first() ?? '-');
+        }
+
+        return (string) $label;
     }
 
     protected static function khmerName(CandidatePaymentList $record): string
