@@ -3,8 +3,10 @@
 namespace App\Filament\Admin\Resources\ExamResults\Tables;
 
 use App\Filament\Admin\Resources\CandidateRequested\Tables\CandidateRequestedTable;
+use App\Models\User;
 use App\Support\PassedResultMenuOptions;
 use App\Support\LocalizedNumber;
+use App\Support\UserTypeOptions;
 use Carbon\Carbon;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
@@ -27,9 +29,8 @@ class ExamResultsTable
             ->recordUrl(null)
             ->selectable()
             ->columns([
-                TextColumn::make('row_number')
-                    ->label(__('exam_results.no'))
-                    ->rowIndex()
+                TextColumn::make('id')
+                    ->label(__('exam_results.id'))
                     ->formatStateUsing(fn ($state): string => LocalizedNumber::digits($state))
                     ->alignCenter()
                     ->toggleable(isToggledHiddenByDefault: false),
@@ -79,13 +80,20 @@ class ExamResultsTable
                     ->getStateUsing(fn ($record): string => self::dateValue(self::entryValue($record, 'exam_date')))
                     ->toggleable(isToggledHiddenByDefault: false),
 
+                TextColumn::make('degree_level')
+                    ->label(__('exam_results.degree_level'))
+                    ->badge()
+                    ->getStateUsing(fn ($record): string => self::degreeLevelValue($record))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => $query
+                        ->where('data->degree_level', 'like', "%{$search}%")
+                        ->orWhere('data->selected_degree_level', 'like', "%{$search}%")
+                        ->orWhere('data->form_selection', 'like', "%{$search}%"))
+                    ->toggleable(isToggledHiddenByDefault: false),
+
                 TextColumn::make('major')
                     ->label(__('exam_results.major'))
                     ->badge()
-                    ->getStateUsing(fn ($record): string => self::entryValue(
-                        $record,
-                        filled(data_get($record->data, 'selected_major')) ? 'selected_major' : 'degree_level_major'
-                    ))
+                    ->getStateUsing(fn ($record): string => self::majorValue($record))
                     ->searchable(query: fn (Builder $query, string $search): Builder => $query
                         ->where('data->selected_major', 'like', "%{$search}%")
                         ->orWhere('data->degree_level_major', 'like', "%{$search}%"))
@@ -334,11 +342,11 @@ class ExamResultsTable
     protected static function exportColumnDefinitions(): array
     {
         return [
-            'row_number' => [
-                'label' => __('exam_results.no'),
-                'field_key' => 'row_number',
-                'value' => fn (CustomFormEntry $record, int $rowNumber): string => (string) $rowNumber,
-                'clean' => fn (CustomFormEntry $record, int $rowNumber): string => (string) $rowNumber,
+            'id' => [
+                'label' => __('exam_results.id'),
+                'field_key' => 'id',
+                'value' => fn (CustomFormEntry $record): string => (string) $record->id,
+                'clean' => fn (CustomFormEntry $record): string => (string) $record->id,
             ],
             'academic_year' => [
                 'label' => __('exam_results.academic_year'),
@@ -370,17 +378,17 @@ class ExamResultsTable
                 'value' => fn (CustomFormEntry $record): string => self::genderLabel(self::entryValue($record, 'gender')),
                 'clean' => fn (CustomFormEntry $record): string => self::entryValue($record, 'gender'),
             ],
+            'degree_level' => [
+                'label' => __('exam_results.degree_level'),
+                'field_key' => 'degree_level',
+                'value' => fn (CustomFormEntry $record): string => self::degreeLevelValue($record),
+                'clean' => fn (CustomFormEntry $record): string => self::degreeLevelKey($record),
+            ],
             'major' => [
                 'label' => __('exam_results.major'),
                 'field_key' => 'major',
-                'value' => fn (CustomFormEntry $record): string => self::entryValue(
-                    $record,
-                    filled(data_get($record->data, 'selected_major')) ? 'selected_major' : 'degree_level_major'
-                ),
-                'clean' => fn (CustomFormEntry $record): string => self::entryValue(
-                    $record,
-                    filled(data_get($record->data, 'selected_major')) ? 'selected_major' : 'degree_level_major'
-                ),
+                'value' => fn (CustomFormEntry $record): string => self::majorValue($record),
+                'clean' => fn (CustomFormEntry $record): string => self::majorKey($record),
             ],
             'date_of_birth' => [
                 'label' => __('exam_results.date_of_birth'),
@@ -837,6 +845,75 @@ class ExamResultsTable
         }
 
         return blank($value) ? '-' : (string) $value;
+    }
+
+    protected static function degreeLevelKey($record): string
+    {
+        $groupName = self::resolveCandidateGroupName($record->creator);
+
+        if (filled($groupName)) {
+            return trim((string) $groupName);
+        }
+
+        return '-';
+    }
+
+    protected static function degreeLevelValue($record): string
+    {
+        $value = self::degreeLevelKey($record);
+
+        if ($value === '-') {
+            return $value;
+        }
+
+        return UserTypeOptions::formatGroupLabel($value);
+    }
+
+    protected static function majorKey($record): string
+    {
+        return self::entryValue(
+            $record,
+            filled(data_get($record->data, 'selected_major')) ? 'selected_major' : 'degree_level_major'
+        );
+    }
+
+    protected static function majorValue($record): string
+    {
+        return self::majorKey($record);
+    }
+
+    protected static function resolveCandidateGroupName(?User $user): ?string
+    {
+        $candidateRole = self::resolveCandidateRole($user);
+
+        if (! filled($candidateRole)) {
+            return null;
+        }
+
+        return UserTypeOptions::findByKey((string) $candidateRole)?->group_name;
+    }
+
+    protected static function resolveCandidateRole(?User $user): ?string
+    {
+        if (! $user) {
+            return null;
+        }
+
+        $roles = $user->effectiveRoleNames();
+
+        $preferredRole = $roles->first(function (string $role): bool {
+            $normalized = strtolower(trim($role));
+
+            return UserTypeOptions::isCandidateManagedRole($normalized)
+                && ! in_array($normalized, ['candidate', 'student'], true);
+        });
+
+        if ($preferredRole) {
+            return $preferredRole;
+        }
+
+        return $roles->first(fn (string $role): bool => UserTypeOptions::isCandidateManagedRole($role))
+            ?? $roles->first();
     }
 
     protected static function khmerName($record): string
