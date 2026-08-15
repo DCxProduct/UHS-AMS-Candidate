@@ -23,6 +23,7 @@ return [
     'notifications_sent' => 'បានផ្ញើការជូនដំណឹង :count។',
     'no_selected_students' => 'សូមជ្រើសរើសនិស្សិតយ៉ាងហោចណាស់ម្នាក់។',
     'no' => 'ល.រ',
+    'id' => 'ID',
     'academic_year' => 'ឆ្នាំសិក្សា',
     'seat_number' => 'លេខតុ',
     'name_khmer' => 'ឈ្មោះ (ខ្មែរ)',
@@ -30,6 +31,7 @@ return [
     'gender' => 'ភេទ',
     'date_of_birth' => 'ថ្ងៃខែឆ្នាំកំណើត',
     'exam_date' => 'ថ្ងៃប្រឡង',
+    'degree_level' => 'កម្រិតសញ្ញាបត្រ',
     'major' => 'ផ្នែក/ជំនាញ',
     'options' => [
         'form_type' => [

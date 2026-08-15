@@ -23,6 +23,7 @@ return [
     'notifications_sent' => ':count notifications sent.',
     'no_selected_students' => 'Please select at least one student.',
     'no' => 'No.',
+    'id' => 'ID',
     'academic_year' => 'Academic Year',
     'seat_number' => 'Seat Number',
     'name_khmer' => 'Name (Khmer)',
@@ -30,6 +31,7 @@ return [
     'gender' => 'Gender',
     'date_of_birth' => 'Date of Birth',
     'exam_date' => 'Exam Date',
+    'degree_level' => 'Degree Level',
     'major' => 'Major',
     'options' => [
         'form_type' => [
