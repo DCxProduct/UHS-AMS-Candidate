@@ -16,6 +16,18 @@ class CandidateTypeForm
 {
     public static function configure(Schema $schema): Schema
     {
+        $groupField = [];
+
+        if (UserTypeOptions::hasGroupNameColumn()) {
+            $groupField[] = Select::make('group_name')
+                ->label(__('candidate_types.fields.group_name'))
+                ->placeholder(__('candidate_types.placeholders.group_name'))
+                ->options(fn (): array => UserTypeOptions::groupOptions())
+                ->searchable()
+                ->preload()
+                ->native(false);
+        }
+
         return $schema
             ->columns(1)
             ->components([
@@ -79,14 +91,7 @@ class CandidateTypeForm
                                     ->validationMessages([
                                         'required' => __('candidate_types.validation.label_kh_required'),
                                     ]),
-
-                                Select::make('group_name')
-                                    ->label(__('candidate_types.fields.group_name'))
-                                    ->placeholder(__('candidate_types.placeholders.group_name'))
-                                    ->options(fn (): array => UserTypeOptions::groupOptions())
-                                    ->searchable()
-                                    ->preload()
-                                    ->native(false),
+                                ...$groupField,
                             ]),
 
                         Grid::make([

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\UserTypeOptions;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -35,6 +36,10 @@ class DegreeLevel extends Model
         });
 
         static::deleting(function (DegreeLevel $degreeLevel): void {
+            if (! UserTypeOptions::hasGroupNameColumn()) {
+                return;
+            }
+
             UserType::query()
                 ->where('group_name', $degreeLevel->key)
                 ->update([
