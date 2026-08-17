@@ -97,11 +97,12 @@ class RoleType extends Model
             ])->save();
         }
 
+        if (static::query()->exists()) {
+            return;
+        }
+
         foreach (static::defaultRecords() as $record) {
-            static::query()->updateOrCreate(
-                ['key' => $record['key']],
-                $record,
-            );
+            static::query()->create($record);
         }
     }
 
