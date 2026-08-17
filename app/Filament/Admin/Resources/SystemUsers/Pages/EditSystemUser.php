@@ -7,11 +7,35 @@ use App\Support\UserTypeOptions;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Enums\Width;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Str;
 
 class EditSystemUser extends EditRecord
 {
     protected static string $resource = SystemUserResource::class;
+
+    public function getTitle(): string | Htmlable
+    {
+        return __('filament-panels::resources/pages/edit-record.title', [
+            'label' => $this->getRecordTitle(),
+        ]);
+    }
+
+    public function getHeading(): string | Htmlable
+    {
+        return $this->getTitle();
+    }
+
+    public function getRecordTitle(): string
+    {
+        return (string) (
+            $this->record->username
+            ?: $this->record->email
+            ?: $this->record->phone
+            ?: $this->record->name
+            ?: __('system_users.resource_label')
+        );
+    }
 
     protected function getRedirectUrl(): string
     {

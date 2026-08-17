@@ -15,7 +15,7 @@ return [
         'is_active' => 'Active',
     ],
     'placeholders' => [
-        'key' => 'user',
+        'key' => 'Enter key',
         'label_en' => 'Enter label in English',
         'label_kh' => 'Enter label in Khmer',
     ],

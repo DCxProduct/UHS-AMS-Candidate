@@ -97,18 +97,19 @@ class RoleType extends Model
             ])->save();
         }
 
+        if (static::query()->exists()) {
+            return;
+        }
+
         foreach (static::defaultRecords() as $record) {
-            static::query()->updateOrCreate(
-                ['key' => $record['key']],
-                $record,
-            );
+            static::query()->create($record);
         }
     }
 
     protected static function defaultOptions(): array
     {
         return [
-            'user' => __('system_users.role_menu.options.user'),
+            'candidate' => __('system_users.role_menu.options.user'),
             'staff' => __('system_users.role_menu.options.staff'),
         ];
     }
@@ -116,7 +117,7 @@ class RoleType extends Model
     protected static function defaultDescriptions(): array
     {
         return [
-            'user' => __('system_users.role_menu.help_user'),
+            'candidate' => __('system_users.role_menu.help_user'),
             'staff' => __('system_users.role_menu.help_staff'),
         ];
     }
@@ -125,9 +126,9 @@ class RoleType extends Model
     {
         return [
             [
-                'key' => 'user',
-                'label_en' => 'User',
-                'label_kh' => 'អ្នកប្រើប្រាស់',
+                'key' => 'candidate',
+                'label_en' => 'Candidate',
+                'label_kh' => 'បេក្ខជន',
                 'is_active' => true,
             ],
             [

@@ -9,6 +9,7 @@ class Role extends SpatieRole
 {
     protected $fillable = [
         'name',
+        'label_en',
         'name_kh',
         'role_type_key',
         'guard_name',
@@ -24,6 +25,10 @@ class Role extends SpatieRole
 
         if ($locale === 'km' && filled($this->name_kh)) {
             return (string) $this->name_kh;
+        }
+
+        if (filled($this->label_en)) {
+            return (string) $this->label_en;
         }
 
         if (filled($this->name)) {
