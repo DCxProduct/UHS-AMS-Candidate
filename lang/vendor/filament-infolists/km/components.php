@@ -20,7 +20,7 @@ return [
             'columns' => [
 
                 'key' => [
-                    'label' => 'សោ',
+                    'label' => 'ពាក្យគន្លឹះ',
                 ],
 
                 'value' => [
