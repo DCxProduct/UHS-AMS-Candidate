@@ -391,7 +391,7 @@ class ListCustomFormEntries extends ListRecords
             return true;
         }
 
-        return ! $this->studentHasAnyCurrentFormEntry();
+        return ! $this->currentFormUsesSingleEntryWorkflow();
     }
 
     protected function currentUserUsesCandidateFlow(): bool
@@ -527,6 +527,25 @@ class ListCustomFormEntries extends ListRecords
                 'failed',
             ])
             ->exists();
+    }
+
+    protected function currentFormUsesSingleEntryWorkflow(): bool
+    {
+        if (! $this->activeFormId) {
+            return false;
+        }
+
+        $customForm = CustomForm::find($this->activeFormId);
+
+        if (! $customForm) {
+            return false;
+        }
+
+        if ((string) $customForm->slug === 'profile') {
+            return $this->studentHasAnyCurrentFormEntry();
+        }
+
+        return false;
     }
 
     protected function isDraftEntry(CustomFormEntry $entry): bool
