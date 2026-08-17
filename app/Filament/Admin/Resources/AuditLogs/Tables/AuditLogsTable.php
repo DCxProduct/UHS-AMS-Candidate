@@ -33,6 +33,7 @@ class AuditLogsTable
                     ->width('60px'),
 
                 TextColumn::make('module')
+                    ->hidden()
                     ->label(__('audit_logs.fields.module'))
                     ->formatStateUsing(fn (?string $state): string => self::translateModule($state)),
 
