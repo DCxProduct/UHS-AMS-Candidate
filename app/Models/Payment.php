@@ -12,6 +12,7 @@ class Payment extends Model
         'users_id',
         'form_id',
         'receipt_number',
+        'payment_slip_path',
         'type_payment',
         'exchange_rate',
         'status_payt',
@@ -41,5 +42,14 @@ class Payment extends Model
     public function form(): BelongsTo
     {
         return $this->belongsTo(CustomForm::class, 'form_id');
+    }
+
+    public function paymentSlipUrl(): ?string
+    {
+        if (blank($this->payment_slip_path)) {
+            return null;
+        }
+
+        return asset('storage/' . ltrim((string) $this->payment_slip_path, '/'));
     }
 }

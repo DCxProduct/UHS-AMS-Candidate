@@ -7,6 +7,7 @@ use App\Models\Payment;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
+use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
@@ -24,6 +25,8 @@ class PaymentsTable
     {
         return $table
             ->selectable()
+            ->recordAction(null)
+            ->recordUrl(null)
             ->searchPlaceholder(__('payments.search'))
             ->defaultSort('id', 'desc')
             ->columns([
@@ -126,6 +129,7 @@ class PaymentsTable
                     ->label(__('payments.table.datetime_pay'))
                     ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
                     ->toggleable(isToggledHiddenByDefault: false),
+
                 ])
             ->filters([
                 Filter::make('payment_filters')
@@ -189,6 +193,18 @@ class PaymentsTable
             ->deferFilters(false)
             ->filtersFormColumns(4)
             ->recordActions([
+                Action::make('view_slip')
+                    ->label(__('payments.actions.view_slip'))
+                    ->icon('heroicon-o-eye')
+                    ->color('danger')
+                    ->modalHeading(__('payments.actions.view_slip'))
+                    ->modalWidth('7xl')
+                    ->modalSubmitAction(false)
+                    ->modalCancelAction(false)
+                    ->modalContent(fn (Payment $record) => view('payment-slip-modal', [
+                        'imageUrl' => $record->paymentSlipUrl(),
+                    ]))
+                    ->visible(fn (Payment $record): bool => filled($record->payment_slip_path)),
                 EditAction::make()
                     ->label(__('payments.actions.edit'))
                     ->icon('heroicon-o-pencil-square'),
@@ -597,6 +613,12 @@ class PaymentsTable
                 'field_key' => 'receipt_number',
                 'value' => fn (Payment $record): string => blank($record->receipt_number) ? '-' : (string) $record->receipt_number,
                 'clean' => fn (Payment $record): string => blank($record->receipt_number) ? '-' : (string) $record->receipt_number,
+            ],
+            'payment_slip_path' => [
+                'label' => __('payments.table.payment_slip'),
+                'field_key' => 'payment_slip_path',
+                'value' => fn (Payment $record): string => filled($record->payment_slip_path) ? __('payments.actions.view_slip') : '-',
+                'clean' => fn (Payment $record): string => blank($record->payment_slip_path) ? '-' : (string) $record->payment_slip_path,
             ],
             'type_payment' => [
                 'label' => __('payments.table.type_payment'),
