@@ -55,16 +55,26 @@ class RoleResource extends Resource
                         Section::make()
                             ->schema([
                                 TextInput::make('name')
-                                    ->label(__('system_users.role_menu.name_en'))
-                                    ->placeholder(__('system_users.role_menu.name_en_placeholder'))
+                                    ->label(__('system_users.role_menu.key'))
+                                    ->placeholder(__('system_users.role_menu.key_placeholder'))
                                     ->helperText(fn (Get $get): string => match ((string) $get('role_type_key')) {
-                                        'staff' => __('system_users.role_menu.name_en_help_staff'),
-                                        default => __('system_users.role_menu.name_en_help_user'),
+                                        'staff' => __('system_users.role_menu.key_help_staff'),
+                                        default => __('system_users.role_menu.key_help_user'),
                                     })
                                     ->unique(
                                         ignoreRecord: true, /** @phpstan-ignore-next-line */
                                         modifyRuleUsing: fn (Unique $rule): Unique => Utils::isTenancyEnabled() ? $rule->where(Utils::getTenantModelForeignKey(), Filament::getTenant()?->id) : $rule
                                     )
+                                    ->required()
+                                    ->maxLength(255),
+
+                                TextInput::make('label_en')
+                                    ->label(__('system_users.role_menu.label_en'))
+                                    ->placeholder(__('system_users.role_menu.label_en_placeholder'))
+                                    ->helperText(fn (Get $get): string => match ((string) $get('role_type_key')) {
+                                        'staff' => __('system_users.role_menu.label_en_help_staff'),
+                                        default => __('system_users.role_menu.label_en_help_user'),
+                                    })
                                     ->required()
                                     ->maxLength(255),
 
@@ -93,10 +103,9 @@ class RoleResource extends Resource
                                     ->helperText(fn (Get $get): string => RoleType::descriptionFor((string) $get('role_type_key'))),
 
                                 TextInput::make('guard_name')
-                                    ->label(__('filament-shield::filament-shield.field.guard_name'))
                                     ->default(Utils::getFilamentAuthGuard())
-                                    ->nullable()
-                                    ->maxLength(255),
+                                    ->dehydrated()
+                                    ->hidden(),
 
                                 Select::make(config('permission.column_names.team_foreign_key'))
                                     ->label(__('filament-shield::filament-shield.field.team'))
@@ -138,7 +147,7 @@ class RoleResource extends Resource
                     ->weight(FontWeight::Medium)
                     ->label(__('system_users.role_menu.table_name'))
                     ->state(fn ($record): string => $record->localized_name)
-                    ->searchable(['name', 'name_kh']),
+                    ->searchable(['name', 'label_en', 'name_kh']),
                 TextColumn::make('role_type_key')
                     ->label(__('system_users.role_menu.type'))
                     ->state(fn ($record): string => $record->role_type_key ?: static::resolveRoleAudience($record->name))
@@ -146,6 +155,7 @@ class RoleResource extends Resource
                     ->badge()
                     ->color(fn (string $state): string => $state === 'staff' ? 'warning' : 'primary'),
                 TextColumn::make('guard_name')
+                    ->hidden()
                     ->badge()
                     ->color('warning')
                     ->label(__('filament-shield::filament-shield.column.guard_name')),

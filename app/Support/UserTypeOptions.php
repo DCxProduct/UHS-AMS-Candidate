@@ -4,10 +4,11 @@ namespace App\Support;
 
 use Illuminate\Contracts\Auth\Authenticatable;
 use App\Models\DegreeLevel;
+use App\Models\Role;
+use App\Models\SystemUser;
 use App\Models\UserType;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
-use Spatie\Permission\Models\Role;
 
 class UserTypeOptions
 {
@@ -81,10 +82,43 @@ class UserTypeOptions
 
     public static function systemOptions(): array
     {
-        $roles = static::availableSystemRoleNames();
+        $roles = Role::query()
+            ->where('guard_name', 'web')
+            ->get(['name', 'label_en', 'name_kh']);
 
-        return collect($roles)
-            ->mapWithKeys(fn (string $role): array => [$role => static::formatLabel($role)])
+        $hiddenUserTypeRoles = UserType::query()
+            ->pluck('key')
+            ->filter(fn (string $key): bool => strcasecmp($key, self::BASE_ROLE) !== 0)
+            ->map(fn (string $key): string => Str::lower(trim($key)))
+            ->values()
+            ->all();
+
+        $roleLabels = $roles
+            ->mapWithKeys(function (Role $role): array {
+                $name = trim((string) $role->name);
+
+                if ($name === '') {
+                    return [];
+                }
+
+                $label = trim((string) ($role->localized_name ?: $role->name));
+
+                return [$name => ($label !== '' ? $label : $name)];
+            });
+
+        return collect(static::availableSystemRoleNames())
+            ->reject(function (string $role) use ($hiddenUserTypeRoles): bool {
+                $normalized = Str::lower(trim($role));
+
+                if ($normalized === Str::lower(self::BASE_ROLE)) {
+                    return true;
+                }
+
+                return in_array($normalized, $hiddenUserTypeRoles, true);
+            })
+            ->mapWithKeys(fn (string $role): array => [
+                $role => $roleLabels[$role] ?? static::formatLabel($role),
+            ])
             ->all();
     }
 
@@ -123,6 +157,10 @@ class UserTypeOptions
             if ($matched) {
                 return $matched;
             }
+        }
+
+        if (is_string($roleName) && trim($roleName) !== '') {
+            return trim($roleName);
         }
 
         return array_key_first($options) ?? 'admin';
@@ -228,7 +266,7 @@ class UserTypeOptions
                 ?? static::findRoleCaseInsensitive($availableRoles, $selectedRole));
 
         return collect([
-            $selectedStoredRole,
+            $selectedStoredRole ?? trim($selectedRole),
         ])
             ->filter(fn (?string $role): bool => filled($role))
             ->unique(fn (string $role): string => Str::lower($role))
@@ -408,19 +446,53 @@ class UserTypeOptions
 
     protected static function availableSystemRoleNames(): array
     {
-        $candidateManagedRoles = static::candidateManagedRoleKeys();
+        $hiddenUserTypeRoles = UserType::query()
+            ->pluck('key')
+            ->filter(fn (string $key): bool => strcasecmp($key, self::BASE_ROLE) !== 0)
+            ->values()
+            ->all();
 
         return collect(Role::query()
             ->where('guard_name', 'web')
             ->when(
-                $candidateManagedRoles !== [],
-                fn ($query) => $query->whereNotIn('name', $candidateManagedRoles),
+                $hiddenUserTypeRoles !== [],
+                fn ($query) => $query->whereNotIn('name', $hiddenUserTypeRoles),
             )
             ->pluck('name')
             ->all())
+            ->merge(static::storedSystemRoleNames())
             ->map(fn (string $role): string => trim($role))
+            ->reject(fn (string $role): bool => strcasecmp($role, self::BASE_ROLE) === 0)
             ->unique(fn (string $role): string => Str::lower($role))
             ->sortBy(fn (string $role): string => Str::lower($role))
+            ->values()
+            ->all();
+    }
+
+    protected static function storedSystemRoleNames(): array
+    {
+        if (! Schema::hasTable('system_users')) {
+            return [];
+        }
+
+        return SystemUser::query()
+            ->pluck('roles')
+            ->flatMap(function (mixed $roles): array {
+                if (is_string($roles)) {
+                    $decoded = json_decode($roles, true);
+                    $roles = is_array($decoded) ? $decoded : [$roles];
+                }
+
+                if (! is_array($roles)) {
+                    return [];
+                }
+
+                return $roles;
+            })
+            ->filter(fn ($role): bool => filled($role))
+            ->map(fn ($role): string => trim((string) $role))
+            ->reject(fn (string $role): bool => static::isCandidateManagedRole($role))
+            ->unique(fn (string $role): string => Str::lower($role))
             ->values()
             ->all();
     }

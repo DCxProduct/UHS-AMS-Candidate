@@ -50,7 +50,7 @@ class RolesAndPermissionsSeeder extends Seeder
                 ],
                 [
                     'name_kh' => $nameKh,
-                    'role_type_key' => 'user',
+                    'role_type_key' => 'candidate',
                 ]
             ),
         ]);

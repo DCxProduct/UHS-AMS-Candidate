@@ -150,30 +150,31 @@ class SystemUser extends Authenticatable implements FilamentUser, HasAvatar, Has
             return;
         }
 
-        $existingUser = User::query()
-            ->where($lookup)
-            ->first();
+        $loginUser = $this->linkedLoginUsersQuery(withTrashed: true)->first();
 
-        $loginUser = User::query()->updateOrCreate(
-            $lookup,
-            [
-                'registration_type' => $this->getLoginRegistrationType(),
-                'academic_year' => $existingUser?->academic_year,
-                'name' => $this->name ?: $this->username ?: $this->email ?: 'System User',
-                'name_latin' => $existingUser?->name_latin,
-                'username' => $this->username,
-                'email' => $this->email,
-                'phone' => $this->phone,
+        if (! $loginUser) {
+            $loginUser = new User();
+        } elseif (method_exists($loginUser, 'trashed') && $loginUser->trashed()) {
+            $loginUser->restore();
+        }
 
-                'date_of_birth' => $existingUser?->date_of_birth ?? '2000-01-01',
+        $loginUser->fill([
+            'registration_type' => $this->getLoginRegistrationType(),
+            'academic_year' => $loginUser->academic_year,
+            'name' => $this->name ?: $this->username ?: $this->email ?: 'System User',
+            'name_latin' => $loginUser->name_latin,
+            'username' => $this->username,
+            'email' => $this->email,
+            'phone' => $this->phone,
+            'date_of_birth' => $loginUser->date_of_birth ?? '2000-01-01',
+            'seat_number' => $loginUser->seat_number,
+            'avatar' => $this->avatar,
+            'password' => $this->password,
+            'email_verified_at' => $this->email_verified_at ?? now(),
+            'is_active' => (bool) $this->is_active,
+        ]);
 
-                'seat_number' => $existingUser?->seat_number,
-                'avatar' => $this->avatar,
-                'password' => $this->password,
-                'email_verified_at' => $this->email_verified_at ?? now(),
-                'is_active' => (bool) $this->is_active,
-            ]
-        );
+        $loginUser->save();
 
         $this->syncLoginUserAuthorizations($loginUser);
     }

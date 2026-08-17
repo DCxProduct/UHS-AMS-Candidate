@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources\SystemUsers\Tables;
 
+use App\Models\Role;
 use App\Models\SystemUser;
 use App\Models\User;
 use App\Support\LocalizedDate;
@@ -74,7 +75,7 @@ class SystemUsersTable
                             return '-';
                         }
 
-                        return UserTypeOptions::formatLabel((string) $candidateRole);
+                        return static::resolveRoleLabel((string) $candidateRole);
                     })
                     ->badge()
                     ->sortable(query: function ($query, string $direction) {
@@ -240,5 +241,25 @@ class SystemUsersTable
     protected static function findLinkedLoginUser(SystemUser $record): ?User
     {
         return $record->findLinkedLoginUser();
+    }
+
+    protected static function resolveRoleLabel(string $roleName): string
+    {
+        $normalized = strtolower(trim($roleName));
+
+        if ($normalized === '') {
+            return '-';
+        }
+
+        $role = Role::query()
+            ->where('guard_name', 'web')
+            ->whereRaw('LOWER(name) = ?', [$normalized])
+            ->first();
+
+        if ($role) {
+            return $role->localized_name;
+        }
+
+        return UserTypeOptions::formatLabel($roleName);
     }
 }
