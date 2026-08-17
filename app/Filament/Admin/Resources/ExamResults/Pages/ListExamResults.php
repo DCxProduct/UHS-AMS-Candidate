@@ -135,7 +135,11 @@ class ListExamResults extends ListRecords
                 ->get();
         }
 
-        return ExamResultsTable::downloadExcel($records, $this->visibleExportColumnKeys());
+        return ExamResultsTable::downloadExcel(
+            $records,
+            $this->visibleExportColumnKeys(),
+            static::getResource()::getResultModuleLabel(),
+        );
     }
 
     public function clearDataFromTableSelection(

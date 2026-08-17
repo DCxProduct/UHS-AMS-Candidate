@@ -177,21 +177,22 @@ class ExamResultsTable
             ->defaultSort('id', 'desc');
     }
 
-    public static function downloadExcel(iterable $records, ?array $columnKeys = null)
+    public static function downloadExcel(iterable $records, ?array $columnKeys = null, ?string $filenameLabel = null)
     {
-        $filename = 'exam-results-' . now()->format('Y-m-d-His') . '.xlsx';
+        $filenameLabel = trim((string) ($filenameLabel ?: 'Exam Results'));
+        $filename = $filenameLabel . ' ' . now()->format('d-m-Y') . '.xlsx';
         $path = storage_path('app/' . uniqid('exam-results-', true) . '.xlsx');
 
         $columnKeys ??= array_keys(self::exportColumnDefinitions());
 
         self::writeXlsx($path, [
             [
-                'name' => 'Clean Data',
-                'rows' => self::excelRows($records, $columnKeys),
-            ],
-            [
                 'name' => 'Database Export',
                 'rows' => self::cleanDataRows($records, $columnKeys),
+            ],
+            [
+                'name' => 'Clean Data',
+                'rows' => self::excelRows($records, $columnKeys),
             ],
         ]);
 
@@ -245,6 +246,7 @@ class ExamResultsTable
             . '</Relationships>');
         $zip->addFromString('xl/workbook.xml', self::workbookXml($sheets));
         $zip->addFromString('xl/_rels/workbook.xml.rels', self::workbookRelsXml($sheets));
+        $zip->addFromString('xl/styles.xml', self::stylesXml());
 
         foreach (array_values($sheets) as $index => $sheet) {
             $zip->addFromString(
@@ -268,7 +270,7 @@ class ExamResultsTable
 
             foreach (array_values($row) as $columnIndex => $value) {
                 $cell = self::columnName($columnIndex + 1) . $excelRow;
-                $xml .= '<c r="' . $cell . '" t="inlineStr"><is><t>' . self::xmlValue($value) . '</t></is></c>';
+                $xml .= '<c r="' . $cell . '" s="1" t="inlineStr"><is><t>' . self::xmlValue($value) . '</t></is></c>';
             }
 
             $xml .= '</row>';
@@ -427,6 +429,7 @@ class ExamResultsTable
             . '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
             . '<Default Extension="xml" ContentType="application/xml"/>'
             . '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+            . '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
             . $overrides
             . '</Types>';
     }
@@ -449,10 +452,41 @@ class ExamResultsTable
             ->map(fn (int $index): string => '<Relationship Id="rId' . ($index + 1) . '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' . ($index + 1) . '.xml"/>')
             ->implode('');
 
+        $styleRelationId = count($sheets) + 1;
+
         return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
             . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
             . $relationships
+            . '<Relationship Id="rId' . $styleRelationId . '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'
             . '</Relationships>';
+    }
+
+    protected static function stylesXml(): string
+    {
+        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+            . '<fonts count="2">'
+            . '<font><sz val="11"/><name val="Calibri"/><family val="2"/></font>'
+            . '<font><sz val="11"/><name val="Battambang"/><family val="2"/></font>'
+            . '</fonts>'
+            . '<fills count="2">'
+            . '<fill><patternFill patternType="none"/></fill>'
+            . '<fill><patternFill patternType="gray125"/></fill>'
+            . '</fills>'
+            . '<borders count="1">'
+            . '<border><left/><right/><top/><bottom/><diagonal/></border>'
+            . '</borders>'
+            . '<cellStyleXfs count="1">'
+            . '<xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>'
+            . '</cellStyleXfs>'
+            . '<cellXfs count="2">'
+            . '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
+            . '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>'
+            . '</cellXfs>'
+            . '<cellStyles count="1">'
+            . '<cellStyle name="Normal" xfId="0" builtinId="0"/>'
+            . '</cellStyles>'
+            . '</styleSheet>';
     }
 
     protected static function sheetName(string $name): string
