@@ -11,6 +11,7 @@ use App\Models\User;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
@@ -48,18 +49,8 @@ class PaymentForm
                                         'required' => __('payments.validation.user_required'),
                                     ]),
 
-                                Select::make('form_id')
-                                    ->label(__('payments.fields.form'))
-                                    ->markAsRequired()
-                                    ->required()
-                                    ->placeholder(__('payments.placeholders.form'))
-                                    ->options(fn (): array => self::formOptions($restrictToUnpaidApplications))
-                                    ->searchable()
-                                    ->native(false)
-                                    ->preload()
-                                    ->validationMessages([
-                                        'required' => __('payments.validation.form_required'),
-                                    ]),
+                                Hidden::make('form_id')
+                                    ->default(fn (): ?int => self::defaultFormId($restrictToUnpaidApplications)),
 
                                 TextInput::make('receipt_number')
                                     ->label(__('payments.fields.receipt_number'))
@@ -172,6 +163,24 @@ class PaymentForm
                             ->label(__('payments.fields.description'))
                             ->placeholder(__('payments.placeholders.description'))
                             ->rows(4)
+                            ->columnSpanFull(),
+
+                        FileUpload::make('payment_slip_path')
+                            ->label(__('payments.fields.payment_slip'))
+                            ->placeholder(__('payments.placeholders.payment_slip'))
+                            ->disk('public')
+                            ->directory('payment-slips')
+                            ->acceptedFileTypes([
+                                'image/jpeg',
+                                'image/png',
+                                'image/webp',
+                            ])
+                            ->image()
+                            ->imageEditor()
+                            ->maxSize(5120)
+                            ->openable()
+                            ->downloadable()
+                            ->previewable()
                             ->columnSpanFull(),
                     ]),
             ]);
