@@ -226,56 +226,20 @@ class AppPanelProvider extends PanelProvider
             | - allowed_roles contains a current user role
             |--------------------------------------------------------------------------
             */
-            if (in_array('allowed_roles', $columns, true)) {
+            if (in_array('allowed_roles', $columns, true) && $this->isStudent()) {
                 $driver = DB::connection()->getDriverName();
-                $candidateManagedRoles = $this->isStudent()
-                    ? UserTypeOptions::candidateManagedRoleKeys()
-                    : [];
+                $candidateManagedRoles = UserTypeOptions::candidateManagedRoleKeys();
 
                 $query->where(function ($query) use ($driver, $currentRoles, $candidateManagedRoles): void {
-                    $query->whereNull('allowed_roles');
+                    $query->orWhere('slug', 'profile');
 
                     if ($driver === 'pgsql') {
-                        $query
-                            ->orWhereRaw("allowed_roles::text = ''")
-                            ->orWhereRaw("allowed_roles::text = '[]'")
-                            ->orWhereRaw("allowed_roles::text = 'null'");
-
                         foreach ($currentRoles as $role) {
-                            $query->orWhereRaw('allowed_roles::text ILIKE ?', ['%"' . $role . '"%']);
-                        }
-
-                        if ($candidateManagedRoles !== []) {
-                            $query->orWhere(function ($profileQuery) use ($candidateManagedRoles): void {
-                                $profileQuery
-                                    ->where('slug', 'profile')
-                                    ->where(function ($allowedRoleQuery) use ($candidateManagedRoles): void {
-                                        foreach ($candidateManagedRoles as $role) {
-                                            $allowedRoleQuery->orWhereRaw('allowed_roles::text ILIKE ?', ['%"' . $role . '"%']);
-                                        }
-                                    });
-                            });
+                            $query->orWhereRaw('COALESCE(allowed_roles::text, \'\') ILIKE ?', ['%"' . $role . '"%']);
                         }
                     } else {
-                        $query
-                            ->orWhereRaw("CAST(allowed_roles AS CHAR) = ''")
-                            ->orWhereRaw("CAST(allowed_roles AS CHAR) = '[]'")
-                            ->orWhereRaw("CAST(allowed_roles AS CHAR) = 'null'");
-
                         foreach ($currentRoles as $role) {
-                            $query->orWhereRaw('CAST(allowed_roles AS CHAR) LIKE ?', ['%"' . $role . '"%']);
-                        }
-
-                        if ($candidateManagedRoles !== []) {
-                            $query->orWhere(function ($profileQuery) use ($candidateManagedRoles): void {
-                                $profileQuery
-                                    ->where('slug', 'profile')
-                                    ->where(function ($allowedRoleQuery) use ($candidateManagedRoles): void {
-                                        foreach ($candidateManagedRoles as $role) {
-                                            $allowedRoleQuery->orWhereRaw('CAST(allowed_roles AS CHAR) LIKE ?', ['%"' . $role . '"%']);
-                                        }
-                                    });
-                            });
+                            $query->orWhereRaw('COALESCE(CAST(allowed_roles AS CHAR), \'\') LIKE ?', ['%"' . $role . '"%']);
                         }
                     }
                 });
@@ -321,15 +285,13 @@ class AppPanelProvider extends PanelProvider
                     | /custom-form-entries?tableFilters[custom_form_id][value]=1
                     |--------------------------------------------------------------------------
                     */
-                    $url = ClosingDateWorkflow::shouldShowContact($formId)
-                        ? url('/contact-us?form_id='.$formId)
-                        : PackageCustomFormEntryResource::getUrl('index', [
-                            'tableFilters' => [
-                                'custom_form_id' => [
-                                    'value' => $formId,
-                                ],
+                    $url = PackageCustomFormEntryResource::getUrl('index', [
+                        'tableFilters' => [
+                            'custom_form_id' => [
+                                'value' => $formId,
                             ],
-                        ]);
+                        ],
+                    ]);
 
                     return NavigationItem::make('student-form-'.$formId)
                         ->label(fn (): string => $this->getDynamicFormNavigationLabel($slug, $name))
@@ -340,7 +302,7 @@ class AppPanelProvider extends PanelProvider
                         ->visible(fn (): bool => auth()->check()
                             && $this->currentUserCanUseDynamicForms()
                             && $this->currentUserCanAccessDynamicForm($formId)
-                            && ClosingDateWorkflow::shouldShowFeature($formId)
+                            && ClosingDateWorkflow::canOpenCustomFormId($formId)
                             && $this->canShowDynamicForm($slug))
                         ->isActiveWhen(
                             fn (): bool => (
@@ -409,7 +371,7 @@ class AppPanelProvider extends PanelProvider
             return false;
         }
 
-        if ($this->isAdmin()) {
+        if ($this->currentUserCanAccessStaffDynamicForms()) {
             return true;
         }
 
@@ -425,9 +387,11 @@ class AppPanelProvider extends PanelProvider
             return [];
         }
 
-        $roles = method_exists($user, 'effectiveRoleNames')
+        $roles = collect(method_exists($user, 'effectiveRoleNames')
             ? $user->effectiveRoleNames()->all()
-            : [];
+            : [])
+            ->merge($this->extractStoredRoles($user))
+            ->all();
 
         if ($user->registration_type === 'student') {
             $roles[] = 'student';
@@ -448,10 +412,34 @@ class AppPanelProvider extends PanelProvider
             ->all();
     }
 
+    protected function extractStoredRoles(mixed $user): array
+    {
+        $roles = data_get($user, 'roles', []);
+
+        if (is_string($roles)) {
+            $decoded = json_decode($roles, true);
+            $roles = is_array($decoded) ? $decoded : [$roles];
+        }
+
+        if (! is_array($roles)) {
+            return [];
+        }
+
+        return collect($roles)
+            ->filter(fn ($role): bool => filled($role))
+            ->map(fn ($role): string => strtolower(trim((string) $role)))
+            ->values()
+            ->all();
+    }
+
     protected function currentUserCanAccessDynamicForm(int $formId): bool
     {
         if ($formId <= 0 || ! Schema::hasTable('custom_forms')) {
             return false;
+        }
+
+        if (! $this->isStudent()) {
+            return $this->currentUserCanAccessStaffDynamicForms();
         }
 
         $form = DB::table('custom_forms')
@@ -476,6 +464,7 @@ class AppPanelProvider extends PanelProvider
 
         $allowedRoles = collect(is_array($allowedRoles) ? $allowedRoles : [])
             ->map(fn ($role): string => strtolower(trim((string) $role)))
+            ->reject(fn (string $role): bool => in_array($role, ['student', 'candidate'], true))
             ->flatMap(function (string $role): array {
                 if (in_array($role, ['student', 'candidate'], true)) {
                     return ['student', 'candidate'];
@@ -487,25 +476,17 @@ class AppPanelProvider extends PanelProvider
             ->values()
             ->all();
 
+        if ($allowedRoles === []) {
+            return false;
+        }
+
         $form = DB::table('custom_forms')
             ->select(['id', 'slug'])
             ->where('id', $formId)
             ->first();
 
-        if (
-            $this->isStudent()
-            && strtolower((string) ($form->slug ?? '')) === 'profile'
-            && collect($allowedRoles)->intersect(UserTypeOptions::candidateManagedRoleKeys())->isNotEmpty()
-        ) {
+        if ($this->isStudent() && strtolower((string) ($form->slug ?? '')) === 'profile') {
             return true;
-        }
-
-        if ($allowedRoles === []) {
-            $allowedRoles = collect(UserTypeOptions::candidateManagedRoleKeys())
-                ->push('admin')
-                ->unique()
-                ->values()
-                ->all();
         }
 
         return collect($this->currentDynamicFormRoles())
@@ -513,14 +494,65 @@ class AppPanelProvider extends PanelProvider
             ->isNotEmpty();
     }
 
-    protected function canShowDynamicForm(string $slug): bool
+    protected function currentUserCanAccessStaffDynamicForms(): bool
     {
-        if ($this->isStudent() && $slug === 'profile') {
+        $user = auth()->user();
+
+        if (! $user || $this->isStudent()) {
+            return false;
+        }
+
+        foreach (['ViewAny:CustomFormEntry', 'Create:CustomFormEntry'] as $permission) {
+            if ($this->userHasPermission($user, $permission)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    protected function userHasPermission(mixed $user, string $permission): bool
+    {
+        if (! $user || trim($permission) === '') {
+            return false;
+        }
+
+        if (method_exists($user, 'can') && $user->can($permission)) {
             return true;
         }
 
+        $storedPermissions = collect(data_get($user, 'permissions', []))
+            ->when(is_string(data_get($user, 'permissions')), function () use ($user) {
+                $decoded = json_decode((string) data_get($user, 'permissions'), true);
+
+                return collect(is_array($decoded) ? $decoded : [data_get($user, 'permissions')]);
+            })
+            ->filter(fn ($value): bool => filled($value))
+            ->map(fn ($value): string => strtolower(trim((string) $value)));
+
+        if ($storedPermissions->contains(strtolower(trim($permission)))) {
+            return true;
+        }
+
+        if ($user instanceof \App\Models\SystemUser) {
+            $loginUser = $user->findLinkedLoginUser();
+
+            if ($loginUser && method_exists($loginUser, 'can') && $loginUser->can($permission)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    protected function canShowDynamicForm(string $slug): bool
+    {
         if (! $this->isStudent()) {
             return $slug !== 'profile';
+        }
+
+        if ($slug === 'profile') {
+            return $this->profileFeatureIsOpen();
         }
 
         /*
@@ -593,6 +625,29 @@ class AppPanelProvider extends PanelProvider
             $workflow = ClosingDateWorkflow::checkByCustomFormId((int) $profileFormId);
 
             return (bool) ($workflow['show_contact'] ?? false);
+        } catch (Throwable $e) {
+            report($e);
+
+            return false;
+        }
+    }
+
+    protected function profileFeatureIsOpen(): bool
+    {
+        try {
+            if (! Schema::hasTable('custom_forms')) {
+                return false;
+            }
+
+            $profileFormId = DB::table('custom_forms')
+                ->where('slug', 'profile')
+                ->value('id');
+
+            if (! $profileFormId) {
+                return false;
+            }
+
+            return \App\Models\ClosingDate::isCustomFormOpen((int) $profileFormId);
         } catch (Throwable $e) {
             report($e);
 

@@ -42,11 +42,9 @@ class CustomFormEntryResource extends Resource
 
     public static function canAccess(): bool
     {
-        if (static::currentUserIsAdmin()) {
-            return static::currentUserCanAccessAdminResource();
-        }
+        $canAccessAdminResource = static::currentUserCanAccessAdminResource();
 
-        if (! static::currentUserCanUseDynamicForms()) {
+        if (! $canAccessAdminResource && ! static::currentUserCanUseDynamicForms()) {
             return false;
         }
 
@@ -81,22 +79,24 @@ class CustomFormEntryResource extends Resource
             return false;
         }
 
-        $workflow = ClosingDateWorkflow::checkByCustomFormId(
-            (int) $form->id
-        );
+        if (static::currentUserIsStudent()) {
+            $workflow = ClosingDateWorkflow::checkByCustomFormId(
+                (int) $form->id
+            );
 
-        /*
-        |--------------------------------------------------------------------------
-        | Prevent opening closed/not-open forms directly
-        |--------------------------------------------------------------------------
-        */
-        if (! (
-            $workflow['can_open_form']
-            ?? $workflow['can_submit']
-            ?? $workflow['can_see_form']
-            ?? true
-        )) {
-            return false;
+            /*
+            |--------------------------------------------------------------------------
+            | Prevent opening closed/not-open forms directly
+            |--------------------------------------------------------------------------
+            */
+            if (! (
+                $workflow['can_open_form']
+                ?? $workflow['can_submit']
+                ?? $workflow['can_see_form']
+                ?? true
+            )) {
+                return false;
+            }
         }
 
         if (static::currentUserIsStudent() && (string) $form->slug === 'profile') {
@@ -126,7 +126,7 @@ class CustomFormEntryResource extends Resource
             return false;
         }
 
-        if (! static::currentUserIsAdmin()) {
+        if (static::currentUserIsStudent()) {
             return false;
         }
 
@@ -137,7 +137,7 @@ class CustomFormEntryResource extends Resource
         }
 
         foreach ($permissions as $permission) {
-            if ($user->can($permission)) {
+            if (static::userHasPermission($user, $permission)) {
                 return true;
             }
         }
@@ -392,7 +392,7 @@ class CustomFormEntryResource extends Resource
         }
 
         if ($slug === 'profile') {
-            return true;
+            return static::profileFeatureIsOpen();
         }
 
         if (static::profileFeatureIsHidden()) {
@@ -449,6 +449,29 @@ class CustomFormEntryResource extends Resource
             $workflow = ClosingDateWorkflow::checkByCustomFormId((int) $profileFormId);
 
             return (bool) ($workflow['show_contact'] ?? false);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return false;
+        }
+    }
+
+    protected static function profileFeatureIsOpen(): bool
+    {
+        try {
+            if (! DatabaseSchema::hasTable('custom_forms')) {
+                return false;
+            }
+
+            $profileFormId = DB::table('custom_forms')
+                ->where('slug', 'profile')
+                ->value('id');
+
+            if (! $profileFormId) {
+                return false;
+            }
+
+            return ClosingDate::isCustomFormOpen((int) $profileFormId);
         } catch (\Throwable $e) {
             report($e);
 
@@ -520,7 +543,7 @@ class CustomFormEntryResource extends Resource
 
     public static function canCurrentUserAccessForm(CustomForm $form): bool
     {
-        if (static::currentUserIsAdmin()) {
+        if (static::currentUserCanAccessAdminResource()) {
             return true;
         }
 
@@ -536,11 +559,7 @@ class CustomFormEntryResource extends Resource
 
         $allowedRoles = static::getFormAllowedRoles($form);
 
-        if (
-            static::currentUserIsStudent()
-            && strtolower((string) ($form->slug ?? '')) === 'profile'
-            && collect($allowedRoles)->intersect(UserTypeOptions::candidateManagedRoleKeys())->isNotEmpty()
-        ) {
+        if (static::currentUserIsStudent() && strtolower((string) ($form->slug ?? '')) === 'profile') {
             return true;
         }
 
@@ -557,7 +576,7 @@ class CustomFormEntryResource extends Resource
             return false;
         }
 
-        if (static::currentUserIsAdmin()) {
+        if (static::currentUserCanAccessAdminResource()) {
             return true;
         }
 
@@ -568,11 +587,7 @@ class CustomFormEntryResource extends Resource
     protected static function getFormAllowedRoles(CustomForm $form): array
     {
         $roles = $form->allowed_roles ?? [];
-        $defaultRoles = collect(UserTypeOptions::candidateManagedRoleKeys())
-            ->push('admin')
-            ->unique()
-            ->values()
-            ->all();
+        $defaultRoles = [];
 
         if (blank($roles)) {
             return $defaultRoles;
@@ -598,12 +613,47 @@ class CustomFormEntryResource extends Resource
 
         $roles = collect($roles)
             ->flatMap(fn ($role): array => static::normalizeRoleAliases((string) $role))
+            ->reject(fn ($role): bool => in_array((string) $role, ['student', 'candidate'], true))
             ->filter()
             ->unique()
             ->values()
             ->all();
 
         return empty($roles) ? $defaultRoles : $roles;
+    }
+
+    protected static function userHasPermission(mixed $user, string $permission): bool
+    {
+        if (! $user || trim($permission) === '') {
+            return false;
+        }
+
+        if (method_exists($user, 'can') && $user->can($permission)) {
+            return true;
+        }
+
+        $storedPermissions = collect(data_get($user, 'permissions', []))
+            ->when(is_string(data_get($user, 'permissions')), function () use ($user) {
+                $decoded = json_decode((string) data_get($user, 'permissions'), true);
+
+                return collect(is_array($decoded) ? $decoded : [data_get($user, 'permissions')]);
+            })
+            ->filter(fn ($value): bool => filled($value))
+            ->map(fn ($value): string => strtolower(trim((string) $value)));
+
+        if ($storedPermissions->contains(strtolower(trim($permission)))) {
+            return true;
+        }
+
+        if ($user instanceof \App\Models\SystemUser) {
+            $loginUser = $user->findLinkedLoginUser();
+
+            if ($loginUser && method_exists($loginUser, 'can') && $loginUser->can($permission)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     protected static function currentUserFormRoles(): array
@@ -614,9 +664,11 @@ class CustomFormEntryResource extends Resource
             return [];
         }
 
-        $roles = method_exists($user, 'effectiveRoleNames')
+        $roles = collect(method_exists($user, 'effectiveRoleNames')
             ? $user->effectiveRoleNames()->all()
-            : [];
+            : [])
+            ->merge(static::extractStoredRoles($user))
+            ->all();
 
         if ($user->registration_type === 'student') {
             $roles[] = 'student';
@@ -627,6 +679,26 @@ class CustomFormEntryResource extends Resource
             ->flatMap(fn ($role): array => static::normalizeRoleAliases((string) $role))
             ->filter()
             ->unique()
+            ->values()
+            ->all();
+    }
+
+    protected static function extractStoredRoles(mixed $user): array
+    {
+        $roles = data_get($user, 'roles', []);
+
+        if (is_string($roles)) {
+            $decoded = json_decode($roles, true);
+            $roles = is_array($decoded) ? $decoded : [$roles];
+        }
+
+        if (! is_array($roles)) {
+            return [];
+        }
+
+        return collect($roles)
+            ->filter(fn ($role): bool => filled($role))
+            ->map(fn ($role): string => strtolower(trim((string) $role)))
             ->values()
             ->all();
     }
@@ -660,21 +732,20 @@ class CustomFormEntryResource extends Resource
 
     protected static function formShouldShowFeature(int $formId): bool
     {
-        if (static::currentUserIsAdmin()) {
+        if (! static::currentUserIsStudent()) {
             return true;
         }
 
-        return ClosingDate::shouldShowCustomForm($formId)
-            || ClosingDate::shouldShowContact($formId);
+        return ClosingDateWorkflow::canOpenCustomFormId($formId);
     }
 
     protected static function formShouldShowContact(int $formId): bool
     {
-        if (static::currentUserIsAdmin()) {
+        if (! static::currentUserIsStudent()) {
             return false;
         }
 
-        return ClosingDate::shouldShowContact($formId);
+        return false;
     }
 
     protected static function getDynamicFormIcon(CustomForm $form): string

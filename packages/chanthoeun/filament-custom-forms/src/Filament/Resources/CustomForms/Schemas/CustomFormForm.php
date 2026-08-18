@@ -188,25 +188,13 @@ class CustomFormForm
 
                         Forms\Components\CheckboxList::make('allowed_roles')
                             ->label(__('filament-custom-forms::fcf.form.allowed_roles'))
-                            ->options(fn (): array => UserTypeOptions::systemOptions() + UserTypeOptions::customQuery()
-                                ->get()
-                                ->mapWithKeys(fn ($userType): array => [
-                                    $userType->key => $userType->getLocalizedLabel(),
-                                ])
-                                ->all())
+                            ->options(fn (): array => UserTypeOptions::options())
                             ->columns(2)
                             ->gridDirection('row')
                             ->bulkToggleable()
                             ->columnSpanFull()
                             ->afterStateHydrated(function ($component, $record): void {
-                                $availableRoles = array_keys(
-                                    UserTypeOptions::systemOptions() + UserTypeOptions::customQuery()
-                                        ->get()
-                                        ->mapWithKeys(fn ($userType): array => [
-                                            $userType->key => $userType->getLocalizedLabel(),
-                                        ])
-                                        ->all()
-                                );
+                                $availableRoles = array_keys(UserTypeOptions::options());
                                 $roles = $record?->allowed_roles;
 
                                 if (is_string($roles)) {
@@ -215,7 +203,7 @@ class CustomFormForm
                                 }
 
                                 $component->state(
-                                    collect(is_array($roles) ? $roles : ['admin'])
+                                    collect(is_array($roles) ? $roles : [])
                                         ->map(function ($role) use ($availableRoles): ?string {
                                             $normalized = strtolower(trim((string) $role));
 
@@ -240,8 +228,8 @@ class CustomFormForm
                                 ->map(function ($role): ?string {
                                     $normalized = strtolower(trim((string) $role));
 
-                                    if ($normalized === 'student') {
-                                        return 'candidate';
+                                    if (in_array($normalized, ['student', 'candidate'], true)) {
+                                        return null;
                                     }
 
                                     return filled($normalized) ? $normalized : null;
