@@ -123,7 +123,9 @@ class CandidatePaymentListsTable
 
                 TextColumn::make('academic_year')
                     ->label(__('candidate_payment_lists.columns.academic_year'))
-                    ->getStateUsing(fn (CandidatePaymentList $record): string => self::entryValue($record, 'academic_year', $record->creator?->academic_year))
+                    ->getStateUsing(fn (CandidatePaymentList $record): string => FormEntryData::academicYearLabel(
+                        ['academic_year' => self::entryValue($record, 'academic_year', $record->creator?->academic_year)]
+                    ))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('status_payt')
@@ -487,7 +489,9 @@ class CandidatePaymentListsTable
             'phone_number' => self::entryValue($record, 'phone_number', $record->creator?->phone),
             'date_of_birth' => self::dateOfBirth($record),
             'major' => (string) FormEntryData::firstFilled($record->data, FormEntryData::majorKeys(), '-'),
-            'academic_year' => self::entryValue($record, 'academic_year', $record->creator?->academic_year),
+            'academic_year' => FormEntryData::academicYearLabel(
+                ['academic_year' => self::entryValue($record, 'academic_year', $record->creator?->academic_year)]
+            ),
             'status_payt' => strtolower(self::paymentStatus($record)) === 'paid'
                 ? __('payments.options.status_payt.paid')
                 : __('payments.options.status_payt.unpaid'),
@@ -1026,7 +1030,7 @@ class CandidatePaymentListsTable
             ->filter()
             ->unique()
             ->sort()
-            ->mapWithKeys(fn (string $value): array => [$value => $value])
+            ->mapWithKeys(fn (string $value): array => [$value => FormEntryData::academicYearOptionLabel($value, $value)])
             ->toArray();
     }
 

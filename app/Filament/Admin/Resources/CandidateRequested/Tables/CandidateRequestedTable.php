@@ -80,7 +80,9 @@ class CandidateRequestedTable
 
                 TextColumn::make('academic_year')
                     ->label(__('exam_results.academic_year'))
-                    ->getStateUsing(fn ($record): string => self::entryValue($record, 'academic_year', $record->creator?->academic_year))
+                    ->getStateUsing(fn ($record): string => FormEntryData::academicYearLabel(
+                        ['academic_year' => self::entryValue($record, 'academic_year', $record->creator?->academic_year)]
+                    ))
                     ->searchable(query: fn (Builder $query, string $search): Builder => $query->where('data->academic_year', 'like', "%{$search}%"))
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
@@ -529,7 +531,9 @@ class CandidateRequestedTable
             'academic_year' => [
                 'label' => __('exam_results.academic_year'),
                 'field_key' => 'academic_year',
-                'value' => fn (CustomFormEntry $record): string => self::entryValue($record, 'academic_year', $record->creator?->academic_year),
+                'value' => fn (CustomFormEntry $record): string => FormEntryData::academicYearLabel(
+                    ['academic_year' => self::entryValue($record, 'academic_year', $record->creator?->academic_year)]
+                ),
                 'clean' => fn (CustomFormEntry $record): string => self::entryValue($record, 'academic_year', $record->creator?->academic_year),
             ],
             'user_type' => [

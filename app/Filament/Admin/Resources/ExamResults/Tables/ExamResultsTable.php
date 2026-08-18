@@ -72,7 +72,9 @@ class ExamResultsTable
 
                 TextColumn::make('academic_year')
                     ->label(__('exam_results.academic_year'))
-                    ->getStateUsing(fn ($record): string => self::entryValue($record, 'academic_year', $record->creator?->academic_year))
+                    ->getStateUsing(fn ($record): string => FormEntryData::academicYearLabel(
+                        ['academic_year' => self::entryValue($record, 'academic_year', $record->creator?->academic_year)]
+                    ))
                     ->searchable(query: fn (Builder $query, string $search): Builder => $query->where('data->academic_year', 'like', "%{$search}%"))
                     ->toggleable(isToggledHiddenByDefault: false),
 
@@ -349,7 +351,9 @@ class ExamResultsTable
             'academic_year' => [
                 'label' => __('exam_results.academic_year'),
                 'field_key' => 'academic_year',
-                'value' => fn (CustomFormEntry $record): string => self::entryValue($record, 'academic_year', $record->creator?->academic_year),
+                'value' => fn (CustomFormEntry $record): string => FormEntryData::academicYearLabel(
+                    ['academic_year' => self::entryValue($record, 'academic_year', $record->creator?->academic_year)]
+                ),
                 'clean' => fn (CustomFormEntry $record): string => self::entryValue($record, 'academic_year', $record->creator?->academic_year),
             ],
             'seat_number' => [
@@ -570,7 +574,7 @@ class ExamResultsTable
             ->filter()
             ->unique()
             ->sort()
-            ->mapWithKeys(fn (string $year): array => [$year => $year])
+            ->mapWithKeys(fn (string $year): array => [$year => FormEntryData::academicYearOptionLabel($year, $year)])
             ->toArray();
     }
 
