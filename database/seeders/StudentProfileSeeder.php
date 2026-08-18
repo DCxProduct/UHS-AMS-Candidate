@@ -312,7 +312,7 @@ class StudentProfileSeeder extends Seeder
 
         $educationFields = [
             ['name' => 'educational_institution', 'label' => $this->t('Educational Institution', 'គ្រឹះស្ថានអប់រំ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Educational Institution', 'placeholder_km' => 'បញ្ចូលគ្រឹះស្ថានអប់រំ', 'column_span_full' => true]],
-            ['name' => 'degree_level_major', 'label' => $this->t('Degree Level / Major', 'កម្រិតសញ្ញាបត្រ / ជំនាញ'), 'type' => 'select_dropdown', 'options' => ['choices' => $degreeOptions]],
+            ['name' => 'degree_level_major', 'label' => $this->t('Degree Level / Major', 'កម្រិតសញ្ញាបត្រ / ផ្នែក'), 'type' => 'select_dropdown', 'options' => ['choices' => $degreeOptions]],
             ['name' => 'country', 'label' => $this->t('Country', 'ប្រទេស'), 'type' => 'select_dropdown', 'options' => ['choices' => $countryOptions]],
             ['name' => 'from_year', 'label' => $this->t('From Year', 'ចាប់ពីឆ្នាំ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter From Year', 'placeholder_km' => 'បញ្ចូលចាប់ពីឆ្នាំ']],
             ['name' => 'to_year', 'label' => $this->t('To Year', 'ដល់ឆ្នាំ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter To Year', 'placeholder_km' => 'បញ្ចូលដល់ឆ្នាំ']],

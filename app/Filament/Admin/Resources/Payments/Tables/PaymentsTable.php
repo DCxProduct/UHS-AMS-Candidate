@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Resources\Payments\Tables;
 
 use App\Models\PaymentType;
 use App\Models\Payment;
+use App\Support\FormEntryData;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
@@ -299,10 +300,14 @@ class PaymentsTable
     {
         $entry = self::matchedEntry($record);
 
-        return self::entryValue(
-            $record,
-            filled(data_get($entry?->data, 'selected_major')) ? 'selected_major' : 'degree_level_major'
-        );
+        return FormEntryData::majorLabel($entry?->data);
+    }
+
+    protected static function majorKey(Payment $record): string
+    {
+        $entry = self::matchedEntry($record);
+
+        return (string) FormEntryData::firstFilled($entry?->data, FormEntryData::majorKeys(), '-');
     }
 
     protected static function genderLabel(string $state): string
@@ -343,11 +348,11 @@ class PaymentsTable
     {
         return Payment::query()
             ->get()
-            ->map(fn (Payment $record): string => trim(self::major($record)))
+            ->map(fn (Payment $record): string => trim(self::majorKey($record)))
             ->filter(fn (string $value): bool => $value !== '' && $value !== '-')
             ->unique()
             ->sort()
-            ->mapWithKeys(fn (string $value): array => [$value => $value])
+            ->mapWithKeys(fn (string $value): array => [$value => FormEntryData::majorOptionLabel($value, $value)])
             ->toArray();
     }
 
@@ -355,7 +360,7 @@ class PaymentsTable
     {
         return Payment::query()
             ->get()
-            ->filter(fn (Payment $record): bool => self::major($record) === $major)
+            ->filter(fn (Payment $record): bool => self::majorKey($record) === $major)
             ->pluck('id')
             ->all();
     }
