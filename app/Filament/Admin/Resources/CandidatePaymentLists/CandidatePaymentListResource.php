@@ -167,8 +167,8 @@ class CandidatePaymentListResource extends Resource
             return false;
         }
 
-        return method_exists($user, 'hasEffectiveRole')
-            ? $user->hasEffectiveRole(['admin', 'cashier', 'staff'])
+        return method_exists($user, 'hasEffectiveStaffRole')
+            ? $user->hasEffectiveStaffRole()
             : $user->registration_type === 'admin';
     }
 

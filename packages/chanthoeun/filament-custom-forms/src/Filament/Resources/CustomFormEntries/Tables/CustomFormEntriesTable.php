@@ -490,6 +490,12 @@ class CustomFormEntriesTable
             ->color('gray')
             ->toggleable(isToggledHiddenByDefault: false);
 
+        $columns[] = TextColumn::make('updated_at')
+            ->label(__('app.updated_at'))
+            ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
+            ->color('gray')
+            ->toggleable(isToggledHiddenByDefault: false);
+
         return $columns;
     }
 
@@ -614,6 +620,11 @@ class CustomFormEntriesTable
                 data_get($record->data, 'submitted_at') ?: $state
             ))
             ->color('gray');
+
+        $columns[] = TextColumn::make('updated_at')
+            ->label(__('app.updated_at'))
+            ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
+            ->color('info');
 
         $columns[] = TextColumn::make('reviewed_at')
             ->label(__('review_applications.reviewed_at'))
