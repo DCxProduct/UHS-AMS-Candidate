@@ -145,6 +145,11 @@ class CustomFormEntryResource extends Resource
         return false;
     }
 
+    public static function currentUserCanManageForms(): bool
+    {
+        return static::currentUserCanAccessAdminResource();
+    }
+
     public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
     {
         $query = parent::getEloquentQuery();
@@ -174,15 +179,7 @@ class CustomFormEntryResource extends Resource
 
     protected static function currentUserIsAdmin(): bool
     {
-        $user = auth()->user();
-
-        if (! $user) {
-            return false;
-        }
-
-        return method_exists($user, 'hasEffectiveRole')
-            ? $user->hasEffectiveRole('admin')
-            : $user->registration_type === 'admin';
+        return static::currentUserCanManageForms();
     }
 
     protected static function currentUserIsStudent(): bool
@@ -193,18 +190,7 @@ class CustomFormEntryResource extends Resource
             return false;
         }
 
-        if (
-            method_exists($user, 'hasEffectiveRole')
-            && $user->hasEffectiveRole([
-                'admin',
-                'cashier',
-                'finance',
-                'developer',
-                'registrar',
-                'processing',
-                'team uhs',
-            ])
-        ) {
+        if (method_exists($user, 'hasEffectiveStaffRole') && $user->hasEffectiveStaffRole()) {
             return false;
         }
 
@@ -287,7 +273,7 @@ class CustomFormEntryResource extends Resource
 
     public static function getNavigationItems(): array
     {
-        if (! static::currentUserIsAdmin() && ! static::currentUserCanUseDynamicForms()) {
+        if (! static::currentUserCanManageForms() && ! static::currentUserCanUseDynamicForms()) {
             return [];
         }
 
@@ -383,7 +369,7 @@ class CustomFormEntryResource extends Resource
 
     protected static function canShowDynamicForm(string $slug): bool
     {
-        if (static::currentUserIsAdmin()) {
+        if (static::currentUserCanManageForms()) {
             return $slug !== 'profile';
         }
 

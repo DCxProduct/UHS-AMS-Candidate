@@ -37,7 +37,7 @@ class ListCustomFormEntries extends ListRecords
             return;
         }
 
-        if ($this->currentUserIsAdmin()) {
+        if ($this->currentUserCanManageForms()) {
             return;
         }
 
@@ -112,15 +112,12 @@ class ListCustomFormEntries extends ListRecords
 
     protected function currentUserIsAdmin(): bool
     {
-        $user = auth()->user();
+        return CustomFormEntryResource::currentUserCanManageForms();
+    }
 
-        if (! $user) {
-            return false;
-        }
-
-        return method_exists($user, 'hasEffectiveRole')
-            ? $user->hasEffectiveRole('admin')
-            : $user->registration_type === 'admin';
+    protected function currentUserCanManageForms(): bool
+    {
+        return CustomFormEntryResource::currentUserCanManageForms();
     }
 
     protected function studentCurrentFormEntry(): ?CustomFormEntry
@@ -228,7 +225,7 @@ class ListCustomFormEntries extends ListRecords
                 ),
         ];
 
-        if ($this->currentUserIsAdmin()) {
+        if ($this->currentUserCanManageForms()) {
             $actions[] = Action::make('download_excel')
                 ->label(__('payments.actions.download_excel'))
                 ->color('success')
