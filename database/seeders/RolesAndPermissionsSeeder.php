@@ -25,31 +25,42 @@ class RolesAndPermissionsSeeder extends Seeder
         ]);
 
         $systemAdminRoles = collect([
-            'admin' => 'អ្នកគ្រប់គ្រង',
-            'cashier' => 'បេឡា',
-        ])->mapWithKeys(fn (string $nameKh, string $role): array => [
+            'admin' => [
+                'label_en' => 'Admin',
+                'name_kh' => 'អ្នកគ្រប់គ្រង',
+            ],
+            'cashier' => [
+                'label_en' => 'Cashier',
+                'name_kh' => 'បេឡា',
+            ],
+        ])->mapWithKeys(fn (array $attributes, string $role): array => [
             $role => Role::query()->updateOrCreate(
                 [
                     'name' => $role,
                     'guard_name' => 'web',
                 ],
                 [
-                    'name_kh' => $nameKh,
+                    'label_en' => $attributes['label_en'],
+                    'name_kh' => $attributes['name_kh'],
                     'role_type_key' => 'staff',
                 ]
             ),
         ]);
 
         $userRoles = collect([
-            'candidate' => 'បេក្ខជន',
-        ])->mapWithKeys(fn (string $nameKh, string $role): array => [
+            'candidate' => [
+                'label_en' => 'Candidate',
+                'name_kh' => 'បេក្ខជន',
+            ],
+        ])->mapWithKeys(fn (array $attributes, string $role): array => [
             $role => Role::query()->updateOrCreate(
                 [
                     'name' => $role,
                     'guard_name' => 'web',
                 ],
                 [
-                    'name_kh' => $nameKh,
+                    'label_en' => $attributes['label_en'],
+                    'name_kh' => $attributes['name_kh'],
                     'role_type_key' => 'candidate',
                 ]
             ),
