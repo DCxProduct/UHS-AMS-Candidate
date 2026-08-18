@@ -3,6 +3,8 @@
 namespace App\Support;
 
 use App\Models\AuditLog;
+use App\Models\SystemUser;
+use App\Models\User;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Schema;
@@ -23,6 +25,10 @@ class AuditLogger
         }
 
         $actor = auth()->user();
+
+        if (! self::shouldLogForActor($actor)) {
+            return;
+        }
 
         AuditLog::query()->create([
             'actor_type' => $actor ? $actor::class : null,
@@ -92,5 +98,16 @@ class AuditLogger
         $target = $auditable ? (' #' . $auditable->getKey()) : '';
 
         return "{$actorName} {$action} {$module}{$target}";
+    }
+
+    protected static function shouldLogForActor(mixed $actor): bool
+    {
+        return match (true) {
+            $actor instanceof SystemUser => $actor->hasJsonRole('admin'),
+            $actor instanceof User => method_exists($actor, 'hasEffectiveRole')
+                ? $actor->hasEffectiveRole('admin')
+                : $actor->hasRole('admin'),
+            default => false,
+        };
     }
 }

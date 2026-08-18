@@ -1331,25 +1331,29 @@ class CustomFormEntriesTable
                 }
             });
 
-            $driver = DB::connection()->getDriverName();
-            $formSelectionExpression = $driver === 'pgsql'
-                ? "COALESCE(student_entries.data->>'form_selection', '') = COALESCE(custom_form_entries.data->>'form_selection', '')"
-                : "COALESCE(JSON_UNQUOTE(JSON_EXTRACT(student_entries.data, '$.form_selection')), '') = COALESCE(JSON_UNQUOTE(JSON_EXTRACT(custom_form_entries.data, '$.form_selection')), '')";
+            if (self::studentListShouldUseSingleEntryWorkflow($formId)) {
+                $driver = DB::connection()->getDriverName();
+                $formSelectionExpression = $driver === 'pgsql'
+                    ? "COALESCE(student_entries.data->>'form_selection', '') = COALESCE(custom_form_entries.data->>'form_selection', '')"
+                    : "COALESCE(JSON_UNQUOTE(JSON_EXTRACT(student_entries.data, '$.form_selection')), '') = COALESCE(JSON_UNQUOTE(JSON_EXTRACT(custom_form_entries.data, '$.form_selection')), '')";
 
-            $ownerConditions = collect($ownerColumns)
-                ->map(fn (string $column): string => "student_entries.{$column} = ?")
-                ->implode(' OR ');
+                $ownerConditions = collect($ownerColumns)
+                    ->map(fn (string $column): string => "student_entries.{$column} = ?")
+                    ->implode(' OR ');
 
-            return $query->whereRaw(
-                "custom_form_entries.id = (
-                    SELECT MAX(student_entries.id)
-                    FROM custom_form_entries AS student_entries
-                    WHERE student_entries.custom_form_id = custom_form_entries.custom_form_id
-                      AND {$formSelectionExpression}
-                      AND ({$ownerConditions})
-                )",
-                array_fill(0, count($ownerColumns), $userId),
-            );
+                return $query->whereRaw(
+                    "custom_form_entries.id = (
+                        SELECT MAX(student_entries.id)
+                        FROM custom_form_entries AS student_entries
+                        WHERE student_entries.custom_form_id = custom_form_entries.custom_form_id
+                          AND {$formSelectionExpression}
+                          AND ({$ownerConditions})
+                    )",
+                    array_fill(0, count($ownerColumns), $userId),
+                );
+            }
+
+            return $query->latest('id');
         }
 
         if (self::currentPanelIsAdmin()) {
@@ -1366,6 +1370,22 @@ class CustomFormEntriesTable
         }
 
         return $query;
+    }
+
+    protected static function studentListShouldUseSingleEntryWorkflow(?string $formId): bool
+    {
+        if (! $formId) {
+            return false;
+        }
+
+        $customForm = \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
+            ->find($formId, ['id', 'slug']);
+
+        if (! $customForm) {
+            return false;
+        }
+
+        return (string) $customForm->slug === 'profile';
     }
 
     protected static function recordIsNationalExam($record): bool
