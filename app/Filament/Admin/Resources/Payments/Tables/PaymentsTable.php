@@ -214,6 +214,10 @@ class PaymentsTable
 
     protected static function matchedEntry(Payment $record): ?CustomFormEntry
     {
+        if (Schema::hasColumn('payments', 'custom_form_entry_id') && filled($record->custom_form_entry_id)) {
+            return CustomFormEntry::query()->find($record->custom_form_entry_id);
+        }
+
         if (blank($record->users_id) || blank($record->form_id)) {
             return null;
         }
