@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Policies;
 
 use App\Support\UserTypeOptions;
+use App\Models\SystemUser;
 use Illuminate\Foundation\Auth\User as AuthUser;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Illuminate\Auth\Access\HandlesAuthorization;
@@ -38,7 +39,45 @@ class CustomFormEntryPolicy
 
         $spatiePermission = $spatiePermissionMap[$permission] ?? 'ViewAny:CustomFormEntry';
 
+        if ($this->userHasPermission($authUser, $spatiePermission)) {
+            return true;
+        }
+
         return UserTypeOptions::userHasCandidateBasePermission($authUser, $spatiePermission);
+    }
+
+    protected function userHasPermission(AuthUser $authUser, string $permission): bool
+    {
+        if (trim($permission) === '') {
+            return false;
+        }
+
+        if (method_exists($authUser, 'can') && $authUser->can($permission)) {
+            return true;
+        }
+
+        $storedPermissions = collect(data_get($authUser, 'permissions', []))
+            ->when(is_string(data_get($authUser, 'permissions')), function () use ($authUser) {
+                $decoded = json_decode((string) data_get($authUser, 'permissions'), true);
+
+                return collect(is_array($decoded) ? $decoded : [data_get($authUser, 'permissions')]);
+            })
+            ->filter(fn ($value): bool => filled($value))
+            ->map(fn ($value): string => strtolower(trim((string) $value)));
+
+        if ($storedPermissions->contains(strtolower(trim($permission)))) {
+            return true;
+        }
+
+        if ($authUser instanceof SystemUser) {
+            $loginUser = $authUser->findLinkedLoginUser();
+
+            if ($loginUser && method_exists($loginUser, 'can') && $loginUser->can($permission)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function viewAny(AuthUser $authUser): bool
