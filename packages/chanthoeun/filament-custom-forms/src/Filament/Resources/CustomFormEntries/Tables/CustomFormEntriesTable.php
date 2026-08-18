@@ -1425,9 +1425,6 @@ class CustomFormEntriesTable
                             ['form' => $formName]
                         )
                 )
-                ->actions(array_filter([
-                    $requiresPayment ? self::studentPaymentNotificationAction($studentLocale) : null,
-                ]))
                 ->icon('heroicon-o-check-circle')
                 ->iconColor('success')
                 ->success()
