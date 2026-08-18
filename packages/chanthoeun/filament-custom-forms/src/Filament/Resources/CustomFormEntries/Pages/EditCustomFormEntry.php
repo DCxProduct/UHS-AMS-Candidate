@@ -355,7 +355,7 @@ class EditCustomFormEntry extends EditRecord
         $status = $this->entryStatus();
         $slug = $this->record->customForm?->slug;
 
-        if (auth()->user()?->registration_type === 'admin') {
+        if (CustomFormEntryResource::currentUserCanManageForms()) {
             $this->form->disabled();
         }
 

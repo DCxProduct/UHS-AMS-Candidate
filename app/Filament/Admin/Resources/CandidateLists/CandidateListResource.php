@@ -8,7 +8,7 @@ use App\Filament\Admin\Resources\CandidateLists\Pages\ListCandidateLists;
 use App\Filament\Admin\Resources\CandidateLists\Schemas\CandidateListForm;
 use App\Filament\Admin\Resources\CandidateLists\Tables\CandidateListsTable;
 use App\Filament\Concerns\AdminOnly;
-use App\Models\SystemUser;
+use App\Models\CandidateList;
 use App\Support\UserTypeOptions;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -23,7 +23,7 @@ class CandidateListResource extends Resource
 {
     use AdminOnly;
 
-    protected static ?string $model = SystemUser::class;
+    protected static ?string $model = CandidateList::class;
 
     protected static string | BackedEnum | null $navigationIcon =
         Heroicon::OutlinedUserGroup;

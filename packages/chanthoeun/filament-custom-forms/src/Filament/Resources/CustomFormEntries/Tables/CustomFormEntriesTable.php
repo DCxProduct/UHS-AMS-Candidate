@@ -32,7 +32,7 @@ class CustomFormEntriesTable
         $formId = self::getFormId($table);
 
         return $table
-            ->selectable(auth()->user()?->registration_type === 'admin')
+            ->selectable(self::currentPanelIsAdmin())
             ->recordAction(null)
             ->recordUrl(null)
             ->columns(self::getColumns($formId))
@@ -1290,11 +1290,7 @@ class CustomFormEntriesTable
 
     protected static function currentPanelIsAdmin(): bool
     {
-        return auth()->user()?->registration_type === 'admin'
-            || (
-                \Filament\Facades\Filament::getCurrentPanel()
-                && \Filament\Facades\Filament::getCurrentPanel()->getId() === 'admin'
-            );
+        return CustomFormEntryResource::currentUserCanManageForms();
     }
 
     protected static function applyQueryConstraints(Builder $query, ?string $formId): Builder
