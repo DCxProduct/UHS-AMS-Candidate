@@ -356,6 +356,10 @@ class CandidatePaymentListsTable
                             'description' => $data['description'] ?? null,
                         ];
 
+                        if (Schema::hasColumn('payments', 'custom_form_entry_id')) {
+                            $paymentData['custom_form_entry_id'] = $record->getKey();
+                        }
+
                         if (Schema::hasColumn('payments', 'exchange_rate')) {
                             $paymentData['exchange_rate'] = $data['exchange_rate'] ?? self::defaultExchangeRate();
                         }
@@ -865,6 +869,13 @@ class CandidatePaymentListsTable
 
     protected static function latestPaymentRecord(CandidatePaymentList $record): ?Payment
     {
+        if (Schema::hasColumn('payments', 'custom_form_entry_id')) {
+            return Payment::query()
+                ->where('custom_form_entry_id', $record->getKey())
+                ->latest('id')
+                ->first();
+        }
+
         $ownerId = self::ownerId($record);
 
         if (! $ownerId) {

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
+use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -11,6 +12,7 @@ class Payment extends Model
     protected $fillable = [
         'users_id',
         'form_id',
+        'custom_form_entry_id',
         'receipt_number',
         'payment_slip_path',
         'type_payment',
@@ -42,6 +44,11 @@ class Payment extends Model
     public function form(): BelongsTo
     {
         return $this->belongsTo(CustomForm::class, 'form_id');
+    }
+
+    public function customFormEntry(): BelongsTo
+    {
+        return $this->belongsTo(CustomFormEntry::class, 'custom_form_entry_id');
     }
 
     public function paymentSlipUrl(): ?string

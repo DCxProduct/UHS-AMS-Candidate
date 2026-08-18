@@ -103,8 +103,7 @@ class CandidatePaymentListResource extends Resource
             ->whereNotExists(function (QueryBuilder $subQuery): void {
                 $subQuery->selectRaw('1')
                     ->from('payments')
-                    ->whereColumn('payments.form_id', 'custom_form_entries.custom_form_id')
-                    ->where(fn (QueryBuilder $matchQuery): QueryBuilder => static::applyPaymentOwnerMatch($matchQuery))
+                    ->where(fn (QueryBuilder $matchQuery): QueryBuilder => static::applyPaidPaymentMatch($matchQuery))
                     ->where('payments.status_payt', 'paid');
             })
             ->latest('id');
@@ -149,6 +148,17 @@ class CandidatePaymentListResource extends Resource
         }
 
         return $query;
+    }
+
+    protected static function applyPaidPaymentMatch(QueryBuilder $query): QueryBuilder
+    {
+        if (DbSchema::hasColumn('payments', 'custom_form_entry_id')) {
+            return $query->whereColumn('payments.custom_form_entry_id', 'custom_form_entries.id');
+        }
+
+        return $query
+            ->whereColumn('payments.form_id', 'custom_form_entries.custom_form_id')
+            ->where(fn (QueryBuilder $matchQuery): QueryBuilder => static::applyPaymentOwnerMatch($matchQuery));
     }
 
     protected static function existingOwnerColumns(): array
