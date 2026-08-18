@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages\Auth;
 
+use Illuminate\Support\Facades\Auth;
 use App\Models\SystemUser;
 use App\Models\User;
 use Filament\Auth\Events\Registered;
@@ -296,6 +297,10 @@ class Register extends BaseRegister
 
         $this->sendEmailVerificationNotification($user);
 
+        Auth::login($user);
+
+        request()->session()->regenerate();
+
         Notification::make()
             ->title(__('app.register_success_title'))
             ->body(__('app.register_success_body'))
@@ -306,7 +311,7 @@ class Register extends BaseRegister
         {
             public function toResponse($request): RedirectResponse | Redirector
             {
-                return redirect()->route('filament.app.auth.login');
+                return redirect()->to('/dashboard');
             }
         };
     }

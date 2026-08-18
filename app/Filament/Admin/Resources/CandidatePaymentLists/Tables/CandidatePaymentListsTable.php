@@ -7,6 +7,7 @@ use App\Models\CandidatePaymentList;
 use App\Models\ExchangeRate;
 use App\Models\Payment;
 use App\Models\PaymentType;
+use App\Support\FormEntryData;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
@@ -117,9 +118,7 @@ class CandidatePaymentListsTable
                     ->label(__('candidate_payment_lists.columns.major'))
                     ->getStateUsing(fn (CandidatePaymentList $record): string => self::majorLabel($record))
                     ->badge()
-                    ->searchable(query: fn (Builder $query, string $search): Builder => $query
-                        ->where('data->selected_major', 'like', "%{$search}%")
-                        ->orWhere('data->degree_level_major', 'like', "%{$search}%"))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => FormEntryData::applyJsonLikeFilter($query, FormEntryData::majorKeys(), $search))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('academic_year')
@@ -175,10 +174,7 @@ class CandidatePaymentListsTable
                             )
                             ->when(
                                 filled($data['major'] ?? null),
-                                fn (Builder $query): Builder => $query->where(function (Builder $majorQuery) use ($data): void {
-                                    $majorQuery->where('data->selected_major', $data['major'])
-                                        ->orWhere('data->degree_level_major', $data['major']);
-                                })
+                                fn (Builder $query): Builder => FormEntryData::applyJsonExactFilter($query, FormEntryData::majorKeys(), $data['major'])
                             )
                             ->when(
                                 filled($data['academic_year'] ?? null),
@@ -486,10 +482,7 @@ class CandidatePaymentListsTable
             'gender' => self::genderLabel(self::entryValue($record, 'gender')),
             'phone_number' => self::entryValue($record, 'phone_number', $record->creator?->phone),
             'date_of_birth' => self::dateOfBirth($record),
-            'major' => self::entryValue(
-                $record,
-                filled(data_get($record->data, 'selected_major')) ? 'selected_major' : 'degree_level_major'
-            ),
+            'major' => (string) FormEntryData::firstFilled($record->data, FormEntryData::majorKeys(), '-'),
             'academic_year' => self::entryValue($record, 'academic_year', $record->creator?->academic_year),
             'status_payt' => strtolower(self::paymentStatus($record)) === 'paid'
                 ? __('payments.options.status_payt.paid')
@@ -513,10 +506,7 @@ class CandidatePaymentListsTable
             'gender' => self::entryValue($record, 'gender'),
             'phone_number' => self::entryValue($record, 'phone_number', $record->creator?->phone),
             'date_of_birth' => self::entryValue($record, 'date_of_birth', $record->creator?->date_of_birth),
-            'major' => self::entryValue(
-                $record,
-                filled(data_get($record->data, 'selected_major')) ? 'selected_major' : 'degree_level_major'
-            ),
+            'major' => (string) FormEntryData::firstFilled($record->data, FormEntryData::majorKeys(), '-'),
             'academic_year' => self::entryValue($record, 'academic_year', $record->creator?->academic_year),
             'status_payt' => strtolower(self::paymentStatus($record)),
         ];
@@ -643,14 +633,7 @@ class CandidatePaymentListsTable
 
     protected static function majorLabel(CandidatePaymentList $record): string
     {
-        $fieldName = filled(data_get($record->data, 'selected_major')) ? 'selected_major' : 'degree_level_major';
-        $value = self::entryValue($record, $fieldName);
-
-        if ($value === '-') {
-            return $value;
-        }
-
-        return self::optionLabelForFieldValue($fieldName, $value) ?? $value;
+        return FormEntryData::majorLabel($record->data);
     }
 
     protected static function optionLabelForFieldValue(string $fieldName, string $value): ?string
@@ -1007,15 +990,14 @@ class CandidatePaymentListsTable
             ->get(['data'])
             ->flatMap(function (CandidatePaymentList $record): array {
                 return array_filter([
-                    data_get($record->data, 'selected_major'),
-                    data_get($record->data, 'degree_level_major'),
+                    FormEntryData::firstFilled($record->data, FormEntryData::majorKeys()),
                 ], fn ($value): bool => filled($value));
             })
             ->map(fn ($value): string => trim((string) $value))
             ->filter()
             ->unique()
             ->sort()
-            ->mapWithKeys(fn (string $value): array => [$value => $value])
+            ->mapWithKeys(fn (string $value): array => [$value => FormEntryData::majorOptionLabel($value, $value)])
             ->toArray();
     }
 

@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Resources\CandidateRequested\Tables;
 
 use App\Models\User;
 use App\Support\AuditLogger;
+use App\Support\FormEntryData;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
 use App\Support\NotificationLanguage;
@@ -125,13 +126,8 @@ class CandidateRequestedTable
                 TextColumn::make('major')
                     ->label(__('review_applications.major'))
                     ->badge()
-                    ->getStateUsing(fn ($record): string => self::entryValue(
-                        $record,
-                        filled(data_get($record->data, 'selected_major')) ? 'selected_major' : 'degree_level_major'
-                    ))
-                    ->searchable(query: fn (Builder $query, string $search): Builder => $query
-                        ->where('data->selected_major', 'like', "%{$search}%")
-                        ->orWhere('data->degree_level_major', 'like', "%{$search}%"))
+                    ->getStateUsing(fn ($record): string => FormEntryData::majorLabel($record->data))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => FormEntryData::applyJsonLikeFilter($query, FormEntryData::majorKeys(), $search))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('date_of_birth')
@@ -240,10 +236,7 @@ class CandidateRequestedTable
                             )
                             ->when(
                                 filled($data['major'] ?? null),
-                                fn (Builder $query): Builder => $query->where(function (Builder $query) use ($data): void {
-                                    $query->where('data->selected_major', $data['major'])
-                                        ->orWhere('data->degree_level_major', $data['major']);
-                                })
+                                fn (Builder $query): Builder => FormEntryData::applyJsonExactFilter($query, FormEntryData::majorKeys(), $data['major'])
                             )
                             ->when(
                                 filled($data['reviewed_year'] ?? null),
@@ -572,14 +565,8 @@ class CandidateRequestedTable
             'major' => [
                 'label' => __('review_applications.major'),
                 'field_key' => 'major',
-                'value' => fn (CustomFormEntry $record): string => self::entryValue(
-                    $record,
-                    filled(data_get($record->data, 'selected_major')) ? 'selected_major' : 'degree_level_major'
-                ),
-                'clean' => fn (CustomFormEntry $record): string => self::entryValue(
-                    $record,
-                    filled(data_get($record->data, 'selected_major')) ? 'selected_major' : 'degree_level_major'
-                ),
+                'value' => fn (CustomFormEntry $record): string => (string) FormEntryData::firstFilled($record->data, FormEntryData::majorKeys(), '-'),
+                'clean' => fn (CustomFormEntry $record): string => (string) FormEntryData::firstFilled($record->data, FormEntryData::majorKeys(), '-'),
             ],
             'date_of_birth' => [
                 'label' => __('exam_results.date_of_birth'),
@@ -701,15 +688,14 @@ class CandidateRequestedTable
             ->get(['data'])
             ->flatMap(function (CustomFormEntry $entry): array {
                 return array_filter([
-                    data_get($entry->data, 'selected_major'),
-                    data_get($entry->data, 'degree_level_major'),
+                    FormEntryData::firstFilled($entry->data, FormEntryData::majorKeys()),
                 ], fn ($value): bool => filled($value));
             })
             ->map(fn ($value): string => trim((string) $value))
             ->filter()
             ->unique()
             ->sort()
-            ->mapWithKeys(fn (string $value): array => [$value => $value])
+            ->mapWithKeys(fn (string $value): array => [$value => FormEntryData::majorOptionLabel($value, $value)])
             ->toArray();
     }
 

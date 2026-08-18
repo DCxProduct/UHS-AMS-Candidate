@@ -4,6 +4,7 @@ namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Ta
 
 use App\Filament\Admin\Resources\CandidatePaymentLists\CandidatePaymentListResource;
 use App\Support\AuditLogger;
+use App\Support\FormEntryData;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
 use App\Models\User;
@@ -354,8 +355,7 @@ class CustomFormEntriesTable
 
             $processedKeys = [
                 'form_selection',
-                'selected_major',
-                'degree_level_major',
+                ...FormEntryData::majorKeys(),
                 'gender',
                 'phone_number',
                 'academic_year',
@@ -434,19 +434,15 @@ class CustomFormEntriesTable
             // 3. Major
             TextColumn::make('major')
                 ->label(__('app.custom_form_entry_ui.labels.major'))
+                ->badge()
                 ->getStateUsing(function ($record): string {
-                    $key = filled(data_get($record->data, 'selected_major')) ? 'selected_major' : 'degree_level_major';
+                    $key = FormEntryData::firstFilledKey($record->data, FormEntryData::majorKeys(), 'major');
                     $state = data_get($record->data, $key);
 
                     return self::entryOptionLabel($record, $key, $state);
                 })
                 ->placeholder('-')
-                ->searchable(query: function (Builder $query, string $search): Builder {
-                    return $query->where(function ($q) use ($search) {
-                        $q->where('data->selected_major', 'like', "%{$search}%")
-                          ->orWhere('data->degree_level_major', 'like', "%{$search}%");
-                    });
-                })
+                ->searchable(query: fn (Builder $query, string $search): Builder => FormEntryData::applyJsonLikeFilter($query, FormEntryData::majorKeys(), $search))
                 ->toggleable(isToggledHiddenByDefault: false),
 
             // 4. Gender
@@ -736,12 +732,7 @@ class CustomFormEntriesTable
                         )
                         ->when(
                             filled($data['major'] ?? null),
-                            function (Builder $query) use ($data): Builder {
-                                return $query->where(function (Builder $query) use ($data): void {
-                                    $query->where('data->selected_major', $data['major'])
-                                        ->orWhere('data->degree_level_major', $data['major']);
-                                });
-                            }
+                            fn (Builder $query): Builder => FormEntryData::applyJsonExactFilter($query, FormEntryData::majorKeys(), $data['major'])
                         )
                         ->when(
                             filled($data['reviewed_month'] ?? null),
@@ -784,11 +775,7 @@ class CustomFormEntriesTable
             ->when($formId, fn ($query) => $query->where('custom_form_id', $formId))
             ->get(['data'])
             ->map(function ($entry): string {
-                return trim((string) (
-                    data_get($entry->data, 'selected_major')
-                    ?: data_get($entry->data, 'degree_level_major')
-                    ?: ''
-                ));
+                return trim((string) (FormEntryData::firstFilled($entry->data, FormEntryData::majorKeys(), '')));
             })
             ->filter(fn (string $value): bool => $value !== '')
             ->unique()

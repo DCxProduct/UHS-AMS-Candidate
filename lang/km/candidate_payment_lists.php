@@ -14,7 +14,7 @@ return [
         'phone_number' => 'លេខទូរស័ព្ទ',
         'date_of_birth' => 'ថ្ងៃខែឆ្នាំកំណើត',
         'academic_year' => 'ឆ្នាំសិក្សា',
-        'major' => 'ជំនាញ',
+        'major' => 'ផ្នែក',
         'payment_status' => 'ស្ថានភាពបង់ប្រាក់',
     ],
     'filters' => [
