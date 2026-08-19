@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Resources\Payments\Pages;
 
 use App\Filament\Admin\Resources\Payments\PaymentResource;
 use App\Filament\Admin\Resources\Payments\Tables\PaymentsTable;
+use App\Support\FilamentActionPermissions;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\ListRecords;
 
@@ -17,6 +18,7 @@ class ListPayments extends ListRecords
             Action::make('download_excel')
                 ->label(__('payments.actions.download_excel'))
                 ->color('success')
+                ->visible(fn (): bool => FilamentActionPermissions::canForResource(PaymentResource::class, 'download_excel'))
                 ->alpineClickHandler(<<<'JS'
                     const table = document.querySelector('.fi-ta');
                     const tableData = table?._x_dataStack?.find((data) => data.selectedRecords instanceof Set);
@@ -31,7 +33,7 @@ class ListPayments extends ListRecords
             Action::make('clear_data')
                 ->label(__('app.clear_data'))
                 ->color('danger')
-                ->visible(fn (): bool => $this->currentUserCanClearData())
+                ->visible(fn (): bool => FilamentActionPermissions::canForResource(PaymentResource::class, 'clear_data'))
                 ->requiresConfirmation()
                 ->modalHeading(__('app.clear_data'))
                 ->modalDescription(__('app.clear_data_confirm'))
@@ -55,19 +57,6 @@ class ListPayments extends ListRecords
         ];
     }
 
-    protected function currentUserCanClearData(): bool
-    {
-        $user = auth()->user();
-
-        if (! $user) {
-            return false;
-        }
-
-        return method_exists($user, 'hasEffectiveRole')
-            ? $user->hasEffectiveRole('admin')
-            : $user->registration_type === 'admin';
-    }
-
     protected function downloadExcel()
     {
         return $this->downloadExcelFromTableSelection(
@@ -83,6 +72,8 @@ class ListPayments extends ListRecords
         array $deselectedRecordKeys = [],
     )
     {
+        FilamentActionPermissions::abortUnlessCanForResource(PaymentResource::class, 'download_excel');
+
         return PaymentsTable::downloadExcel(
             $this->selectedOrFilteredQuery(
                 $selectedRecordKeys,
@@ -100,6 +91,8 @@ class ListPayments extends ListRecords
         bool $isTrackingDeselectedRecords = false,
         array $deselectedRecordKeys = [],
     ): void {
+        FilamentActionPermissions::abortUnlessCanForResource(PaymentResource::class, 'clear_data');
+
         $this->selectedOrFilteredQuery(
             $selectedRecordKeys,
             $isTrackingDeselectedRecords,

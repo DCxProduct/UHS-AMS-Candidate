@@ -467,6 +467,9 @@ class CustomFormEntriesTable
             TextColumn::make('data.academic_year')
                 ->label(__('app.custom_form_entry_ui.labels.academic_year'))
                 ->placeholder('-')
+                ->formatStateUsing(fn (mixed $state): string => FormEntryData::academicYearLabel([
+                    'academic_year' => $state,
+                ]))
                 ->searchable()
                 ->toggleable(isToggledHiddenByDefault: false),
 

@@ -2,8 +2,10 @@
 
 namespace App\Filament\Admin\Resources\CandidateLists\Tables;
 
+use App\Filament\Admin\Resources\CandidateLists\CandidateListResource;
 use App\Models\SystemUser;
 use App\Models\User;
+use App\Support\FilamentActionPermissions;
 use App\Support\LocalizedDate;
 use App\Support\NotificationLanguage;
 use App\Support\LocalizedNumber;
@@ -157,8 +159,11 @@ class CandidateListsTable
                         ->icon('heroicon-o-check-circle')
                         ->color('success')
                         ->requiresConfirmation()
-                        ->visible(fn (SystemUser $record): bool => ! (bool) $record->is_active)
+                        ->visible(fn (SystemUser $record): bool => FilamentActionPermissions::canForResource(CandidateListResource::class, 'activate_account')
+                            && ! (bool) $record->is_active)
                         ->action(function (SystemUser $record): void {
+                            FilamentActionPermissions::abortUnlessCanForResource(CandidateListResource::class, 'activate_account');
+
                             $record->activateAccount();
 
                             Notification::make()
@@ -172,8 +177,11 @@ class CandidateListsTable
                         ->icon('heroicon-o-x-circle')
                         ->color('danger')
                         ->requiresConfirmation()
-                        ->visible(fn (SystemUser $record): bool => (bool) $record->is_active)
+                        ->visible(fn (SystemUser $record): bool => FilamentActionPermissions::canForResource(CandidateListResource::class, 'deactivate_account')
+                            && (bool) $record->is_active)
                         ->action(function (SystemUser $record): void {
+                            FilamentActionPermissions::abortUnlessCanForResource(CandidateListResource::class, 'deactivate_account');
+
                             $record->deactivateAccount();
 
                             Notification::make()

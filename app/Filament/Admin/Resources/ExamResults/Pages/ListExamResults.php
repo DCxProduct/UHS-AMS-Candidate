@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Resources\ExamResults\Pages;
 use App\Filament\Admin\Resources\ExamResults\ExamResultResource;
 use App\Filament\Admin\Resources\ExamResults\Tables\ExamResultsTable;
 use App\Support\AuditLogger;
+use App\Support\FilamentActionPermissions;
 use Carbon\Carbon;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Actions\Action;
@@ -34,6 +35,8 @@ class ListExamResults extends ListRecords
                 ->label(__('exam_results.notify_all_students'))
                 ->icon('heroicon-o-bell-alert')
                 ->color('danger')
+                ->visible(fn (): bool => FilamentActionPermissions::canForResource(static::getResource(), 'notify_all_students')
+                    && ExamResultsTable::hasUnsentPassedNotifications(static::getResource()::getResultMenuTarget()))
                 ->alpineClickHandler(<<<'JS'
                     const table = document.querySelector('.fi-ta');
                     const tableData = table?._x_dataStack?.find((data) => data.selectedRecords instanceof Set);
@@ -50,7 +53,6 @@ class ListExamResults extends ListRecords
                 ->modalDescription(__('exam_results.notify_all_confirm_description'))
                 ->modalSubmitActionLabel(__('exam_results.send_notification'))
                 ->modalCancelActionLabel(__('app.cancel'))
-                ->visible(fn (): bool => ExamResultsTable::hasUnsentPassedNotifications(static::getResource()::getResultMenuTarget()))
                 ->action(fn (array $arguments) => $this->sendNotificationsFromTableSelection(
                     selectedRecordKeys: $arguments['selectedRecordKeys'] ?? [],
                     selectedRecordsCount: (int) ($arguments['selectedRecordsCount'] ?? 0),
@@ -61,6 +63,7 @@ class ListExamResults extends ListRecords
             Action::make('download_excel')
                 ->label(__('exam_results.download_excel'))
                 ->color('success')
+                ->visible(fn (): bool => FilamentActionPermissions::canForResource(static::getResource(), 'download_excel'))
                 ->alpineClickHandler(<<<'JS'
                     const table = document.querySelector('.fi-ta');
                     const tableData = table?._x_dataStack?.find((data) => data.selectedRecords instanceof Set);
@@ -75,6 +78,7 @@ class ListExamResults extends ListRecords
             Action::make('clear_data')
                 ->label(__('app.clear_data'))
                 ->color('danger')
+                ->visible(fn (): bool => FilamentActionPermissions::canForResource(static::getResource(), 'clear_data'))
                 ->requiresConfirmation()
                 ->modalHeading(__('app.clear_data'))
                 ->modalDescription(__('app.clear_data_confirm'))
@@ -112,6 +116,8 @@ class ListExamResults extends ListRecords
         bool $isTrackingDeselectedRecords = false,
         array $deselectedRecordKeys = [],
     ) {
+        FilamentActionPermissions::abortUnlessCanForResource(static::getResource(), 'download_excel');
+
         $selectedRecordKeys = array_values(array_filter($selectedRecordKeys));
         $deselectedRecordKeys = array_values(array_filter($deselectedRecordKeys));
 
@@ -147,6 +153,8 @@ class ListExamResults extends ListRecords
         bool $isTrackingDeselectedRecords = false,
         array $deselectedRecordKeys = [],
     ): void {
+        FilamentActionPermissions::abortUnlessCanForResource(static::getResource(), 'clear_data');
+
         $this->selectedOrFilteredQuery(
             $selectedRecordKeys,
             $isTrackingDeselectedRecords,
@@ -235,6 +243,8 @@ class ListExamResults extends ListRecords
         bool $isTrackingDeselectedRecords = false,
         array $deselectedRecordKeys = [],
     ): void {
+        FilamentActionPermissions::abortUnlessCanForResource(static::getResource(), 'notify_all_students');
+
         $selectedRecordKeys = array_values(array_filter($selectedRecordKeys));
         $deselectedRecordKeys = array_values(array_filter($deselectedRecordKeys));
 

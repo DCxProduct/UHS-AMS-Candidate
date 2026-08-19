@@ -3,7 +3,10 @@
 namespace App\Filament\Admin\Resources\ExamResults\Tables;
 
 use App\Filament\Admin\Resources\CandidateRequested\Tables\CandidateRequestedTable;
+use App\Filament\Admin\Resources\ExamResults\ExamResultResource;
+use App\Filament\Admin\Resources\ExitExamResults\ExitExamResultResource;
 use App\Models\User;
+use App\Support\FilamentActionPermissions;
 use App\Support\FormEntryData;
 use App\Support\PassedResultMenuOptions;
 use App\Support\LocalizedNumber;
@@ -72,7 +75,9 @@ class ExamResultsTable
 
                 TextColumn::make('academic_year')
                     ->label(__('exam_results.academic_year'))
-                    ->getStateUsing(fn ($record): string => self::entryValue($record, 'academic_year', $record->creator?->academic_year))
+                    ->getStateUsing(fn ($record): string => FormEntryData::academicYearLabel(
+                        ['academic_year' => self::entryValue($record, 'academic_year', $record->creator?->academic_year)]
+                    ))
                     ->searchable(query: fn (Builder $query, string $search): Builder => $query->where('data->academic_year', 'like', "%{$search}%"))
                     ->toggleable(isToggledHiddenByDefault: false),
 
@@ -146,8 +151,12 @@ class ExamResultsTable
                     ->modalDescription(__('exam_results.notify_student_confirm_description'))
                     ->modalSubmitActionLabel(__('exam_results.send_notification'))
                     ->modalCancelActionLabel(__('app.cancel'))
-                    ->visible(fn (CustomFormEntry $record): bool => ! CandidateRequestedTable::hasStudentReviewResultNotification($record, 'passed'))
+                    ->visible(fn (CustomFormEntry $record): bool => FilamentActionPermissions::can(
+                        self::notificationPermissionForResultMenu($resultMenu)
+                    ) && ! CandidateRequestedTable::hasStudentReviewResultNotification($record, 'passed'))
                     ->action(function (CustomFormEntry $record, $livewire): void {
+                        FilamentActionPermissions::abortUnlessCan(self::notificationPermissionForResultMenu($resultMenu));
+
                         $sent = CandidateRequestedTable::notifyStudentReviewResult(
                             record: $record,
                             status: 'passed',
@@ -171,6 +180,15 @@ class ExamResultsTable
                     }),
             ])
             ->defaultSort('id', 'desc');
+    }
+
+    protected static function notificationPermissionForResultMenu(string $resultMenu): string
+    {
+        $resourceClass = $resultMenu === PassedResultMenuOptions::EXIT_EXAM_RESULTS
+            ? ExitExamResultResource::class
+            : ExamResultResource::class;
+
+        return FilamentActionPermissions::permissionForResource($resourceClass, 'notify_student');
     }
 
     public static function downloadExcel(iterable $records, ?array $columnKeys = null, ?string $filenameLabel = null)
@@ -349,7 +367,9 @@ class ExamResultsTable
             'academic_year' => [
                 'label' => __('exam_results.academic_year'),
                 'field_key' => 'academic_year',
-                'value' => fn (CustomFormEntry $record): string => self::entryValue($record, 'academic_year', $record->creator?->academic_year),
+                'value' => fn (CustomFormEntry $record): string => FormEntryData::academicYearLabel(
+                    ['academic_year' => self::entryValue($record, 'academic_year', $record->creator?->academic_year)]
+                ),
                 'clean' => fn (CustomFormEntry $record): string => self::entryValue($record, 'academic_year', $record->creator?->academic_year),
             ],
             'seat_number' => [
@@ -570,7 +590,7 @@ class ExamResultsTable
             ->filter()
             ->unique()
             ->sort()
-            ->mapWithKeys(fn (string $year): array => [$year => $year])
+            ->mapWithKeys(fn (string $year): array => [$year => FormEntryData::academicYearOptionLabel($year, $year)])
             ->toArray();
     }
 

@@ -2,8 +2,10 @@
 
 namespace App\Filament\Admin\Resources\Payments\Tables;
 
+use App\Filament\Admin\Resources\Payments\PaymentResource;
 use App\Models\PaymentType;
 use App\Models\Payment;
+use App\Support\FilamentActionPermissions;
 use App\Support\FormEntryData;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
@@ -205,7 +207,8 @@ class PaymentsTable
                     ->modalContent(fn (Payment $record) => view('payment-slip-modal', [
                         'imageUrl' => $record->paymentSlipUrl(),
                     ]))
-                    ->visible(fn (Payment $record): bool => filled($record->payment_slip_path)),
+                    ->visible(fn (Payment $record): bool => FilamentActionPermissions::canForResource(PaymentResource::class, 'view_slip')
+                        && filled($record->payment_slip_path)),
                 EditAction::make()
                     ->label(__('payments.actions.edit'))
                     ->icon('heroicon-o-pencil-square'),

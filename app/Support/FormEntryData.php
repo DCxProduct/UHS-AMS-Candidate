@@ -19,6 +19,14 @@ class FormEntryData
         ];
     }
 
+    public static function academicYearKeys(): array
+    {
+        return [
+            'academic_year',
+            'selected_academic_year',
+        ];
+    }
+
     public static function firstFilled(array | object | null $data, array $keys, mixed $fallback = null): mixed
     {
         foreach ($keys as $key) {
@@ -92,6 +100,26 @@ class FormEntryData
         return static::optionLabelForFieldValue((string) $fieldName, $value) ?? $value;
     }
 
+    public static function academicYearValue(array | object | null $data, mixed $fallback = '-'): string
+    {
+        $value = static::firstFilled($data, static::academicYearKeys(), $fallback);
+
+        return blank($value) ? (string) $fallback : trim((string) $value);
+    }
+
+    public static function academicYearLabel(array | object | null $data, mixed $fallback = '-'): string
+    {
+        $fieldName = static::firstFilledKey($data, static::academicYearKeys(), 'academic_year');
+        $value = static::academicYearValue($data, $fallback);
+
+        if ($value === (string) $fallback) {
+            return $value;
+        }
+
+        return static::optionLabelForFieldValue((string) $fieldName, $value)
+            ?? static::formatAcademicYearValue($value);
+    }
+
     public static function optionLabelForFieldValue(string $fieldName, string $value): ?string
     {
         $choices = static::fieldChoices($fieldName);
@@ -136,6 +164,33 @@ class FormEntryData
 
         return static::optionLabelForFirstMatchingFieldValue(static::majorKeys(), $value)
             ?? (string) $fallback;
+    }
+
+    public static function academicYearOptionLabel(string $value, mixed $fallback = null): string
+    {
+        $fallback ??= $value;
+
+        if (blank($value)) {
+            return (string) $fallback;
+        }
+
+        return static::optionLabelForFirstMatchingFieldValue(static::academicYearKeys(), $value)
+            ?? static::formatAcademicYearValue($value);
+    }
+
+    public static function formatAcademicYearValue(string $value): string
+    {
+        $normalized = trim($value);
+
+        if ($normalized === '') {
+            return $value;
+        }
+
+        if (preg_match('/^\d{4}_\d{4}$/', $normalized) === 1) {
+            return str_replace('_', '-', $normalized);
+        }
+
+        return $normalized;
     }
 
     protected static function fieldChoices(string $fieldName): array

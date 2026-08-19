@@ -7,6 +7,7 @@ use App\Models\CandidatePaymentList;
 use App\Models\ExchangeRate;
 use App\Models\Payment;
 use App\Models\PaymentType;
+use App\Support\FilamentActionPermissions;
 use App\Support\FormEntryData;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
@@ -123,7 +124,9 @@ class CandidatePaymentListsTable
 
                 TextColumn::make('academic_year')
                     ->label(__('candidate_payment_lists.columns.academic_year'))
-                    ->getStateUsing(fn (CandidatePaymentList $record): string => self::entryValue($record, 'academic_year', $record->creator?->academic_year))
+                    ->getStateUsing(fn (CandidatePaymentList $record): string => FormEntryData::academicYearLabel(
+                        ['academic_year' => self::entryValue($record, 'academic_year', $record->creator?->academic_year)]
+                    ))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('status_payt')
@@ -342,6 +345,8 @@ class CandidatePaymentListsTable
                             ]),
                     ])
                     ->action(function (CandidatePaymentList $record, array $data): void {
+                        FilamentActionPermissions::abortUnlessCanForResource(CandidatePaymentListResource::class, 'pay');
+
                         $paymentData = [
                             'users_id' => self::ownerId($record),
                             'form_id' => $record->custom_form_id,
@@ -371,7 +376,8 @@ class CandidatePaymentListsTable
                             ->success()
                             ->send();
                     })
-                    ->visible(fn (CandidatePaymentList $record): bool => self::latestPaymentRecord($record) === null),
+                    ->visible(fn (CandidatePaymentList $record): bool => FilamentActionPermissions::canForResource(CandidatePaymentListResource::class, 'pay')
+                        && self::latestPaymentRecord($record) === null),
             ]);
     }
 
@@ -487,7 +493,9 @@ class CandidatePaymentListsTable
             'phone_number' => self::entryValue($record, 'phone_number', $record->creator?->phone),
             'date_of_birth' => self::dateOfBirth($record),
             'major' => (string) FormEntryData::firstFilled($record->data, FormEntryData::majorKeys(), '-'),
-            'academic_year' => self::entryValue($record, 'academic_year', $record->creator?->academic_year),
+            'academic_year' => FormEntryData::academicYearLabel(
+                ['academic_year' => self::entryValue($record, 'academic_year', $record->creator?->academic_year)]
+            ),
             'status_payt' => strtolower(self::paymentStatus($record)) === 'paid'
                 ? __('payments.options.status_payt.paid')
                 : __('payments.options.status_payt.unpaid'),
@@ -1026,7 +1034,7 @@ class CandidatePaymentListsTable
             ->filter()
             ->unique()
             ->sort()
-            ->mapWithKeys(fn (string $value): array => [$value => $value])
+            ->mapWithKeys(fn (string $value): array => [$value => FormEntryData::academicYearOptionLabel($value, $value)])
             ->toArray();
     }
 

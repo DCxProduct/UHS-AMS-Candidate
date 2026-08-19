@@ -2,8 +2,10 @@
 
 namespace App\Filament\Admin\Resources\CandidateRequested\Tables;
 
+use App\Filament\Admin\Resources\CandidateRequested\CandidateRequestedResource;
 use App\Models\User;
 use App\Support\AuditLogger;
+use App\Support\FilamentActionPermissions;
 use App\Support\FormEntryData;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
@@ -80,7 +82,9 @@ class CandidateRequestedTable
 
                 TextColumn::make('academic_year')
                     ->label(__('exam_results.academic_year'))
-                    ->getStateUsing(fn ($record): string => self::entryValue($record, 'academic_year', $record->creator?->academic_year))
+                    ->getStateUsing(fn ($record): string => FormEntryData::academicYearLabel(
+                        ['academic_year' => self::entryValue($record, 'academic_year', $record->creator?->academic_year)]
+                    ))
                     ->searchable(query: fn (Builder $query, string $search): Builder => $query->where('data->academic_year', 'like', "%{$search}%"))
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
@@ -269,10 +273,11 @@ class CandidateRequestedTable
                     ->modalDescription(__('review_applications.passed_confirm_description'))
                     ->modalSubmitActionLabel(__('review_applications.passed_confirm_yes'))
                     ->modalCancelActionLabel(__('review_applications.passed_confirm_no'))
-                    ->visible(fn (CustomFormEntry $record): bool =>
-                        strtolower((string) data_get($record->data, 'candidate_status', 'pending')) === 'pending'
-                    )
+                    ->visible(fn (CustomFormEntry $record): bool => FilamentActionPermissions::canForResource(CandidateRequestedResource::class, 'passed')
+                        && strtolower((string) data_get($record->data, 'candidate_status', 'pending')) === 'pending')
                     ->action(function (CustomFormEntry $record): void {
+                        FilamentActionPermissions::abortUnlessCanForResource(CandidateRequestedResource::class, 'passed');
+
                         self::markPassed($record);
 
                         Notification::make()
@@ -291,11 +296,12 @@ class CandidateRequestedTable
                     ->modalDescription(__('review_applications.pending_modal.description'))
                     ->modalSubmitActionLabel(__('review_applications.pending_modal.submit'))
                     ->modalCancelActionLabel(__('review_applications.pending_modal.cancel'))
-                    ->visible(fn (CustomFormEntry $record): bool =>
-                        strtolower((string) data_get($record->data, 'candidate_status', 'pending')) === 'passed'
-                        && ! self::hasStudentReviewResultNotification($record, 'passed')
-                    )
+                    ->visible(fn (CustomFormEntry $record): bool => FilamentActionPermissions::canForResource(CandidateRequestedResource::class, 'pending')
+                        && strtolower((string) data_get($record->data, 'candidate_status', 'pending')) === 'passed'
+                        && ! self::hasStudentReviewResultNotification($record, 'passed'))
                     ->action(function (CustomFormEntry $record): void {
+                        FilamentActionPermissions::abortUnlessCanForResource(CandidateRequestedResource::class, 'pending');
+
                         self::markCandidatePending($record);
 
                         Notification::make()
@@ -310,6 +316,7 @@ class CandidateRequestedTable
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->button()
+                    ->visible(fn (): bool => FilamentActionPermissions::canForResource(CandidateRequestedResource::class, 'bulk_passed'))
                     ->requiresConfirmation()
                     ->modalHeading(__('review_applications.passed_confirm_title'))
                     ->modalDescription(__('review_applications.passed_confirm_description'))
@@ -317,6 +324,8 @@ class CandidateRequestedTable
                     ->modalCancelActionLabel(__('review_applications.passed_confirm_no'))
                     ->deselectRecordsAfterCompletion()
                     ->action(function (Collection $records): void {
+                        FilamentActionPermissions::abortUnlessCanForResource(CandidateRequestedResource::class, 'bulk_passed');
+
                         $passedCount = 0;
 
                         $records->each(function (CustomFormEntry $record) use (&$passedCount): void {
@@ -342,6 +351,7 @@ class CandidateRequestedTable
                     ->icon('heroicon-o-arrow-path')
                     ->color('danger')
                     ->button()
+                    ->visible(fn (): bool => FilamentActionPermissions::canForResource(CandidateRequestedResource::class, 'bulk_pending'))
                     ->requiresConfirmation()
                     ->modalHeading(__('review_applications.pending_modal.heading'))
                     ->modalDescription(__('review_applications.pending_modal.description'))
@@ -349,6 +359,8 @@ class CandidateRequestedTable
                     ->modalCancelActionLabel(__('review_applications.pending_modal.cancel'))
                     ->deselectRecordsAfterCompletion()
                     ->action(function (Collection $records): void {
+                        FilamentActionPermissions::abortUnlessCanForResource(CandidateRequestedResource::class, 'bulk_pending');
+
                         $editedCount = 0;
 
                         $records->each(function (CustomFormEntry $record) use (&$editedCount): void {
@@ -529,7 +541,9 @@ class CandidateRequestedTable
             'academic_year' => [
                 'label' => __('exam_results.academic_year'),
                 'field_key' => 'academic_year',
-                'value' => fn (CustomFormEntry $record): string => self::entryValue($record, 'academic_year', $record->creator?->academic_year),
+                'value' => fn (CustomFormEntry $record): string => FormEntryData::academicYearLabel(
+                    ['academic_year' => self::entryValue($record, 'academic_year', $record->creator?->academic_year)]
+                ),
                 'clean' => fn (CustomFormEntry $record): string => self::entryValue($record, 'academic_year', $record->creator?->academic_year),
             ],
             'user_type' => [
