@@ -5,11 +5,11 @@ namespace App\Filament\Pages;
 use App\Filament\Widgets\AdminMenuOverview;
 use App\Filament\Widgets\AdminSidebarFormsTable;
 use App\Filament\Widgets\AdminStatsOverview;
+use App\Filament\Widgets\CandidateMenuOverview;
+use App\Filament\Widgets\CandidateSidebarFormsTable;
+use App\Filament\Widgets\CandidateStatsOverview;
 use App\Filament\Widgets\CashierStatsOverview;
-use App\Filament\Widgets\StudentCompletionDoughnutChart;
-use App\Filament\Widgets\StudentProgressChart;
-use App\Filament\Widgets\StudentStatsOverview;
-use App\Filament\Widgets\StudentSubmissionTrendChart;
+use App\Support\DashboardUserAccess;
 use Filament\Pages\Dashboard as BaseDashboard;
 use Illuminate\Contracts\Support\Htmlable;
 
@@ -90,26 +90,15 @@ class Dashboard extends BaseDashboard
         }
 
         return [
-            StudentStatsOverview::class,
-            StudentSubmissionTrendChart::class,
-            StudentProgressChart::class,
-            StudentCompletionDoughnutChart::class,
+            CandidateStatsOverview::class,
+            CandidateMenuOverview::class,
+            CandidateSidebarFormsTable::class,
         ];
     }
 
     public function isAdmin(): bool
     {
         return $this->isAdminDashboardUser();
-    }
-
-    public function isStudent(): bool
-    {
-        return $this->isStudentDashboardUser();
-    }
-
-    public function isCashier(): bool
-    {
-        return $this->isCashierDashboardUser();
     }
 
     public function hasDashboardWidgets(): bool
@@ -119,22 +108,16 @@ class Dashboard extends BaseDashboard
 
     protected function isAdminDashboardUser(): bool
     {
-        return auth()->user()?->hasEffectiveRole('admin') ?? false;
+        return DashboardUserAccess::isAdmin(auth()->user());
     }
 
     protected function isCashierDashboardUser(): bool
     {
-        return auth()->user()?->hasEffectiveRole('cashier') ?? false;
+        return DashboardUserAccess::isCashier(auth()->user());
     }
 
     protected function isStudentDashboardUser(): bool
     {
-        $user = auth()->user();
-
-        if (! $user || (string) $user->registration_type !== 'student') {
-            return false;
-        }
-
-        return ! $user->hasEffectiveRole(['admin', 'cashier', 'finance', 'developer', 'registrar', 'processing', 'team uhs']);
+        return DashboardUserAccess::isCandidate(auth()->user());
     }
 }

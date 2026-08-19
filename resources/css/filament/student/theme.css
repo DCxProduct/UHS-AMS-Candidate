@@ -511,6 +511,16 @@ form button[type="submit"].fi-btn:hover,
     align-self: stretch;
 }
 
+.uhs-admin-overview__highlights--compact {
+    display: flex;
+    justify-content: flex-end;
+    align-items: stretch;
+}
+
+.uhs-admin-overview__highlights--compact .uhs-admin-overview__highlight {
+    width: min(100%, 156px);
+}
+
 .uhs-admin-overview__highlight {
     display: flex;
     flex-direction: column;

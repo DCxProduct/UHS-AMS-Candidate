@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
@@ -80,6 +81,104 @@ class DashboardMetrics
         } elseif (Schema::hasColumn('custom_forms', 'active')) {
             $query->where('active', true);
         }
+
+        return $query->count();
+    }
+
+    public static function studentSubmittedApplicationsCount(int $userId): int
+    {
+        if (! Schema::hasTable('custom_form_entries')) {
+            return 0;
+        }
+
+        $ownerColumns = static::entryOwnerColumns();
+
+        if (empty($ownerColumns)) {
+            return 0;
+        }
+
+        $query = DB::table('custom_form_entries');
+
+        if (
+            Schema::hasTable('custom_forms')
+            && Schema::hasColumn('custom_form_entries', 'custom_form_id')
+            && Schema::hasColumn('custom_forms', 'slug')
+        ) {
+            $query
+                ->join(
+                    'custom_forms',
+                    'custom_form_entries.custom_form_id',
+                    '=',
+                    'custom_forms.id'
+                )
+                ->where('custom_forms.slug', '!=', 'profile');
+        }
+
+        static::applyStudentOwnerFilter($query, $userId);
+
+        if (Schema::hasColumn('custom_form_entries', 'review_status')) {
+            $query->where(function ($query): void {
+                $query->whereNull('custom_form_entries.review_status')
+                    ->orWhere('custom_form_entries.review_status', '!=', 'draft');
+            });
+        }
+
+        $query->where(function ($query): void {
+            $query->whereNull('custom_form_entries.data->registration_status')
+                ->orWhere('custom_form_entries.data->registration_status', '!=', 'draft');
+        });
+
+        return $query->count();
+    }
+
+    public static function adminSubmittedApplicationsCount(): int
+    {
+        if (
+            ! Schema::hasTable('custom_form_entries')
+            || ! Schema::hasTable('custom_forms')
+            || ! Schema::hasColumn('custom_form_entries', 'custom_form_id')
+        ) {
+            return 0;
+        }
+
+        $query = DB::table('custom_form_entries')
+            ->join(
+                'custom_forms',
+                'custom_form_entries.custom_form_id',
+                '=',
+                'custom_forms.id'
+            )
+            ->where('custom_forms.slug', '!=', 'profile');
+
+        $query->where(function ($query): void {
+            $query->where(function ($query): void {
+                $query->where('custom_forms.menu_placement', 'sidebar')
+                    ->where('custom_forms.is_active', true);
+            })->orWhere(function ($query): void {
+                $query->where('custom_forms.menu_placement', 'sub_item')
+                    ->where('custom_forms.is_active', true)
+                    ->whereExists(function ($query): void {
+                        $query->selectRaw('1')
+                            ->from('custom_forms as parent_forms')
+                            ->whereColumn('parent_forms.id', 'custom_forms.custom_form_id')
+                            ->where('parent_forms.menu_placement', 'sidebar')
+                            ->where('parent_forms.is_active', true)
+                            ->where('parent_forms.slug', '!=', 'profile');
+                    });
+            });
+        });
+
+        if (Schema::hasColumn('custom_form_entries', 'review_status')) {
+            $query->where(function ($query): void {
+                $query->whereNull('custom_form_entries.review_status')
+                    ->orWhere('custom_form_entries.review_status', '!=', 'draft');
+            });
+        }
+
+        $query->where(function ($query): void {
+            $query->whereNull('custom_form_entries.data->registration_status')
+                ->orWhere('custom_form_entries.data->registration_status', '!=', 'draft');
+        });
 
         return $query->count();
     }
@@ -408,6 +507,19 @@ class DashboardMetrics
         return static::studentHasEntryForForm($userId, $formId);
     }
 
+    public static function studentHasSubmittedForm(
+        int $userId,
+        string $formSlug,
+    ): bool {
+        $formId = static::formIdBySlug($formSlug);
+
+        if (! $formId) {
+            return false;
+        }
+
+        return static::studentSubmittedCountForForms($userId, [$formId]) > 0;
+    }
+
     public static function studentHasEntryForForm(
         int $userId,
         int $formId,
@@ -467,6 +579,43 @@ class DashboardMetrics
         return $query->count();
     }
 
+    private static function studentSubmittedCountForForms(
+        int $userId,
+        array $formIds,
+    ): int {
+        if (
+            ! Schema::hasTable('custom_form_entries')
+            || ! Schema::hasColumn('custom_form_entries', 'custom_form_id')
+        ) {
+            return 0;
+        }
+
+        $ownerColumns = static::entryOwnerColumns();
+
+        if (empty($ownerColumns)) {
+            return 0;
+        }
+
+        $query = DB::table('custom_form_entries')
+            ->whereIn('custom_form_id', array_values(array_unique($formIds)));
+
+        static::applyStudentOwnerFilter($query, $userId);
+
+        if (Schema::hasColumn('custom_form_entries', 'review_status')) {
+            $query->where(function ($query): void {
+                $query->whereNull('review_status')
+                    ->orWhere('review_status', '!=', 'draft');
+            });
+        }
+
+        $query->where(function ($query): void {
+            $query->whereNull('data->registration_status')
+                ->orWhere('data->registration_status', '!=', 'draft');
+        });
+
+        return $query->count();
+    }
+
     public static function studentLatestStatus(int $userId): string
     {
         if (! Schema::hasTable('custom_form_entries')) {
@@ -512,6 +661,12 @@ class DashboardMetrics
             return [];
         }
 
+        if (! static::studentHasSubmittedForm($userId, 'profile')) {
+            return [];
+        }
+
+        $userRoles = static::studentDashboardRoleKeys($userId);
+
         $query = DB::table('custom_forms')
             ->whereNotNull('name');
 
@@ -534,8 +689,8 @@ class DashboardMetrics
             ->get();
 
         return $forms
-            ->filter(function ($form): bool {
-                if (! static::formAllowsStudent($form)) {
+            ->filter(function ($form) use ($userRoles): bool {
+                if (! static::formAllowsStudent($form, $userRoles)) {
                     return false;
                 }
 
@@ -725,7 +880,7 @@ class DashboardMetrics
             ->exists();
     }
 
-    private static function formAllowsStudent(object $form): bool
+    private static function formAllowsStudent(object $form, array $userRoles): bool
     {
         if (! property_exists($form, 'allowed_roles')) {
             return true;
@@ -763,8 +918,31 @@ class DashboardMetrics
             ->values()
             ->all();
 
-        return empty($roles)
-            || in_array('student', $roles, true);
+        if (empty($roles)) {
+            return true;
+        }
+
+        return collect($userRoles)
+            ->intersect($roles)
+            ->isNotEmpty();
+    }
+
+    private static function studentDashboardRoleKeys(int $userId): array
+    {
+        $user = User::query()->find($userId);
+
+        if (! $user) {
+            return ['student', 'candidate'];
+        }
+
+        return $user->effectiveRoleNames()
+            ->map(fn (string $role): string => strtolower(trim($role)))
+            ->merge(['student', 'candidate'])
+            ->merge(UserTypeOptions::candidateManagedRoleKeys())
+            ->filter(fn (string $role): bool => $role !== '')
+            ->unique()
+            ->values()
+            ->all();
     }
 
     private static function formIcon(string $slug): string
