@@ -82,6 +82,8 @@ return [
         'admin_accept_success_body' => 'The student has been notified.',
         'admin_reject_success_title' => 'Application rejected',
         'admin_reject_success_body' => 'The student has been notified.',
+        'admin_resubmitted_title' => 'Application resubmitted',
+        'admin_resubmitted_body' => ':student resubmitted :form after correction. Please review again.',
 
         // Added notifications for Passed/Failed
         'admin_passed_success_title' => 'Application Passed',

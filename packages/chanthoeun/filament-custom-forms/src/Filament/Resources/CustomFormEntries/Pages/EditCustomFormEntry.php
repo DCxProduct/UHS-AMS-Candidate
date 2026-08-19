@@ -2,6 +2,8 @@
 
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Pages;
 
+use App\Models\User;
+use App\Support\NotificationLanguage;
 use App\Support\ProfileFormData;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
@@ -11,12 +13,14 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class EditCustomFormEntry extends EditRecord
 {
     protected static string $resource = CustomFormEntryResource::class;
 
     protected bool $shouldResetToPendingAfterSave = false;
+    protected bool $shouldNotifyAdminsAboutResubmission = false;
 
     public ?string $wizard_step = null;
 
@@ -142,6 +146,7 @@ class EditCustomFormEntry extends EditRecord
 
         if ($slug === 'profile' || in_array($oldStatus, ['rejected', 'failed', 'draft'], true)) {
             $this->shouldResetToPendingAfterSave = true;
+            $this->shouldNotifyAdminsAboutResubmission = in_array($oldStatus, ['rejected', 'failed'], true);
 
             if (Schema::hasColumn('custom_form_entries', 'review_status')) {
                 $data['review_status'] = 'pending';
@@ -212,6 +217,7 @@ class EditCustomFormEntry extends EditRecord
             ->update($update);
 
         $this->record->refresh();
+        $this->notifyAdminsAboutResubmissionIfNeeded($this->record);
         $this->sendStudentSubmitPaymentNotificationIfNeeded($this->record);
     }
 
@@ -296,6 +302,74 @@ class EditCustomFormEntry extends EditRecord
         }
 
         return ! (bool) ($customForm->requires_payment ?? true);
+    }
+
+    protected function notifyAdminsAboutResubmissionIfNeeded(?CustomFormEntry $entry): void
+    {
+        if (! $this->shouldNotifyAdminsAboutResubmission || ! $entry) {
+            return;
+        }
+
+        try {
+            $student = auth()->user();
+
+            $admins = User::query()
+                ->when(
+                    Schema::hasColumn('users', 'is_active'),
+                    fn ($query) => $query->where('is_active', true),
+                )
+                ->get()
+                ->filter(fn (User $user): bool => $user->hasEffectiveRole('admin'))
+                ->values();
+
+            if ($admins->isEmpty()) {
+                return;
+            }
+
+            $data = is_array($entry->data)
+                ? $entry->data
+                : json_decode((string) $entry->data, true);
+
+            $data = is_array($data) ? $data : [];
+
+            $studentName = collect([
+                $data['first_name_kh'] ?? null,
+                $data['last_name_kh'] ?? null,
+            ])
+                ->filter(fn ($value): bool => filled($value))
+                ->implode(' ');
+
+            if ($studentName === '') {
+                $studentName = $student?->name ?: __('review_applications.notifications.unknown_student');
+            }
+
+            $formName = $entry->customForm?->display_name
+                ?: CustomForm::localeText($entry->customForm?->name);
+
+            foreach ($admins as $admin) {
+                Notification::make()
+                    ->title(NotificationLanguage::transForUser(
+                        $admin,
+                        'review_applications.notifications.admin_resubmitted_title'
+                    ))
+                    ->body(NotificationLanguage::transForUser(
+                        $admin,
+                        'review_applications.notifications.admin_resubmitted_body',
+                        [
+                            'student' => $studentName,
+                            'form' => $formName ?: NotificationLanguage::transForUser(
+                                $admin,
+                                'review_applications.notifications.unknown_student'
+                            ),
+                        ]
+                    ))
+                    ->icon('heroicon-o-arrow-path')
+                    ->iconColor('warning')
+                    ->sendToDatabase($admin);
+            }
+        } catch (Throwable $e) {
+            report($e);
+        }
     }
 
     public function getHeading(): string|\Illuminate\Contracts\Support\Htmlable

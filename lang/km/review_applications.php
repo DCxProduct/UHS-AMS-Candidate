@@ -83,6 +83,8 @@ return [
         'admin_accept_success_body' => 'បានជូនដំណឹងទៅនិស្សិតរួចរាល់។',
         'admin_reject_success_title' => 'បានបដិសេធពាក្យស្នើសុំ',
         'admin_reject_success_body' => 'បានជូនដំណឹងទៅនិស្សិតរួចរាល់។',
+        'admin_resubmitted_title' => 'មានការដាក់ស្នើឡើងវិញ',
+        'admin_resubmitted_body' => ':student បានដាក់ស្នើ :form ឡើងវិញបន្ទាប់ពីកែតម្រូវ។ សូមពិនិត្យម្តងទៀត។',
 
         // Added for Passed/Failed Notifications
         'admin_passed_success_title' => 'ពាក្យស្នើសុំបានជាប់',
