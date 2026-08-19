@@ -49,7 +49,7 @@ return [
 
     'statuses' => [
         'pending' => 'Pending',
-        'accepted' => 'Check',
+        'accepted' => 'Please go to cashier counter',
         'rejected' => 'Incomplete',
         'send_back' => 'Send Back',
         'passed' => 'Passed',

@@ -49,7 +49,7 @@ return [
 
     'statuses' => [
         'pending' => 'កំពុងរង់ចាំ',
-        'accepted' => 'បានពិនិត្យ',
+        'accepted' => 'សូមទៅបញ្ជរបេឡា',
         'rejected' => 'មិនគ្រប់គ្រាន់',
         'send_back' => 'បញ្ជូនត្រឡប់',
         'passed' => 'ជាប់',
