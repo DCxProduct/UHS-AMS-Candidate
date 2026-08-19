@@ -2,9 +2,11 @@
 
 namespace App\Filament\Admin\Resources\SystemUsers\Tables;
 
+use App\Filament\Admin\Resources\SystemUsers\SystemUserResource;
 use App\Models\Role;
 use App\Models\SystemUser;
 use App\Models\User;
+use App\Support\FilamentActionPermissions;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
 use App\Support\NotificationLanguage;
@@ -168,8 +170,11 @@ class SystemUsersTable
                         ->icon('heroicon-o-check-circle')
                         ->color('success')
                         ->requiresConfirmation()
-                        ->visible(fn ($record): bool => ! (bool) $record->is_active)
+                        ->visible(fn ($record): bool => FilamentActionPermissions::canForResource(SystemUserResource::class, 'activate_account')
+                            && ! (bool) $record->is_active)
                         ->action(function ($record): void {
+                            FilamentActionPermissions::abortUnlessCanForResource(SystemUserResource::class, 'activate_account');
+
                             $record->activateAccount();
 
                             Notification::make()
@@ -183,8 +188,11 @@ class SystemUsersTable
                         ->icon('heroicon-o-x-circle')
                         ->color('danger')
                         ->requiresConfirmation()
-                        ->visible(fn ($record): bool => (bool) $record->is_active)
+                        ->visible(fn ($record): bool => FilamentActionPermissions::canForResource(SystemUserResource::class, 'deactivate_account')
+                            && (bool) $record->is_active)
                         ->action(function ($record): void {
+                            FilamentActionPermissions::abortUnlessCanForResource(SystemUserResource::class, 'deactivate_account');
+
                             $record->deactivateAccount();
 
                             Notification::make()

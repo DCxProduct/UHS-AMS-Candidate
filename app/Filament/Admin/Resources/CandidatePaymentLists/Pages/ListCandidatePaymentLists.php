@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Resources\CandidatePaymentLists\Pages;
 use App\Filament\Admin\Resources\CandidatePaymentLists\CandidatePaymentListResource;
 use App\Filament\Admin\Resources\CandidatePaymentLists\Tables\CandidatePaymentListsTable;
 use App\Support\AuditLogger;
+use App\Support\FilamentActionPermissions;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Database\Eloquent\Model;
@@ -19,6 +20,7 @@ class ListCandidatePaymentLists extends ListRecords
             Action::make('download_excel')
                 ->label(__('candidate_payment_lists.download_excel'))
                 ->color('success')
+                ->visible(fn (): bool => FilamentActionPermissions::canForResource(CandidatePaymentListResource::class, 'download_excel'))
                 ->alpineClickHandler(<<<'JS'
                     const table = document.querySelector('.fi-ta');
                     const tableData = table?._x_dataStack?.find((data) => data.selectedRecords instanceof Set);
@@ -33,7 +35,7 @@ class ListCandidatePaymentLists extends ListRecords
             Action::make('clear_data')
                 ->label(__('app.clear_data'))
                 ->color('danger')
-                ->visible(fn (): bool => $this->currentUserCanClearData())
+                ->visible(fn (): bool => FilamentActionPermissions::canForResource(CandidatePaymentListResource::class, 'clear_data'))
                 ->requiresConfirmation()
                 ->modalHeading(__('app.clear_data'))
                 ->modalDescription(__('app.clear_data_confirm'))
@@ -66,26 +68,13 @@ class ListCandidatePaymentLists extends ListRecords
         );
     }
 
-    protected function currentUserCanClearData(): bool
-    {
-        $user = auth()->user();
-
-        if (! $user) {
-            return false;
-        }
-
-        if (method_exists($user, 'hasEffectiveRole')) {
-            return $user->hasEffectiveRole('admin');
-        }
-
-        return $user->registration_type === 'admin';
-    }
-
     public function clearDataFromTableSelection(
         array $selectedRecordKeys = [],
         bool $isTrackingDeselectedRecords = false,
         array $deselectedRecordKeys = [],
     ): void {
+        FilamentActionPermissions::abortUnlessCanForResource(CandidatePaymentListResource::class, 'clear_data');
+
         $this->selectedOrFilteredQuery(
             $selectedRecordKeys,
             $isTrackingDeselectedRecords,
@@ -124,6 +113,8 @@ class ListCandidatePaymentLists extends ListRecords
         array $deselectedRecordKeys = [],
     )
     {
+        FilamentActionPermissions::abortUnlessCanForResource(CandidatePaymentListResource::class, 'download_excel');
+
         return CandidatePaymentListsTable::downloadExcel(
             $this->selectedOrFilteredQuery(
                 $selectedRecordKeys,

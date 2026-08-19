@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Resources\CandidateRequested\Pages;
 use App\Filament\Admin\Resources\CandidateRequested\CandidateRequestedResource;
 use App\Filament\Admin\Resources\CandidateRequested\Tables\CandidateRequestedTable;
 use App\Support\AuditLogger;
+use App\Support\FilamentActionPermissions;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\ListRecords;
@@ -31,6 +32,7 @@ class ListCandidateRequested extends ListRecords
             Action::make('download_excel')
                 ->label(__('review_applications.download_excel'))
                 ->color('success')
+                ->visible(fn (): bool => FilamentActionPermissions::canForResource(CandidateRequestedResource::class, 'download_excel'))
                 ->alpineClickHandler(<<<'JS'
                     const table = document.querySelector('.fi-ta');
                     const tableData = table?._x_dataStack?.find((data) => data.selectedRecords instanceof Set);
@@ -45,7 +47,7 @@ class ListCandidateRequested extends ListRecords
             Action::make('clear_data')
                 ->label(__('app.clear_data'))
                 ->color('danger')
-                ->visible(fn (): bool => $this->currentUserCanClearData())
+                ->visible(fn (): bool => FilamentActionPermissions::canForResource(CandidateRequestedResource::class, 'clear_data'))
                 ->requiresConfirmation()
                 ->modalHeading(__('app.clear_data'))
                 ->modalDescription(__('app.clear_data_confirm'))
@@ -78,24 +80,14 @@ class ListCandidateRequested extends ListRecords
         );
     }
 
-    protected function currentUserCanClearData(): bool
-    {
-        $user = auth()->user();
-
-        if (! $user) {
-            return false;
-        }
-
-        return ! method_exists($user, 'hasEffectiveRole')
-            || ! $user->hasEffectiveRole('user');
-    }
-
     public function downloadExcelFromTableSelection(
         array $selectedRecordKeys = [],
         bool $isTrackingDeselectedRecords = false,
         array $deselectedRecordKeys = [],
     )
     {
+        FilamentActionPermissions::abortUnlessCanForResource(CandidateRequestedResource::class, 'download_excel');
+
         $selectedRecordKeys = array_values(array_filter($selectedRecordKeys));
         $deselectedRecordKeys = array_values(array_filter($deselectedRecordKeys));
 
@@ -127,6 +119,8 @@ class ListCandidateRequested extends ListRecords
         bool $isTrackingDeselectedRecords = false,
         array $deselectedRecordKeys = [],
     ): void {
+        FilamentActionPermissions::abortUnlessCanForResource(CandidateRequestedResource::class, 'clear_data');
+
         $this->selectedOrFilteredQuery(
             $selectedRecordKeys,
             $isTrackingDeselectedRecords,

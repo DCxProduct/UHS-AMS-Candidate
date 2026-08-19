@@ -13,6 +13,7 @@ use App\Models\UserType;
 use App\Models\User;
 use App\Observers\AuditLogObserver;
 use App\Support\AuditLogger;
+use App\Support\FilamentActionPermissions;
 use App\Support\NotificationLanguage;
 use BezhanSalleh\LanguageSwitch\LanguageSwitch;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
@@ -37,6 +38,8 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        FilamentActionPermissions::sync();
+
         $this->registerAuditLogging();
 
         //roles permission admin automatic

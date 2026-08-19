@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+use App\Support\FilamentActionPermissions;
 use App\Filament\Pages\Sync;
 use App\Filament\Student\Pages\ContactUs;
 use App\Filament\Student\Pages\MyProfile;
@@ -30,7 +31,7 @@ return [
             'pages' => true,
             'widgets' => true,
             'resources' => true,
-            'custom_permissions' => false,
+            'custom_permissions' => true,
         ],
     ],
 
@@ -236,7 +237,7 @@ return [
     |
     */
 
-    'custom_permissions' => [],
+    'custom_permissions' => FilamentActionPermissions::all(),
 
     /*
     |--------------------------------------------------------------------------
