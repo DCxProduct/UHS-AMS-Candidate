@@ -2,22 +2,38 @@
 
 namespace App\Filament\Widgets;
 
-use App\Filament\Admin\Resources\AuditLogs\AuditLogResource;
 use App\Filament\Admin\Resources\CandidatePaymentLists\CandidatePaymentListResource;
-use App\Filament\Admin\Resources\ExamResults\ExamResultResource;
-use App\Filament\Admin\Resources\Payments\PaymentResource;
 use App\Filament\Admin\Resources\CandidateRequested\CandidateRequestedResource;
-use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
-use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
+use App\Filament\Admin\Resources\ClosingDates\ClosingDateResource;
+use App\Filament\Admin\Resources\ExamResults\ExamResultResource;
+use App\Filament\Admin\Resources\ExitExamResults\ExitExamResultResource;
+use App\Filament\Admin\Resources\Payments\PaymentResource;
+use App\Support\DashboardMetrics;
 use Filament\Facades\Filament;
 use Filament\Widgets\Widget;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Throwable;
 
 class AdminMenuOverview extends Widget
 {
+    protected const ALLOWED_RESOURCES = [
+        CandidatePaymentListResource::class,
+        PaymentResource::class,
+        CandidateRequestedResource::class,
+        ExamResultResource::class,
+        ExitExamResultResource::class,
+        ClosingDateResource::class,
+    ];
+
+    protected const SIDEBAR_ORDER = [
+        CandidatePaymentListResource::class => 1,
+        PaymentResource::class => 2,
+        CandidateRequestedResource::class => 3,
+        ExamResultResource::class => 4,
+        ExitExamResultResource::class => 5,
+        ClosingDateResource::class => 6,
+    ];
+
     protected static ?int $sort = 2;
 
     protected int|string|array $columnSpan = 'full';
@@ -36,6 +52,7 @@ class AdminMenuOverview extends Widget
     protected function getViewData(): array
     {
         $items = $this->sortItems($this->buildDashboardItems());
+        $isAdmin = auth()->user()?->hasEffectiveRole('admin') ?? false;
 
         $formattedItems = array_map(
             fn (array $item): array => [
@@ -45,7 +62,7 @@ class AdminMenuOverview extends Widget
             $items,
         );
 
-        return [
+        $data = [
             'highlights' => [
                 [
                     'label' => __('dashboard.quick_access_modules'),
@@ -55,13 +72,18 @@ class AdminMenuOverview extends Widget
                     'label' => __('dashboard.total_records'),
                     'value' => number_format(array_sum(array_column($items, 'count'))),
                 ],
-                [
-                    'label' => __('dashboard.active_sections'),
-                    'value' => number_format(count(array_filter($items, fn (array $item): bool => $item['count'] > 0))),
-                ],
             ],
             'items' => $formattedItems,
         ];
+
+        if ($isAdmin) {
+            $data['highlights'][] = [
+                'label' => __('dashboard.application_count'),
+                'value' => number_format(DashboardMetrics::adminSubmittedApplicationsCount()),
+            ];
+        }
+
+        return $data;
     }
 
     protected function buildDashboardItems(): array
@@ -87,11 +109,11 @@ class AdminMenuOverview extends Widget
                 'label' => $label,
                 'count' => $count,
                 'action_label' => __('dashboard.open_module', ['module' => $label]),
-                'icon' => (string) ($resourceClass::getNavigationIcon() ?? 'heroicon-o-square-3-stack-3d'),
+                'icon' => $resourceClass::getNavigationIcon() ?? 'heroicon-o-square-3-stack-3d',
                 'url' => $resourceClass::getUrl('index'),
                 'tone' => $this->toneForResource($resourceClass),
                 'description' => $this->descriptionForResource($resourceClass, $label),
-                'navigation_sort' => $resourceClass::getNavigationSort() ?? 999,
+                'navigation_sort' => static::SIDEBAR_ORDER[$resourceClass] ?? 999,
             ];
         }
 
@@ -120,10 +142,7 @@ class AdminMenuOverview extends Widget
             return false;
         }
 
-        if (
-            ! str_starts_with($resourceClass, 'App\\Filament\\Admin\\Resources\\')
-            && $resourceClass !== CustomFormEntryResource::class
-        ) {
+        if (! str_starts_with($resourceClass, 'App\\Filament\\Admin\\Resources\\')) {
             return false;
         }
 
@@ -131,17 +150,7 @@ class AdminMenuOverview extends Widget
             return false;
         }
 
-        if ($resourceClass === CustomFormEntryResource::class) {
-            return true;
-        }
-
-        $group = (string) $resourceClass::getNavigationGroup();
-
-        return in_array($group, [
-            __('navigation.groups.candidates'),
-            __('navigation.groups.cashier'),
-            __('audit_logs.activity_navigation_label'),
-        ], true);
+        return in_array($resourceClass, static::ALLOWED_RESOURCES, true);
     }
 
     protected function resolveResourceCount(string $resourceClass): ?int
@@ -164,8 +173,8 @@ class AdminMenuOverview extends Widget
             ExamResultResource::class => 'violet',
             CandidatePaymentListResource::class => 'lime',
             PaymentResource::class => 'teal',
-            CustomFormEntryResource::class => 'emerald',
-            AuditLogResource::class => 'zinc',
+            ExitExamResultResource::class => 'indigo',
+            ClosingDateResource::class => 'slate',
             default => 'slate',
         };
     }
@@ -177,54 +186,9 @@ class AdminMenuOverview extends Widget
             ExamResultResource::class => __('dashboard.exam_results_description'),
             CandidatePaymentListResource::class => __('dashboard.payment_lists_description'),
             PaymentResource::class => __('dashboard.payment_records_description'),
-            CustomFormEntryResource::class => __('dashboard.form_entries_description'),
-            AuditLogResource::class => __('dashboard.activity_logs_description'),
+            ExitExamResultResource::class => __('dashboard.exit_exam_results_description'),
+            ClosingDateResource::class => __('dashboard.closing_dates_description'),
             default => __('dashboard.open_module_description', ['module' => Str::lower($label)]),
         };
-    }
-
-    protected function formEntriesCount(): int
-    {
-        $ownerColumns = collect(['created_by', 'user_id', 'created_by_id'])
-            ->filter(fn (string $column): bool => Schema::hasColumn('custom_form_entries', $column))
-            ->values()
-            ->all();
-
-        $entries = CustomFormEntry::query()
-            ->whereHas('customForm', function (Builder $query): void {
-                $query->where('slug', '!=', 'profile');
-            })
-            ->where(function (Builder $query): void {
-                $query
-                    ->whereNull('review_status')
-                    ->orWhere('review_status', '!=', 'draft');
-            })
-            ->where(function (Builder $query): void {
-                $query
-                    ->whereNull('data->registration_status')
-                    ->orWhere('data->registration_status', '!=', 'draft');
-            })
-            ->get([
-                'id',
-                'custom_form_id',
-                ...$ownerColumns,
-                'data',
-            ]);
-
-        return $entries
-            ->unique(function (CustomFormEntry $entry) use ($ownerColumns): string {
-                $ownerId = collect($ownerColumns)
-                    ->map(fn (string $column): mixed => data_get($entry, $column))
-                    ->first(fn (mixed $value): bool => filled($value)) ?? 0;
-
-                $formSelection = strtolower((string) data_get($entry->data, 'form_selection', ''));
-
-                return implode(':', [
-                    (string) $entry->custom_form_id,
-                    (string) $ownerId,
-                    $formSelection,
-                ]);
-            })
-            ->count();
     }
 }
