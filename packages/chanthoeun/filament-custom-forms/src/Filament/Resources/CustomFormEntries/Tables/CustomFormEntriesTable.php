@@ -355,6 +355,8 @@ class CustomFormEntriesTable
 
             $processedKeys = [
                 'form_selection',
+                'first_name_kh',
+                'last_name_kh',
                 ...FormEntryData::majorKeys(),
                 'gender',
                 'phone_number',
@@ -431,7 +433,19 @@ class CustomFormEntriesTable
                 ->alignCenter()
                 ->width('60px'),
 
-            // 3. Major
+            // 2. First Name
+            TextColumn::make('data.first_name_kh')
+                ->label(__('review_applications.first_name_kh'))
+                ->placeholder('-')
+                ->searchable(query: fn (Builder $query, string $search): Builder => $query->where('data->first_name_kh', 'like', "%{$search}%")),
+
+            // 3. Last Name
+            TextColumn::make('data.last_name_kh')
+                ->label(__('review_applications.last_name_kh'))
+                ->placeholder('-')
+                ->searchable(query: fn (Builder $query, string $search): Builder => $query->where('data->last_name_kh', 'like', "%{$search}%")),
+
+            // 4. Major
             TextColumn::make('major')
                 ->label(__('app.custom_form_entry_ui.labels.major'))
                 ->badge()
@@ -445,7 +459,7 @@ class CustomFormEntriesTable
                 ->searchable(query: fn (Builder $query, string $search): Builder => FormEntryData::applyJsonLikeFilter($query, FormEntryData::majorKeys(), $search))
                 ->toggleable(isToggledHiddenByDefault: false),
 
-            // 4. Gender
+            // 5. Gender
             TextColumn::make('data.gender')
                 ->label(__('app.custom_form_entry_ui.labels.gender'))
                 ->placeholder('-')
@@ -456,14 +470,14 @@ class CustomFormEntriesTable
                 })
                 ->toggleable(isToggledHiddenByDefault: false),
 
-            // 5. Phone Number
+            // 6. Phone Number
             TextColumn::make('data.phone_number')
                 ->label(__('app.custom_form_entry_ui.labels.phone_number'))
                 ->placeholder('-')
                 ->searchable()
                 ->toggleable(isToggledHiddenByDefault: false),
 
-            // 6. Academic Year
+            // 7. Academic Year
             TextColumn::make('data.academic_year')
                 ->label(__('app.custom_form_entry_ui.labels.academic_year'))
                 ->placeholder('-')
