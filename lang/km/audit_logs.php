@@ -30,6 +30,7 @@ return [
             'login' => 'ចូលប្រើ',
             'logout' => 'ចាកចេញ',
             'created' => 'បង្កើត',
+            'cleared' => 'បានសម្អាត',
             'updated' => 'កែប្រែ',
             'deleted' => 'លុប',
             'approved' => 'អនុម័ត',
