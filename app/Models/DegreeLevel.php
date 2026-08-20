@@ -13,6 +13,7 @@ class DegreeLevel extends Model
         'label_en',
         'label_kh',
         'is_active',
+        'sort_order',
     ];
 
     protected function casts(): array
@@ -60,6 +61,7 @@ class DegreeLevel extends Model
 
         return static::query()
             ->where('is_active', true)
+            ->orderBy('sort_order')
             ->orderBy('id')
             ->get()
             ->mapWithKeys(fn (self $degreeLevel): array => [

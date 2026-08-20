@@ -19,6 +19,7 @@ class PaymentTypesTable
         return $table
             ->searchPlaceholder(__('payment_types.search'))
             ->defaultSort('display_order')
+            ->reorderable('display_order')
             ->columns([
                 TextColumn::make('row_number')
                     ->label(__('payment_types.table.no'))

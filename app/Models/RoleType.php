@@ -13,6 +13,7 @@ class RoleType extends Model
         'label_en',
         'label_kh',
         'is_active',
+        'sort_order',
     ];
 
     protected function casts(): array
@@ -54,6 +55,7 @@ class RoleType extends Model
 
         return static::query()
             ->where('is_active', true)
+            ->orderBy('sort_order')
             ->orderBy('id')
             ->get()
             ->mapWithKeys(fn (self $roleType): array => [
@@ -130,12 +132,14 @@ class RoleType extends Model
                 'label_en' => 'Candidate',
                 'label_kh' => 'បេក្ខជន',
                 'is_active' => true,
+                'sort_order' => 1,
             ],
             [
                 'key' => 'staff',
                 'label_en' => 'Staff',
                 'label_kh' => 'បុគ្គលិក',
                 'is_active' => true,
+                'sort_order' => 2,
             ],
         ];
     }

@@ -18,7 +18,8 @@ class RoleTypesTable
     {
         return $table
             ->searchPlaceholder(__('role_types.search'))
-            ->defaultSort('id')
+            ->defaultSort('sort_order')
+            ->reorderable('sort_order')
             ->columns([
                 TextColumn::make('row_number')
                     ->label(__('role_types.table.no'))
