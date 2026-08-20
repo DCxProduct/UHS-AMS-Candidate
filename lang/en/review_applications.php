@@ -107,6 +107,7 @@ return [
     'not_reviewed_yet' => 'Not reviewed yet',
     'download_excel' => 'Download Excel',
     'download_pdf' => 'Download PDF',
+    'view_application_review' => 'View Application Review',
 
     'months' => [
         '1' => 'January',

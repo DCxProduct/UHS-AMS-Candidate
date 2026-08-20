@@ -108,6 +108,7 @@ return [
     'not_reviewed_yet' => 'មិនទាន់បានពិនិត្យ',
     'download_excel' => 'ទាញយក Excel',
     'download_pdf' => 'ទាញយក PDF',
+    'view_application_review' => 'ពិនិត្យការវាយតម្លៃពាក្យស្នើសុំ',
 
     'months' => [
         '1' => 'មករា',

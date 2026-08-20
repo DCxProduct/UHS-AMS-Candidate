@@ -946,7 +946,7 @@ class CustomFormEntriesTable
                 ->label(__('review_applications.view_pdf'))
                 ->icon('heroicon-o-eye')
                 ->color('info')
-                ->modalHeading('View Application Review')
+                ->modalHeading(__('review_applications.view_application_review'))
                 ->modalWidth('7xl')
                 ->modalSubmitAction(false)
                 ->modalCancelAction(false)
