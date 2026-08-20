@@ -19,6 +19,8 @@ class CandidateTypesTable
     {
         return $table
             ->searchPlaceholder(__('candidate_types.search'))
+            ->defaultSort('display_order')
+            ->reorderable('display_order')
             ->columns([
                 TextColumn::make('row_number')
                     ->label(__('candidate_types.table.no'))

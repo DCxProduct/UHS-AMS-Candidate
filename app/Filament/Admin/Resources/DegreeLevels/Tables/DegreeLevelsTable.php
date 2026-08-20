@@ -18,7 +18,8 @@ class DegreeLevelsTable
     {
         return $table
             ->searchPlaceholder(__('degree_levels.search'))
-            ->defaultSort('id')
+            ->defaultSort('sort_order')
+            ->reorderable('sort_order')
             ->columns([
                 TextColumn::make('row_number')
                     ->label(__('degree_levels.table.no'))
