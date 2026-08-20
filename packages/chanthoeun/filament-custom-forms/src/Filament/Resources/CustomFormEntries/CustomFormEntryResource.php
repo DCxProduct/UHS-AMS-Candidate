@@ -60,10 +60,12 @@ class CustomFormEntryResource extends Resource
             return true;
         }
 
-        $formId = request()->input('tableFilters.custom_form_id.value')
-            ?? data_get(request()->query('tableFilters'), 'custom_form_id.value')
-            ?? request()->query('form_id')
-            ?? request()->input('custom_form_id');
+        $requestedFormId = static::requestedFormId();
+        $formId = static::normalizeFormId($requestedFormId);
+
+        if ($requestedFormId !== null && $formId === null) {
+            abort(404);
+        }
 
         if (! $formId) {
             return true;
@@ -204,8 +206,7 @@ class CustomFormEntryResource extends Resource
 
     public static function getModelLabel(): string
     {
-        $id = request()->input('tableFilters.custom_form_id.value')
-            ?? data_get(request()->query('tableFilters'), 'custom_form_id.value');
+        $id = static::normalizeFormId(static::requestedFormId());
 
         if ($id) {
             $form = static::getFormFromCache((string) $id);
@@ -222,8 +223,7 @@ class CustomFormEntryResource extends Resource
 
     public static function getPluralModelLabel(): string
     {
-        $id = request()->input('tableFilters.custom_form_id.value')
-            ?? data_get(request()->query('tableFilters'), 'custom_form_id.value');
+        $id = static::normalizeFormId(static::requestedFormId());
 
         if ($id) {
             $form = static::getFormFromCache((string) $id);
@@ -832,5 +832,34 @@ class CustomFormEntryResource extends Resource
         }
 
         return (string) $value;
+    }
+
+    public static function normalizeFormId(mixed $value): ?int
+    {
+        if (is_int($value)) {
+            return $value > 0 ? $value : null;
+        }
+
+        if (! is_string($value) && ! is_numeric($value)) {
+            return null;
+        }
+
+        $normalized = trim((string) $value);
+
+        if ($normalized === '' || ! preg_match('/^\d+$/', $normalized)) {
+            return null;
+        }
+
+        $formId = (int) $normalized;
+
+        return $formId > 0 ? $formId : null;
+    }
+
+    public static function requestedFormId(): mixed
+    {
+        return request()->input('tableFilters.custom_form_id.value')
+            ?? data_get(request()->query('tableFilters'), 'custom_form_id.value')
+            ?? request()->query('form_id')
+            ?? request()->input('custom_form_id');
     }
 }

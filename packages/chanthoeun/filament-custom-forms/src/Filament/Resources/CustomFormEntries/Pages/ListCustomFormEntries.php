@@ -17,15 +17,18 @@ class ListCustomFormEntries extends ListRecords
 {
     protected static string $resource = CustomFormEntryResource::class;
 
-    public ?string $activeFormId = null;
+    public ?int $activeFormId = null;
 
     public function mount(): void
     {
         parent::mount();
 
-        $this->activeFormId = request()->input('tableFilters.custom_form_id.value')
-            ?? data_get(request()->query('tableFilters'), 'custom_form_id.value')
-            ?? request()->query('form_id');
+        $requestedFormId = \Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource::requestedFormId();
+        $this->activeFormId = \Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource::normalizeFormId($requestedFormId);
+
+        if ($requestedFormId !== null && $this->activeFormId === null) {
+            abort(404);
+        }
 
         if (! $this->activeFormId) {
             return;
@@ -154,21 +157,29 @@ class ListCustomFormEntries extends ListRecords
             'custom_form_id.value'
         );
 
-        if (filled($filterFormId)) {
-            $this->activeFormId = $filterFormId;
+        $normalizedFilterFormId = \Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource::normalizeFormId($filterFormId);
+
+        if ($normalizedFilterFormId) {
+            $this->activeFormId = $normalizedFilterFormId;
 
             return;
         }
 
-        $this->activeFormId = request()->input(
+        $requestedFormId = request()->input(
             'tableFilters.custom_form_id.value'
         )
             ?? data_get(
-            request()->query('tableFilters'),
-            'custom_form_id.value'
-        )
+                request()->query('tableFilters'),
+                'custom_form_id.value'
+            )
             ?? request()->query('form_id')
             ?? $this->activeFormId;
+
+        $this->activeFormId = \Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource::normalizeFormId($requestedFormId);
+
+        if ($requestedFormId !== null && $this->activeFormId === null) {
+            abort(404);
+        }
     }
 
     public function getHeading(): string|Htmlable
