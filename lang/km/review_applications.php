@@ -1,10 +1,10 @@
 <?php
 
 return [
-    'navigation_label' => 'ពិនិត្យពាក្យស្នើសុំ',
+    'navigation_label' => 'សំណើរបេក្ខជន',
     'navigation_group' => 'ពិនិត្យឯកសារ',
 
-    'model_label' => 'ពិនិត្យពាក្យស្នើសុំ',
+    'model_label' => 'សំណើរបេក្ខជន',
     'plural_model_label' => 'សំណើបេក្ខជន',
 
     'all_fields' => 'ព័ត៌មានទាំងអស់',

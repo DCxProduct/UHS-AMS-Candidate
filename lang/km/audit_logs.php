@@ -63,7 +63,7 @@ return [
             'custom_form_entry' => 'ទិន្នន័យទម្រង់',
             'custom_form_entries' => 'ទិន្នន័យទម្រង់',
             'student_dynamic_form' => 'ទម្រង់បែបបទនិស្សិត',
-            'review_applications' => 'ពិនិត្យពាក្យស្នើសុំ',
+            'review_applications' => 'សំណើរបេក្ខជន',
             'exam_results' => 'លទ្ធផលប្រឡង',
             'audit_logs' => 'កំណត់ហេតុសកម្មភាព',
         ],
