@@ -694,19 +694,11 @@ class DashboardMetrics
                     return false;
                 }
 
-                $slug = (string) ($form->slug ?? '');
-
-                if ($slug === 'profile') {
+                if ((string) ($form->slug ?? '') === 'profile') {
                     return false;
                 }
 
-                if (! static::formHasClosingDateRule($form)) {
-                    return false;
-                }
-
-                $workflow = static::formWorkflow((int) $form->id);
-
-                return ($workflow['state'] ?? 'open') === 'open';
+                return ClosingDateWorkflow::canOpenCustomFormId((int) $form->id);
             })
             ->map(function ($form): array {
                 return [
@@ -889,7 +881,7 @@ class DashboardMetrics
         $roles = $form->allowed_roles ?? [];
 
         if (blank($roles)) {
-            return true;
+            return false;
         }
 
         if (is_string($roles)) {
@@ -905,7 +897,7 @@ class DashboardMetrics
         }
 
         if (! is_array($roles)) {
-            return true;
+            return false;
         }
 
         $roles = collect($roles)
@@ -914,12 +906,20 @@ class DashboardMetrics
                     trim((string) $role, " \t\n\r\0\x0B\"'")
                 )
             )
+            ->reject(fn (string $role): bool => in_array($role, ['student', 'candidate'], true))
+            ->flatMap(function (string $role): array {
+                if (in_array($role, ['student', 'candidate'], true)) {
+                    return ['student', 'candidate'];
+                }
+
+                return $role !== '' ? [$role] : [];
+            })
             ->filter()
             ->values()
             ->all();
 
         if (empty($roles)) {
-            return true;
+            return false;
         }
 
         return collect($userRoles)
@@ -938,7 +938,6 @@ class DashboardMetrics
         return $user->effectiveRoleNames()
             ->map(fn (string $role): string => strtolower(trim($role)))
             ->merge(['student', 'candidate'])
-            ->merge(UserTypeOptions::candidateManagedRoleKeys())
             ->filter(fn (string $role): bool => $role !== '')
             ->unique()
             ->values()
