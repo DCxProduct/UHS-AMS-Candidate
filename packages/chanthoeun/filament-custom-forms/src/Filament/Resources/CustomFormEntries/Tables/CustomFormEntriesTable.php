@@ -1638,7 +1638,7 @@ class CustomFormEntriesTable
         $choices = $field ? self::fieldChoices($field) : [];
 
         $labels = collect(self::decodeJsonArray($state))
-            ->map(function (mixed $value) use ($choices, $formIds): string {
+            ->map(function (mixed $value) use ($choices, $formIds, $fieldName): string {
                 $stringValue = (string) $value;
 
                 return $choices[$stringValue]
