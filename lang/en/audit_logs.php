@@ -30,6 +30,7 @@ return [
             'login' => 'Login',
             'logout' => 'Logout',
             'created' => 'Created',
+            'cleared' => 'Cleared',
             'updated' => 'Updated',
             'deleted' => 'Deleted',
             'approved' => 'Approved',
