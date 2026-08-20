@@ -63,7 +63,7 @@ return [
             'custom_form_entry' => 'Custom Form Entry',
             'custom_form_entries' => 'Custom Form Entries',
             'student_dynamic_form' => 'Student Dynamic Form',
-            'review_applications' => 'Review Applications',
+            'review_applications' => 'Candidate Requested',
             'exam_results' => 'Exam Results',
             'audit_logs' => 'Audit Logs',
         ],

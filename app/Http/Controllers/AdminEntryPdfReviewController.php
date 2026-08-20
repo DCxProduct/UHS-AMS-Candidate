@@ -69,7 +69,7 @@ class AdminEntryPdfReviewController extends Controller
                 'registration_status' => 'approved',
             ],
             description: 'Application approved from PDF review',
-            metadata: ['module' => 'Review Applications'],
+            metadata: ['module' => 'Candidate Requested'],
         );
 
         return redirect()->back();
@@ -112,7 +112,7 @@ class AdminEntryPdfReviewController extends Controller
                 'review_note' => $request->review_note,
             ],
             description: 'Application rejected from PDF review',
-            metadata: ['module' => 'Review Applications'],
+            metadata: ['module' => 'Candidate Requested'],
         );
 
         return redirect()->back();
