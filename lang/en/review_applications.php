@@ -100,7 +100,7 @@ return [
     ],
 
     'form_type' => 'Form Type',
-    'user_type' => 'User Type',
+    'user_type' => 'Candidate Type',
     'major' => 'Major',
     'reviewed_year' => 'Year',
     'national_registration_number' => 'National Registration Number',
