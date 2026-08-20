@@ -86,7 +86,6 @@ class CandidateRequestedTable
                         ['academic_year' => self::entryValue($record, 'academic_year', $record->creator?->academic_year)]
                     ))
                     ->searchable(query: fn (Builder $query, string $search): Builder => $query->where('data->academic_year', 'like', "%{$search}%"))
-                    ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('user_type')
