@@ -139,6 +139,11 @@ class UserType extends Model
             return;
         }
 
-        $role->syncPermissions($candidateRole->permissions);
+        $role->syncPermissions(
+            $candidateRole->permissions
+                ->unique('id')
+                ->values()
+                ->all()
+        );
     }
 }
