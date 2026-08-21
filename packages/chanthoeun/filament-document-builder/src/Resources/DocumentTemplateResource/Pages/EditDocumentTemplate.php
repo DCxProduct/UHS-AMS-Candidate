@@ -6,6 +6,7 @@ use Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate;
 use Chanthoeun\FilamentDocumentBuilder\Resources\DocumentTemplateResource;
 use Chanthoeun\FilamentDocumentBuilder\Services\DocumentRenderer;
 use Chanthoeun\FilamentDocumentBuilder\Support\LayoutTemplates;
+use App\Support\FilamentActionPermissions;
 use Filament\Actions;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
@@ -36,6 +37,7 @@ class EditDocumentTemplate extends EditRecord
                 ->modalHeading(__('filament-document-builder::document-builder.labels.load_example_layout'))
                 ->modalDescription(__('filament-document-builder::document-builder.labels.load_example_layout_warning'))
                 ->modalSubmitActionLabel(__('filament-document-builder::document-builder.labels.load_layout'))
+                ->visible(fn (): bool => FilamentActionPermissions::canForResource(DocumentTemplateResource::class, 'load_example_layout'))
                 ->form([
                     Select::make('layout')
                         ->label(__('filament-document-builder::document-builder.labels.select_layout'))
@@ -43,6 +45,8 @@ class EditDocumentTemplate extends EditRecord
                         ->required(),
                 ])
                 ->action(function (array $data) {
+                    FilamentActionPermissions::abortUnlessCanForResource(DocumentTemplateResource::class, 'load_example_layout');
+
                     $html = LayoutTemplates::getTemplate($data['layout']);
 
                     $this->data['content'] = $html;
@@ -62,7 +66,10 @@ class EditDocumentTemplate extends EditRecord
                 ->label(__('filament-document-builder::document-builder.labels.preview_pdf'))
                 ->icon('heroicon-o-document-magnifying-glass')
                 ->color('success')
+                ->visible(fn (): bool => FilamentActionPermissions::canForResource(DocumentTemplateResource::class, 'preview_pdf'))
                 ->action(function () {
+                    FilamentActionPermissions::abortUnlessCanForResource(DocumentTemplateResource::class, 'preview_pdf');
+
                     /** @var DocumentTemplate $record */
                     $record = $this->record;
                     $record->fill($this->form->getState());

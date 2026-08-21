@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Role;
 use App\Models\User;
+use BezhanSalleh\FilamentShield\Resources\Roles\RoleResource as ShieldRoleResource;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Artisan;
@@ -74,22 +75,22 @@ class RolesAndPermissionsSeeder extends Seeder
             'Create:CustomFormEntry',
         ];
 
+        $manageablePermissionNames = ShieldRoleResource::manageablePermissionNames();
+
         $admin->syncPermissions(
             Permission::query()
                 ->where('guard_name', 'web')
+                ->whereIn('name', $manageablePermissionNames)
                 ->whereNotIn('name', $adminExcludedPermissions)
                 ->get()
         );
         $cashier->syncPermissions(
             Permission::query()
                 ->where('guard_name', 'web')
+                ->whereIn('name', $manageablePermissionNames)
                 ->where(function ($query): void {
                     $query->where('name', 'like', '%:Payment')
-                        ->orWhere('name', 'like', '%:CandidatePaymentList')
-                        ->orWhereIn('name', [
-                            'View:Dashboard',
-                            'View:MyProfile',
-                        ]);
+                        ->orWhere('name', 'like', '%:CandidatePaymentList');
                 })
                 ->get()
         );

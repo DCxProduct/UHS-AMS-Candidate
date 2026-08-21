@@ -38,6 +38,11 @@ trait HasShieldFormComponents
     public static function getResourceEntitiesSchema(): ?array
     {
         return collect(FilamentShield::getResources())
+            ->sortBy(fn (array $entity): string => sprintf(
+                '%04d-%s',
+                static::getResourceEntitySort($entity),
+                strtolower((string) ($entity['model'] ?? $entity['resourceFqcn'] ?? ''))
+            ))
             ->map(function (array $entity): Section {
                 $sectionLabel = strval(
                     static::shield()->hasLocalizedPermissionLabels()
@@ -55,6 +60,48 @@ trait HasShieldFormComponents
                     ->collapsible();
             })
             ->toArray();
+    }
+
+    protected static function getResourceEntitySort(array $entity): int
+    {
+        $order = [
+            'CustomFormEntry' => 1,
+            'CandidatePaymentList' => 2,
+            'Payment' => 3,
+            'CandidateRequested' => 4,
+            'ReviewApplication' => 4,
+            'ExamResult' => 5,
+            'ExitExamResult' => 6,
+            'CustomForm' => 7,
+            'DocumentTemplate' => 8,
+            'GeoLocation' => 9,
+            'ClosingDate' => 10,
+            'DegreeLevel' => 11,
+            'UserType' => 12,
+            'CandidateType' => 12,
+            'SystemUser' => 13,
+            'CandidateList' => 14,
+            'PaymentType' => 15,
+            'ExchangeRate' => 16,
+            'CandidateSubmitPopupSetting' => 17,
+            'RoleType' => 18,
+            'Role' => 19,
+            'AuditLog' => 20,
+        ];
+
+        $resourceOrder = [
+            'CandidateTypeResource' => 12,
+            'RoleResource' => 19,
+        ];
+
+        $resourceBaseName = class_basename((string) ($entity['resourceFqcn'] ?? ''));
+        $modelBaseName = class_basename((string) ($entity['modelFqcn'] ?? $entity['model'] ?? ''));
+        $model = (string) ($entity['model'] ?? '');
+
+        return $resourceOrder[$resourceBaseName]
+            ?? $order[$modelBaseName]
+            ?? $order[$model]
+            ?? 1000;
     }
 
     public static function getResourceTabBadgeCount(): ?int

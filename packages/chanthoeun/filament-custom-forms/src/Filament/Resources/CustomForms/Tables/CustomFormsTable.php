@@ -3,7 +3,9 @@
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomForms\Tables;
 
 use App\Support\PassedResultMenuOptions;
+use App\Support\FilamentActionPermissions;
 use App\Support\LocalizedDate;
+use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomForms\CustomFormResource;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -112,7 +114,10 @@ class CustomFormsTable
                     ->label(app()->getLocale() === 'km' ? 'បង្កើតគំរូឯកសារ' : 'Build Template')
                     ->icon('heroicon-o-document-text')
                     ->color('info')
+                    ->visible(fn (): bool => FilamentActionPermissions::canForResource(CustomFormResource::class, 'edit_template'))
                     ->action(function ($record) {
+                        FilamentActionPermissions::abortUnlessCanForResource(CustomFormResource::class, 'edit_template');
+
                         if (! class_exists(\Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate::class)) {
                             return;
                         }

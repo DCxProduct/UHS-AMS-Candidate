@@ -101,9 +101,6 @@ class AuditLogResource extends Resource
             return false;
         }
 
-        return $user->can('ViewAny:AuditLog')
-            || $user->can('View:AuditLog')
-            || $user->can('ViewAny:AuditLogResource')
-            || $user->can('View:AuditLogResource');
+        return $user->can('ViewAny:AuditLog');
     }
 }

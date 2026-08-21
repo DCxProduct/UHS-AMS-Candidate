@@ -132,19 +132,7 @@ class CustomFormEntryResource extends Resource
             return false;
         }
 
-        $permissions = FilamentShield::getResourcePermissions(static::class) ?? [];
-
-        if ($permissions === []) {
-            return true;
-        }
-
-        foreach ($permissions as $permission) {
-            if (static::userHasPermission($user, $permission)) {
-                return true;
-            }
-        }
-
-        return false;
+        return static::userHasPermission($user, 'ViewAny:' . class_basename(static::getModel()));
     }
 
     public static function currentUserCanManageForms(): bool
@@ -566,8 +554,7 @@ class CustomFormEntryResource extends Resource
             return true;
         }
 
-        return UserTypeOptions::userHasCandidateBasePermission($user, 'ViewAny:CustomFormEntry')
-            || UserTypeOptions::userHasCandidateBasePermission($user, 'Create:CustomFormEntry');
+        return UserTypeOptions::userHasCandidateBasePermission($user, 'ViewAny:CustomFormEntry');
     }
 
     protected static function getFormAllowedRoles(CustomForm $form): array
@@ -712,8 +699,7 @@ class CustomFormEntryResource extends Resource
             return false;
         }
 
-        return $user->can('ViewAny:CustomFormEntry')
-            || $user->can('Create:CustomFormEntry');
+        return $user->can('ViewAny:CustomFormEntry');
     }
 
     protected static function formShouldShowFeature(int $formId): bool

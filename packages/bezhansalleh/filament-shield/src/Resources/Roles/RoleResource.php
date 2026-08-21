@@ -8,6 +8,7 @@ use App\Models\RoleType;
 use App\Models\UserType;
 use App\Support\LocalizedDate;
 use App\Support\UserTypeOptions;
+use BezhanSalleh\FilamentShield\Facades\FilamentShield;
 use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use BezhanSalleh\FilamentShield\Resources\Roles\Pages\CreateRole;
 use BezhanSalleh\FilamentShield\Resources\Roles\Pages\EditRole;
@@ -139,9 +140,15 @@ class RoleResource extends Resource
             ->all();
 
         return $table
-            ->modifyQueryUsing(fn ($query) => $hiddenUserTypeRoles === []
-                ? $query
-                : $query->whereNotIn('name', $hiddenUserTypeRoles))
+            ->modifyQueryUsing(function ($query) use ($hiddenUserTypeRoles) {
+                $query->withCount([
+                    'permissions as manageable_permissions_count' => fn ($query) => $query->whereIn('name', static::manageablePermissionNames()),
+                ]);
+
+                return $hiddenUserTypeRoles === []
+                    ? $query
+                    : $query->whereNotIn('name', $hiddenUserTypeRoles);
+            })
             ->columns([
                 TextColumn::make('name')
                     ->weight(FontWeight::Medium)
@@ -166,10 +173,9 @@ class RoleResource extends Resource
                     ->label(__('filament-shield::filament-shield.column.team'))
                     ->searchable()
                     ->visible(fn (): bool => static::shield()->isCentralApp() && Utils::isTenancyEnabled()),
-                TextColumn::make('permissions_count')
+                TextColumn::make('manageable_permissions_count')
                     ->badge()
                     ->label(__('filament-shield::filament-shield.column.permissions'))
-                    ->counts('permissions')
                     ->color('primary'),
                 TextColumn::make('updated_at')
                     ->label(__('filament-shield::filament-shield.column.updated_at'))
@@ -233,5 +239,13 @@ class RoleResource extends Resource
         }
 
         return UserTypeOptions::isCandidateManagedRole($roleName) ? 'user' : 'staff';
+    }
+
+    public static function manageablePermissionNames(): array
+    {
+        return once(fn (): array => collect(FilamentShield::getAllResourcePermissionsWithLabels())
+            ->keys()
+            ->values()
+            ->all());
     }
 }

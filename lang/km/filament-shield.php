@@ -1,0 +1,30 @@
+<?php
+
+return [
+    'resource_permission_prefixes_labels' => [
+        'view_any' => 'អាន',
+        'create' => 'បង្កើត',
+        'update' => 'កែប្រែ',
+        'delete' => 'លុប',
+        'view_slip' => 'មើលស្លីប',
+        'download_excel' => 'ទាញយក Excel',
+        'clear_data' => 'សម្អាតទិន្នន័យ',
+        'pay' => 'បង់ប្រាក់',
+        'activate_account' => 'បើកដំណើរការគណនី',
+        'deactivate_account' => 'បិទដំណើរការគណនី',
+        'passed' => 'ជាប់',
+        'pending' => 'កំពុងរង់ចាំ',
+        'bulk_passed' => 'ជាប់ជាក្រុម',
+        'bulk_pending' => 'រង់ចាំជាក្រុម',
+        'notify_student' => 'ជូនដំណឹងទៅនិស្សិត',
+        'notify_all_students' => 'ជូនដំណឹងទៅនិស្សិតទាំងអស់',
+        'edit_review_note' => 'សារ',
+        'view_pdf' => 'ពិនិត្យ',
+        'accepted' => 'ទទួលយក',
+        'rejected' => 'ផ្ញើត្រឡប់',
+        'download_pdf' => 'ទាញយក PDF',
+        'edit_template' => 'បង្កើតគំរូឯកសារ',
+        'preview_pdf' => 'មើល PDF',
+        'load_example_layout' => 'ផ្ទុកគំរូ',
+    ],
+];

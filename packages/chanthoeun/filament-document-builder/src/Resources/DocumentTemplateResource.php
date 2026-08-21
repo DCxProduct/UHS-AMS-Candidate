@@ -87,18 +87,6 @@ class DocumentTemplateResource extends Resource
             return false;
         }
 
-        $permissions = FilamentShield::getResourcePermissions(static::class) ?? [];
-
-        if ($permissions === []) {
-            return static::canViewAny();
-        }
-
-        foreach ($permissions as $permission) {
-            if ($user->can($permission)) {
-                return true;
-            }
-        }
-
-        return false;
+        return $user->can('ViewAny:' . class_basename(static::getModel()));
     }
 }
