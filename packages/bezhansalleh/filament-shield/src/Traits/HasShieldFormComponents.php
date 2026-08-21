@@ -51,7 +51,6 @@ trait HasShieldFormComponents
                 );
 
                 return Section::make($sectionLabel)
-                    ->description(fn (): HtmlString => new HtmlString('<span style="word-break: break-word;">' . Utils::showModelPath($entity['modelFqcn']) . '</span>'))
                     ->compact()
                     ->schema([
                         static::getCheckBoxListComponentForResource($entity),
