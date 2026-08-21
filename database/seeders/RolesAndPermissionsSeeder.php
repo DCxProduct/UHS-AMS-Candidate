@@ -90,7 +90,7 @@ class RolesAndPermissionsSeeder extends Seeder
                 ->whereIn('name', $manageablePermissionNames)
                 ->where(function ($query): void {
                     $query->where('name', 'like', '%:Payment')
-                        ->orWhere('name', 'like', '%:CandidatePaymentList');
+                        ->orWhere('name', 'like', '%:UnpaidApplication');
                 })
                 ->get()
         );
