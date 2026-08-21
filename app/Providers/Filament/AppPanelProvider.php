@@ -375,8 +375,7 @@ class AppPanelProvider extends PanelProvider
             return true;
         }
 
-        return UserTypeOptions::userHasCandidateBasePermission($user, 'ViewAny:CustomFormEntry')
-            || UserTypeOptions::userHasCandidateBasePermission($user, 'Create:CustomFormEntry');
+        return UserTypeOptions::userHasCandidateBasePermission($user, 'ViewAny:CustomFormEntry');
     }
 
     protected function currentDynamicFormRoles(): array
@@ -502,13 +501,7 @@ class AppPanelProvider extends PanelProvider
             return false;
         }
 
-        foreach (['ViewAny:CustomFormEntry', 'Create:CustomFormEntry'] as $permission) {
-            if ($this->userHasPermission($user, $permission)) {
-                return true;
-            }
-        }
-
-        return false;
+        return $this->userHasPermission($user, 'ViewAny:CustomFormEntry');
     }
 
     protected function userHasPermission(mixed $user, string $permission): bool

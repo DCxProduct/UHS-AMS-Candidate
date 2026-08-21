@@ -4,6 +4,7 @@ namespace Chanthoeun\FilamentDocumentBuilder\Resources\DocumentTemplateResource\
 
 use Chanthoeun\FilamentDocumentBuilder\Resources\DocumentTemplateResource;
 use Chanthoeun\FilamentDocumentBuilder\Support\LayoutTemplates;
+use App\Support\FilamentActionPermissions;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
@@ -33,6 +34,7 @@ class CreateDocumentTemplate extends CreateRecord
                 ->modalHeading(__('filament-document-builder::document-builder.labels.load_example_layout'))
                 ->modalDescription(__('filament-document-builder::document-builder.labels.load_example_layout_warning'))
                 ->modalSubmitActionLabel(__('filament-document-builder::document-builder.labels.load_layout'))
+                ->visible(fn (): bool => FilamentActionPermissions::canForResource(DocumentTemplateResource::class, 'load_example_layout'))
                 ->form([
                     Select::make('layout')
                         ->label(__('filament-document-builder::document-builder.labels.select_layout'))
@@ -40,6 +42,8 @@ class CreateDocumentTemplate extends CreateRecord
                         ->required(),
                 ])
                 ->action(function (array $data) {
+                    FilamentActionPermissions::abortUnlessCanForResource(DocumentTemplateResource::class, 'load_example_layout');
+
                     $html = LayoutTemplates::getTemplate($data['layout']);
                     $this->data['content'] = $html;
 

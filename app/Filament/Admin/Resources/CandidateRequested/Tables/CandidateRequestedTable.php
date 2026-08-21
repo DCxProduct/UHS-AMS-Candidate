@@ -895,7 +895,7 @@ class CandidateRequestedTable
                 'review_status' => 'passed',
             ],
             description: 'Candidate result marked as passed',
-            metadata: ['module' => 'Review Applications'],
+            metadata: ['module' => 'Candidate Requested'],
         );
     }
 
@@ -926,7 +926,7 @@ class CandidateRequestedTable
                 'review_status' => $record->review_status,
             ],
             description: 'Candidate result changed back to pending',
-            metadata: ['module' => 'Review Applications'],
+            metadata: ['module' => 'Candidate Requested'],
         );
     }
 

@@ -59,16 +59,8 @@ trait AdminOnly
             return false;
         }
 
-        $permissions = FilamentShield::getResourcePermissions(static::class) ?? [];
-
-        if ($permissions !== []) {
-            foreach ($permissions as $permission) {
-                if ($user->can($permission)) {
-                    return true;
-                }
-            }
-
-            return false;
+        if (method_exists(static::class, 'getModel')) {
+            return $user->can('ViewAny:' . class_basename(static::getModel()));
         }
 
         return method_exists(static::class, 'canViewAny')

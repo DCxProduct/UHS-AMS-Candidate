@@ -28,10 +28,10 @@ return [
         'show_model_path' => true,
         'cluster' => null,
         'tabs' => [
-            'pages' => true,
+            'pages' => false,
             'widgets' => true,
             'resources' => true,
-            'custom_permissions' => true,
+            'custom_permissions' => false,
         ],
     ],
 
@@ -127,19 +127,17 @@ return [
 
     'policies' => [
         'path' => app_path('Policies'),
-        'merge' => true,
+        'merge' => false,
         'generate' => true,
         'methods' => [
-            'viewAny', 'view', 'create', 'update', 'delete', 'deleteAny', 'restore',
-            'forceDelete', 'forceDeleteAny', 'restoreAny', 'replicate', 'reorder',
+            'viewAny',
+            'create',
+            'update',
+            'delete',
         ],
         'single_parameter_methods' => [
             'viewAny',
             'create',
-            'deleteAny',
-            'forceDeleteAny',
-            'restoreAny',
-            'reorder',
         ],
     ],
 
@@ -155,8 +153,8 @@ return [
     */
 
     'localization' => [
-        'enabled' => false,
-        'key' => 'filament-shield::filament-shield.resource_permission_prefixes_labels',
+        'enabled' => true,
+        'key' => 'filament-shield.resource_permission_prefixes_labels',
     ],
 
     /*
@@ -175,12 +173,11 @@ return [
         'manage' => [
             RoleResource::class => [
                 'viewAny',
-                'view',
                 'create',
                 'update',
                 'delete',
             ],
-        ],
+        ] + FilamentActionPermissions::resourcePolicyMethods(),
         'exclude' => [
             //
         ],
@@ -201,8 +198,10 @@ return [
         'subject' => 'class',
         'prefix' => 'view',
         'exclude' => [
+            Dashboard::class,
             Sync::class,
             ContactUs::class,
+            MyProfile::class,
         ],
     ],
 
@@ -237,7 +236,7 @@ return [
     |
     */
 
-    'custom_permissions' => FilamentActionPermissions::all(),
+    'custom_permissions' => [],
 
     /*
     |--------------------------------------------------------------------------

@@ -4,6 +4,7 @@ namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Ta
 
 use App\Filament\Admin\Resources\CandidatePaymentLists\CandidatePaymentListResource;
 use App\Support\AuditLogger;
+use App\Support\FilamentActionPermissions;
 use App\Support\FormEntryData;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
@@ -822,6 +823,8 @@ class CustomFormEntriesTable
                         ->rows(5),
                 ])
                 ->action(function ($record, array $data): void {
+                    FilamentActionPermissions::abortUnlessCanForResource(CustomFormEntryResource::class, 'edit_review_note');
+
                     $oldReviewNote = $record->review_note;
 
                     DB::table('custom_form_entries')
@@ -849,6 +852,7 @@ class CustomFormEntriesTable
                 })
                 ->visible(fn ($record): bool =>
                     self::currentPanelIsAdmin()
+                    && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'edit_review_note')
                     && in_array(self::entryStatus($record), ['pending', 'rejected'], true)
                     && filled(self::reviewMessage($record))
                 ),
@@ -961,8 +965,11 @@ class CustomFormEntriesTable
                         ->label(__('review_applications.statuses.accepted'))
                         ->icon('heroicon-o-check-circle')
                         ->color('success')
-                        ->visible(fn (): bool => self::entryStatus($record) === 'pending')
+                        ->visible(fn (): bool => self::entryStatus($record) === 'pending'
+                            && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'accepted'))
                         ->action(function () use ($record): void {
+                            FilamentActionPermissions::abortUnlessCanForResource(CustomFormEntryResource::class, 'accepted');
+
                             $data = is_array($record->data) ? $record->data : [];
                             $oldValues = [
                                 'review_status' => $record->review_status,
@@ -1016,8 +1023,11 @@ class CustomFormEntriesTable
                                 ->required()
                                 ->rows(4),
                         ])
-                        ->visible(fn (): bool => self::entryStatus($record) === 'pending')
+                        ->visible(fn (): bool => self::entryStatus($record) === 'pending'
+                            && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'rejected'))
                         ->action(function (array $data) use ($record): void {
+                            FilamentActionPermissions::abortUnlessCanForResource(CustomFormEntryResource::class, 'rejected');
+
                             $recordData = is_array($record->data) ? $record->data : [];
                             $oldValues = [
                                 'review_status' => $record->review_status,
@@ -1064,6 +1074,7 @@ class CustomFormEntriesTable
                 ])
                 ->visible(fn ($record): bool =>
                     self::currentPanelIsAdmin()
+                    && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'view_pdf')
                     && ! self::isProfileForm($record->custom_form_id)
                     && self::entryStatus($record) === 'pending'
                     && self::hasDocumentTemplate($record)
@@ -1077,10 +1088,13 @@ class CustomFormEntriesTable
                 ->visible(fn ($record): bool =>
                     self::currentPanelIsAdmin()
                     && ! self::isProfileForm($record->custom_form_id)
+                    && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'accepted')
                     && self::entryStatus($record) === 'pending'
                     && ! self::hasDocumentTemplate($record)
                 )
                 ->action(function ($record): void {
+                    FilamentActionPermissions::abortUnlessCanForResource(CustomFormEntryResource::class, 'accepted');
+
                     $data = is_array($record->data) ? $record->data : [];
                     $oldValues = [
                         'review_status' => $record->review_status,
@@ -1129,6 +1143,7 @@ class CustomFormEntriesTable
                 ->visible(fn ($record): bool =>
                     self::currentPanelIsAdmin()
                     && ! self::isProfileForm($record->custom_form_id)
+                    && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'rejected')
                     && self::entryStatus($record) === 'pending'
                     && ! self::hasDocumentTemplate($record)
                 )
@@ -1139,6 +1154,8 @@ class CustomFormEntriesTable
                         ->rows(4),
                 ])
                 ->action(function ($record, array $data): void {
+                    FilamentActionPermissions::abortUnlessCanForResource(CustomFormEntryResource::class, 'rejected');
+
                     $recordData = is_array($record->data) ? $record->data : [];
                     $oldValues = [
                         'review_status' => $record->review_status,
@@ -1205,7 +1222,11 @@ class CustomFormEntriesTable
                     return 'custom_form_' . $record->custom_form_id;
                 })
                 ->filename(fn ($record) => 'document-' . $record->id . '.pdf')
-                ->visible(fn ($record): bool => self::canDownloadPdf($record));
+                ->visible(fn ($record): bool => self::canDownloadPdf($record)
+                    && (
+                        ! self::currentPanelIsAdmin()
+                        || FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'download_pdf')
+                    ));
         }
 
         return $actions;

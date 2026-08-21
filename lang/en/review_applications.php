@@ -4,7 +4,7 @@ return [
     'navigation_label' => 'Candidate Requested',
     'navigation_group' => 'Review Document',
 
-    'model_label' => 'Review Application',
+    'model_label' => 'Candidate Requested',
     'plural_model_label' => 'Candidate Requested',
 
     'all_fields' => 'All Fields',

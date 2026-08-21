@@ -3,7 +3,7 @@
 namespace App\Filament\Admin\Resources\CandidatePaymentLists\Tables;
 
 use App\Filament\Admin\Resources\CandidatePaymentLists\CandidatePaymentListResource;
-use App\Models\CandidatePaymentList;
+use App\Models\UnpaidApplication;
 use App\Models\ExchangeRate;
 use App\Models\Payment;
 use App\Models\PaymentType;
@@ -75,7 +75,7 @@ class CandidatePaymentListsTable
                 TextColumn::make('form_name')
                     ->label(__('candidate_payment_lists.columns.application_form_type'))
                     ->badge()
-                    ->getStateUsing(fn (CandidatePaymentList $record): string => self::localizedFormName($record->customForm?->name))
+                    ->getStateUsing(fn (UnpaidApplication $record): string => self::localizedFormName($record->customForm?->name))
                     ->searchable(query: fn (Builder $query, string $search): Builder => $query
                         ->whereHas('customForm', function (Builder $formQuery) use ($search): void {
                             $formQuery->where('name', 'like', "%{$search}%");
@@ -84,7 +84,7 @@ class CandidatePaymentListsTable
 
                 TextColumn::make('name_khmer')
                     ->label(__('candidate_payment_lists.columns.name_khmer'))
-                    ->getStateUsing(fn (CandidatePaymentList $record): string => self::khmerName($record))
+                    ->getStateUsing(fn (UnpaidApplication $record): string => self::khmerName($record))
                     ->searchable(query: fn (Builder $query, string $search): Builder => $query
                         ->where('data->first_name_kh', 'like', "%{$search}%")
                         ->orWhere('data->last_name_kh', 'like', "%{$search}%")
@@ -93,7 +93,7 @@ class CandidatePaymentListsTable
 
                 TextColumn::make('name_latin')
                     ->label(__('candidate_payment_lists.columns.name_latin'))
-                    ->getStateUsing(fn (CandidatePaymentList $record): string => self::latinName($record))
+                    ->getStateUsing(fn (UnpaidApplication $record): string => self::latinName($record))
                     ->searchable(query: fn (Builder $query, string $search): Builder => $query
                         ->where('data->first_name_en', 'like', "%{$search}%")
                         ->orWhere('data->last_name_en', 'like', "%{$search}%")
@@ -102,29 +102,29 @@ class CandidatePaymentListsTable
 
                 TextColumn::make('gender')
                     ->label(__('candidate_payment_lists.columns.gender'))
-                    ->getStateUsing(fn (CandidatePaymentList $record): string => self::genderLabel(self::entryValue($record, 'gender')))
+                    ->getStateUsing(fn (UnpaidApplication $record): string => self::genderLabel(self::entryValue($record, 'gender')))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('phone_number')
                     ->label(__('candidate_payment_lists.columns.phone_number'))
-                    ->getStateUsing(fn (CandidatePaymentList $record): string => self::entryValue($record, 'phone_number', $record->creator?->phone))
+                    ->getStateUsing(fn (UnpaidApplication $record): string => self::entryValue($record, 'phone_number', $record->creator?->phone))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('date_of_birth')
                     ->label(__('candidate_payment_lists.columns.date_of_birth'))
-                    ->getStateUsing(fn (CandidatePaymentList $record): string => self::dateOfBirth($record))
+                    ->getStateUsing(fn (UnpaidApplication $record): string => self::dateOfBirth($record))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('major')
                     ->label(__('candidate_payment_lists.columns.major'))
-                    ->getStateUsing(fn (CandidatePaymentList $record): string => self::majorLabel($record))
+                    ->getStateUsing(fn (UnpaidApplication $record): string => self::majorLabel($record))
                     ->badge()
                     ->searchable(query: fn (Builder $query, string $search): Builder => FormEntryData::applyJsonLikeFilter($query, FormEntryData::majorKeys(), $search))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('academic_year')
                     ->label(__('candidate_payment_lists.columns.academic_year'))
-                    ->getStateUsing(fn (CandidatePaymentList $record): string => FormEntryData::academicYearLabel(
+                    ->getStateUsing(fn (UnpaidApplication $record): string => FormEntryData::academicYearLabel(
                         ['academic_year' => self::entryValue($record, 'academic_year', $record->creator?->academic_year)]
                     ))
                     ->toggleable(isToggledHiddenByDefault: false),
@@ -132,7 +132,7 @@ class CandidatePaymentListsTable
                 TextColumn::make('status_payt')
                     ->label(__('candidate_payment_lists.columns.payment_status'))
                     ->badge()
-                    ->getStateUsing(fn (CandidatePaymentList $record): string => self::paymentStatus($record))
+                    ->getStateUsing(fn (UnpaidApplication $record): string => self::paymentStatus($record))
                     ->formatStateUsing(fn (?string $state): string => strtolower((string) $state) === 'paid'
                         ? __('payments.options.status_payt.paid')
                         : __('payments.options.status_payt.unpaid'))
@@ -199,7 +199,7 @@ class CandidatePaymentListsTable
                     ->modalWidth('4xl')
                     ->modalHeading(__('payments.actions.create_payment'))
                     ->modalSubmitActionLabel(__('payments.actions.submit_payment'))
-                    ->fillForm(fn (CandidatePaymentList $record): array => [
+                    ->fillForm(fn (UnpaidApplication $record): array => [
                         'users_id' => self::ownerId($record),
                         'form_id' => $record->custom_form_id,
                         'candidate_name' => self::candidateDisplayName($record),
@@ -344,7 +344,7 @@ class CandidatePaymentListsTable
                                 'required' => __('payments.validation.payment_slip_required'),
                             ]),
                     ])
-                    ->action(function (CandidatePaymentList $record, array $data): void {
+                    ->action(function (UnpaidApplication $record, array $data): void {
                         FilamentActionPermissions::abortUnlessCanForResource(CandidatePaymentListResource::class, 'pay');
 
                         $paymentData = [
@@ -376,7 +376,7 @@ class CandidatePaymentListsTable
                             ->success()
                             ->send();
                     })
-                    ->visible(fn (CandidatePaymentList $record): bool => FilamentActionPermissions::canForResource(CandidatePaymentListResource::class, 'pay')
+                    ->visible(fn (UnpaidApplication $record): bool => FilamentActionPermissions::canForResource(CandidatePaymentListResource::class, 'pay')
                         && self::latestPaymentRecord($record) === null),
             ]);
     }
@@ -388,7 +388,7 @@ class CandidatePaymentListsTable
         $rowNumber = 1;
 
         foreach ($records as $record) {
-            if (! $record instanceof CandidatePaymentList) {
+            if (! $record instanceof UnpaidApplication) {
                 continue;
             }
 
@@ -404,7 +404,7 @@ class CandidatePaymentListsTable
         $rowNumber = 1;
 
         foreach ($records as $record) {
-            if (! $record instanceof CandidatePaymentList) {
+            if (! $record instanceof UnpaidApplication) {
                 continue;
             }
 
@@ -482,7 +482,7 @@ class CandidatePaymentListsTable
             ->all();
     }
 
-    protected static function exportRow(CandidatePaymentList $record, int $rowNumber, array $columnKeys): array
+    protected static function exportRow(UnpaidApplication $record, int $rowNumber, array $columnKeys): array
     {
         $values = [
             'row_number' => (string) $rowNumber,
@@ -508,7 +508,7 @@ class CandidatePaymentListsTable
             ->all();
     }
 
-    protected static function cleanDataRow(CandidatePaymentList $record, int $rowNumber, array $columnKeys): array
+    protected static function cleanDataRow(UnpaidApplication $record, int $rowNumber, array $columnKeys): array
     {
         $values = [
             'row_number' => (string) $rowNumber,
@@ -632,7 +632,7 @@ class CandidatePaymentListsTable
         return htmlspecialchars((string) $value, ENT_QUOTES | ENT_XML1, 'UTF-8');
     }
 
-    protected static function entryValue(?CandidatePaymentList $record, string $key, mixed $fallback = null): string
+    protected static function entryValue(?UnpaidApplication $record, string $key, mixed $fallback = null): string
     {
         $value = data_get($record?->data, $key);
 
@@ -643,7 +643,7 @@ class CandidatePaymentListsTable
         return blank($value) ? '-' : (string) $value;
     }
 
-    protected static function majorLabel(CandidatePaymentList $record): string
+    protected static function majorLabel(UnpaidApplication $record): string
     {
         return FormEntryData::majorLabel($record->data);
     }
@@ -691,7 +691,7 @@ class CandidatePaymentListsTable
         return (string) $label;
     }
 
-    protected static function khmerName(CandidatePaymentList $record): string
+    protected static function khmerName(UnpaidApplication $record): string
     {
         $splitName = trim(collect([
             data_get($record->data, 'first_name_kh'),
@@ -707,7 +707,7 @@ class CandidatePaymentListsTable
         return filled($fullName) ? $fullName : '-';
     }
 
-    protected static function latinName(CandidatePaymentList $record): string
+    protected static function latinName(UnpaidApplication $record): string
     {
         $splitName = trim(collect([
             data_get($record->data, 'first_name_en'),
@@ -723,7 +723,7 @@ class CandidatePaymentListsTable
         return filled($fullName) ? strtoupper($fullName) : '-';
     }
 
-    protected static function paymentStatus(CandidatePaymentList $record): string
+    protected static function paymentStatus(UnpaidApplication $record): string
     {
         $payment = self::latestPaymentRecord($record);
 
@@ -841,7 +841,7 @@ class CandidatePaymentListsTable
         $set('amount_usd', self::normalizeUsdAmount((float) $khrAmount / (float) $rate));
     }
 
-    protected static function ownerId(CandidatePaymentList $record): ?int
+    protected static function ownerId(UnpaidApplication $record): ?int
     {
         foreach (['created_by', 'user_id', 'created_by_id'] as $column) {
             $value = data_get($record, $column);
@@ -875,7 +875,7 @@ class CandidatePaymentListsTable
         return $query;
     }
 
-    protected static function latestPaymentRecord(CandidatePaymentList $record): ?Payment
+    protected static function latestPaymentRecord(UnpaidApplication $record): ?Payment
     {
         if (Schema::hasColumn('payments', 'custom_form_entry_id')) {
             return Payment::query()
@@ -935,7 +935,7 @@ class CandidatePaymentListsTable
         return (string) ($translations['en'] ?? $translations['km'] ?? $translations['kh'] ?? '-');
     }
 
-    protected static function dateOfBirth(CandidatePaymentList $record): string
+    protected static function dateOfBirth(UnpaidApplication $record): string
     {
         $value = self::entryValue($record, 'date_of_birth', $record->creator?->date_of_birth);
 
@@ -948,7 +948,7 @@ class CandidatePaymentListsTable
         return $timestamp ? date('d-m-Y', $timestamp) : $value;
     }
 
-    protected static function candidateDisplayName(CandidatePaymentList $record): string
+    protected static function candidateDisplayName(UnpaidApplication $record): string
     {
         $khmerName = self::khmerName($record);
 
@@ -1007,7 +1007,7 @@ class CandidatePaymentListsTable
     {
         return CandidatePaymentListResource::getEloquentQuery()
             ->get(['data'])
-            ->flatMap(function (CandidatePaymentList $record): array {
+            ->flatMap(function (UnpaidApplication $record): array {
                 return array_filter([
                     FormEntryData::firstFilled($record->data, FormEntryData::majorKeys()),
                 ], fn ($value): bool => filled($value));
@@ -1024,7 +1024,7 @@ class CandidatePaymentListsTable
     {
         return CandidatePaymentListResource::getEloquentQuery()
             ->get()
-            ->flatMap(function (CandidatePaymentList $record): array {
+            ->flatMap(function (UnpaidApplication $record): array {
                 return array_filter([
                     data_get($record->data, 'academic_year'),
                     $record->creator?->academic_year,

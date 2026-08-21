@@ -5,7 +5,7 @@ namespace App\Filament\Admin\Resources\CandidateRequested;
 use App\Filament\Admin\Resources\CandidateRequested\Pages;
 use App\Filament\Admin\Resources\CandidateRequested\Tables\CandidateRequestedTable;
 use App\Filament\Concerns\AdminOnly;
-use App\Models\ReviewApplication;
+use App\Models\CandidateRequested;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -21,7 +21,7 @@ class CandidateRequestedResource extends Resource
 
     public const HIDDEN_FLAG = 'hidden_from_review_applications';
 
-    protected static ?string $model = ReviewApplication::class;
+    protected static ?string $model = CandidateRequested::class;
 
     protected static ?string $slug = 'candidate-requested';
 

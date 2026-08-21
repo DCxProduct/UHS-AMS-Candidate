@@ -7,7 +7,7 @@ use App\Filament\Admin\Resources\CandidatePaymentLists\Pages\ListCandidatePaymen
 use App\Filament\Admin\Resources\Payments\Schemas\PaymentForm;
 use App\Filament\Admin\Resources\CandidatePaymentLists\Tables\CandidatePaymentListsTable;
 use App\Filament\Concerns\AdminOnly;
-use App\Models\CandidatePaymentList;
+use App\Models\UnpaidApplication;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -23,7 +23,7 @@ class CandidatePaymentListResource extends Resource
 
     public const HIDDEN_FLAG = 'hidden_from_candidate_payment_lists';
 
-    protected static ?string $model = CandidatePaymentList::class;
+    protected static ?string $model = UnpaidApplication::class;
 
     protected static ?string $slug = 'unpaid-applications';
 

@@ -3,6 +3,7 @@
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Pages;
 
 use App\Models\ClosingDate;
+use App\Support\FilamentActionPermissions;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Tables\CustomFormEntriesTable;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
@@ -240,6 +241,7 @@ class ListCustomFormEntries extends ListRecords
             $actions[] = Action::make('download_excel')
                 ->label(__('payments.actions.download_excel'))
                 ->color('success')
+                ->visible(fn (): bool => FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'download_excel'))
                 ->alpineClickHandler(<<<'JS'
                     const table = document.querySelector('.fi-ta');
                     const tableData = table?._x_dataStack?.find((data) => data.selectedRecords instanceof Set);
@@ -250,11 +252,16 @@ class ListCustomFormEntries extends ListRecords
                         tableData ? [...tableData.deselectedRecords] : [],
                     );
                 JS)
-                ->action(fn () => $this->downloadExcel());
+                ->action(function () {
+                    FilamentActionPermissions::abortUnlessCanForResource(CustomFormEntryResource::class, 'download_excel');
+
+                    return $this->downloadExcel();
+                });
 
             $actions[] = Action::make('clear_data')
                 ->label(__('app.clear_data'))
                 ->color('danger')
+                ->visible(fn (): bool => FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'clear_data'))
                 ->requiresConfirmation()
                 ->modalHeading(__('app.clear_data'))
                 ->modalDescription(__('app.clear_data_confirm'))
@@ -270,11 +277,15 @@ class ListCustomFormEntries extends ListRecords
                         deselectedRecordKeys: tableData ? [...tableData.deselectedRecords] : [],
                     });
                 JS)
-                ->action(fn (array $arguments) => $this->clearDataFromTableSelection(
-                    $arguments['selectedRecordKeys'] ?? [],
-                    (bool) ($arguments['isTrackingDeselectedRecords'] ?? false),
-                    $arguments['deselectedRecordKeys'] ?? [],
-                ));
+                ->action(function (array $arguments): void {
+                    FilamentActionPermissions::abortUnlessCanForResource(CustomFormEntryResource::class, 'clear_data');
+
+                    $this->clearDataFromTableSelection(
+                        $arguments['selectedRecordKeys'] ?? [],
+                        (bool) ($arguments['isTrackingDeselectedRecords'] ?? false),
+                        $arguments['deselectedRecordKeys'] ?? [],
+                    );
+                });
         }
 
         return $actions;
