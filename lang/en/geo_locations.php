@@ -62,7 +62,7 @@ return [
     ],
 
     'table' => [
-        'no' => 'No.',
+        'no' => 'No',
         'name' => 'Name',
         'code' => 'Code',
         'type' => 'Type',

@@ -22,7 +22,7 @@ return [
     'notification_already_sent' => 'Notification already sent.',
     'notifications_sent' => ':count notifications sent.',
     'no_selected_students' => 'Please select at least one student.',
-    'no' => 'No.',
+    'no' => 'No',
     'id' => 'ID',
     'academic_year' => 'Academic Year',
     'seat_number' => 'Seat Number',
