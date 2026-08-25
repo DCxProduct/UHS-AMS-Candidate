@@ -15,7 +15,8 @@ class ViewRole extends ViewRecord
     protected function getActions(): array
     {
         return [
-            EditAction::make(),
+            EditAction::make()
+                ->visible(fn (): bool => ! RoleResource::isAdminRole($this->record)),
         ];
     }
 }

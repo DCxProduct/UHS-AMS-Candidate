@@ -185,12 +185,15 @@ class RoleResource extends Resource
                 //
             ])
             ->recordActions([
-                EditAction::make(),
-                DeleteAction::make(),
+                EditAction::make()
+                    ->visible(fn ($record): bool => ! static::isAdminRole($record)),
+                DeleteAction::make()
+                    ->visible(fn ($record): bool => ! static::isAdminRole($record)),
             ])
             ->toolbarActions([
                 DeleteBulkAction::make(),
-            ]);
+            ])
+            ->checkIfRecordIsSelectableUsing(fn ($record): bool => ! static::isAdminRole($record));
     }
 
     #[Override]
@@ -239,6 +242,11 @@ class RoleResource extends Resource
         }
 
         return UserTypeOptions::isCandidateManagedRole($roleName) ? 'user' : 'staff';
+    }
+
+    public static function isAdminRole(mixed $record): bool
+    {
+        return strtolower((string) ($record->name ?? '')) === 'admin';
     }
 
     public static function manageablePermissionNames(): array
