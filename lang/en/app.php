@@ -298,7 +298,7 @@ return [
             'first_name_kh' => 'Last Name',
             'last_name_en' => 'Latin Last Name',
             'first_name_en' => 'Latin First Name',
-            'no' => 'No.',
+            'no' => 'No',
             'major' => 'Major',
             'gender' => 'Gender',
             'phone_number' => 'Phone Number',

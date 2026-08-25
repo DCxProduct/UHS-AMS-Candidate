@@ -6,7 +6,7 @@ return [
     'model_label' => 'Audit Log',
     'plural_model_label' => 'Audit Logs',
     'fields' => [
-        'no' => 'No.',
+        'no' => 'No',
         'created_at' => 'Date',
         'actor' => 'User',
         'role' => 'Role',

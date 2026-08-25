@@ -33,11 +33,19 @@ class ExamResultsTable
             ->recordUrl(null)
             ->selectable()
             ->columns([
+                TextColumn::make('no')
+                    ->label(__('exam_results.no'))
+                    ->rowIndex()
+                    ->formatStateUsing(fn ($state): string => LocalizedNumber::digits($state))
+                    ->alignCenter()
+                    ->width('60px')
+                    ->toggleable(isToggledHiddenByDefault: false),
+
                 TextColumn::make('id')
                     ->label(__('exam_results.id'))
                     ->formatStateUsing(fn ($state): string => LocalizedNumber::digits($state))
                     ->alignCenter()
-                    ->toggleable(isToggledHiddenByDefault: false),
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('seat_number')
                     ->label(__('exam_results.seat_number'))
@@ -358,6 +366,12 @@ class ExamResultsTable
     protected static function exportColumnDefinitions(): array
     {
         return [
+            'no' => [
+                'label' => __('exam_results.no'),
+                'field_key' => 'no',
+                'value' => fn (CustomFormEntry $record, int $rowNumber): string => (string) $rowNumber,
+                'clean' => fn (CustomFormEntry $record, int $rowNumber): string => (string) $rowNumber,
+            ],
             'id' => [
                 'label' => __('exam_results.id'),
                 'field_key' => 'id',
