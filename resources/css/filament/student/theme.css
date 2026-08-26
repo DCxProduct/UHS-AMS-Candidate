@@ -785,3 +785,146 @@ form button[type="submit"].fi-btn:hover,
     border-radius: 9999px;
     font-weight: 700;
 }
+
+/* =====================================================
+   DARK MODE OVERRIDES FOR CUSTOM UI
+===================================================== */
+
+html.dark .uhs-admin-overview__hero,
+.dark .uhs-admin-overview__hero {
+    background: linear-gradient(180deg, #111827, #1f2937 72%, #374151) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.3) !important;
+}
+
+html.dark .uhs-admin-overview__eyebrow,
+.dark .uhs-admin-overview__eyebrow {
+    background: #374151 !important;
+    color: #f3f4f6 !important;
+}
+
+html.dark .uhs-admin-overview__title,
+.dark .uhs-admin-overview__title,
+html.dark .uhs-admin-overview__metric,
+.dark .uhs-admin-overview__metric,
+html.dark .uhs-admin-overview__card-title,
+.dark .uhs-admin-overview__card-title,
+html.dark .uhs-admin-overview__highlight-value,
+.dark .uhs-admin-overview__highlight-value,
+html.dark .fi-page .uhs-sidebar-form-name-cell .fi-ta-text-item-label,
+.dark .fi-page .uhs-sidebar-form-name-cell .fi-ta-text-item-label {
+    color: #f9fafb !important;
+}
+
+html.dark .uhs-admin-overview__description,
+.dark .uhs-admin-overview__description,
+html.dark .uhs-admin-overview__card-description,
+.dark .uhs-admin-overview__card-description,
+html.dark .uhs-admin-overview__highlight-label,
+.dark .uhs-admin-overview__highlight-label,
+html.dark .fi-page .uhs-sidebar-form-name-cell .fi-ta-text-item-description,
+.dark .fi-page .uhs-sidebar-form-name-cell .fi-ta-text-item-description {
+    color: #9ca3af !important;
+}
+
+html.dark .uhs-admin-overview__highlight,
+.dark .uhs-admin-overview__highlight,
+html.dark .uhs-admin-overview__card,
+.dark .uhs-admin-overview__card {
+    background: #1f2937 !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+html.dark .uhs-admin-overview__icon-wrap,
+.dark .uhs-admin-overview__icon-wrap {
+    background: #374151 !important;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1) !important;
+}
+
+html.dark .uhs-admin-overview__action,
+.dark .uhs-admin-overview__action {
+    color: #d1d5db !important;
+}
+
+html.dark .uhs-admin-stat-card,
+.dark .uhs-admin-stat-card {
+    background: linear-gradient(180deg, #1f2937, #111827) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+html.dark .uhs-admin-stat-card .fi-wi-stats-overview-stat-description,
+.dark .uhs-admin-stat-card .fi-wi-stats-overview-stat-description {
+    background: #374151 !important;
+}
+
+html.dark .uhs-admin-stat-card--primary .fi-wi-stats-overview-stat-description,
+.dark .uhs-admin-stat-card--primary .fi-wi-stats-overview-stat-description {
+    color: #93c5fd !important;
+    background: rgba(59, 130, 246, 0.2) !important;
+}
+
+html.dark .uhs-admin-stat-card--success .fi-wi-stats-overview-stat-description,
+.dark .uhs-admin-stat-card--success .fi-wi-stats-overview-stat-description {
+    color: #86efac !important;
+    background: rgba(34, 197, 94, 0.2) !important;
+}
+
+html.dark .uhs-admin-stat-card--danger .fi-wi-stats-overview-stat-description,
+.dark .uhs-admin-stat-card--danger .fi-wi-stats-overview-stat-description {
+    color: #fca5a5 !important;
+    background: rgba(239, 68, 68, 0.2) !important;
+}
+
+html.dark .uhs-admin-stat-card--warning .fi-wi-stats-overview-stat-description,
+.dark .uhs-admin-stat-card--warning .fi-wi-stats-overview-stat-description {
+    color: #fcd34d !important;
+    background: rgba(245, 158, 11, 0.2) !important;
+}
+
+html.dark .fi-page .fi-ta-table tbody tr.uhs-sidebar-form-row:hover,
+.dark .fi-page .fi-ta-table tbody tr.uhs-sidebar-form-row:hover {
+    background: #374151 !important;
+}
+
+html.dark .uhs-admin-overview__card--sky .uhs-admin-overview__icon-wrap,
+.dark .uhs-admin-overview__card--sky .uhs-admin-overview__icon-wrap {
+    color: #93c5fd !important;
+    background: rgba(59, 130, 246, 0.2) !important;
+}
+
+html.dark .uhs-admin-overview__card--violet .uhs-admin-overview__icon-wrap,
+.dark .uhs-admin-overview__card--violet .uhs-admin-overview__icon-wrap {
+    color: #cbd5e1 !important;
+    background: rgba(71, 85, 105, 0.2) !important;
+}
+
+html.dark .uhs-admin-overview__card--emerald .uhs-admin-overview__icon-wrap,
+.dark .uhs-admin-overview__card--emerald .uhs-admin-overview__icon-wrap {
+    color: #6ee7b7 !important;
+    background: rgba(16, 185, 129, 0.2) !important;
+}
+
+html.dark .uhs-admin-overview__card--amber .uhs-admin-overview__icon-wrap,
+.dark .uhs-admin-overview__card--amber .uhs-admin-overview__icon-wrap {
+    color: #fcd34d !important;
+    background: rgba(245, 158, 11, 0.2) !important;
+}
+
+html.dark .uhs-admin-overview__card--rose .uhs-admin-overview__icon-wrap,
+.dark .uhs-admin-overview__card--rose .uhs-admin-overview__icon-wrap {
+    color: #fda4af !important;
+    background: rgba(225, 29, 72, 0.2) !important;
+}
+
+html.dark .uhs-admin-overview__card--indigo .uhs-admin-overview__icon-wrap,
+.dark .uhs-admin-overview__card--indigo .uhs-admin-overview__icon-wrap {
+    color: #a5b4fc !important;
+    background: rgba(79, 70, 229, 0.2) !important;
+}
+
+html.dark .uhs-admin-overview__card--slate .uhs-admin-overview__icon-wrap,
+.dark .uhs-admin-overview__card--slate .uhs-admin-overview__icon-wrap {
+    color: #cbd5e1 !important;
+    background: rgba(71, 85, 105, 0.2) !important;
+}
+
