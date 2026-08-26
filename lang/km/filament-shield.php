@@ -24,7 +24,5 @@ return [
         'rejected' => 'ផ្ញើត្រឡប់',
         'download_pdf' => 'ទាញយក PDF',
         'edit_template' => 'បង្កើតគំរូឯកសារ',
-        'preview_pdf' => 'មើល PDF',
-        'load_example_layout' => 'ផ្ទុកគំរូ',
     ],
 ];
