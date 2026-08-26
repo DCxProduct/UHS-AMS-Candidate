@@ -66,10 +66,7 @@ class AppPanelProvider extends PanelProvider
             ->sidebarCollapsibleOnDesktop()
             ->globalSearch(false)
 
-            ->renderHook(
-                PanelsRenderHook::SIMPLE_PAGE_START,
-                fn (): string => '<script>localStorage.setItem("theme", "light"); document.documentElement.classList.remove("dark");</script>',
-            )
+
 
             ->plugins([
                 FilamentShieldPlugin::make()
