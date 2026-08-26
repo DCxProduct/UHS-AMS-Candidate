@@ -60,8 +60,6 @@ class FilamentActionPermissions
                 'edit_template',
             ],
             DocumentTemplateResource::class => [
-                'preview_pdf',
-                'load_example_layout',
             ],
             ExamResultResource::class => [
                 'notify_student',
@@ -215,8 +213,6 @@ class FilamentActionPermissions
                 'viewAny',
                 'update',
                 'delete',
-                'preview_pdf',
-                'load_example_layout',
             ],
             SystemUserResource::class => [
                 'viewAny',

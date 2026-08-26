@@ -25,39 +25,6 @@ class CreateDocumentTemplate extends CreateRecord
 
     protected function getHeaderActions(): array
     {
-        return [
-            Action::make('load_example_layout')
-                ->label(__('filament-document-builder::document-builder.labels.load_example_layout'))
-                ->icon('heroicon-o-document-text')
-                ->color('info')
-                ->requiresConfirmation()
-                ->modalHeading(__('filament-document-builder::document-builder.labels.load_example_layout'))
-                ->modalDescription(__('filament-document-builder::document-builder.labels.load_example_layout_warning'))
-                ->modalSubmitActionLabel(__('filament-document-builder::document-builder.labels.load_layout'))
-                ->visible(fn (): bool => FilamentActionPermissions::canForResource(DocumentTemplateResource::class, 'load_example_layout'))
-                ->form([
-                    Select::make('layout')
-                        ->label(__('filament-document-builder::document-builder.labels.select_layout'))
-                        ->options(LayoutTemplates::getOptions())
-                        ->required(),
-                ])
-                ->action(function (array $data) {
-                    FilamentActionPermissions::abortUnlessCanForResource(DocumentTemplateResource::class, 'load_example_layout');
-
-                    $html = LayoutTemplates::getTemplate($data['layout']);
-                    $this->data['content'] = $html;
-
-                    if ($data['layout'] === 'certificate') {
-                        $this->data['page_settings']['orientation'] = 'landscape';
-                    } else {
-                        $this->data['page_settings']['orientation'] = 'portrait';
-                    }
-
-                    Notification::make()
-                        ->title(__('filament-document-builder::document-builder.labels.layout_loaded'))
-                        ->success()
-                        ->send();
-                }),
-        ];
+        return [];
     }
 }
