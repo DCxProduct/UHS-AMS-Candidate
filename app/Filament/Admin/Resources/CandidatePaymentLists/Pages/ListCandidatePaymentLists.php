@@ -115,14 +115,22 @@ class ListCandidatePaymentLists extends ListRecords
     {
         FilamentActionPermissions::abortUnlessCanForResource(CandidatePaymentListResource::class, 'download_excel');
 
+        $records = $this->selectedOrFilteredQuery(
+            $selectedRecordKeys,
+            $isTrackingDeselectedRecords,
+            $deselectedRecordKeys,
+        )
+            ->with(['creator', 'customForm'])
+            ->get();
+
+        AuditLogger::log(
+            action: 'downloaded',
+            description: 'Downloaded Unpaid Applications Excel (' . $records->count() . ' records)',
+            metadata: ['module' => 'Unpaid Applications'],
+        );
+
         return CandidatePaymentListsTable::downloadExcel(
-            $this->selectedOrFilteredQuery(
-                $selectedRecordKeys,
-                $isTrackingDeselectedRecords,
-                $deselectedRecordKeys,
-            )
-                ->with(['creator', 'customForm'])
-                ->get(),
+            $records,
             $this->visibleExportColumnKeys(),
         );
     }

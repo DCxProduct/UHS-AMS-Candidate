@@ -141,6 +141,12 @@ class ListExamResults extends ListRecords
                 ->get();
         }
 
+        AuditLogger::log(
+            action: 'downloaded',
+            description: 'Downloaded ' . static::getResource()::getResultModuleLabel() . ' Excel (' . $records->count() . ' records)',
+            metadata: ['module' => static::getResource()::getResultModuleLabel()],
+        );
+
         return ExamResultsTable::downloadExcel(
             $records,
             $this->visibleExportColumnKeys(),
@@ -285,6 +291,12 @@ class ListExamResults extends ListRecords
         }
 
         $sentCount = ExamResultsTable::sendPassedNotifications($records);
+
+        AuditLogger::log(
+            action: 'notified',
+            description: 'Sent ' . static::getResource()::getResultModuleLabel() . ' notifications (' . $sentCount . ' students)',
+            metadata: ['module' => static::getResource()::getResultModuleLabel()],
+        );
 
         $this->selectedTableRecords = [];
         $this->deselectedTableRecords = [];

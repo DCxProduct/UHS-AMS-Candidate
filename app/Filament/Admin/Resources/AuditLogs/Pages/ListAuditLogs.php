@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\AuditLogs\Pages;
 
 use App\Filament\Admin\Resources\AuditLogs\AuditLogResource;
+use App\Support\AuditLogger;
 use App\Support\FilamentActionPermissions;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\ListRecords;
@@ -26,7 +27,16 @@ class ListAuditLogs extends ListRecords
                 ->action(function (): void {
                     FilamentActionPermissions::abortUnlessCanForResource(AuditLogResource::class, 'clear_data');
 
-                    $this->getFilteredTableQuery()?->delete();
+                    $query = $this->getFilteredTableQuery();
+                    $count = $query ? (clone $query)->count() : 0;
+
+                    $query?->delete();
+
+                    AuditLogger::log(
+                        action: 'cleared',
+                        description: 'Cleared Audit Logs data (' . $count . ' records)',
+                        metadata: ['module' => 'Audit Logs'],
+                    );
                 }),
         ];
     }

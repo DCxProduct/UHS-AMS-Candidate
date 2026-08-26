@@ -30,15 +30,20 @@ class AuditLogger
             return;
         }
 
-        AuditLog::query()->create([
+        $data = [
             'actor_type' => $actor ? $actor::class : null,
             'actor_id' => $actor?->getKey(),
             'actor_name' => self::actorName($actor),
             'action' => $action,
             'module' => self::moduleName($auditable, $metadata),
             'description' => $description ?: self::defaultDescription($action, $auditable, $actor),
-            'ip_address' => request()?->ip(),
-        ]);
+        ];
+
+        if (Schema::hasColumn('audit_logs', 'ip_address')) {
+            $data['ip_address'] = request()?->ip();
+        }
+
+        AuditLog::query()->create($data);
     }
 
     public static function logModelEvent(string $action, Model $model, array $oldValues = [], array $newValues = []): void

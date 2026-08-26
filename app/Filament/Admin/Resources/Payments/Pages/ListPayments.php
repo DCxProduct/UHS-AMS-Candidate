@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Resources\Payments\Pages;
 
 use App\Filament\Admin\Resources\Payments\PaymentResource;
 use App\Filament\Admin\Resources\Payments\Tables\PaymentsTable;
+use App\Support\AuditLogger;
 use App\Support\FilamentActionPermissions;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\ListRecords;
@@ -74,14 +75,22 @@ class ListPayments extends ListRecords
     {
         FilamentActionPermissions::abortUnlessCanForResource(PaymentResource::class, 'download_excel');
 
+        $records = $this->selectedOrFilteredQuery(
+            $selectedRecordKeys,
+            $isTrackingDeselectedRecords,
+            $deselectedRecordKeys,
+        )
+            ->with(['user', 'form'])
+            ->get();
+
+        AuditLogger::log(
+            action: 'downloaded',
+            description: 'Downloaded Payments Excel (' . $records->count() . ' records)',
+            metadata: ['module' => 'Payments'],
+        );
+
         return PaymentsTable::downloadExcel(
-            $this->selectedOrFilteredQuery(
-                $selectedRecordKeys,
-                $isTrackingDeselectedRecords,
-                $deselectedRecordKeys,
-            )
-                ->with(['user', 'form'])
-                ->get(),
+            $records,
             $this->visibleExportColumnKeys(),
         );
     }
@@ -93,11 +102,20 @@ class ListPayments extends ListRecords
     ): void {
         FilamentActionPermissions::abortUnlessCanForResource(PaymentResource::class, 'clear_data');
 
-        $this->selectedOrFilteredQuery(
+        $query = $this->selectedOrFilteredQuery(
             $selectedRecordKeys,
             $isTrackingDeselectedRecords,
             $deselectedRecordKeys,
-        )->delete();
+        );
+        $count = (clone $query)->count();
+
+        $query->delete();
+
+        AuditLogger::log(
+            action: 'cleared',
+            description: 'Cleared Payments data (' . $count . ' records)',
+            metadata: ['module' => 'Payments'],
+        );
 
         $this->selectedTableRecords = [];
         $this->deselectedTableRecords = [];

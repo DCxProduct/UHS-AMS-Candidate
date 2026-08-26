@@ -3,16 +3,24 @@
 namespace App\Providers;
 
 use App\Models\AuditLog;
+use App\Models\CandidateList;
+use App\Models\CandidateRequested;
+use App\Models\CandidateSubmitPopupSetting;
 use App\Models\ClosingDate;
+use App\Models\DegreeLevel;
+use App\Models\ExamResult;
+use App\Models\ExchangeRate;
+use App\Models\ExitExamResult;
 use App\Models\GeoLocation;
 use App\Models\Payment;
 use App\Models\PaymentType;
 use App\Models\Role;
+use App\Models\RoleType;
 use App\Models\SystemUser;
+use App\Models\UnpaidApplication;
 use App\Models\UserType;
 use App\Models\User;
 use App\Observers\AuditLogObserver;
-use App\Support\AuditLogger;
 use App\Support\FilamentActionPermissions;
 use App\Support\NotificationLanguage;
 use BezhanSalleh\LanguageSwitch\LanguageSwitch;
@@ -20,7 +28,6 @@ use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Notifications\Notification;
 use Illuminate\Auth\Events\Login;
-use Illuminate\Auth\Events\Logout;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
@@ -154,19 +161,6 @@ class AppServiceProvider extends ServiceProvider
                 ])->saveQuietly();
             }
 
-            AuditLogger::log(
-                action: 'login',
-                auditable: $event->user instanceof \Illuminate\Database\Eloquent\Model ? $event->user : null,
-                description: 'User logged in',
-            );
-        });
-
-        Event::listen(Logout::class, function (Logout $event): void {
-            AuditLogger::log(
-                action: 'logout',
-                auditable: $event->user instanceof \Illuminate\Database\Eloquent\Model ? $event->user : null,
-                description: 'User logged out',
-            );
         });
     }
 
@@ -175,14 +169,23 @@ class AppServiceProvider extends ServiceProvider
         return [
             User::class,
             SystemUser::class,
+            CandidateList::class,
             Role::class,
             Payment::class,
             PaymentType::class,
             GeoLocation::class,
             UserType::class,
             ClosingDate::class,
+            DegreeLevel::class,
+            ExchangeRate::class,
+            RoleType::class,
+            CandidateSubmitPopupSetting::class,
             CustomForm::class,
             CustomFormEntry::class,
+            CandidateRequested::class,
+            ExamResult::class,
+            ExitExamResult::class,
+            UnpaidApplication::class,
         ];
     }
 

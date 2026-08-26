@@ -111,6 +111,12 @@ class ListCandidateRequested extends ListRecords
                 ->get();
         }
 
+        AuditLogger::log(
+            action: 'downloaded',
+            description: 'Downloaded Candidate Requested Excel (' . $records->count() . ' records)',
+            metadata: ['module' => 'Candidate Requested'],
+        );
+
         return CandidateRequestedTable::downloadExcel($records, $this->visibleExportColumnKeys());
     }
 
