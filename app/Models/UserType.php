@@ -139,6 +139,10 @@ class UserType extends Model
             return;
         }
 
+        if ($role->getKey() === $candidateRole->getKey()) {
+            return;
+        }
+
         $role->syncPermissions(
             $candidateRole->permissions
                 ->unique('id')
