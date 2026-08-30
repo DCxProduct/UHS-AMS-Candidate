@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Support\UserTypeOptions;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Spatie\Permission\Models\Role;
 
@@ -143,11 +144,41 @@ class UserType extends Model
             return;
         }
 
-        $role->syncPermissions(
-            $candidateRole->permissions
-                ->unique('id')
+        $permissionIds = $candidateRole->permissions
+            ->unique('id')
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->values()
+            ->all();
+
+        DB::transaction(function () use ($role, $permissionIds): void {
+            $lockedRole = Role::query()
+                ->whereKey($role->getKey())
+                ->where('guard_name', 'web')
+                ->lockForUpdate()
+                ->first();
+
+            if (! $lockedRole) {
+                return;
+            }
+
+            $currentPermissionIds = $lockedRole->permissions()
+                ->pluck('permissions.id')
+                ->map(fn ($id): int => (int) $id)
+                ->sort()
                 ->values()
-                ->all()
-        );
+                ->all();
+
+            $desiredPermissionIds = collect($permissionIds)
+                ->sort()
+                ->values()
+                ->all();
+
+            if ($currentPermissionIds === $desiredPermissionIds) {
+                return;
+            }
+
+            $lockedRole->syncPermissions($permissionIds);
+        });
     }
 }
