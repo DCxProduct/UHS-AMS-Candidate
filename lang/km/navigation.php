@@ -18,7 +18,7 @@ return [
     'exit_exam_results' => 'លទ្ធផលប្រឡងចេញ',
     'payments' => 'បញ្ជីឈ្មោះបេក្ខជនបង់លុយ',
     'custom_forms' => 'បង្កើតទម្រង់បំពេញ',
-    'document_templates' => 'បង្កើតគំរូឯកសារ',
+    'document_templates' => 'បញ្ជីគំរូឯកសារ',
     'closing_date' => 'បិទ/បើក ទទួលពាក្យ',
     'exchange_rates' => 'អត្រាប្តូរប្រាក់',
     'users' => 'បញ្ជីបេក្ខជន',
