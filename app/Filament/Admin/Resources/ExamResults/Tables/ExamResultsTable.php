@@ -162,7 +162,7 @@ class ExamResultsTable
                     ->visible(fn (CustomFormEntry $record): bool => FilamentActionPermissions::can(
                         self::notificationPermissionForResultMenu($resultMenu)
                     ) && ! CandidateRequestedTable::hasStudentReviewResultNotification($record, 'passed'))
-                    ->action(function (CustomFormEntry $record, $livewire): void {
+                    ->action(function (CustomFormEntry $record, $livewire) use ($resultMenu): void {
                         FilamentActionPermissions::abortUnlessCan(self::notificationPermissionForResultMenu($resultMenu));
 
                         $sent = CandidateRequestedTable::notifyStudentReviewResult(
