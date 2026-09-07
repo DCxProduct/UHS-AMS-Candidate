@@ -14,6 +14,17 @@ class UserTypeOptions
 {
     public const BASE_ROLE = 'candidate';
     public const DEFAULT_KEY = 'candidate';
+
+    protected static bool $defaultsEnsured = false;
+
+    protected static array $optionsCache = [];
+
+    protected static ?array $colorsCache = null;
+
+    protected static ?array $candidateManagedRoleKeysCache = null;
+
+    protected static array $normalizedUserTypeCache = [];
+
     private const PREFERRED_ROLE_ORDER = [
         'admin',
         'cashier',
@@ -43,6 +54,12 @@ class UserTypeOptions
 
     public static function options(): array
     {
+        $locale = app()->getLocale();
+
+        if (array_key_exists($locale, static::$optionsCache)) {
+            return static::$optionsCache[$locale];
+        }
+
         $options = static::customQuery()
             ->get()
             ->mapWithKeys(fn (UserType $userType): array => [
@@ -51,14 +68,18 @@ class UserTypeOptions
             ->all();
 
         if ($options !== []) {
-            return $options;
+            return static::$optionsCache[$locale] = $options;
         }
 
-        return static::defaultOption();
+        return static::$optionsCache[$locale] = static::defaultOption();
     }
 
     public static function colors(): array
     {
+        if (static::$colorsCache !== null) {
+            return static::$colorsCache;
+        }
+
         $colors = static::customQuery()
             ->get()
             ->mapWithKeys(fn (UserType $userType): array => [
@@ -67,10 +88,10 @@ class UserTypeOptions
             ->all();
 
         if ($colors !== []) {
-            return $colors;
+            return static::$colorsCache = $colors;
         }
 
-        return collect(static::defaultOption())
+        return static::$colorsCache = collect(static::defaultOption())
             ->mapWithKeys(fn (string $_label, string $role): array => [
                 $role => match (Str::lower($role)) {
                     'associate' => 'warning',
@@ -307,7 +328,11 @@ class UserTypeOptions
 
     public static function candidateManagedRoleKeys(): array
     {
-        return static::customQuery()
+        if (static::$candidateManagedRoleKeysCache !== null) {
+            return static::$candidateManagedRoleKeysCache;
+        }
+
+        return static::$candidateManagedRoleKeysCache = static::customQuery()
             ->pluck('key')
             ->map(fn (string $key): string => Str::lower(trim($key)))
             ->push('candidate', 'student')
@@ -509,25 +534,39 @@ class UserTypeOptions
             return null;
         }
 
+        if (array_key_exists($normalizedKey, static::$normalizedUserTypeCache)) {
+            return static::$normalizedUserTypeCache[$normalizedKey];
+        }
+
         static::ensureDefaultUserType();
 
-        return UserType::query()
+        return static::$normalizedUserTypeCache[$normalizedKey] = UserType::query()
             ->whereRaw('LOWER(key) = ?', [$normalizedKey])
             ->first();
     }
 
     protected static function ensureDefaultUserType(): void
     {
-        if (! Schema::hasTable('user_types')) {
+        if (static::$defaultsEnsured || ! Schema::hasTable('user_types')) {
             return;
         }
 
-        foreach (static::defaultRecords() as $record) {
-            UserType::query()->updateOrCreate(
-                ['key' => $record['key']],
-                $record,
-            );
+        $defaultRecords = collect(static::defaultRecords());
+        $existingRecords = UserType::query()
+            ->whereIn('key', $defaultRecords->pluck('key'))
+            ->get()
+            ->keyBy('key');
+
+        foreach ($defaultRecords as $record) {
+            $userType = $existingRecords->get($record['key']) ?? new UserType();
+            $userType->fill($record);
+
+            if ($userType->isDirty()) {
+                $userType->save();
+            }
         }
+
+        static::$defaultsEnsured = true;
     }
 
     public static function defaultRecords(): array
