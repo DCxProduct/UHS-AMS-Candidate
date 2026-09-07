@@ -61,16 +61,10 @@ class ProfileFormData
             return $state;
         }
 
-        $profileFormId = $this->profileFormId();
+        $data = data_get($state, $dataPath, []);
 
-        if (! $profileFormId || $profileFormId === $customFormId) {
-            return $state;
-        }
-
-        $profileData = $this->latestProfileData($profileFormId);
-
-        if (empty($profileData)) {
-            return $state;
+        if (! is_array($data)) {
+            $data = [];
         }
 
         $targetFields = $this->fieldsForForms($this->targetFormIds($customFormId));
@@ -79,50 +73,75 @@ class ProfileFormData
             return $state;
         }
 
-        $profileFields = $this->fieldsForForms([$profileFormId])->keyBy('name');
-        $data = data_get($state, $dataPath, []);
+        // Prefill from authenticated user model
+        $user = Auth::user();
+        if ($user) {
+            foreach ($targetFields as $targetField) {
+                $targetName = trim((string) ($targetField->name ?? ''));
+                
+                if ($targetName === '') {
+                    continue;
+                }
 
-        if (! is_array($data)) {
-            $data = [];
+                if (in_array($targetName, ['phone', 'phone_number', 'phone_no']) && !filled(data_get($data, $targetName)) && filled($user->phone)) {
+                    data_set($data, $targetName, $user->phone);
+                }
+                if (in_array($targetName, ['email', 'email_address']) && !filled(data_get($data, $targetName)) && filled($user->email)) {
+                    data_set($data, $targetName, $user->email);
+                }
+                if (in_array($targetName, ['name', 'full_name', 'student_name']) && !filled(data_get($data, $targetName)) && filled($user->name)) {
+                    data_set($data, $targetName, $user->name);
+                }
+            }
         }
 
-        foreach ($targetFields as $targetField) {
-            $targetName = trim((string) ($targetField->name ?? ''));
-            $targetType = $this->normalizeType($targetField->type ?? '');
+        $profileFormId = $this->profileFormId();
 
-            if ($targetName === '' || in_array($targetType, self::CONTAINER_TYPES, true) || $targetType === 'info') {
-                continue;
+        if ($profileFormId && $profileFormId !== $customFormId) {
+            $profileData = $this->latestProfileData($profileFormId);
+
+            if (! empty($profileData)) {
+                $profileFields = $this->fieldsForForms([$profileFormId])->keyBy('name');
+
+                foreach ($targetFields as $targetField) {
+                    $targetName = trim((string) ($targetField->name ?? ''));
+                    $targetType = $this->normalizeType($targetField->type ?? '');
+
+                    if ($targetName === '' || in_array($targetType, self::CONTAINER_TYPES, true) || $targetType === 'info') {
+                        continue;
+                    }
+
+                    if (filled(data_get($data, $targetName))) {
+                        continue;
+                    }
+
+                    $targetOptions = $this->normalizeOptions($targetField->options ?? []);
+                    $profileKey = trim((string) (
+                        $targetOptions['profile_keyword']
+                        ?? $targetOptions['profile_field']
+                        ?? $targetOptions['profile_data_key']
+                        ?? $targetName
+                    ));
+
+                    if ($profileKey === '') {
+                        continue;
+                    }
+
+                    $profileValue = data_get($profileData, $profileKey);
+
+                    if (! filled($profileValue)) {
+                        continue;
+                    }
+
+                    $profileField = $profileFields->get($profileKey);
+
+                    data_set(
+                        $data,
+                        $targetName,
+                        $this->resolveProfileValue($profileValue, $profileField, $targetField)
+                    );
+                }
             }
-
-            if (filled(data_get($data, $targetName))) {
-                continue;
-            }
-
-            $targetOptions = $this->normalizeOptions($targetField->options ?? []);
-            $profileKey = trim((string) (
-                $targetOptions['profile_keyword']
-                ?? $targetOptions['profile_field']
-                ?? $targetOptions['profile_data_key']
-                ?? $targetName
-            ));
-
-            if ($profileKey === '') {
-                continue;
-            }
-
-            $profileValue = data_get($profileData, $profileKey);
-
-            if (! filled($profileValue)) {
-                continue;
-            }
-
-            $profileField = $profileFields->get($profileKey);
-
-            data_set(
-                $data,
-                $targetName,
-                $this->resolveProfileValue($profileValue, $profileField, $targetField)
-            );
         }
 
         data_set($state, 'custom_form_id', $customFormId);

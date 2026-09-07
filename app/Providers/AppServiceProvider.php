@@ -186,6 +186,7 @@ class AppServiceProvider extends ServiceProvider
             ExamResult::class,
             ExitExamResult::class,
             UnpaidApplication::class,
+            \Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate::class,
         ];
     }
 
