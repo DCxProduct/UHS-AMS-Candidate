@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Models\SystemUser;
 use Illuminate\Foundation\Auth\User as AuthUser;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
@@ -29,9 +30,10 @@ class SystemUserPolicy
         return $authUser->can('Update:SystemUser');
     }
 
-    public function delete(AuthUser $authUser): bool
+    public function delete(AuthUser $authUser, ?SystemUser $systemUser = null): bool
     {
-        return $authUser->can('Delete:SystemUser');
+        return $authUser->can('Delete:SystemUser')
+            && ! $systemUser?->isProtectedAdminAccount();
     }
 
     public function deleteAny(AuthUser $authUser): bool
@@ -44,9 +46,10 @@ class SystemUserPolicy
         return $authUser->can('Restore:SystemUser');
     }
 
-    public function forceDelete(AuthUser $authUser): bool
+    public function forceDelete(AuthUser $authUser, ?SystemUser $systemUser = null): bool
     {
-        return $authUser->can('ForceDelete:SystemUser');
+        return $authUser->can('ForceDelete:SystemUser')
+            && ! $systemUser?->isProtectedAdminAccount();
     }
 
     public function forceDeleteAny(AuthUser $authUser): bool

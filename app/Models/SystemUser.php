@@ -142,6 +142,12 @@ class SystemUser extends Authenticatable implements FilamentUser, HasAvatar, Has
         return (bool) $this->is_active;
     }
 
+    public function isProtectedAdminAccount(): bool
+    {
+        return Str::lower(trim((string) $this->username)) === 'admin'
+            || Str::lower(trim((string) $this->email)) === 'admin@gmail.com';
+    }
+
     public function syncLoginUser(): void
     {
         $lookup = $this->getLoginUserLookup();

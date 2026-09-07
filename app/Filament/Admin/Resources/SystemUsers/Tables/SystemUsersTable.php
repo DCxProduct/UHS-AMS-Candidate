@@ -205,6 +205,7 @@ class SystemUsersTable
                         ->label(__('system_users.actions.delete'))
                         ->icon('heroicon-o-trash')
                         ->color('danger')
+                        ->visible(fn (SystemUser $record): bool => ! $record->isProtectedAdminAccount())
                         ->action(fn (SystemUser $record) => $record->deleteWithLinkedLoginUsers()),
                 ])
                     ->label('')

@@ -52,6 +52,7 @@ class EditSystemUser extends EditRecord
         return [
             Actions\DeleteAction::make()
                 ->label(__('system_users.actions.delete'))
+                ->visible(fn (): bool => ! $this->record->isProtectedAdminAccount())
                 ->action(fn () => $this->record->forceDelete()),
         ];
     }
