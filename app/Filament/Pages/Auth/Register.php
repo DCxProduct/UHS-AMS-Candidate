@@ -393,6 +393,39 @@ class Register extends BaseRegister
                 'last_login_at' => null,
             ]);
 
+            /*
+            |--------------------------------------------------------------------------
+            | Link existing applications by phone number
+            |--------------------------------------------------------------------------
+            */
+            if (filled($phone) && \Illuminate\Support\Facades\Schema::hasTable('custom_form_entries')) {
+                $columns = \Illuminate\Support\Facades\Schema::getColumnListing('custom_form_entries');
+                
+                $updateData = [];
+                if (in_array('user_id', $columns)) $updateData['user_id'] = $user->id;
+                if (in_array('created_by', $columns)) $updateData['created_by'] = $user->id;
+                if (in_array('created_by_id', $columns)) $updateData['created_by_id'] = $user->id;
+                
+                if (!empty($updateData)) {
+                    \Illuminate\Support\Facades\DB::table('custom_form_entries')
+                        ->where(function ($query) use ($phone) {
+                            $query->where('data->phone_number', $phone)
+                                  ->orWhere('data->phone', $phone)
+                                  ->orWhere('data', 'like', '%"phone_number":"' . $phone . '"%')
+                                  ->orWhere('data', 'like', '%"phone":"' . $phone . '"%');
+                        })
+                        ->where(function ($query) use ($columns) {
+                            if (in_array('user_id', $columns)) {
+                                $query->orWhereNull('user_id')->orWhere('user_id', 0);
+                            }
+                            if (in_array('created_by', $columns)) {
+                                $query->orWhereNull('created_by');
+                            }
+                        })
+                        ->update($updateData);
+                }
+            }
+
             return $user;
         });
     }
