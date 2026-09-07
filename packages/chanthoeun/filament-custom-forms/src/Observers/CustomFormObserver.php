@@ -35,14 +35,18 @@ class CustomFormObserver
 
         $linkedFormId = $customForm->custom_form_id ?? $customForm->id;
 
-        \Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate::updateOrCreate(
-            [
-                'type' => 'custom_form_' . $customForm->id,
-            ],
-            [
-                'name' => $this->templateName($customForm->name),
-                'custom_form_id' => $linkedFormId,
-                'model_class' => CustomFormEntry::class,
+        $template = \Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate::firstOrNew([
+            'type' => 'custom_form_' . $customForm->id,
+        ]);
+
+        $template->fill([
+            'name' => $this->templateName($customForm->name),
+            'custom_form_id' => $linkedFormId,
+            'model_class' => CustomFormEntry::class,
+        ]);
+
+        if (! $template->exists) {
+            $template->fill([
                 'content' => '',
                 'page_settings' => [
                     'format' => 'a4',
@@ -53,8 +57,10 @@ class CustomFormObserver
                     'margin_bottom' => 15,
                 ],
                 'extra_data_sources' => [],
-            ]
-        );
+            ]);
+        }
+
+        $template->save();
     }
 
     private function templateName(mixed $formName): string
