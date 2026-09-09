@@ -15,7 +15,7 @@ class StudentProfileSeeder extends Seeder
         }
 
         $now = now();
-        $formName = json_encode($this->t('Profile', 'ប្រវត្តិរូប'), JSON_UNESCAPED_UNICODE);
+        $formName = json_encode($this->t('Please Complete Profile', 'សូមបំពេញប្រវត្តិរូប'), JSON_UNESCAPED_UNICODE);
         $formSlug = 'profile';
 
         $form = DB::table('custom_forms')->where('slug', $formSlug)->first();
