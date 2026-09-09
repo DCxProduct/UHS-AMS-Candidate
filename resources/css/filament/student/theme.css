@@ -338,7 +338,7 @@ html.dark .uhs-brand-logo-en,
 }
 
 form button[type="submit"].fi-btn,
-.fi-page .fi-btn.fi-color-primary,
+.fi-page .fi-btn.fi-color-primary:not(label),
 .fi-main button[type="submit"] {
     background-color: #1e40af !important;
     color: #ffffff !important;
@@ -347,7 +347,7 @@ form button[type="submit"].fi-btn,
 }
 
 form button[type="submit"].fi-btn:hover,
-.fi-page .fi-btn.fi-color-primary:hover,
+.fi-page .fi-btn.fi-color-primary:not(label):hover,
 .fi-main button[type="submit"]:hover {
     background-color: #1e3a8a !important;
 }
