@@ -27,6 +27,7 @@ return [
 
     'forms' => [
         'profile' => 'ប្រវត្តិរូប',
+        'profile_nav' => 'សូមបំពេញប្រវត្តិរូប',
         'national_examination_registration' => 'ការចុះឈ្មោះប្រឡងថ្នាក់ជាតិ',
     ],
 

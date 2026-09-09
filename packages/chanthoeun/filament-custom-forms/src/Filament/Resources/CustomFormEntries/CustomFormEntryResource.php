@@ -253,7 +253,7 @@ class CustomFormEntryResource extends Resource
         $slug = strtolower(trim((string) ($form->slug ?? '')));
 
         return match ($slug) {
-            'profile' => __('navigation.forms.profile'),
+            'profile' => __('navigation.forms.profile_nav'),
             'national-examination-registration' => __('navigation.national_examination_registration'),
             default => static::localeText($form->name) ?: __('navigation.forms.untitled'),
         };

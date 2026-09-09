@@ -27,6 +27,7 @@ return [
 
     'forms' => [
         'profile' => 'Profile',
+        'profile_nav' => 'Please Complete Profile',
         'national_examination_registration' => 'National Examination Registration',
     ],
 
