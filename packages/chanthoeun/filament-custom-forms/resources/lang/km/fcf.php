@@ -14,6 +14,7 @@
          'label_khmer' => 'ស្លាកភាសាខ្មែរ',
          'text_format' => 'ទម្រង់អត្ថបទ',
          'dynamic_form_type_field' => 'វាលប្រភេទទម្រង់ថាមវន្ត',
+         'creation_mode' => 'របៀបបង្កើតវាល',
          'creating_tab' => 'បង្កើត',
          'multiple_creating_selection_field' => 'វាលជ្រើសរើសសម្រាប់បង្កើតច្រើន',
          'selection_action' => 'សកម្មភាពជ្រើសរើស',

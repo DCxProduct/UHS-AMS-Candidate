@@ -74,16 +74,9 @@ class ClosingDate extends Model
         ];
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Profile form is not driven by a closing date
-    |--------------------------------------------------------------------------
-    | The Profile form is always open, so it is not offered when creating or
-    | editing a closing date. Every other form keeps the old workflow.
-    |--------------------------------------------------------------------------
-    */
-    public static function selectableTypeOptions(): array
-    {
+    public static function selectableTypeOptions(
+        int|string|null $ignoreClosingDateId = null
+    ): array {
         if (! Schema::hasTable('custom_forms')) {
             return [];
         }
@@ -94,8 +87,19 @@ class ClosingDate extends Model
             ->map(fn ($id): string => self::customFormTypeKey($id))
             ->all();
 
+        $takenTypeKeys = self::query()
+            ->when(
+                filled($ignoreClosingDateId),
+                fn ($query) => $query->whereKeyNot($ignoreClosingDateId)
+            )
+            ->pluck('type')
+            ->filter(fn ($type): bool => filled($type))
+            ->map(fn ($type): string => (string) $type)
+            ->all();
+
         return collect(self::typeOptions())
-            ->reject(fn ($label, string $typeKey): bool => in_array($typeKey, $profileTypeKeys, true))
+            ->reject(fn ($label, string $typeKey): bool => in_array($typeKey, $profileTypeKeys, true)
+                || in_array($typeKey, $takenTypeKeys, true))
             ->toArray();
     }
 

@@ -39,6 +39,7 @@ return [
     'name_english_placeholder' => 'បញ្ចូលឈ្មោះជាអង់គ្លេស',
     'name_khmer_placeholder' => 'បញ្ចូលឈ្មោះជាខ្មែរ',
     'type_placeholder' => 'ជ្រើសរើសទម្រង់ពាក្យស្នើសុំ',
+    'created_multiple' => 'បានបង្កើតការបិទ/បើក ចំនួន :count។',
     'status_placeholder' => 'ជ្រើសរើសស្ថានភាព',
     'start_date_placeholder' => 'ជ្រើសរើសថ្ងៃចាប់ផ្តើម',
     'end_date_placeholder' => 'ជ្រើសរើសថ្ងៃបញ្ចប់',

@@ -14,6 +14,7 @@
          'label_khmer' => 'Khmer Label',
          'text_format' => 'Text Format',
          'dynamic_form_type_field' => 'Dynamic Form Type Field',
+         'creation_mode' => 'Field Mode',
          'creating_tab' => 'Creating',
          'multiple_creating_selection_field' => 'Multiple Creating Selection Field',
          'selection_action' => 'Selection Action',

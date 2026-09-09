@@ -8,6 +8,7 @@
          'select_options' => 'ជម្រើសជ្រើសរើស',
          'field_action' => 'សកម្មភាពវាល',
          'creating_action' => 'សកម្មភាពបង្កើត',
+         'creation_mode' => 'របៀបបង្កើតវាល',
          'creating_tab' => 'បង្កើត',
          'selection_action' => 'សកម្មភាពជ្រើសរើស',
          'selection_tab' => 'ជ្រើសរើស',

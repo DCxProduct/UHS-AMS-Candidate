@@ -39,6 +39,7 @@ return [
     'name_english_placeholder' => 'Enter name english',
     'name_khmer_placeholder' => 'Enter name khmer',
     'type_placeholder' => 'Select candidate application',
+    'created_multiple' => ':count closing dates created.',
     'status_placeholder' => 'Select status',
     'start_date_placeholder' => 'Select start date',
     'end_date_placeholder' => 'Select end date',
