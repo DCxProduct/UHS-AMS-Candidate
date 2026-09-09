@@ -244,7 +244,7 @@ return [
     |--------------------------------------------------------------------------
     */
 
-    'student_application' => 'Student Application',
+    'student_application' => 'Candidate Application',
 
     'forms_nav' => [
         'profile' => 'Profile',
@@ -418,7 +418,7 @@ return [
 
     'admissions_office' => 'Admissions Office',
     'admissions_office_short' => 'AO',
-    'admissions_support_position' => 'Student Application Support',
+    'admissions_support_position' => 'Candidate Application Support',
 
     'registrar_office' => 'Registrar Office',
     'registrar_office_short' => 'RO',
