@@ -33,7 +33,13 @@ class CustomFormForm
                             ->afterStateHydrated(function ($component, $record): void {
                                 $component->state(self::getNameLang($record?->name, 'en'));
                             })
-                            ->afterStateUpdated(fn ($set, $state) => $set('slug', \Illuminate\Support\Str::slug($state)))
+                            ->afterStateUpdated(function ($set, $state): void {
+                                $slug = \Illuminate\Support\Str::slug($state);
+
+                                $set('slug', $slug);
+
+                                self::syncProfileAllowedRoles($slug, $set);
+                            })
                             ->dehydrated(false)
                             ->maxLength(255),
 
@@ -60,6 +66,8 @@ class CustomFormForm
                             ->label(__('filament-custom-forms::fcf.form.slug'))
                             ->placeholder(__('filament-custom-forms::fcf.placeholder.slug'))
                             ->required()
+                            ->live(onBlur: true)
+                            ->afterStateUpdated(fn ($set, $state) => self::syncProfileAllowedRoles($state, $set))
                             ->maxLength(255)
                             ->unique(ignoreRecord: true),
 
@@ -193,8 +201,28 @@ class CustomFormForm
                             ->gridDirection('row')
                             ->bulkToggleable()
                             ->columnSpanFull()
+                            /*
+                            |--------------------------------------------------------------------------
+                            | Profile form
+                            |--------------------------------------------------------------------------
+                            | Profile is always open to every candidate type, so the selection is
+                            | locked and filled automatically. Other forms keep the old workflow.
+                            |--------------------------------------------------------------------------
+                            */
+                            ->disabled(fn (Get $get): bool => CustomForm::isProfileSlug($get('slug')))
+                            ->dehydrated()
+                            ->helperText(fn (Get $get): ?string => CustomForm::isProfileSlug($get('slug'))
+                                ? __('filament-custom-forms::fcf.form.allowed_roles_profile_help')
+                                : null)
                             ->afterStateHydrated(function ($component, $record): void {
                                 $availableRoles = array_keys(UserTypeOptions::options());
+
+                                if ($record && $record->isProfileForm()) {
+                                    $component->state(CustomForm::profileAllowedRoles());
+
+                                    return;
+                                }
+
                                 $roles = $record?->allowed_roles;
 
                                 if (is_string($roles)) {
@@ -224,7 +252,9 @@ class CustomFormForm
                                         ->all()
                                 );
                             })
-                            ->dehydrateStateUsing(fn ($state): array => collect(is_array($state) ? $state : [])
+                            ->dehydrateStateUsing(fn ($state, Get $get): array => CustomForm::isProfileSlug($get('slug'))
+                                ? CustomForm::profileAllowedRoles()
+                                : collect(is_array($state) ? $state : [])
                                 ->map(function ($role): ?string {
                                     $normalized = strtolower(trim((string) $role));
 
@@ -431,6 +461,15 @@ class CustomFormForm
         }
 
         return $blocks;
+    }
+
+    private static function syncProfileAllowedRoles(mixed $slug, callable $set): void
+    {
+        if (! CustomForm::isProfileSlug($slug)) {
+            return;
+        }
+
+        $set('allowed_roles', CustomForm::profileAllowedRoles());
     }
 
     private static function getNameLang(mixed $value, string $locale): string

@@ -74,6 +74,31 @@ class ClosingDate extends Model
         ];
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Profile form is not driven by a closing date
+    |--------------------------------------------------------------------------
+    | The Profile form is always open, so it is not offered when creating or
+    | editing a closing date. Every other form keeps the old workflow.
+    |--------------------------------------------------------------------------
+    */
+    public static function selectableTypeOptions(): array
+    {
+        if (! Schema::hasTable('custom_forms')) {
+            return [];
+        }
+
+        $profileTypeKeys = CustomForm::query()
+            ->where('slug', CustomForm::PROFILE_SLUG)
+            ->pluck('id')
+            ->map(fn ($id): string => self::customFormTypeKey($id))
+            ->all();
+
+        return collect(self::typeOptions())
+            ->reject(fn ($label, string $typeKey): bool => in_array($typeKey, $profileTypeKeys, true))
+            ->toArray();
+    }
+
     public static function typeOptions(): array
     {
         if (! Schema::hasTable('custom_forms')) {
@@ -200,6 +225,10 @@ class ClosingDate extends Model
     public static function isCustomFormOpen(
         int|string|null $customFormId
     ): bool {
+        if (CustomForm::isProfileFormId($customFormId)) {
+            return true;
+        }
+
         $deadline = self::getDeadlineByCustomFormId(
             $customFormId
         );
@@ -224,6 +253,10 @@ class ClosingDate extends Model
     public static function shouldShowContact(
         int|string|null $customFormId
     ): bool {
+        if (CustomForm::isProfileFormId($customFormId)) {
+            return false;
+        }
+
         $deadline = self::getDeadlineByCustomFormId(
             $customFormId
         );
@@ -257,6 +290,10 @@ class ClosingDate extends Model
     public static function isCustomFormClosed(
         int|string|null $customFormId
     ): bool {
+        if (CustomForm::isProfileFormId($customFormId)) {
+            return false;
+        }
+
         $deadline = self::getDeadlineByCustomFormId(
             $customFormId
         );
@@ -287,14 +324,18 @@ class ClosingDate extends Model
         return CustomForm::query()
             ->where('is_active', true)
             ->whereNotNull('name')
-            ->whereIn('id', function ($query) {
+            ->where(function ($query): void {
                 $query
-                    ->selectRaw(
-                        "CAST(REPLACE(type, 'custom_form:', '') AS UNSIGNED)"
-                    )
-                    ->from('closing_dates')
-                    ->whereNull('deleted_at')
-                    ->where('status', self::STATUS_OPEN);
+                    ->whereIn('id', function ($query) {
+                        $query
+                            ->selectRaw(
+                                "CAST(REPLACE(type, 'custom_form:', '') AS UNSIGNED)"
+                            )
+                            ->from('closing_dates')
+                            ->whereNull('deleted_at')
+                            ->where('status', self::STATUS_OPEN);
+                    })
+                    ->orWhere('slug', CustomForm::PROFILE_SLUG);
             })
             ->orderBy('id')
             ->get();

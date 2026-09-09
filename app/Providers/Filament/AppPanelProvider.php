@@ -14,6 +14,7 @@ use App\Support\ClosingDateWorkflow;
 use App\Support\UserTypeOptions;
 use BezhanSalleh\LanguageSwitch\Http\Middleware\SwitchLanguageLocale;
 use Chanthoeun\FilamentCustomForms\CustomFormPlugin;
+use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource as PackageCustomFormEntryResource;
 use Chanthoeun\FilamentDocumentBuilder\DocumentBuilderPlugin;
 use Filament\Enums\ThemeMode;
@@ -439,12 +440,24 @@ class AppPanelProvider extends PanelProvider
         }
 
         $form = DB::table('custom_forms')
-            ->select(['id', 'allowed_roles'])
+            ->select(['id', 'slug', 'allowed_roles'])
             ->where('id', $formId)
             ->first();
 
         if (! $form) {
             return false;
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Profile form
+        |--------------------------------------------------------------------------
+        | Profile is open to every candidate type, whatever allowed_roles holds.
+        | Every other form keeps the old role check.
+        |--------------------------------------------------------------------------
+        */
+        if (CustomForm::isProfileSlug($form->slug ?? null)) {
+            return true;
         }
 
         $allowedRoles = $form->allowed_roles ?? [];
@@ -474,15 +487,6 @@ class AppPanelProvider extends PanelProvider
 
         if ($allowedRoles === []) {
             return false;
-        }
-
-        $form = DB::table('custom_forms')
-            ->select(['id', 'slug'])
-            ->where('id', $formId)
-            ->first();
-
-        if ($this->isStudent() && strtolower((string) ($form->slug ?? '')) === 'profile') {
-            return true;
         }
 
         return collect($this->currentDynamicFormRoles())
