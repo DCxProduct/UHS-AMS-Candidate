@@ -48,10 +48,19 @@ class FieldsRelationManager extends RelationManager
                     ->columnSpanFull()
                     ->components([
                         \Filament\Forms\Components\ToggleButtons::make('creation_mode')
+                            ->label(__('filament-custom-forms::fcf.admin.creation_mode'))
                             ->hiddenLabel()
                             ->options([
                                 'creating' => __('filament-custom-forms::fcf.admin.creating_tab'),
                                 'selection' => __('filament-custom-forms::fcf.admin.selection_tab'),
+                            ])
+                            ->colors([
+                                'creating' => 'primary',
+                                'selection' => 'warning',
+                            ])
+                            ->icons([
+                                'creating' => 'heroicon-o-plus-circle',
+                                'selection' => 'heroicon-o-cursor-arrow-rays',
                             ])
                             ->default('creating')
                             ->inline()
@@ -59,6 +68,9 @@ class FieldsRelationManager extends RelationManager
                             ->live()
                             ->dehydrated(false)
                             ->columnSpanFull()
+                            ->extraFieldWrapperAttributes([
+                                'style' => 'display:flex;flex-direction:column;align-items:center;gap:0.5rem;text-align:center;',
+                            ])
                             ->hidden(fn (?object $record = null): bool => filled($record)),
 
                         \Filament\Forms\Components\Select::make('parent_id')

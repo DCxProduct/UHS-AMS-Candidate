@@ -8,6 +8,7 @@
          'select_options' => 'Select Options',
          'field_action' => 'Action',
          'creating_action' => 'Creating Action',
+         'creation_mode' => 'Field Mode',
          'creating_tab' => 'Creating',
          'selection_action' => 'Selection Action',
          'selection_tab' => 'Selection',
