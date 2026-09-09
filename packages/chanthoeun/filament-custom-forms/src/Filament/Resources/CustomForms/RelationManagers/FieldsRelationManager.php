@@ -54,20 +54,14 @@ class FieldsRelationManager extends RelationManager
                                 'creating' => __('filament-custom-forms::fcf.admin.creating_tab'),
                                 'selection' => __('filament-custom-forms::fcf.admin.selection_tab'),
                             ])
-                            ->colors([
-                                'creating' => 'primary',
-                                'selection' => 'warning',
-                            ])
-                            ->icons([
-                                'creating' => 'heroicon-o-plus-circle',
-                                'selection' => 'heroicon-o-cursor-arrow-rays',
-                            ])
                             ->default('creating')
                             ->inline()
-                            ->grouped()
                             ->live()
                             ->dehydrated(false)
                             ->columnSpanFull()
+                            ->extraAttributes([
+                                'style' => 'justify-content:center;',
+                            ])
                             ->extraFieldWrapperAttributes([
                                 'style' => 'display:flex;flex-direction:column;align-items:center;gap:0.5rem;text-align:center;',
                             ])
