@@ -3,14 +3,28 @@
 namespace Chanthoeun\FilamentCustomForms\Models;
 
 use App\Support\PassedResultMenuOptions;
+use App\Support\UserTypeOptions;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Schema;
 
 class CustomForm extends Model
 {
     use HasFactory, SoftDeletes;
+
+    /*
+    |--------------------------------------------------------------------------
+    | Profile form
+    |--------------------------------------------------------------------------
+    | The Profile form is always available for every candidate type and is not
+    | driven by a closing date. Every other form keeps the old workflow.
+    |--------------------------------------------------------------------------
+    */
+    public const PROFILE_SLUG = 'profile';
+
+    protected static array $profileFormIdCache = [];
 
     protected $fillable = [
         'name',
@@ -63,8 +77,60 @@ class CustomForm extends Model
                 $customForm->sub_item_type = null;
             }
 
+            if (static::isProfileSlug($customForm->slug)) {
+                $customForm->allowed_roles = static::profileAllowedRoles();
+            }
+
             $customForm->passed_result_menu = PassedResultMenuOptions::normalize($customForm->passed_result_menu);
         });
+    }
+
+    public static function isProfileSlug(mixed $slug): bool
+    {
+        return strtolower(trim((string) $slug)) === self::PROFILE_SLUG;
+    }
+
+    public function isProfileForm(): bool
+    {
+        return static::isProfileSlug($this->slug);
+    }
+
+    public static function isProfileFormId(int|string|null $customFormId): bool
+    {
+        if (blank($customFormId)) {
+            return false;
+        }
+
+        $key = (string) $customFormId;
+
+        if (array_key_exists($key, static::$profileFormIdCache)) {
+            return static::$profileFormIdCache[$key];
+        }
+
+        if (! Schema::hasTable('custom_forms')) {
+            return static::$profileFormIdCache[$key] = false;
+        }
+
+        $slug = static::withTrashed()
+            ->whereKey($customFormId)
+            ->value('slug');
+
+        return static::$profileFormIdCache[$key] = static::isProfileSlug($slug);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Every candidate type is allowed on the Profile form
+    |--------------------------------------------------------------------------
+    */
+    public static function profileAllowedRoles(): array
+    {
+        return collect(array_keys(UserTypeOptions::options()))
+            ->map(fn ($role): string => strtolower(trim((string) $role)))
+            ->filter(fn (string $role): bool => filled($role))
+            ->unique()
+            ->values()
+            ->all();
     }
 
     public function parentForm()

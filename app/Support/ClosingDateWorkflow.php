@@ -26,6 +26,18 @@ class ClosingDateWorkflow
             return self::openWithoutRule();
         }
 
+        /*
+        |--------------------------------------------------------------------------
+        | Profile form
+        |--------------------------------------------------------------------------
+        | Profile is always open. It never needs a closing date, so any closing
+        | date row is ignored. Every other form keeps the old workflow.
+        |--------------------------------------------------------------------------
+        */
+        if ($form->isProfileForm()) {
+            return self::openWithoutRule();
+        }
+
         $typeKeys = [
             self::customFormTypeKey($customFormId),
             'custom_form:' . $customFormId,

@@ -41,7 +41,7 @@ class ClosingDateForm
                         Select::make('type')
                             ->label(__('closing_dates.student_application'))
                             ->placeholder(__('closing_dates.type_placeholder'))
-                            ->options(fn (): array => collect(ClosingDate::typeOptions())
+                            ->options(fn (): array => collect(ClosingDate::selectableTypeOptions())
                                 ->mapWithKeys(fn ($label, $value): array => [
                                     $value => self::localeText($label),
                                 ])
