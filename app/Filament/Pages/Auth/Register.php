@@ -80,23 +80,17 @@ class Register extends BaseRegister
                     ->label(__('app.username'))
                     ->placeholder(__('app.enter_username'))
                     ->required()
-                    ->minLength(6)
-                    ->maxLength(15)
                     ->unique(User::class, 'username')
                     ->prefixIcon('heroicon-o-identification')
                     ->rules([
                         'required',
                         'string',
-                        'min:6',
-                        'max:15',
                         'regex:/^[a-z0-9_]+$/',
                         Rule::unique('system_users', 'username'),
                     ])
                     ->extraInputAttributes([
-                        'oninput' => "this.value = this.value.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 15)",
+                        'oninput' => "this.value = this.value.toLowerCase().replace(/[^a-z0-9_]/g, '')",
                         'pattern' => '[a-z0-9_]+',
-                        'maxlength' => 15,
-                        'minlength' => 6,
                     ])
                     ->dehydrateStateUsing(fn ($state) => blank($state)
                         ? null
@@ -105,8 +99,6 @@ class Register extends BaseRegister
                     ->validationMessages([
                         'required' => __('app.username_required'),
                         'unique' => __('app.username_unique'),
-                        'min' => __('app.username_min'),
-                        'max' => __('app.username_max'),
                         'regex' => __('app.username_english_only'),
                     ])
                     ->autofocus(),
