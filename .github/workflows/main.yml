@@ -51,6 +51,13 @@ jobs:
               cd $APP_DIR
             fi
 
+            # The production environment is intentionally not stored in Git.
+            # Stop rather than booting the application with local/default values.
+            if [ ! -f "$APP_DIR/.env" ]; then
+              echo "❌ Missing production .env at $APP_DIR/.env"
+              exit 1
+            fi
+
             # ── Install Dependencies ─────────────────────────────
             echo "📦 Installing PHP dependencies..."
             composer install
@@ -58,11 +65,12 @@ jobs:
             npm run build
             # ── Laravel Setup ────────────────────────────────────
             echo "🔧 Running migrations..."
-            php artisan migrate
+            php artisan migrate --force
             php artisan db:seed
 
             # ── Optimize ────────────────────────────────────────
             php artisan optimize:clear
+            php artisan config:cache
 
             # ── Permissions ──────────────────────────────────────
             echo "🔐 Fixing permissions..."
