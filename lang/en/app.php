@@ -29,14 +29,12 @@ return [
     'enter_username' => 'Enter username',
     'username_required' => 'Username is required.',
     'username_unique' => 'This username is already taken.',
-    'username_min' => 'Username must be at least 6 characters long.',
-    'username_max' => 'Username must not be more than 15 characters long.',
     'password_english_only' => 'Password can contain only English keyboard characters, numbers, and symbols. Khmer characters and spaces are not allowed.',
 
-    'email_address' => 'Email address',
-    'enter_email_address' => 'Enter email address',
-    'email_invalid' => 'Please enter a valid email address.',
-    'email_unique' => 'This email address is already taken.',
+    'email_address' => 'Email',
+    'enter_email_address' => 'Enter email',
+    'email_invalid' => 'Please enter a valid email.',
+    'email_unique' => 'This email is already taken.',
 
     'phone_number' => 'Phone number',
     'enter_phone_number' => 'Enter phone number',
