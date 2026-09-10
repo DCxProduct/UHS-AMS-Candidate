@@ -438,9 +438,8 @@ class Register extends BaseRegister
             ->map(fn (): string => $characters[random_int(0, strlen($characters) - 1)])
             ->join('');
 
-        session([
-            'register_captcha_answer' => $code,
-        ]);
+        session()->put('register_captcha_answer', $code);
+        session()->save();
     }
 
     public function refreshCaptchaChallengeForForm(): void
