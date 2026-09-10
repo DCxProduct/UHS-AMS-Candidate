@@ -66,7 +66,7 @@ jobs:
             # ── Laravel Setup ────────────────────────────────────
             echo "🔧 Running migrations..."
             php artisan migrate --force
-            php artisan db:seed
+            php artisan db:seed --force
 
             # ── Optimize ────────────────────────────────────────
             php artisan optimize:clear
