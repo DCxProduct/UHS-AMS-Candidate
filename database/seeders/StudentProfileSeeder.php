@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Support\UserTypeOptions;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -175,7 +176,10 @@ class StudentProfileSeeder extends Seeder
             ['name' => 'current_village', 'label' => $this->t('Village', 'ភូមិ'), 'type' => 'select_dropdown', 'options' => $this->geoLocationOptions('village', 'current_commune_sangkat')],
 
             ['name' => 'education_employment_information', 'label' => $this->t('Education And Employment Information', 'ព័ត៌មានអប់រំ និងការងារ'), 'type' => 'info', 'options' => ['content' => $this->t('Education And Employment Information', 'ព័ត៌មានអប់រំ និងការងារ'), 'column_span_full' => true, 'is_hidden_label' => true]],
-            ['name' => 'culture_level', 'label' => $this->t('Culture Level', 'កម្រិតវប្បធម៌'), 'type' => 'select_dropdown', 'options' => ['choices' => $cultureLevelOptions]],
+            ['name' => 'culture_level', 'label' => $this->t('Culture Level', 'កម្រិតវប្បធម៌'), 'type' => 'select_dropdown', 'options' => [
+                'choices' => $cultureLevelOptions,
+                'high_school_diploma_only_for_roles' => UserTypeOptions::HIGH_SCHOOL_DIPLOMA_ONLY_ROLE_KEYS,
+            ]],
             ['name' => 'exam_period', 'label' => $this->t('Exam Date', 'ថ្ងៃប្រឡង'), 'type' => 'date_picker', 'options' => ['placeholder_en' => 'Enter Exam Date', 'placeholder_km' => 'ជ្រើសរើសថ្ងៃប្រឡង']],
             ['name' => 'exam_center', 'label' => $this->t('Exam Center', 'មណ្ឌលប្រឡង'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Exam Center', 'placeholder_km' => 'បញ្ចូលមណ្ឌលប្រឡង']],
             ['name' => 'current_occupation', 'label' => $this->t('Current Occupation', 'មុខរបរបច្ចុប្បន្ន'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Current Occupation', 'placeholder_km' => 'បញ្ចូលមុខរបរបច្ចុប្បន្ន']],
@@ -308,7 +312,10 @@ class StudentProfileSeeder extends Seeder
 
         $educationFields = [
             ['name' => 'educational_institution', 'label' => $this->t('Educational Institution', 'គ្រឹះស្ថានអប់រំ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Educational Institution', 'placeholder_km' => 'បញ្ចូលគ្រឹះស្ថានអប់រំ', 'column_span_full' => true]],
-            ['name' => 'degree_level_major', 'label' => $this->t('Degree Level / Major', 'កម្រិតសញ្ញាបត្រ / ផ្នែក'), 'type' => 'select_dropdown', 'options' => ['choices' => $degreeOptions]],
+            ['name' => 'degree_level_major', 'label' => $this->t('Degree Level / Major', 'កម្រិតសញ្ញាបត្រ / ផ្នែក'), 'type' => 'select_dropdown', 'options' => [
+                'choices' => $degreeOptions,
+                'high_school_diploma_only_for_roles' => UserTypeOptions::HIGH_SCHOOL_DIPLOMA_ONLY_ROLE_KEYS,
+            ]],
             ['name' => 'country', 'label' => $this->t('Country', 'ប្រទេស'), 'type' => 'select_dropdown', 'options' => ['choices' => $countryOptions]],
             ['name' => 'from_year', 'label' => $this->t('From Year', 'ចាប់ពីឆ្នាំ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter From Year', 'placeholder_km' => 'បញ្ចូលចាប់ពីឆ្នាំ']],
             ['name' => 'to_year', 'label' => $this->t('To Year', 'ដល់ឆ្នាំ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter To Year', 'placeholder_km' => 'បញ្ចូលដល់ឆ្នាំ']],

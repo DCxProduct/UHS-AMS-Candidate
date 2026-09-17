@@ -5,6 +5,7 @@ namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Sc
 use App\Models\ClosingDate;
 use App\Models\GeoLocation;
 use App\Support\DatePickerKeyboardInput;
+use App\Support\UserTypeOptions;
 use Chanthoeun\FilamentCustomForms\CustomFormPlugin;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Filament\Actions\Action;
@@ -89,7 +90,12 @@ class CustomFormEntryForm
                         ? ['personal_note']
                         : [];
 
-                    return self::getFields($rootFields, $isLocked, $hiddenFieldNames);
+                    return self::getFields(
+                        $rootFields,
+                        $isLocked,
+                        $hiddenFieldNames,
+                        CustomForm::isProfileSlug($customForm->slug ?? null)
+                    );
                 }),
         ]);
     }
@@ -120,7 +126,7 @@ class CustomFormEntryForm
         $formSelectionField = self::findFieldByName($rootFields, 'form_selection');
 
         if (! $formTypesSection || ! $formSelectionField) {
-            return self::getFields($rootFields, $isLocked);
+            return self::getFields($rootFields, $isLocked, [], CustomForm::isProfileSlug($customForm->slug ?? null));
         }
 
         $childForms = CustomForm::query()
@@ -145,7 +151,7 @@ class CustomFormEntryForm
             ->reject(fn ($field): bool => in_array((string) $field->name, ['form_types', 'form_selection'], true))
             ->values();
 
-        $parentSchema = self::getFields($parentFields, $isLocked, ['form_selection']);
+        $parentSchema = self::getFields($parentFields, $isLocked, ['form_selection'], true);
 
         $formTypeStepSchema = [];
 
@@ -162,7 +168,8 @@ class CustomFormEntryForm
                 ->reject(fn ($field): bool => (string) $field->name === 'form_selection')
                 ->values(),
             $isLocked,
-            ['form_selection']
+            ['form_selection'],
+            true
         );
 
         $formTypesSchema[] = Select::make('data.form_selection')
@@ -213,7 +220,7 @@ class CustomFormEntryForm
                 continue;
             }
 
-            $childSchema = self::getFields($childRootFields, $isLocked);
+            $childSchema = self::getFields($childRootFields, $isLocked, [], false);
 
             if (empty($childSchema)) {
                 continue;
@@ -282,7 +289,12 @@ class CustomFormEntryForm
             ->values();
     }
 
-    protected static function getFields($fields, bool $isLocked = false, array $hiddenFieldNames = []): array
+    protected static function getFields(
+        $fields,
+        bool $isLocked = false,
+        array $hiddenFieldNames = [],
+        bool $isProfileForm = false
+    ): array
     {
         $components = [];
 
@@ -302,20 +314,20 @@ class CustomFormEntryForm
 
             if ($type === 'section') {
                 $component = Section::make($isHiddenLabel ? null : $label)
-                    ->schema(self::getFields(self::uniqueFieldsForRender($fieldModel->children()->orderBy('sort')->get()), $isLocked, $hiddenFieldNames))
+                    ->schema(self::getFields(self::uniqueFieldsForRender($fieldModel->children()->orderBy('sort')->get()), $isLocked, $hiddenFieldNames, $isProfileForm))
                     ->columns($options['columns'] ?? 2);
             } elseif ($type === 'grid') {
                 $component = Grid::make($options['columns'] ?? 2)
-                    ->schema(self::getFields(self::uniqueFieldsForRender($fieldModel->children()->orderBy('sort')->get()), $isLocked, $hiddenFieldNames));
+                    ->schema(self::getFields(self::uniqueFieldsForRender($fieldModel->children()->orderBy('sort')->get()), $isLocked, $hiddenFieldNames, $isProfileForm));
             } elseif ($type === 'fieldset') {
                 $component = Fieldset::make($isHiddenLabel ? null : $label)
-                    ->schema(self::getFields(self::uniqueFieldsForRender($fieldModel->children()->orderBy('sort')->get()), $isLocked, $hiddenFieldNames))
+                    ->schema(self::getFields(self::uniqueFieldsForRender($fieldModel->children()->orderBy('sort')->get()), $isLocked, $hiddenFieldNames, $isProfileForm))
                     ->columns($options['columns'] ?? 2);
             } elseif ($type === 'wizard') {
                 $steps = [];
 
                 foreach (self::uniqueFieldsForRender($fieldModel->children()->orderBy('sort')->get()) as $child) {
-                    $stepFields = self::getFields(collect([$child]), $isLocked, $hiddenFieldNames);
+                    $stepFields = self::getFields(collect([$child]), $isLocked, $hiddenFieldNames, $isProfileForm);
 
                     if (empty($stepFields)) {
                         continue;
@@ -330,7 +342,7 @@ class CustomFormEntryForm
 
                 $component = Wizard::make($steps);
             } elseif ($type === 'repeater') {
-                $children = self::getFields(self::uniqueFieldsForRender($fieldModel->children()->orderBy('sort')->get()), $isLocked, $hiddenFieldNames);
+                $children = self::getFields(self::uniqueFieldsForRender($fieldModel->children()->orderBy('sort')->get()), $isLocked, $hiddenFieldNames, $isProfileForm);
 
                 if (empty($children)) {
                     continue;
@@ -485,7 +497,9 @@ class CustomFormEntryForm
                             $component = self::geoSelectComponent($name, $label, $options);
                         } else {
                             $component = Select::make("data.{$name}")
-                                ->options(self::transOptions($options['choices'] ?? []))
+                                ->options(self::transOptions(
+                                    self::profileSelectChoices($fieldModel, $options, $isProfileForm)
+                                ))
                                 ->native(false)
                                 ->dehydrated(true);
                         }
@@ -557,6 +571,49 @@ class CustomFormEntryForm
         }
 
         return $components;
+    }
+
+    protected static function profileSelectChoices(object $fieldModel, array $options, bool $isProfileForm): array
+    {
+        $fieldName = strtolower(trim((string) ($fieldModel->name ?? '')));
+        $choices = $options['choices'] ?? [];
+
+        if (
+            ! $isProfileForm
+            || ! in_array($fieldName, UserTypeOptions::HIGH_SCHOOL_DIPLOMA_ONLY_FIELD_NAMES, true)
+            || ! is_array($choices)
+        ) {
+            return $choices;
+        }
+
+        $restrictedRoles = $options['high_school_diploma_only_for_roles']
+            ?? UserTypeOptions::HIGH_SCHOOL_DIPLOMA_ONLY_ROLE_KEYS;
+        $user = auth()->user();
+
+        if (! is_array($restrictedRoles) || ! $user || ! method_exists($user, 'effectiveRoleNames')) {
+            return $choices;
+        }
+
+        $hasRestrictedRole = $user->effectiveRoleNames()
+            ->map(fn ($role): string => strtolower(trim((string) $role)))
+            ->intersect(collect($restrictedRoles)->map(
+                fn ($role): string => strtolower(trim((string) $role))
+            ))
+            ->isNotEmpty();
+
+        if (! $hasRestrictedRole) {
+            return $choices;
+        }
+
+        return collect($choices)
+            ->filter(function ($choice, $key): bool {
+                $value = is_array($choice)
+                    ? ($choice['value'] ?? $choice['id'] ?? $choice['key'] ?? $key)
+                    : (is_string($key) ? $key : $choice);
+
+                return (string) $value === 'high_school_diploma';
+            })
+            ->all();
     }
 
     protected static function isFieldInputEnabled(array $options): bool
