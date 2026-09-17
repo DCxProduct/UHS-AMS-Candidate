@@ -91,7 +91,6 @@ class StudentProfileSeeder extends Seeder
 
         $ethnicityOptions = [
             $this->opt('khmer', 'Khmer', 'ខ្មែរ'),
-            $this->opt('other', 'Other', 'ផ្សេងៗ'),
         ];
 
         $nationalityOptions = [
@@ -99,8 +98,7 @@ class StudentProfileSeeder extends Seeder
         ];
 
         $cultureLevelOptions = [
-            $this->opt('grade_9', 'Grade 9', 'ថ្នាក់ទី៩'),
-            $this->opt('grade_12', 'Grade 12', 'ថ្នាក់ទី១២'),
+            $this->opt('high_school_diploma', 'High School Diploma', 'សញ្ញាបត្រមធ្យមសិក្សាទុតិយភូមិ'),
             $this->opt('associate', 'Associate', 'បរិញ្ញាបត្ររង'),
             $this->opt('bachelor', 'Bachelor', 'បរិញ្ញាបត្រ'),
             $this->opt('master', 'Master', 'អនុបណ្ឌិត'),
@@ -115,7 +113,6 @@ class StudentProfileSeeder extends Seeder
         ];
 
         $degreeOptions = [
-            $this->opt('lower_secondary_education_diploma', 'Lower Secondary Education Diploma', 'សញ្ញាបត្រមធ្យមសិក្សាបឋមភូមិ'),
             $this->opt('high_school_diploma', 'High School Diploma', 'សញ្ញាបត្រមធ្យមសិក្សាទុតិយភូមិ'),
             $this->opt('associate', 'Associate', 'បរិញ្ញាបត្ររង'),
             $this->opt('bachelor', 'Bachelor', 'បរិញ្ញាបត្រ'),
@@ -125,7 +122,6 @@ class StudentProfileSeeder extends Seeder
 
         $countryOptions = [
             $this->opt('cambodia', 'Cambodia', 'កម្ពុជា'),
-            $this->opt('other', 'Other', 'ផ្សេងៗ'),
         ];
 
         $yearOptions = collect(range((int) date('Y'), 1970))
