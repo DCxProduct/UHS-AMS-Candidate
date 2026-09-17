@@ -20,6 +20,9 @@ return [
     'back' => 'ត្រឡប់ក្រោយ',
 
     'save_as_draft' => 'រក្សាទុកជាព្រាង',
+    'edit_profile' => 'កែសម្រួលប្រវត្តិរូប',
+    'profile_completed' => 'ប្រវត្តិរូបបានបំពេញដោយជោគជ័យ',
+    'profile_edit_heading' => 'កែប្រែ ប្រវត្តិរូប',
     'edit_draft' => 'កែសម្រួលព្រាង',
     'draft_saved' => 'បានរក្សាទុកជាព្រាង',
 

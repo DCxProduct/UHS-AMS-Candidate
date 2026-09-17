@@ -322,6 +322,8 @@ return [
             'application' => 'ពាក្យស្នើសុំ',
             'application_submitted_payment_title' => 'បានដាក់ស្នើពាក្យស្នើសុំ :form',
             'application_submitted_payment_body' => 'ពាក្យស្នើសុំ :form របស់អ្នកត្រូវបានដាក់ស្នើរួចរាល់ហើយ។ សូមទៅបង់ប្រាក់ក្នុងប្រព័ន្ធនិស្សិត។',
+            'payment_completed_title' => 'ការទូទាត់ប្រាក់បានជោគជ័យ',
+            'payment_completed_body' => 'ការទូទាត់ប្រាក់សម្រាប់ :form របស់អ្នកត្រូវបានកត់ត្រារួចរាល់។ សូមរង់ចាំលទ្ធផលប្រឡង។',
             'application_approved_title' => 'ពាក្យស្នើសុំ :form ត្រូវបានអនុម័ត',
             'application_approved_body' => 'ពាក្យស្នើសុំ :form របស់អ្នកត្រូវបានអនុម័តរួចរាល់។ សូមទៅបង់ថ្លៃសេវា។',
             'application_approved_body_no_payment' => 'ពាក្យស្នើសុំ :form របស់អ្នកត្រូវបានអនុម័តរួចរាល់ហើយ។',

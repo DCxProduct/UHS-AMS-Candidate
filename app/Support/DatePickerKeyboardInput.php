@@ -31,6 +31,12 @@ class DatePickerKeyboardInput
                         input.setAttribute('maxlength', '10');
                         input.setAttribute('pattern', '[0-9/]*');
 
+                        input.addEventListener('keydown', (event) => {
+                            if (['Backspace', 'Delete', 'Clear'].includes(event.key)) {
+                                event.stopPropagation();
+                            }
+                        }, true);
+
                         input.addEventListener('input', (event) => {
                             const rawValue = event.target.value;
                             const cursorPosition = event.target.selectionStart ?? rawValue.length;

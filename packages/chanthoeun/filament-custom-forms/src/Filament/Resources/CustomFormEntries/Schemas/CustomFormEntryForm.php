@@ -358,6 +358,10 @@ class CustomFormEntryForm
                     ->schema($children)
                     ->columns($options['columns'] ?? 1);
 
+                if ($isProfileForm) {
+                    $component->extraAttributes(['class' => 'uhs-profile-repeater-actions']);
+                }
+
                 if ((string) $fieldModel->name === 'siblings') {
                     $component
                         ->maxItems((int) ($options['max_items'] ?? 3))

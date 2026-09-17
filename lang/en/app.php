@@ -322,6 +322,8 @@ return [
             'application' => 'Application',
             'application_submitted_payment_title' => 'Application :form Submitted',
             'application_submitted_payment_body' => 'Your application for :form has been submitted. Please go to pay in the student system.',
+            'payment_completed_title' => 'Payment completed',
+            'payment_completed_body' => 'Your payment for :form has been recorded successfully. Please wait for the exam results.',
             'application_approved_title' => 'Application :form Approved',
             'application_approved_body' => 'Your :form application has been approved. Please go to pay the service fee.',
             'application_approved_body_no_payment' => 'Your application for :form has been approved.',

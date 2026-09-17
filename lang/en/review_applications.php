@@ -47,10 +47,11 @@ return [
         'cancel' => 'No',
     ],
 
-    'statuses' => [
-        'pending' => 'Pending',
-        'accepted' => 'Please go to cashier counter',
-        'rejected' => 'Incomplete',
+        'statuses' => [
+            'pending' => 'Pending',
+            'accepted' => 'Please go to cashier counter',
+            'paid' => 'Paid',
+            'rejected' => 'Incomplete',
         'send_back' => 'Send Back',
         'passed' => 'Passed',
         'failed' => 'Failed',

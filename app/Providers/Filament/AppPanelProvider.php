@@ -7,6 +7,7 @@ use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use App\Filament\Pages\Auth\Register;
 use App\Filament\Pages\Dashboard as AppDashboard;
 use App\Filament\Pages\Sync as SyncPage;
+use App\Filament\Livewire\DatabaseNotifications;
 use App\Filament\Student\Pages\ContactUs;
 use App\Filament\Student\Pages\MyProfile;
 use App\Http\Middleware\CheckUserActive;
@@ -56,7 +57,7 @@ class AppPanelProvider extends PanelProvider
             ->login(Login::class)
             ->registration(Register::class)
 
-            ->databaseNotifications()
+            ->databaseNotifications(livewireComponent: DatabaseNotifications::class)
             ->viteTheme('resources/css/filament/student/theme.css')
 
             ->favicon(asset('images/UHS_logo.png'))
