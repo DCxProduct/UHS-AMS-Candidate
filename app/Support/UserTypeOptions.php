@@ -15,6 +15,18 @@ class UserTypeOptions
     public const BASE_ROLE = 'candidate';
     public const DEFAULT_KEY = 'candidate';
 
+    public const HIGH_SCHOOL_DIPLOMA_ONLY_ROLE_KEYS = [
+        'national_entrance_exam_application_bachelor',
+        'national_entrance_exam_application_associate',
+        'national_exit_exam_application_bachelor',
+        'national_exit_exam_application_associate',
+    ];
+
+    public const HIGH_SCHOOL_DIPLOMA_ONLY_FIELD_NAMES = [
+        'culture_level',
+        'degree_level_major',
+    ];
+
     protected static bool $defaultsEnsured = false;
 
     protected static array $optionsCache = [];

@@ -182,16 +182,22 @@ class StudentDynamicFormSchema
             'radio' => Radio::make($name)->options($this->getSelectOptions($field, $config, null)),
             'checkbox' => Checkbox::make($name),
             'toggle' => Toggle::make($name),
-            'date', 'date_picker', 'datepicker' => DatePicker::make($name)
-                ->native(false)
-                ->displayFormat('d/m/Y'),
+            'date', 'date_picker', 'datepicker' => DatePickerKeyboardInput::apply(
+                DatePicker::make($name)->native(false)
+            ),
             'file', 'file_upload', 'fileupload' => FileUpload::make($name)
                 ->disk('public')
                 ->directory('student-custom-form-uploads'),
             default => TextInput::make($name),
         };
 
-        return $this->applyCommonConfig($component, $field, $config);
+        $component = $this->applyCommonConfig($component, $field, $config);
+
+        if (in_array($type, ['date', 'date_picker', 'datepicker'], true)) {
+            $component->placeholder(DatePickerKeyboardInput::placeholder());
+        }
+
+        return $component;
     }
 
     protected function applyCommonConfig($component, $field, array $config, bool $forceFullWidth = false)
