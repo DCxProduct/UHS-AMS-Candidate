@@ -2,6 +2,7 @@
 
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Pages;
 
+use App\Models\CandidateSubmitPopupSetting;
 use App\Models\User;
 use App\Support\NotificationLanguage;
 use App\Support\ProfileFormData;
@@ -21,6 +22,8 @@ class EditCustomFormEntry extends EditRecord
 
     protected bool $shouldResetToPendingAfterSave = false;
     protected bool $shouldNotifyAdminsAboutResubmission = false;
+
+    public bool $isEditingProfile = false;
 
     public ?string $wizard_step = null;
 
@@ -49,8 +52,11 @@ class EditCustomFormEntry extends EditRecord
         $status = $this->entryStatus();
 
         if ($slug === 'profile') {
-            return in_array($status, ['approved', 'rejected'], true)
-                || $this->studentHasReviewedNonProfileApplication();
+            if ($this->profileIsPermanentlyLocked()) {
+                return true;
+            }
+
+            return $status !== 'draft' && ! $this->isEditingProfile;
         }
 
         if (in_array($status, ['passed', 'accepted', 'approved', 'pending'], true)) {
@@ -64,25 +70,23 @@ class EditCustomFormEntry extends EditRecord
     {
         $actions = [];
 
-        if (! $this->isLockedForEditing()) {
-            $actions[] = Action::make('save')
-                ->label(__('app.done'))
-                ->color('primary')
-                ->keyBindings(['mod+s'])
-                ->requiresConfirmation()
-                ->modalHeading(__('app.confirm_submit_data'))
-                ->modalDescription(__('app.confirm_submit_data_description'))
-                ->modalSubmitActionLabel(__('app.yes'))
-                ->modalCancelActionLabel(__('app.no'))
-                ->action(function (): void {
-                    try {
-                        $this->save();
-                    } catch (ValidationException $exception) {
-                        $this->handleSubmitValidationException($exception);
-                    }
-                })
-                ->hidden(fn () => $this->hasWizardOnFirstStep());
-        }
+        $actions[] = Action::make('save')
+            ->label(__('app.done'))
+            ->color('primary')
+            ->keyBindings(['mod+s'])
+            ->requiresConfirmation()
+            ->modalHeading($this->submitPopupTitle())
+            ->modalDescription($this->submitPopupDescription())
+            ->modalSubmitActionLabel($this->submitPopupConfirmLabel())
+            ->modalCancelActionLabel($this->submitPopupCancelLabel())
+            ->action(function (): void {
+                try {
+                    $this->save();
+                } catch (ValidationException $exception) {
+                    $this->handleSubmitValidationException($exception);
+                }
+            })
+            ->hidden(fn () => $this->isLockedForEditing() || $this->hasWizardOnFirstStep());
 
         $actions[] = Action::make('back')
             ->label(__('student_profile.back'))
@@ -95,8 +99,26 @@ class EditCustomFormEntry extends EditRecord
 
     protected function getHeaderActions(): array
     {
-        return [
-            Action::make('save_draft')
+        $actions = [];
+
+        if ($this->canEditSubmittedProfile()) {
+            $actions[] = Action::make('edit_profile')
+                ->label(__('student_profile.edit_profile'))
+                ->color('info')
+                ->action(function (): void {
+                    $this->isEditingProfile = true;
+                });
+        }
+
+        if ($this->record->customForm?->slug === 'profile') {
+            $actions[] = Action::make('back_to_profile_list')
+                ->label(__('student_profile.back'))
+                ->color('success')
+                ->url($this->getBackUrl())
+                ->hidden(fn () => $this->isLockedForEditing() && ! $this->isEditingProfile);
+        }
+
+        $actions[] = Action::make('save_draft')
                 ->label(__('student_profile.save_as_draft'))
                 ->color('info')
                 ->hidden(fn () => $this->isLockedForEditing() || $this->hasWizardOnFirstStep() || $this->entryStatus() !== 'draft')
@@ -131,8 +153,9 @@ class EditCustomFormEntry extends EditRecord
                     $this->redirect(CustomFormEntryResource::getUrl('edit', [
                         'record' => $this->record->id,
                     ]));
-                }),
-        ];
+                });
+
+        return $actions;
     }
 
     protected function mutateFormDataBeforeSave(array $data): array
@@ -217,8 +240,55 @@ class EditCustomFormEntry extends EditRecord
             ->update($update);
 
         $this->record->refresh();
+        $this->isEditingProfile = false;
         $this->notifyAdminsAboutResubmissionIfNeeded($this->record);
         $this->sendStudentSubmitPaymentNotificationIfNeeded($this->record);
+    }
+
+    protected function canEditSubmittedProfile(): bool
+    {
+        return $this->record->customForm?->slug === 'profile'
+            && $this->entryStatus() !== 'draft'
+            && ! $this->profileIsPermanentlyLocked();
+    }
+
+    protected function profileIsPermanentlyLocked(): bool
+    {
+        return in_array($this->entryStatus(), ['approved', 'rejected'], true)
+            || $this->studentHasReviewedNonProfileApplication();
+    }
+
+    protected function submitPopupTitle(): string
+    {
+        return $this->submitPopupSetting()?->localizedTitle()
+            ?: __('app.confirm_submit_data');
+    }
+
+    protected function submitPopupDescription(): string
+    {
+        return $this->submitPopupSetting()?->localizedDescription()
+            ?: __('app.confirm_submit_data_description');
+    }
+
+    protected function submitPopupConfirmLabel(): string
+    {
+        return $this->submitPopupSetting()?->localizedConfirmLabel()
+            ?: __('app.yes');
+    }
+
+    protected function submitPopupCancelLabel(): string
+    {
+        return $this->submitPopupSetting()?->localizedCancelLabel()
+            ?: __('app.no');
+    }
+
+    protected function submitPopupSetting(): ?CandidateSubmitPopupSetting
+    {
+        if (! Schema::hasTable('candidate_submit_popup_settings')) {
+            return null;
+        }
+
+        return CandidateSubmitPopupSetting::singleton();
     }
 
     protected function studentHasReviewedNonProfileApplication(): bool
@@ -374,6 +444,17 @@ class EditCustomFormEntry extends EditRecord
 
     public function getHeading(): string|\Illuminate\Contracts\Support\Htmlable
     {
+        if (
+            $this->isLockedForEditing()
+            && CustomForm::isProfileSlug($this->getRecord()->customForm?->slug ?? null)
+        ) {
+            return __('student_profile.profile_completed');
+        }
+
+        if (CustomForm::isProfileSlug($this->getRecord()->customForm?->slug ?? null)) {
+            return __('student_profile.profile_edit_heading');
+        }
+
         $prefix = $this->isLockedForEditing()
             ? (app()->getLocale() === 'km' ? 'មើល ' : 'View ')
             : (app()->getLocale() === 'km' ? 'កែប្រែ ' : 'Edit ');

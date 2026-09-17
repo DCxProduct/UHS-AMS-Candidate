@@ -301,6 +301,12 @@ class CreateCustomFormEntry extends CreateRecord
             $customForm = CustomForm::find($this->form_id);
 
             if ($customForm) {
+                if (CustomForm::isProfileSlug($customForm->slug ?? null)) {
+                    return __('filament-custom-forms::fcf.entry.action.create', [
+                        'name' => __('navigation.forms.profile'),
+                    ]);
+                }
+
                 if (app()->getLocale() === 'km') {
                     return 'បង្កើត ' . $this->transText($customForm->name);
                 }

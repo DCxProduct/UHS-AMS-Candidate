@@ -20,6 +20,9 @@ return [
     'back' => 'Back',
 
     'save_as_draft' => 'Save Draft',
+    'edit_profile' => 'Edit Profile',
+    'profile_completed' => 'Profile Completed',
+    'profile_edit_heading' => 'Edit Profile',
     'edit_draft' => 'Edit Draft',
     'draft_saved' => 'Draft saved',
 
