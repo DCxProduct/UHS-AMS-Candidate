@@ -23,6 +23,7 @@ class EditCustomFormEntry extends EditRecord
     protected bool $shouldResetToPendingAfterSave = false;
     protected bool $shouldNotifyAdminsAboutResubmission = false;
 
+    #[\Livewire\Attributes\Url(as: 'profile_edit', except: false)]
     public bool $isEditingProfile = false;
 
     public ?string $wizard_step = null;
