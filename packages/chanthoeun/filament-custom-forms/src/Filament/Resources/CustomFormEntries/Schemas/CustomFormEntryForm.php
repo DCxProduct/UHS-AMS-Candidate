@@ -4,6 +4,7 @@ namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Sc
 
 use App\Models\ClosingDate;
 use App\Models\GeoLocation;
+use App\Support\DatePickerKeyboardInput;
 use Chanthoeun\FilamentCustomForms\CustomFormPlugin;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Filament\Actions\Action;
@@ -415,11 +416,10 @@ class CustomFormEntryForm
                         break;
 
                     case 'date_picker':
-                        $component = DatePicker::make("data.{$name}")
-                            ->native(false)
-                            ->displayFormat('d/m/Y')
+                        $component = DatePickerKeyboardInput::apply(
+                            DatePicker::make("data.{$name}")->native(false)
+                        )
                             ->format('Y-m-d')
-                            ->placeholder('ថ្ងៃ/ខែ/ឆ្នាំ')
                             ->suffixIcon('heroicon-o-calendar-days');
 
                         if (isset($options['max_date']) && $options['max_date'] === 'today') {
@@ -504,7 +504,7 @@ class CustomFormEntryForm
                 if ($component) {
                     $component->label($label);
 
-                    if (! $isLocked && ! in_array($type, ['select', 'select_dropdown'], true)) {
+                    if (! $isLocked && ! in_array($type, ['select', 'select_dropdown', 'date_picker'], true)) {
                         $placeholder = self::resolvePlaceholder($fieldModel, $options);
 
                         if (filled($placeholder) && method_exists($component, 'placeholder')) {
