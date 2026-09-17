@@ -6,7 +6,7 @@ return [
         'create' => 'Create',
         'update' => 'Update',
         'delete' => 'Delete',
-        'view_slip' => 'View Slip',
+        'view_slip' => 'View Receipt',
         'download_excel' => 'Download Excel',
         'clear_data' => 'Clear Data',
         'pay' => 'Pay',
