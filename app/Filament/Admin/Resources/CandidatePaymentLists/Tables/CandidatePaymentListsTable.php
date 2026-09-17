@@ -7,10 +7,12 @@ use App\Models\UnpaidApplication;
 use App\Models\ExchangeRate;
 use App\Models\Payment;
 use App\Models\PaymentType;
+use App\Models\User;
 use App\Support\FilamentActionPermissions;
 use App\Support\FormEntryData;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
+use App\Support\NotificationLanguage;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormField;
 use Filament\Actions\Action;
@@ -370,6 +372,7 @@ class CandidatePaymentListsTable
                         }
 
                         Payment::query()->create($paymentData);
+                        self::notifyStudentPaymentCompleted($record);
 
                         Notification::make()
                             ->title(__('payments.actions.record_payment'))
@@ -852,6 +855,42 @@ class CandidatePaymentListsTable
         }
 
         return null;
+    }
+
+    protected static function notifyStudentPaymentCompleted(UnpaidApplication $record): void
+    {
+        $studentId = self::ownerId($record);
+
+        if (! $studentId) {
+            return;
+        }
+
+        $student = User::query()
+            ->whereKey($studentId)
+            ->where('registration_type', 'student')
+            ->first();
+
+        if (! $student) {
+            return;
+        }
+
+        $formName = $record->customForm?->display_name
+            ?: CustomForm::localeText($record->customForm?->name);
+
+        Notification::make()
+            ->title(NotificationLanguage::transForUser(
+                $student,
+                'app.custom_form_entry_ui.notifications.payment_completed_title'
+            ))
+            ->body(NotificationLanguage::transForUser(
+                $student,
+                'app.custom_form_entry_ui.notifications.payment_completed_body',
+                ['form' => $formName]
+            ))
+            ->icon('heroicon-o-check-circle')
+            ->iconColor('success')
+            ->success()
+            ->sendToDatabase($student);
     }
 
     protected static function applyPaymentOwnerMatch(QueryBuilder $query): QueryBuilder

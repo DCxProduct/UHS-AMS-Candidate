@@ -3,6 +3,7 @@
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Tables;
 
 use App\Filament\Admin\Resources\CandidatePaymentLists\CandidatePaymentListResource;
+use App\Models\Payment;
 use App\Support\AuditLogger;
 use App\Support\FilamentActionPermissions;
 use App\Support\FormEntryData;
@@ -518,22 +519,39 @@ class CustomFormEntriesTable
         return TextColumn::make('review_status')
             ->label(__('review_applications.review_status'))
             ->badge()
-            ->formatStateUsing(function ($state, $record): string {
-                return match (self::entryStatus($record)) {
+            ->getStateUsing(fn ($record): string => self::displayStatus($record))
+            ->formatStateUsing(function ($state): string {
+                return match ($state) {
                     'passed', 'accepted', 'approved' => __('review_applications.statuses.accepted'),
+                    'paid' => __('review_applications.statuses.paid'),
                     'failed', 'rejected' => __('review_applications.statuses.rejected'),
                     'draft' => __('student_profile.save_as_draft'),
                     default => __('review_applications.statuses.pending'),
                 };
             })
-            ->color(function ($state, $record): string {
-                return match (self::entryStatus($record)) {
+            ->color(function ($state): string {
+                return match ($state) {
                     'passed', 'accepted', 'approved' => 'success',
+                    'paid' => 'success',
                     'failed', 'rejected' => 'danger',
                     'draft' => 'gray',
                     default => 'warning',
                 };
             });
+    }
+
+    protected static function displayStatus($record): string
+    {
+        $status = self::entryStatus($record);
+
+        if (
+            in_array($status, ['passed', 'accepted', 'approved'], true)
+            && (! self::entryRequiresPayment($record) || self::entryHasPaidPayment($record))
+        ) {
+            return 'paid';
+        }
+
+        return $status;
     }
 
     protected static function entryStatus($record): string
@@ -550,6 +568,47 @@ class CustomFormEntriesTable
         }
 
         return $reviewStatus ?: $dataStatus ?: 'pending';
+    }
+
+    protected static function entryHasPaidPayment($record): bool
+    {
+        if (! Schema::hasTable('payments')) {
+            return false;
+        }
+
+        if (Schema::hasColumn('payments', 'custom_form_entry_id')) {
+            return filled($record->getKey())
+                && Payment::query()
+                    ->where('custom_form_entry_id', $record->getKey())
+                    ->where('status_payt', 'paid')
+                    ->exists();
+        }
+
+        if (blank($record->custom_form_id)) {
+            return false;
+        }
+
+        $ownerColumns = collect(['created_by', 'user_id', 'created_by_id'])
+            ->filter(fn (string $column): bool => Schema::hasColumn('custom_form_entries', $column))
+            ->values();
+
+        if ($ownerColumns->isEmpty()) {
+            return false;
+        }
+
+        $ownerId = $ownerColumns
+            ->map(fn (string $column): mixed => $record->{$column})
+            ->first(fn (mixed $value): bool => filled($value));
+
+        if (blank($ownerId)) {
+            return false;
+        }
+
+        return Payment::query()
+            ->where('form_id', $record->custom_form_id)
+            ->where('users_id', $ownerId)
+            ->where('status_payt', 'paid')
+            ->exists();
     }
 
     protected static function reviewMessage($record): string

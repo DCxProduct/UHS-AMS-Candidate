@@ -456,18 +456,8 @@ class CreateCustomFormEntry extends CreateRecord
     {
         $customForm = $this->form_id ? CustomForm::find($this->form_id) : null;
 
-        if ($customForm && ! (bool) ($customForm->requires_payment ?? true)) {
-            return __('app.custom_form_entry_ui.notifications.application_submitted_payment_body', [
-                'form' => $this->transText($customForm->name),
-            ]);
-        }
-
         if ($customForm) {
-            $formName = $this->transText($customForm->name);
-
-            return app()->getLocale() === 'km'
-                ? "បានបង្កើត {$formName} បានជោគជ័យ"
-                : "Created {$formName} successfully";
+            return __('filament-actions::create.single.notifications.created.title');
         }
 
         return parent::getCreatedNotificationTitle();
