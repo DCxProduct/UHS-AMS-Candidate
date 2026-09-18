@@ -149,6 +149,19 @@ class StudentProfileSeeder extends Seeder
 
         $sort = 1;
 
+        $profileWizard = $this->upsertField(
+            $customFormId,
+            'profile_steps',
+            $this->t('Profile Information Steps', 'ជំហានបំពេញប្រវត្តិរូប'),
+            'wizard',
+            false,
+            ['columns' => 2, 'column_span_full' => true, 'skippable' => false],
+            null,
+            $sort++,
+        );
+
+        $keepNames[] = 'profile_steps';
+
         $personalSection = $this->upsertField(
             $customFormId,
             'personal_information',
@@ -156,7 +169,7 @@ class StudentProfileSeeder extends Seeder
             'section',
             false,
             ['columns' => 2, 'column_span_full' => true],
-            null,
+            $profileWizard,
             $sort++,
         );
 
@@ -212,7 +225,7 @@ class StudentProfileSeeder extends Seeder
             'section',
             false,
             ['columns' => 2, 'column_span_full' => true],
-            null,
+            $profileWizard,
             $sort++,
         );
 
@@ -262,7 +275,6 @@ class StudentProfileSeeder extends Seeder
             [
                 'columns' => 2,
                 'column_span_full' => true,
-                'max_items' => 3,
                 'add_action_label_en' => 'Add Sibling',
                 'add_action_label_km' => 'បន្ថែមបងប្អូន',
             ],
@@ -308,7 +320,7 @@ class StudentProfileSeeder extends Seeder
             'section',
             false,
             ['columns' => 2, 'column_span_full' => true],
-            null,
+            $profileWizard,
             $sort++,
         );
 
@@ -348,7 +360,7 @@ class StudentProfileSeeder extends Seeder
             'section',
             false,
             ['columns' => 2, 'column_span_full' => true],
-            null,
+            $profileWizard,
             $sort++,
         );
 
@@ -363,7 +375,6 @@ class StudentProfileSeeder extends Seeder
             [
                 'columns' => 2,
                 'column_span_full' => true,
-                'max_items' => 3,
                 'add_action_label_en' => 'Add Work History',
                 'add_action_label_km' => 'បន្ថែមប្រវត្តិការងារ',
             ],

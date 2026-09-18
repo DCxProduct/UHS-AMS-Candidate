@@ -508,8 +508,33 @@ class StudentDynamicFormPage extends Page implements HasForms
             $query->orderBy('id');
         }
 
-        return $query
-            ->get()
+        $sectionFields = $query->get();
+
+        $wizard = $sectionFields->first(function ($field): bool {
+            $type = Str::of((string) ($field->type ?? $field->field_type ?? ''))
+                ->lower()
+                ->replace('-', '_')
+                ->snake()
+                ->toString();
+
+            return $type === 'wizard';
+        });
+
+        if ($wizard && $parentColumn) {
+            $stepQuery = DB::table('custom_form_fields')
+                ->where($formColumn, $this->customForm->id)
+                ->where($parentColumn, $wizard->id);
+
+            if ($sortColumn) {
+                $stepQuery->orderBy($sortColumn);
+            } else {
+                $stepQuery->orderBy('id');
+            }
+
+            $sectionFields = $stepQuery->get();
+        }
+
+        return $sectionFields
             ->filter(function ($field): bool {
                 $type = Str::of((string) ($field->type ?? $field->field_type ?? ''))
                     ->lower()

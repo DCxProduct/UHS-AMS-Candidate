@@ -70,27 +70,32 @@ class CreateCustomFormEntry extends CreateRecord
             Action::make('save_draft')
                 ->label(__('student_profile.save_as_draft'))
                 ->color('info')
-                ->hidden(fn () => $this->hasWizardOnFirstStep())
+                ->hidden(fn () => $this->hasWizardOnFirstStep() && ! $this->isProfileForm())
                 ->action(function (): void {
                     $this->isSavingDraft = true;
 
-                    $data = $this->rawFormState();
+                    $data = $this->form->getStateSnapshot();
+                    $data = array_replace_recursive($this->rawFormState(), $data);
                     $data = $this->mutateFormDataBeforeCreate($data);
 
                     $data['review_status'] = 'draft';
                     $data['data'] = $data['data'] ?? [];
                     $data['data']['registration_status'] = 'draft';
 
+                    if (Schema::hasColumn('custom_form_entries', 'created_by')) {
+                        $data['created_by'] = auth()->id();
+                    }
+
                     if (Schema::hasColumn('custom_form_entries', 'status')) {
                         $data['status'] = 'draft';
                     }
 
                     if ($this->draftEntryId) {
-                        CustomFormEntry::query()
-                            ->where('id', $this->draftEntryId)
-                            ->update($data);
+                        $record = CustomFormEntry::query()->findOrFail($this->draftEntryId);
+                        $record->forceFill($data)->save();
                     } else {
                         $record = CustomFormEntry::query()->create($data);
+                        $record->forceFill($data)->save();
                         $this->draftEntryId = $record->id;
                     }
 
@@ -143,7 +148,7 @@ class CreateCustomFormEntry extends CreateRecord
                 ->modalDescription($this->submitPopupDescription())
                 ->modalSubmitActionLabel($this->submitPopupConfirmLabel())
                 ->modalCancelActionLabel($this->submitPopupCancelLabel())
-                ->hidden(fn () => $this->hasWizardOnFirstStep())
+                ->hidden(fn () => ! $this->isLastWizardStep())
                 ->action(function (): void {
                     $state = $this->rawFormState();
 
@@ -445,6 +450,51 @@ class CreateCustomFormEntry extends CreateRecord
         }
 
         return $wizard->getCurrentStepIndex() === 0;
+    }
+
+    protected function isLastWizardStep(): bool
+    {
+        if (! isset($this->form)) {
+            return false;
+        }
+
+        $wizard = $this->form->getComponent(fn ($component) => $component instanceof \Filament\Schemas\Components\Wizard);
+
+        if (! $wizard) {
+            return true;
+        }
+
+        $steps = $wizard->getChildSchema()->getComponents();
+
+        if ($steps === []) {
+            return false;
+        }
+
+        $step = $this->wizard_step;
+
+        if ($step) {
+            foreach ($steps as $index => $stepComponent) {
+                if (\Illuminate\Support\Str::endsWith($step, $stepComponent->getId()) || \Illuminate\Support\Str::endsWith($step, $stepComponent->getKey())) {
+                    return $index === count($steps) - 1;
+                }
+            }
+        }
+
+        return $wizard->getCurrentStepIndex() === count($steps) - 1;
+    }
+
+    protected function isProfileForm(): bool
+    {
+        $customFormId = $this->form_id
+            ?? data_get($this->rawFormState(), 'custom_form_id');
+
+        if (! $customFormId) {
+            return false;
+        }
+
+        return CustomForm::isProfileSlug(
+            CustomForm::query()->whereKey($customFormId)->value('slug')
+        );
     }
 
     protected function rawFormState(): array
