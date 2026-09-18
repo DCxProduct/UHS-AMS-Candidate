@@ -9,14 +9,14 @@ class DatePickerKeyboardInput
     public static function placeholder(): string
     {
         return strtolower((string) app()->getLocale()) === 'km'
-            ? 'ថ្ងៃ/ខែ/ឆ្នាំ'
-            : 'dd/mm/yyyy';
+            ? 'ថ្ងៃ-ខែ-ឆ្នាំ'
+            : 'dd-mm-yyyy';
     }
 
     public static function apply(DatePicker $component): DatePicker
     {
         return $component
-            ->displayFormat('d/m/Y')
+            ->displayFormat('d-m-Y')
             ->placeholder(static::placeholder())
             ->extraAlpineAttributes([
                 'x-init' => <<<'JS'
@@ -29,7 +29,7 @@ class DatePickerKeyboardInput
                         input.setAttribute('inputmode', 'numeric');
                         input.setAttribute('autocomplete', 'off');
                         input.setAttribute('maxlength', '10');
-                        input.setAttribute('pattern', '[0-9/]*');
+                        input.setAttribute('pattern', '[0-9-]*');
 
                         input.addEventListener('keydown', (event) => {
                             if (['Backspace', 'Delete', 'Clear'].includes(event.key)) {
@@ -48,9 +48,9 @@ class DatePickerKeyboardInput
                             let value = digits;
 
                             if (digits.length > 4) {
-                                value = `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+                                value = `${digits.slice(0, 2)}-${digits.slice(2, 4)}-${digits.slice(4)}`;
                             } else if (digits.length > 2) {
-                                value = `${digits.slice(0, 2)}/${digits.slice(2)}`;
+                                value = `${digits.slice(0, 2)}-${digits.slice(2)}`;
                             }
 
                             event.target.value = value;
@@ -66,16 +66,16 @@ class DatePickerKeyboardInput
                                 event.target.setSelectionRange(nextCursorPosition, nextCursorPosition);
                             }
 
-                            if (!/^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
+                            if (!/^\d{2}-\d{2}-\d{4}$/.test(value)) {
                                 event.target.setCustomValidity('');
                                 event.target.setAttribute('aria-invalid', 'false');
                                 return;
                             }
 
-                            const date = window.dayjs(value, 'DD/MM/YYYY', true);
+                            const date = window.dayjs(value, 'DD-MM-YYYY', true);
 
                             if (!date.isValid() || picker.dateIsDisabled(date)) {
-                                event.target.setCustomValidity('Please enter a valid date in dd/mm/yyyy.');
+                                event.target.setCustomValidity('Please enter a valid date in dd-mm-yyyy.');
                                 event.target.setAttribute('aria-invalid', 'true');
 
                                 return;
@@ -92,10 +92,10 @@ class DatePickerKeyboardInput
 
                         input.addEventListener('blur', (event) => {
                             const value = event.target.value;
-                            const date = window.dayjs(value, 'DD/MM/YYYY', true);
+                            const date = window.dayjs(value, 'DD-MM-YYYY', true);
                             const isValid = value === '' || (date.isValid() && ! picker.dateIsDisabled(date));
 
-                            event.target.setCustomValidity(isValid ? '' : 'Please enter a valid date in dd/mm/yyyy.');
+                            event.target.setCustomValidity(isValid ? '' : 'Please enter a valid date in dd-mm-yyyy.');
                             event.target.setAttribute('aria-invalid', isValid ? 'false' : 'true');
                         }, true);
                     }
