@@ -83,11 +83,29 @@ class StudentProfileSeeder extends Seeder
         $marriedStatusOptions = [
             $this->opt('single', 'Single', 'នៅលីវ'),
             $this->opt('married', 'Married', 'រៀបការ'),
+            $this->opt('widow', 'Widow', 'មេម៉ាយ / ពោះម៉ាយ'),
+            $this->opt('divorce', 'Divorce', 'លែងលះ'),
         ];
 
         $parentStatusOptions = [
             $this->opt('alive', 'Alive', 'នៅរស់'),
             $this->opt('deceased', 'Deceased', 'ទទួលមរណភាព'),
+        ];
+
+        $fatherAliveOnly = [
+            'visible_when' => [
+                'field' => 'father_status',
+                'operator' => '!=',
+                'value' => 'deceased',
+            ],
+        ];
+
+        $motherAliveOnly = [
+            'visible_when' => [
+                'field' => 'mother_status',
+                'operator' => '!=',
+                'value' => 'deceased',
+            ],
         ];
 
         $ethnicityOptions = [
@@ -110,7 +128,6 @@ class StudentProfileSeeder extends Seeder
             'buddhism' => $this->t('Buddhism', 'ព្រះពុទ្ធសាសនា'),
             'islam' => $this->t('Islam', 'សាសនាអ៊ីស្លាម'),
             'christianity' => $this->t('Christianity', 'សាសនាគ្រិស្ត'),
-            'other' => $this->t('Other', 'ផ្សេងៗ'),
         ];
 
         $degreeOptions = [
@@ -207,18 +224,18 @@ class StudentProfileSeeder extends Seeder
             ['name' => 'father_ethnicity', 'label' => $this->t("Father's Ethnicity", 'ជនជាតិឪពុក'), 'type' => 'select_dropdown', 'options' => ['choices' => $ethnicityOptions]],
             ['name' => 'father_nationality', 'label' => $this->t("Father's Nationality", 'សញ្ជាតិឪពុក'), 'type' => 'select_dropdown', 'options' => ['choices' => $nationalityOptions]],
             ['name' => 'father_status', 'label' => $this->t("Father's Status", 'ស្ថានភាពឪពុក'), 'type' => 'select_dropdown', 'options' => ['choices' => $parentStatusOptions]],
-            ['name' => 'father_occupation', 'label' => $this->t("Father's Occupation", 'មុខរបរឪពុក'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Father Occupation', 'placeholder_km' => 'បញ្ចូលមុខរបរឪពុក']],
-            ['name' => 'father_place_of_work', 'label' => $this->t("Father's Place of Work", 'ទីកន្លែងធ្វើការឪពុក'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Father Place of Work', 'placeholder_km' => 'បញ្ចូលទីកន្លែងធ្វើការឪពុក']],
-            ['name' => 'father_phone_number', 'label' => $this->t("Father's Phone Number", 'លេខទូរស័ព្ទឪពុក'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Father Phone Number', 'placeholder_km' => 'បញ្ចូលលេខទូរស័ព្ទឪពុក']],
+            ['name' => 'father_occupation', 'label' => $this->t("Father's Occupation", 'មុខរបរឪពុក'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Father Occupation', 'placeholder_km' => 'បញ្ចូលមុខរបរឪពុក', ...$fatherAliveOnly]],
+            ['name' => 'father_place_of_work', 'label' => $this->t("Father's Place of Work", 'ទីកន្លែងធ្វើការឪពុក'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Father Place of Work', 'placeholder_km' => 'បញ្ចូលទីកន្លែងធ្វើការឪពុក', ...$fatherAliveOnly]],
+            ['name' => 'father_phone_number', 'label' => $this->t("Father's Phone Number", 'លេខទូរស័ព្ទឪពុក'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Father Phone Number', 'placeholder_km' => 'បញ្ចូលលេខទូរស័ព្ទឪពុក', ...$fatherAliveOnly]],
 
             ['name' => 'mother_name', 'label' => $this->t("Mother's Name", 'ឈ្មោះម្ដាយ'), 'type' => 'text_input', 'required' => true, 'options' => ['placeholder_en' => 'Enter Mother Name', 'placeholder_km' => 'បញ្ចូលឈ្មោះម្ដាយ']],
             ['name' => 'mother_date_of_birth', 'label' => $this->t("Mother's Date of Birth", 'ថ្ងៃខែឆ្នាំកំណើតម្ដាយ'), 'type' => 'date_picker', 'options' => ['placeholder_en' => 'Enter Mother Date of Birth', 'placeholder_km' => 'ជ្រើសរើសថ្ងៃខែឆ្នាំកំណើតម្ដាយ', 'max_date' => 'today']],
             ['name' => 'mother_ethnicity', 'label' => $this->t("Mother's Ethnicity", 'ជនជាតិម្ដាយ'), 'type' => 'select_dropdown', 'options' => ['choices' => $ethnicityOptions]],
             ['name' => 'mother_nationality', 'label' => $this->t("Mother's Nationality", 'សញ្ជាតិម្ដាយ'), 'type' => 'select_dropdown', 'options' => ['choices' => $nationalityOptions]],
             ['name' => 'mother_status', 'label' => $this->t("Mother's Status", 'ស្ថានភាពម្ដាយ'), 'type' => 'select_dropdown', 'options' => ['choices' => $parentStatusOptions]],
-            ['name' => 'mother_occupation', 'label' => $this->t("Mother's Occupation", 'មុខរបរម្ដាយ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Mother Occupation', 'placeholder_km' => 'បញ្ចូលមុខរបរម្ដាយ']],
-            ['name' => 'mother_place_of_work', 'label' => $this->t("Mother's Place of Work", 'ទីកន្លែងធ្វើការម្ដាយ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Mother Place of Work', 'placeholder_km' => 'បញ្ចូលទីកន្លែងធ្វើការម្ដាយ']],
-            ['name' => 'mother_phone_number', 'label' => $this->t("Mother's Phone Number", 'លេខទូរស័ព្ទម្ដាយ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Mother Phone Number', 'placeholder_km' => 'បញ្ចូលលេខទូរស័ព្ទម្ដាយ']],
+            ['name' => 'mother_occupation', 'label' => $this->t("Mother's Occupation", 'មុខរបរម្ដាយ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Mother Occupation', 'placeholder_km' => 'បញ្ចូលមុខរបរម្ដាយ', ...$motherAliveOnly]],
+            ['name' => 'mother_place_of_work', 'label' => $this->t("Mother's Place of Work", 'ទីកន្លែងធ្វើការម្ដាយ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Mother Place of Work', 'placeholder_km' => 'បញ្ចូលទីកន្លែងធ្វើការម្ដាយ', ...$motherAliveOnly]],
+            ['name' => 'mother_phone_number', 'label' => $this->t("Mother's Phone Number", 'លេខទូរស័ព្ទម្ដាយ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter Mother Phone Number', 'placeholder_km' => 'បញ្ចូលលេខទូរស័ព្ទម្ដាយ', ...$motherAliveOnly]],
 
             ['name' => 'parents_current_address_heading', 'label' => $this->t('Parents Current Address', 'អាសយដ្ឋានបច្ចុប្បន្នរបស់ឪពុកម្ដាយ'), 'type' => 'info', 'options' => ['content' => $this->t('Parents Current Address', 'អាសយដ្ឋានបច្ចុប្បន្នរបស់ឪពុកម្ដាយ'), 'column_span_full' => true, 'is_hidden_label' => true]],
             ['name' => 'parents_house_number', 'label' => $this->t('House Number', 'លេខផ្ទះ'), 'type' => 'text_input', 'options' => ['placeholder_en' => 'Enter House Number', 'placeholder_km' => 'បញ្ចូលលេខផ្ទះ']],
