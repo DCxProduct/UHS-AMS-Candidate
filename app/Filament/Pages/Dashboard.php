@@ -52,6 +52,10 @@ class Dashboard extends BaseDashboard
             return __('dashboard.cashier_subheading');
         }
 
+        if ($this->isRegistrarDashboardUser()) {
+            return __('dashboard.registrar_subheading');
+        }
+
         if ($this->isStudentDashboardUser()) {
             return __('dashboard.student_subheading');
         }
@@ -85,6 +89,14 @@ class Dashboard extends BaseDashboard
             ];
         }
 
+        if ($this->isRegistrarDashboardUser()) {
+            return [
+                AdminStatsOverview::class,
+                AdminMenuOverview::class,
+                AdminSidebarFormsTable::class,
+            ];
+        }
+
         if (! $this->isStudentDashboardUser()) {
             return [];
         }
@@ -114,6 +126,11 @@ class Dashboard extends BaseDashboard
     protected function isCashierDashboardUser(): bool
     {
         return DashboardUserAccess::isCashier(auth()->user());
+    }
+
+    protected function isRegistrarDashboardUser(): bool
+    {
+        return DashboardUserAccess::isRegistrar(auth()->user());
     }
 
     protected function isStudentDashboardUser(): bool

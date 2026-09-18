@@ -23,7 +23,7 @@ class AdminSidebarFormsTable extends TableWidget
 
     public static function canView(): bool
     {
-        return auth()->user()?->hasEffectiveRole(['admin', 'cashier']) ?? false;
+        return auth()->user()?->hasEffectiveRole(['admin', 'cashier', 'registrar']) ?? false;
     }
 
     public function table(Table $table): Table

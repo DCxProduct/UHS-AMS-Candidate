@@ -18,7 +18,7 @@ class AdminStatsOverview extends StatsOverviewWidget
 
     public static function canView(): bool
     {
-        return auth()->user()?->hasEffectiveRole('admin') ?? false;
+        return auth()->user()?->hasEffectiveRole(['admin', 'registrar']) ?? false;
     }
 
     protected function getStats(): array

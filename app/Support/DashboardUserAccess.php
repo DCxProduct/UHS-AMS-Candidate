@@ -26,6 +26,11 @@ class DashboardUserAccess
         return $user?->hasEffectiveRole('cashier') ?? false;
     }
 
+    public static function isRegistrar(?User $user): bool
+    {
+        return $user?->hasEffectiveRole('registrar') ?? false;
+    }
+
     public static function isCandidate(?User $user): bool
     {
         if (! $user || (string) $user->registration_type !== 'student') {

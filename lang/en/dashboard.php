@@ -7,6 +7,7 @@ return [
 
     'admin_subheading' => 'Monitor candidate accounts, submissions, and application reviews.',
     'cashier_subheading' => 'Track payment lists, payment records, and cashier work items.',
+    'registrar_subheading' => 'Review candidate submissions, exam outcomes, forms, and registration settings.',
     'student_subheading' => 'Track your application forms, submissions, and progress.',
     'staff_subheading' => 'No dashboard tracking data is available for this role.',
     'no_tracking_title' => 'No dashboard data',
@@ -129,6 +130,9 @@ return [
     'view_active_users' => 'View active users',
     'management_overview' => 'Management Overview',
     'management_overview_description' => 'Administrative sections and quick access links.',
+    'registrar_workspace' => 'Registrar Workspace',
+    'registrar_overview' => 'Registration Overview',
+    'registrar_overview_description' => 'Review candidate records, manage application workflows, and maintain registration settings.',
     'quick_access' => 'Quick Access',
     'available_forms' => 'Available forms',
     'application_count' => 'Application Count',
