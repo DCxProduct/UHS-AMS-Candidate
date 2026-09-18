@@ -34,6 +34,10 @@ class RolesAndPermissionsSeeder extends Seeder
                 'label_en' => 'Cashier',
                 'name_kh' => 'បេឡា',
             ],
+            'registrar' => [
+                'label_en' => 'Registrar',
+                'name_kh' => 'ការិយាល័យចុះបញ្ជី',
+            ],
         ])->mapWithKeys(fn (array $attributes, string $role): array => [
             $role => Role::query()->updateOrCreate(
                 [
@@ -69,6 +73,7 @@ class RolesAndPermissionsSeeder extends Seeder
 
         $admin = $systemAdminRoles['admin'];
         $cashier = $systemAdminRoles['cashier'];
+        $registrar = $systemAdminRoles['registrar'];
         $candidate = $userRoles['candidate'];
 
         $adminExcludedPermissions = [
@@ -92,6 +97,85 @@ class RolesAndPermissionsSeeder extends Seeder
                     $query->where('name', 'like', '%:Payment')
                         ->orWhere('name', 'like', '%:UnpaidApplication');
                 })
+                ->get()
+        );
+
+        $registrar->syncPermissions(
+            Permission::query()
+                ->where('guard_name', 'web')
+                ->whereIn('name', [
+                    'ViewAny:PaymentType',
+                    'Create:PaymentType',
+                    'Update:PaymentType',
+                    'Delete:PaymentType',
+                    'ViewAny:ExchangeRate',
+                    'Update:ExchangeRate',
+                    'ViewAny:CandidateRequested',
+                    'Passed:CandidateRequested',
+                    'Pending:CandidateRequested',
+                    'BulkPassed:CandidateRequested',
+                    'BulkPending:CandidateRequested',
+                    'DownloadExcel:CandidateRequested',
+                    'ClearData:CandidateRequested',
+                    'ViewAny:ExamResult',
+                    'NotifyStudent:ExamResult',
+                    'NotifyAllStudents:ExamResult',
+                    'DownloadExcel:ExamResult',
+                    'ClearData:ExamResult',
+                    'ViewAny:ExitExamResult',
+                    'NotifyStudent:ExitExamResult',
+                    'NotifyAllStudents:ExitExamResult',
+                    'DownloadExcel:ExitExamResult',
+                    'ClearData:ExitExamResult',
+                    'ViewAny:ClosingDate',
+                    'Create:ClosingDate',
+                    'Update:ClosingDate',
+                    'Delete:ClosingDate',
+                    'ViewAny:DegreeLevel',
+                    'Create:DegreeLevel',
+                    'Update:DegreeLevel',
+                    'Delete:DegreeLevel',
+                    'ViewAny:UserType',
+                    'Create:UserType',
+                    'Update:UserType',
+                    'Delete:UserType',
+                    'ViewAny:CustomForm',
+                    'Create:CustomForm',
+                    'Update:CustomForm',
+                    'Delete:CustomForm',
+                    'EditTemplate:CustomForm',
+                    'ViewAny:DocumentTemplate',
+                    'Update:DocumentTemplate',
+                    'Delete:DocumentTemplate',
+                    'ViewAny:CustomFormEntry',
+                    'Create:CustomFormEntry',
+                    'Update:CustomFormEntry',
+                    'Delete:CustomFormEntry',
+                    'DownloadExcel:CustomFormEntry',
+                    'ClearData:CustomFormEntry',
+                    'EditReviewNote:CustomFormEntry',
+                    'ViewPdf:CustomFormEntry',
+                    'Accepted:CustomFormEntry',
+                    'Rejected:CustomFormEntry',
+                    'DownloadPdf:CustomFormEntry',
+                    'ViewAny:CandidateList',
+                    'Create:CandidateList',
+                    'Update:CandidateList',
+                    'Delete:CandidateList',
+                ])
+                ->get()
+        );
+
+        $candidate->syncPermissions(
+            Permission::query()
+                ->where('guard_name', 'web')
+                ->whereIn('name', [
+                    'ViewAny:CustomFormEntry',
+                    'Create:CustomFormEntry',
+                    'Update:CustomFormEntry',
+                    'EditReviewNote:CustomFormEntry',
+                    'DownloadPdf:CustomFormEntry',
+                ])
                 ->get()
         );
 

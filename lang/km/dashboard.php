@@ -7,6 +7,7 @@ return [
 
     'admin_subheading' => 'តាមដានគណនីបេក្ខជន ការដាក់ស្នើ និងការពិនិត្យពាក្យ។',
     'cashier_subheading' => 'តាមដានបញ្ជីបង់ប្រាក់ កំណត់ត្រាបង់ប្រាក់ និងការងាររបស់អ្នកគិតលុយ។',
+    'registrar_subheading' => 'ពិនិត្យការដាក់ស្នើបេក្ខជន លទ្ធផលប្រឡង ទម្រង់ និងការកំណត់ការចុះឈ្មោះ។',
     'student_subheading' => 'តាមដានទម្រង់ ការដាក់ស្នើ និងវឌ្ឍនភាពរបស់អ្នក។',
     'staff_subheading' => 'មិនមានទិន្នន័យតាមដានលើ Dashboard សម្រាប់តួនាទីនេះទេ។',
     'no_tracking_title' => 'មិនមានទិន្នន័យលើ Dashboard',
@@ -129,6 +130,9 @@ return [
     'view_active_users' => 'មើលអ្នកប្រើប្រាស់សកម្ម',
     'management_overview' => 'ផ្នែកគ្រប់គ្រង',
     'management_overview_description' => 'ផ្នែករដ្ឋបាល និងតំណចូលប្រើរហ័ស។',
+    'registrar_workspace' => 'កន្លែងធ្វើការការិយាល័យចុះបញ្ជី',
+    'registrar_overview' => 'សង្ខេបការចុះឈ្មោះ',
+    'registrar_overview_description' => 'ពិនិត្យកំណត់ត្រាបេក្ខជន គ្រប់គ្រងលំហូរការដាក់ពាក្យ និងថែរក្សាការកំណត់ការចុះឈ្មោះ។',
     'quick_access' => 'ចូលប្រើរហ័ស',
     'available_forms' => 'ទម្រង់ដែលមាន',
     'application_count' => 'ចំនួនពាក្យស្នើសុំ',

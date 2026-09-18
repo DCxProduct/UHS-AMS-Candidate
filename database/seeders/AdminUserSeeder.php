@@ -66,6 +66,18 @@ class AdminUserSeeder extends Seeder
             ]
         );
 
+        Role::query()->updateOrCreate(
+            [
+                'name' => 'registrar',
+                'guard_name' => 'web',
+            ],
+            [
+                'label_en' => 'Registrar',
+                'name_kh' => 'ការិយាល័យចុះបញ្ជី',
+                'role_type_key' => 'staff',
+            ]
+        );
+
         $cashier = SystemUser::query()->updateOrCreate(
             [
                 'username' => 'cashier',
@@ -84,5 +96,24 @@ class AdminUserSeeder extends Seeder
         );
 
         $cashier->syncLoginUser();
+
+        $registrar = SystemUser::query()->updateOrCreate(
+            [
+                'username' => 'registrar',
+            ],
+            [
+                'name' => 'Registrar',
+                'username' => 'registrar',
+                'email' => 'registrar@gmail.com',
+                'phone' => '010000097',
+                'password' => Hash::make('1234567a'),
+                'roles' => ['registrar'],
+                'permissions' => null,
+                'is_active' => true,
+                'email_verified_at' => now(),
+            ],
+        );
+
+        $registrar->syncLoginUser();
     }
 }
