@@ -122,9 +122,12 @@ class EditCustomFormEntry extends EditRecord
         $actions[] = Action::make('save_draft')
                 ->label(__('student_profile.save_as_draft'))
                 ->color('info')
-                ->hidden(fn () => $this->isLockedForEditing() || $this->hasWizardOnFirstStep() || $this->entryStatus() !== 'draft')
+                ->hidden(fn () => $this->isLockedForEditing()
+                    || ($this->hasWizardOnFirstStep() && ! CustomForm::isProfileSlug($this->record->customForm?->slug))
+                    || $this->entryStatus() !== 'draft')
                 ->action(function (): void {
-                    $data = $this->rawFormState();
+                    $data = $this->form->getStateSnapshot();
+                    $data = array_replace_recursive($this->rawFormState(), $data);
                     $data = $this->mutateFormDataBeforeSave($data);
 
                     $data['review_status'] = 'draft';
@@ -144,7 +147,7 @@ class EditCustomFormEntry extends EditRecord
                         $data['reviewed_at'] = null;
                     }
 
-                    $this->record->update($data);
+                    $this->record->forceFill($data)->save();
 
                     Notification::make()
                         ->title(__('student_profile.draft_saved'))

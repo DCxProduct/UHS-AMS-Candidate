@@ -90,6 +90,14 @@ class CustomFormEntryForm
                         ? ['personal_note']
                         : [];
 
+                    $hasProfileWizard = $rootFields->contains(
+                        fn ($field): bool => strtolower((string) $field->type) === 'wizard'
+                    );
+
+                    if (CustomForm::isProfileSlug($customForm->slug ?? null) && ! $hasProfileWizard) {
+                        return self::getProfileWizard($rootFields, $isLocked, $hiddenFieldNames);
+                    }
+
                     return self::getFields(
                         $rootFields,
                         $isLocked,
@@ -256,6 +264,43 @@ class CustomFormEntryForm
         ];
     }
 
+    protected static function getProfileWizard(
+        Collection $rootFields,
+        bool $isLocked = false,
+        array $hiddenFieldNames = []
+    ): array {
+        $steps = [];
+
+        foreach ($rootFields as $fieldModel) {
+            $stepFields = self::getFields(
+                self::uniqueFieldsForRender($fieldModel->children()->orderBy('sort')->get()),
+                $isLocked,
+                $hiddenFieldNames,
+                true
+            );
+
+            if (empty($stepFields)) {
+                continue;
+            }
+
+            $steps[] = WizardStep::make(self::transText($fieldModel->label))
+                ->schema($stepFields)
+                ->columns(2);
+        }
+
+        if (empty($steps)) {
+            return [];
+        }
+
+        return [
+            Wizard::make($steps)
+                ->key('profile-wizard')
+                ->persistStepInQueryString()
+                ->skippable(false)
+                ->columnSpanFull(),
+        ];
+    }
+
     protected static function transOptionsOnlyActive(array $choices, array $activeTypes): array
     {
         return collect($choices)
@@ -327,20 +372,30 @@ class CustomFormEntryForm
                 $steps = [];
 
                 foreach (self::uniqueFieldsForRender($fieldModel->children()->orderBy('sort')->get()) as $child) {
-                    $stepFields = self::getFields(collect([$child]), $isLocked, $hiddenFieldNames, $isProfileForm);
+                    $stepFields = (string) $child->type === 'section'
+                        ? self::getFields(
+                            self::uniqueFieldsForRender($child->children()->orderBy('sort')->get()),
+                            $isLocked,
+                            $hiddenFieldNames,
+                            $isProfileForm
+                        )
+                        : self::getFields(collect([$child]), $isLocked, $hiddenFieldNames, $isProfileForm);
 
                     if (empty($stepFields)) {
                         continue;
                     }
 
-                    $steps[] = WizardStep::make(self::transText($child->label))->schema($stepFields);
+                    $steps[] = WizardStep::make(self::transText($child->label))
+                        ->schema($stepFields)
+                        ->columns(2);
                 }
 
                 if (empty($steps)) {
                     continue;
                 }
 
-                $component = Wizard::make($steps);
+                $component = Wizard::make($steps)
+                    ->skippable($isProfileForm ? false : (bool) ($options['skippable'] ?? false));
             } elseif ($type === 'repeater') {
                 $children = self::getFields(self::uniqueFieldsForRender($fieldModel->children()->orderBy('sort')->get()), $isLocked, $hiddenFieldNames, $isProfileForm);
 
@@ -364,7 +419,6 @@ class CustomFormEntryForm
 
                 if ((string) $fieldModel->name === 'siblings') {
                     $component
-                        ->maxItems((int) ($options['max_items'] ?? 3))
                         ->addActionLabel(
                             app()->getLocale() === 'km'
                                 ? ((string) ($options['add_action_label_km'] ?? 'បន្ថែមបងប្អូន'))
@@ -372,7 +426,6 @@ class CustomFormEntryForm
                         );
                 } elseif ((string) $fieldModel->name === 'educations') {
                     $component
-                        ->maxItems((int) ($options['max_items'] ?? 3))
                         ->addActionLabel(
                             app()->getLocale() === 'km'
                                 ? ((string) ($options['add_action_label_km'] ?? 'បន្ថែមការអប់រំ'))
@@ -380,12 +433,18 @@ class CustomFormEntryForm
                         );
                 } elseif ((string) $fieldModel->name === 'cv_work_history') {
                     $component
-                        ->maxItems((int) ($options['max_items'] ?? 3))
                         ->addActionLabel(
                             app()->getLocale() === 'km'
                                 ? ((string) ($options['add_action_label_km'] ?? 'បន្ថែមប្រវត្តិការងារ'))
                                 : ((string) ($options['add_action_label_en'] ?? 'Add Work History'))
                         );
+                }
+
+                $maxItems = $options['max_items']
+                    ?? ($isProfileForm ? null : 3);
+
+                if (is_numeric($maxItems) && (int) $maxItems > 0) {
+                    $component->maxItems((int) $maxItems);
                 }
 
                 if (! empty($options['is_compact']) && method_exists($component, 'compact')) {
