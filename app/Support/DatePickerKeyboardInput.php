@@ -17,6 +17,7 @@ class DatePickerKeyboardInput
     {
         return $component
             ->displayFormat('d-m-Y')
+            ->closeOnDateSelection()
             ->placeholder(static::placeholder())
             ->extraAlpineAttributes([
                 'x-init' => <<<'JS'
@@ -88,6 +89,7 @@ class DatePickerKeyboardInput
                             picker.focusedYear = date.year();
                             picker.setupDaysGrid();
                             picker.setState(date);
+                            if (picker.isOpen?.()) picker.togglePanelVisibility();
                         }, true);
 
                         input.addEventListener('blur', (event) => {
