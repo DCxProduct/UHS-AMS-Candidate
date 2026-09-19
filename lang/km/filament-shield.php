@@ -3,6 +3,7 @@
 return [
     'resource_permission_prefixes_labels' => [
         'view_any' => 'អាន',
+        'view' => 'មើលទិន្នន័យ',
         'create' => 'បង្កើត',
         'update' => 'កែប្រែ',
         'delete' => 'លុប',

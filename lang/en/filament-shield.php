@@ -3,6 +3,7 @@
 return [
     'resource_permission_prefixes_labels' => [
         'view_any' => 'Read',
+        'view' => 'View Data',
         'create' => 'Create',
         'update' => 'Update',
         'delete' => 'Delete',

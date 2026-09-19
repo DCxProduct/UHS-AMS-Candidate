@@ -937,6 +937,19 @@ class CustomFormEntriesTable
                     && filled(self::reviewMessage($record))
                 ),
 
+            Action::make('view_submitted_form')
+                ->label(__('filament-actions::view.single.label'))
+                ->icon('heroicon-o-eye')
+                ->color('info')
+                ->url(fn ($record): string => CustomFormEntryResource::getUrl('view', [
+                    'record' => $record,
+                ]))
+                ->visible(fn ($record): bool =>
+                    ! self::currentPanelIsAdmin()
+                    && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'view')
+                    && self::entryStatus($record) !== 'draft'
+                ),
+
             EditAction::make()
                 ->label(function ($record): string {
                     return self::entryStatus($record) === 'draft'
