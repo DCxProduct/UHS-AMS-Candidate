@@ -786,6 +786,7 @@ class CustomFormEntryResource extends Resource
             'index' => Pages\ListCustomFormEntries::route('/'),
             'create' => Pages\CreateCustomFormEntry::route('/create'),
             'edit' => Pages\EditCustomFormEntry::route('/{record}/edit'),
+            'view' => Pages\ViewCustomFormEntry::route('/{record}'),
         ];
     }
 

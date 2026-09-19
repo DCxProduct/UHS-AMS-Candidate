@@ -148,6 +148,7 @@ class RolesAndPermissionsSeeder extends Seeder
                     'Update:DocumentTemplate',
                     'Delete:DocumentTemplate',
                     'ViewAny:CustomFormEntry',
+                    'View:CustomFormEntry',
                     'Create:CustomFormEntry',
                     'Update:CustomFormEntry',
                     'Delete:CustomFormEntry',
@@ -171,6 +172,7 @@ class RolesAndPermissionsSeeder extends Seeder
                 ->where('guard_name', 'web')
                 ->whereIn('name', [
                     'ViewAny:CustomFormEntry',
+                    'View:CustomFormEntry',
                     'Create:CustomFormEntry',
                     'Update:CustomFormEntry',
                     'EditReviewNote:CustomFormEntry',

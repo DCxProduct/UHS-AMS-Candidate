@@ -14,6 +14,7 @@ use App\Support\UserTypeOptions;
 use Carbon\Carbon;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
+use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
@@ -263,6 +264,15 @@ class CandidateRequestedTable
             ->deferFilters(false)
             ->filtersFormColumns(4)
             ->recordActions([
+                Action::make('view_data')
+                    ->label(__('review_applications.actions.view_data'))
+                    ->icon('heroicon-o-eye')
+                    ->color('info')
+                    ->visible(fn (): bool => FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'view'))
+                    ->url(fn (CustomFormEntry $record): string => CustomFormEntryResource::getUrl('view', [
+                        'record' => $record,
+                    ])),
+
                 Action::make('passed')
                     ->label(__('review_applications.statuses.passed'))
                     ->icon('heroicon-o-check-circle')

@@ -59,6 +59,7 @@ return [
 
     'actions' => [
         'view_details' => 'មើលលម្អិត',
+        'view_data' => 'មើលទិន្នន័យ',
         'accept' => 'ទទួលយក',
         'reject' => 'បដិសេធ',
         'close' => 'បិទ',

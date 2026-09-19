@@ -17,6 +17,7 @@ class DatePickerKeyboardInput
     {
         return $component
             ->displayFormat('d-m-Y')
+            ->closeOnDateSelection()
             ->placeholder(static::placeholder())
             ->extraAlpineAttributes([
                 'x-init' => <<<'JS'
@@ -31,6 +32,18 @@ class DatePickerKeyboardInput
                         input.setAttribute('maxlength', '10');
                         input.setAttribute('pattern', '[0-9-]*');
 
+                        const initialDate = window.dayjs(input.value, 'DD-MM-YYYY', true);
+                        const hasValidInitialDate = input.value === ''
+                            || (initialDate.isValid() && ! picker.dateIsDisabled(initialDate));
+
+                        if (!hasValidInitialDate) {
+                            input.value = '';
+                            picker.clearState?.();
+                        }
+
+                        input.dataset.acceptedDateValue = hasValidInitialDate ? input.value : '';
+                        input.dataset.acceptedDateCursor = String(input.value.length);
+
                         input.addEventListener('keydown', (event) => {
                             if (['Backspace', 'Delete', 'Clear'].includes(event.key)) {
                                 event.stopPropagation();
@@ -39,6 +52,8 @@ class DatePickerKeyboardInput
 
                         input.addEventListener('input', (event) => {
                             const rawValue = event.target.value;
+                            const previousValue = event.target.dataset.acceptedDateValue ?? '';
+                            const previousCursorPosition = Number(event.target.dataset.acceptedDateCursor ?? previousValue.length);
                             const cursorPosition = event.target.selectionStart ?? rawValue.length;
                             const digitsBeforeCursor = rawValue
                                 .slice(0, cursorPosition)
@@ -51,6 +66,23 @@ class DatePickerKeyboardInput
                                 value = `${digits.slice(0, 2)}-${digits.slice(2, 4)}-${digits.slice(4)}`;
                             } else if (digits.length > 2) {
                                 value = `${digits.slice(0, 2)}-${digits.slice(2)}`;
+                            }
+
+                            const day = digits.length >= 2 ? Number(digits.slice(0, 2)) : null;
+                            const month = digits.length >= 4 ? Number(digits.slice(2, 4)) : null;
+                            const hasInvalidDayOrMonth = (day !== null && (day < 1 || day > 31))
+                                || (month !== null && (month < 1 || month > 12));
+
+                            if (hasInvalidDayOrMonth) {
+                                event.target.value = previousValue;
+                                event.target.setCustomValidity('');
+                                event.target.setAttribute('aria-invalid', 'false');
+
+                                if (document.activeElement === event.target) {
+                                    event.target.setSelectionRange(previousCursorPosition, previousCursorPosition);
+                                }
+
+                                return;
                             }
 
                             event.target.value = value;
@@ -67,6 +99,8 @@ class DatePickerKeyboardInput
                             }
 
                             if (!/^\d{2}-\d{2}-\d{4}$/.test(value)) {
+                                event.target.dataset.acceptedDateValue = value;
+                                event.target.dataset.acceptedDateCursor = String(nextCursorPosition);
                                 event.target.setCustomValidity('');
                                 event.target.setAttribute('aria-invalid', 'false');
                                 return;
@@ -75,12 +109,19 @@ class DatePickerKeyboardInput
                             const date = window.dayjs(value, 'DD-MM-YYYY', true);
 
                             if (!date.isValid() || picker.dateIsDisabled(date)) {
-                                event.target.setCustomValidity('Please enter a valid date in dd-mm-yyyy.');
-                                event.target.setAttribute('aria-invalid', 'true');
+                                event.target.value = previousValue;
+                                event.target.setCustomValidity('');
+                                event.target.setAttribute('aria-invalid', 'false');
+
+                                if (document.activeElement === event.target) {
+                                    event.target.setSelectionRange(previousCursorPosition, previousCursorPosition);
+                                }
 
                                 return;
                             }
 
+                            event.target.dataset.acceptedDateValue = value;
+                            event.target.dataset.acceptedDateCursor = String(nextCursorPosition);
                             event.target.setCustomValidity('');
                             event.target.setAttribute('aria-invalid', 'false');
                             picker.focusedDate = window.dayjs(date.format('YYYY-MM-DD'));
@@ -88,6 +129,7 @@ class DatePickerKeyboardInput
                             picker.focusedYear = date.year();
                             picker.setupDaysGrid();
                             picker.setState(date);
+                            if (picker.isOpen?.()) picker.togglePanelVisibility();
                         }, true);
 
                         input.addEventListener('blur', (event) => {

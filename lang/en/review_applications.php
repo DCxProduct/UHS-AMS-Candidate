@@ -59,6 +59,7 @@ return [
 
     'actions' => [
         'view_details' => 'View Details',
+        'view_data' => 'View Data',
         'accept' => 'Accept',
         'reject' => 'Reject',
         'close' => 'Close',
