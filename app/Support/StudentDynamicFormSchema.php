@@ -194,10 +194,22 @@ class StudentDynamicFormSchema
         $component = $this->applyCommonConfig($component, $field, $config);
 
         if (in_array($type, ['date', 'date_picker', 'datepicker'], true)) {
+            $this->applyDateConstraints($component, $config);
             $component->placeholder(DatePickerKeyboardInput::placeholder());
         }
 
         return $component;
+    }
+
+    protected function applyDateConstraints(DatePicker $component, array $config): void
+    {
+        $maxDate = $config['max_date'] ?? null;
+
+        if ($maxDate === 'today') {
+            $component->maxDate(today());
+        } elseif (filled($maxDate)) {
+            $component->maxDate((string) $maxDate);
+        }
     }
 
     protected function applyCommonConfig($component, $field, array $config, bool $forceFullWidth = false)
