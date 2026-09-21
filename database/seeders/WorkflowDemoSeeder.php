@@ -355,29 +355,61 @@ HTML;
             ['phone_number', 'Phone Number', 'text_input', true],
             ['email', 'Email', 'text_input', true],
             ['academic_year', 'Academic Year', 'text_input', true],
-            ['major', 'Major', 'text_input', true],
+            ['major', 'Major', 'select_dropdown', true],
         ];
 
         foreach ($fields as $sort => [$name, $label, $type, $required]) {
-            $exists = DB::table('custom_form_fields')
+            $existingField = DB::table('custom_form_fields')
                 ->where('custom_form_id', $formId)
                 ->where('name', $name)
-                ->exists();
+                ->first();
 
-            if ($exists) {
-                continue;
-            }
+            $labelTranslations = $name === 'major'
+                ? ['en' => 'Major', 'km' => 'ជំនាញ', 'kh' => 'ជំនាញ']
+                : ['en' => $label, 'km' => $label, 'kh' => $label];
 
             $options = match ($name) {
                 'gender' => ['choices' => ['male' => 'Male', 'female' => 'Female']],
+                'major' => ['choices' => [
+                    [
+                        'value' => 'Medicine',
+                        'label' => [
+                            'en' => 'Medicine',
+                            'km' => 'វេជ្ជសាស្ត្រ',
+                            'kh' => 'វេជ្ជសាស្ត្រ',
+                        ],
+                    ],
+                    [
+                        'value' => 'Bachelor of Nursing',
+                        'label' => [
+                            'en' => 'Bachelor of Nursing',
+                            'km' => 'បរិញ្ញាបត្រគិលានុបដ្ឋាក',
+                            'kh' => 'បរិញ្ញាបត្រគិលានុបដ្ឋាក',
+                        ],
+                    ],
+                ]],
                 default => [],
             };
+
+            if ($existingField) {
+                if ($name === 'major') {
+                    DB::table('custom_form_fields')->where('id', $existingField->id)->update([
+                        'label' => json_encode($labelTranslations, JSON_UNESCAPED_UNICODE),
+                        'type' => $type,
+                        'required' => $required,
+                        'options' => json_encode($options, JSON_UNESCAPED_UNICODE),
+                        'updated_at' => now(),
+                    ]);
+                }
+
+                continue;
+            }
 
             DB::table('custom_form_fields')->insert([
                 'custom_form_id' => $formId,
                 'parent_id' => $sectionId,
                 'name' => $name,
-                'label' => json_encode(['en' => $label, 'km' => $label, 'kh' => $label], JSON_UNESCAPED_UNICODE),
+                'label' => json_encode($labelTranslations, JSON_UNESCAPED_UNICODE),
                 'type' => $type,
                 'required' => $required,
                 'options' => $options === [] ? null : json_encode($options, JSON_UNESCAPED_UNICODE),
