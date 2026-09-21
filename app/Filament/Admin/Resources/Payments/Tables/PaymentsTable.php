@@ -109,11 +109,13 @@ class PaymentsTable
                 TextColumn::make('amount_usd')
                     ->label(__('payments.table.amount_usd'))
                     ->money('USD')
+                    ->alignCenter()
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('amount_kh')
                     ->label(__('payments.table.amount_kh'))
                     ->formatStateUsing(fn ($state): string => blank($state) ? '-' : number_format((float) $state, 2) . ' KHR')
+                    ->alignCenter()
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('status_payt')
