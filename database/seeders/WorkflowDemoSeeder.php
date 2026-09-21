@@ -13,9 +13,9 @@ class WorkflowDemoSeeder extends Seeder
 {
     private const BATCH = 'workflow-demo-2026-09';
 
-    private const TOTAL_ENTRIES = 70;
+    private const MIN_ENTRIES_PER_FORM = 5;
 
-    private const ENTRANCE_ENTRIES = 40;
+    private const ENTRY_COUNT_VARIATIONS = 5;
 
     private ?string $demoPasswordHash = null;
 
@@ -33,37 +33,43 @@ class WorkflowDemoSeeder extends Seeder
             $this->seedReviewTemplates($forms);
             $reviewerId = $this->reviewerId();
 
-            if (count($forms) < 2 || ! $reviewerId) {
-                $this->command?->warn('WorkflowDemoSeeder skipped: two forms and an admin reviewer are required.');
+            if (count($forms) < 1 || ! $reviewerId) {
+                $this->command?->warn('WorkflowDemoSeeder skipped: at least one form and an admin reviewer are required.');
 
                 return;
             }
 
             $this->removePreviousBatch();
 
-            for ($number = 1; $number <= self::TOTAL_ENTRIES; $number++) {
-                $isEntrance = $number <= self::ENTRANCE_ENTRIES;
-                $formNumber = $isEntrance ? $number - 1 : $number - self::ENTRANCE_ENTRIES - 1;
-                $form = $forms[$isEntrance ? 0 : 1];
-                $candidate = $this->candidate($number, $form['role']);
-                $scenario = $this->scenario($number, $formNumber, ! $isEntrance);
-                $submittedAt = now()->subDays(self::TOTAL_ENTRIES - $number + 1);
+            $number = 0;
+            $totalEntries = 0;
 
-                $data = $this->entryData($number, $form, $candidate, $scenario, $submittedAt);
-                $entryId = DB::table('custom_form_entries')->insertGetId([
-                    'custom_form_id' => $form['id'],
-                    'data' => json_encode($data, JSON_UNESCAPED_UNICODE),
-                    'created_by' => $candidate->id,
-                    'reviewed_by' => $scenario['reviewed'] ? $reviewerId : null,
-                    'review_status' => $scenario['review_status'],
-                    'review_note' => $scenario['review_note'],
-                    'reviewed_at' => $scenario['reviewed'] ? $submittedAt->copy()->addDay() : null,
-                    'created_at' => $submittedAt,
-                    'updated_at' => $scenario['reviewed'] ? $submittedAt->copy()->addDay() : $submittedAt,
-                ]);
+            foreach ($forms as $formIndex => $form) {
+                $entriesForForm = self::MIN_ENTRIES_PER_FORM + ($formIndex % self::ENTRY_COUNT_VARIATIONS);
+                $totalEntries += $entriesForForm;
 
-                if ($scenario['payment_record']) {
-                    $this->createPayment($entryId, $form['id'], $candidate->id, $number, $scenario, $submittedAt);
+                for ($formNumber = 0; $formNumber < $entriesForForm; $formNumber++) {
+                    $number++;
+                    $candidate = $this->candidate($number, $form['role']);
+                    $scenario = $this->scenario($formNumber);
+                    $submittedAt = now()->subDays($totalEntries - $number + 1);
+
+                    $data = $this->entryData($number, $form, $candidate, $scenario, $submittedAt);
+                    $entryId = DB::table('custom_form_entries')->insertGetId([
+                        'custom_form_id' => $form['id'],
+                        'data' => json_encode($data, JSON_UNESCAPED_UNICODE),
+                        'created_by' => $candidate->id,
+                        'reviewed_by' => $scenario['reviewed'] ? $reviewerId : null,
+                        'review_status' => $scenario['review_status'],
+                        'review_note' => $scenario['review_note'],
+                        'reviewed_at' => $scenario['reviewed'] ? $submittedAt->copy()->addDay() : null,
+                        'created_at' => $submittedAt,
+                        'updated_at' => $scenario['reviewed'] ? $submittedAt->copy()->addDay() : $submittedAt,
+                    ]);
+
+                    if ($scenario['payment_record']) {
+                        $this->createPayment($entryId, $form['id'], $candidate->id, $number, $scenario, $submittedAt);
+                    }
                 }
             }
         });
@@ -204,67 +210,74 @@ HTML;
     }
 
     /**
-     * Use existing active forms when present; otherwise create two usable demo forms.
+     * Seed every active custom form so the demo data follows the current form menu.
      */
     private function resolveForms(): array
     {
-        $forms = DB::table('custom_forms')
+        $existingForms = DB::table('custom_forms')
             ->whereNull('deleted_at')
             ->where('is_active', true)
             ->where('slug', '!=', 'profile')
             ->orderBy('display_order')
             ->orderBy('id')
             ->get()
-            ->take(2)
-            ->values()
-            ->all();
+            ->values();
 
-        $definitions = [
-            [
-                'slug' => 'national-entrance-exam-application',
-                'name' => ['en' => 'National Entrance Exam Application', 'km' => 'ពាក្យសុំប្រឡងចូលថ្នាក់ជាតិ', 'kh' => 'ពាក្យសុំប្រឡងចូលថ្នាក់ជាតិ'],
-                'role' => 'national_entrance_exam_application_bachelor',
-                'passed_result_menu' => 'exam_results',
-            ],
-            [
-                'slug' => 'national-exit-exam-application',
-                'name' => ['en' => 'National Exit Exam Application', 'km' => 'ពាក្យសុំប្រឡងចេញថ្នាក់ជាតិ', 'kh' => 'ពាក្យសុំប្រឡងចេញថ្នាក់ជាតិ'],
-                'role' => 'national_exit_exam_application_bachelor',
-                'passed_result_menu' => 'exit_exam_results',
-            ],
-        ];
+        if ($existingForms->isEmpty()) {
+            $fallbackDefinitions = [
+                [
+                    'slug' => 'national-entrance-exam-application',
+                    'name' => ['en' => 'National Entrance Exam Application', 'km' => 'ពាក្យសុំប្រឡងចូលថ្នាក់ជាតិ', 'kh' => 'ពាក្យសុំប្រឡងចូលថ្នាក់ជាតិ'],
+                    'role' => 'national_entrance_exam_application_bachelor',
+                    'passed_result_menu' => 'exam_results',
+                ],
+                [
+                    'slug' => 'national-exit-exam-application',
+                    'name' => ['en' => 'National Exit Exam Application', 'km' => 'ពាក្យសុំប្រឡងចេញថ្នាក់ជាតិ', 'kh' => 'ពាក្យសុំប្រឡងចេញថ្នាក់ជាតិ'],
+                    'role' => 'national_exit_exam_application_bachelor',
+                    'passed_result_menu' => 'exit_exam_results',
+                ],
+            ];
 
-        foreach ($definitions as $index => $definition) {
-            if (isset($forms[$index])) {
-                $form = $forms[$index];
-                if (Schema::hasColumn('custom_forms', 'passed_result_menu')) {
+            foreach ($fallbackDefinitions as $index => $definition) {
+                $formId = $this->upsertForm($definition, $index + 1);
+                $existingForms->push((object) [
+                    'id' => $formId,
+                    'slug' => $definition['slug'],
+                    'name' => json_encode($definition['name'], JSON_UNESCAPED_UNICODE),
+                    'allowed_roles' => json_encode([$definition['role']], JSON_UNESCAPED_UNICODE),
+                ]);
+            }
+        }
+
+        return $existingForms->values()->map(function (object $form): array {
+            $allowedRoles = json_decode((string) ($form->allowed_roles ?? ''), true);
+            $role = is_array($allowedRoles) && filled($allowedRoles[0] ?? null)
+                ? (string) $allowedRoles[0]
+                : 'candidate';
+
+            if (Schema::hasColumn('custom_forms', 'passed_result_menu')) {
+                $passedResultMenu = str_contains((string) $form->slug, 'national-entrance-exam-application')
+                    ? 'exam_results'
+                    : (str_contains((string) $form->slug, 'national-exit-exam-application') ? 'exit_exam_results' : null);
+
+                if ($passedResultMenu) {
                     DB::table('custom_forms')->where('id', $form->id)->update([
-                        'passed_result_menu' => $definition['passed_result_menu'],
+                        'passed_result_menu' => $passedResultMenu,
                         'updated_at' => now(),
                     ]);
                 }
-                $this->ensureFields((int) $form->id);
-                $forms[$index] = [
-                    'id' => (int) $form->id,
-                    'slug' => (string) $form->slug,
-                    'name' => $form->name,
-                    'role' => $definition['role'],
-                ];
-
-                continue;
             }
 
-            $formId = $this->upsertForm($definition, $index + 1);
-            $this->ensureFields($formId);
-            $forms[$index] = [
-                'id' => $formId,
-                'slug' => $definition['slug'],
-                'name' => $definition['name'],
-                'role' => $definition['role'],
-            ];
-        }
+            $this->ensureFields((int) $form->id);
 
-        return $forms;
+            return [
+                'id' => (int) $form->id,
+                'slug' => (string) $form->slug,
+                'name' => $form->name,
+                'role' => $role,
+            ];
+        })->all();
     }
 
     private function upsertForm(array $definition, int $displayOrder): int
@@ -456,6 +469,24 @@ HTML;
             ['kh' => 'លីហួរ', 'en' => 'Lyhour'],
             ['kh' => 'ដេវីត', 'en' => 'Davit'],
             ['kh' => 'សុវត្ថិ', 'en' => 'Savuth'],
+            ['kh' => 'អមរា', 'en' => 'Amara'],
+            ['kh' => 'សុរិយា', 'en' => 'Soriya'],
+            ['kh' => 'រ៉ូសា', 'en' => 'Rosa'],
+            ['kh' => 'មេតា', 'en' => 'Meta'],
+            ['kh' => 'សុវណ្ណី', 'en' => 'Sovanny'],
+            ['kh' => 'វីរ៉ា', 'en' => 'Vira'],
+            ['kh' => 'សុជាតា', 'en' => 'Socheata'],
+            ['kh' => 'ឌីណា', 'en' => 'Dina'],
+            ['kh' => 'ពិសាខ', 'en' => 'Pisakh'],
+            ['kh' => 'កែវមុនី', 'en' => 'Keovmony'],
+            ['kh' => 'ស្រីអូន', 'en' => 'Sreyoun'],
+            ['kh' => 'រ៉េតនា', 'en' => 'Retana'],
+            ['kh' => 'សុវណ្ណរិទ្ធ', 'en' => 'Sovannrith'],
+            ['kh' => 'ច័ន្ទគ្រឹស្នា', 'en' => 'Chandkrishna'],
+            ['kh' => 'រដ្ឋា', 'en' => 'Ratha'],
+            ['kh' => 'សិរីមង្គល', 'en' => 'Sereymongkol'],
+            ['kh' => 'នាថា', 'en' => 'Neatha'],
+            ['kh' => 'បូរីដា', 'en' => 'Boreyda'],
         ];
         $lastNamesKh = ['កែវ', 'សុខ', 'ចាន់', 'ហេង', 'លី', 'វ៉ាន់', 'នួន'];
         $lastNamesEn = ['Keo', 'Sok', 'Chan', 'Heng', 'Ly', 'Van', 'Nuon'];
@@ -523,21 +554,18 @@ HTML;
         return $user->fresh();
     }
 
-    private function scenario(int $number, int $formNumber, bool $externalPayment): array
+    private function scenario(int $formNumber): array
     {
-        if (! $externalPayment && $formNumber < 10) {
-            return [
+        return match ($formNumber % 5) {
+            0 => [
                 'review_status' => 'accepted',
                 'reviewed' => true,
                 'review_note' => 'Accepted and waiting for cashier payment.',
                 'payment_record' => false,
                 'payment_status' => 'unpaid',
                 'payment_channel' => 'in_system',
-            ];
-        }
-
-        if (! $externalPayment && $formNumber < 20) {
-            return [
+            ],
+            1 => [
                 'review_status' => 'accepted',
                 'reviewed' => true,
                 'review_note' => 'Accepted and paid through the system.',
@@ -545,33 +573,8 @@ HTML;
                 'payment_record' => true,
                 'payment_status' => 'paid',
                 'payment_channel' => 'in_system',
-            ];
-        }
-
-        if (! $externalPayment && $formNumber < 30) {
-            return [
-                'review_status' => 'rejected',
-                'reviewed' => true,
-                'review_note' => 'Please complete the missing application information before resubmitting.',
-                'payment_record' => false,
-                'payment_status' => 'unpaid',
-                'payment_channel' => 'in_system',
-            ];
-        }
-
-        if (! $externalPayment && $formNumber < 40) {
-            return [
-                'review_status' => 'pending',
-                'reviewed' => false,
-                'review_note' => null,
-                'payment_record' => false,
-                'payment_status' => 'pending',
-                'payment_channel' => 'in_system',
-            ];
-        }
-
-        if ($externalPayment && $formNumber < 10) {
-            return [
+            ],
+            2 => [
                 'review_status' => 'accepted',
                 'reviewed' => true,
                 'review_note' => 'Checked and external payment completed.',
@@ -579,39 +582,24 @@ HTML;
                 'payment_record' => true,
                 'payment_status' => 'paid',
                 'payment_channel' => 'external',
-            ];
-        }
-
-        if ($externalPayment && $formNumber < 20) {
-            return [
+            ],
+            3 => [
                 'review_status' => 'rejected',
                 'reviewed' => true,
                 'review_note' => 'Please complete the missing application information before resubmitting.',
                 'payment_record' => false,
                 'payment_status' => 'unpaid',
                 'payment_channel' => 'in_system',
-            ];
-        }
-
-        if ($externalPayment && $formNumber < 30) {
-            return [
+            ],
+            default => [
                 'review_status' => 'pending',
                 'reviewed' => false,
                 'review_note' => null,
                 'payment_record' => false,
                 'payment_status' => 'pending',
                 'payment_channel' => 'in_system',
-            ];
-        }
-
-        return [
-            'review_status' => 'pending',
-            'reviewed' => false,
-            'review_note' => null,
-            'payment_record' => false,
-            'payment_status' => 'pending',
-            'payment_channel' => 'not_started',
-        ];
+            ],
+        };
     }
 
     private function entryData(int $number, array $form, User $candidate, array $scenario, $submittedAt): array
