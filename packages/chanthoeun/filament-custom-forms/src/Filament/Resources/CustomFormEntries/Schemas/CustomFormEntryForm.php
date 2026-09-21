@@ -475,6 +475,17 @@ class CustomFormEntryForm
                         $component = TextInput::make("data.{$name}")
                             ->numeric()
                             ->inputMode(($options['is_decimal'] ?? true) ? 'decimal' : 'numeric');
+
+                        if (is_numeric($options['min_value'] ?? null)) {
+                            $component->minValue($options['min_value']);
+                        }
+
+                        if (is_numeric($options['max_value'] ?? null)) {
+                            $component->maxValue($options['max_value']);
+                        }
+
+                        $component->extraInputAttributes(self::numberRangeInputAttributes($options), merge: true);
+
                         break;
 
                     case 'money':
@@ -830,6 +841,34 @@ class CustomFormEntryForm
         }
 
         return [];
+    }
+
+    protected static function numberRangeInputAttributes(array $options): array
+    {
+        $min = self::numericRangeValue($options['min_value'] ?? null);
+        $max = self::numericRangeValue($options['max_value'] ?? null);
+
+        if ($min === null && $max === null) {
+            return [];
+        }
+
+        $minLiteral = $min === null ? 'null' : (string) $min;
+        $maxLiteral = $max === null ? 'null' : (string) $max;
+        $script = "if (this.value !== '') { const min = {$minLiteral}; const max = {$maxLiteral}; const value = Number(this.value); if (Number.isFinite(value)) { if (min !== null && value < min) { this.value = min; } else if (max !== null && value > max) { this.value = max; } } }";
+
+        return [
+            'oninput' => $script,
+            'onblur' => $script,
+        ];
+    }
+
+    protected static function numericRangeValue(mixed $value): int|float|null
+    {
+        if (! is_numeric($value)) {
+            return null;
+        }
+
+        return str_contains((string) $value, '.') ? (float) $value : (int) $value;
     }
 
     protected static function transText(mixed $value): string

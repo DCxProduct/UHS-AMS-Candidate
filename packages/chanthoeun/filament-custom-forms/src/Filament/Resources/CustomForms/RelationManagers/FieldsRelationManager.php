@@ -131,6 +131,18 @@ class FieldsRelationManager extends RelationManager
                             ->required(fn ($get, ?object $record = null): bool => filled($record) || self::isCreatingMode($get))
                             ->visible(fn ($get, ?object $record = null): bool => filled($record) || self::isCreatingMode($get)),
 
+                        \Filament\Forms\Components\TextInput::make('options.min_value')
+                            ->label(__('filament-custom-forms::fcf.admin.minimum_value'))
+                            ->numeric()
+                            ->visible(fn ($get): bool => in_array((string) $get('type'), ['number_input', 'number'], true))
+                            ->helperText(__('filament-custom-forms::fcf.admin.number_range_helper')),
+
+                        \Filament\Forms\Components\TextInput::make('options.max_value')
+                            ->label(__('filament-custom-forms::fcf.admin.maximum_value'))
+                            ->numeric()
+                            ->visible(fn ($get): bool => in_array((string) $get('type'), ['number_input', 'number'], true))
+                            ->helperText(__('filament-custom-forms::fcf.admin.number_range_helper')),
+
                         \Filament\Forms\Components\Toggle::make('required')
                             ->label(__('filament-custom-forms::fcf.field.is_required'))
                             ->default(false)
