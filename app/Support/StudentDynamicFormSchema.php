@@ -172,7 +172,7 @@ class StudentDynamicFormSchema
                 'inputmode' => 'numeric',
                 'oninput' => "this.value = this.value.replace(/[^0-9]/g, '')",
             ]),
-            'number', 'number_input' => TextInput::make($name)->numeric(),
+            'number', 'number_input' => $this->numberInput($name, $config),
             'textarea', 'text_area' => Textarea::make($name),
             'select', 'select_dropdown' => Select::make($name)
                 ->options(fn ($get): array => $this->getSelectOptions($field, $config, $get))
@@ -199,6 +199,51 @@ class StudentDynamicFormSchema
         }
 
         return $component;
+    }
+
+    protected function numberInput(string $name, array $config): TextInput
+    {
+        $component = TextInput::make($name)->numeric();
+
+        if (is_numeric($config['min_value'] ?? null)) {
+            $component->minValue($config['min_value']);
+        }
+
+        if (is_numeric($config['max_value'] ?? null)) {
+            $component->maxValue($config['max_value']);
+        }
+
+        $component->extraInputAttributes($this->numberRangeInputAttributes($config), merge: true);
+
+        return $component;
+    }
+
+    protected function numberRangeInputAttributes(array $config): array
+    {
+        $min = $this->numericRangeValue($config['min_value'] ?? null);
+        $max = $this->numericRangeValue($config['max_value'] ?? null);
+
+        if ($min === null && $max === null) {
+            return [];
+        }
+
+        $minLiteral = $min === null ? 'null' : (string) $min;
+        $maxLiteral = $max === null ? 'null' : (string) $max;
+        $script = "if (this.value !== '') { const min = {$minLiteral}; const max = {$maxLiteral}; const value = Number(this.value); if (Number.isFinite(value)) { if (min !== null && value < min) { this.value = min; } else if (max !== null && value > max) { this.value = max; } } }";
+
+        return [
+            'onblur' => $script,
+            'onchange' => $script,
+        ];
+    }
+
+    protected function numericRangeValue(mixed $value): int|float|null
+    {
+        if (! is_numeric($value)) {
+            return null;
+        }
+
+        return str_contains((string) $value, '.') ? (float) $value : (int) $value;
     }
 
     protected function applyDateConstraints(DatePicker $component, array $config): void
