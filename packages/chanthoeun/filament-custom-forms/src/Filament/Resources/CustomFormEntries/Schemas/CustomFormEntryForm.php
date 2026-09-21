@@ -857,8 +857,8 @@ class CustomFormEntryForm
         $script = "if (this.value !== '') { const min = {$minLiteral}; const max = {$maxLiteral}; const value = Number(this.value); if (Number.isFinite(value)) { if (min !== null && value < min) { this.value = min; } else if (max !== null && value > max) { this.value = max; } } }";
 
         return [
-            'oninput' => $script,
             'onblur' => $script,
+            'onchange' => $script,
         ];
     }
 
