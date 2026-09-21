@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
             RolesAndPermissionsSeeder::class,
             DegreeLevelSeeder::class,
             CandidateTypeSeeder::class,
+            WorkflowDemoSeeder::class,
 //            StudentUsersSeeder::class,
         ]);
     }
