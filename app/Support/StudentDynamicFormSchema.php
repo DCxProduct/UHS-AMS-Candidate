@@ -4,6 +4,7 @@ namespace App\Support;
 
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Filament\Forms\Components\Checkbox;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
@@ -181,6 +182,14 @@ class StudentDynamicFormSchema
                 ->live(),
             'radio' => Radio::make($name)->options($this->getSelectOptions($field, $config, null)),
             'checkbox' => Checkbox::make($name),
+            'checkbox_list' => CheckboxList::make($name)
+                ->options($this->getSelectOptions($field, $config, null)),
+            'multi_select' => Select::make($name)
+                ->options(fn ($get): array => $this->getSelectOptions($field, $config, $get))
+                ->multiple()
+                ->searchable()
+                ->native(false)
+                ->live(),
             'toggle' => Toggle::make($name),
             'date', 'date_picker', 'datepicker' => DatePickerKeyboardInput::apply(
                 DatePicker::make($name)->native(false)
@@ -337,10 +346,14 @@ class StudentDynamicFormSchema
             $actual = $get($field) ?? data_get($get('data'), $field);
             $expectedValues = array_map('strval', (array) $expected);
 
+            $actualValues = is_array($actual)
+                ? array_map('strval', $actual)
+                : [(string) $actual];
+
             return match ($operator) {
                 '!=', '<>' => (string) $actual !== (string) $expected,
-                'in' => in_array((string) $actual, $expectedValues, true),
-                'not_in' => ! in_array((string) $actual, $expectedValues, true),
+                'in' => count(array_intersect($actualValues, $expectedValues)) > 0,
+                'not_in' => count(array_intersect($actualValues, $expectedValues)) === 0,
                 default => strtolower((string) $actual) === strtolower((string) $expected),
             };
         });

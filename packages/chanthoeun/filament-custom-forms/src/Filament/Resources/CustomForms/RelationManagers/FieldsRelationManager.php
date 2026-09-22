@@ -249,6 +249,69 @@ class FieldsRelationManager extends RelationManager
                                     ->default('='),
                             ]),
 
+                        \Filament\Schemas\Components\Section::make(__('filament-custom-forms::fcf.admin.skip_logic'))
+                            ->columnSpanFull()
+                            ->columns(2)
+                            ->visible(fn ($get, ?object $record = null): bool => (filled($record) || self::isCreatingMode($get))
+                                && ! in_array((string) $get('type'), self::CONTAINER_TYPES, true)
+                                && ! self::isSelectionMode($get))
+                            ->components([
+                                \Filament\Forms\Components\Toggle::make('options.conditional_when.enabled')
+                                    ->label(__('filament-custom-forms::fcf.admin.use_skip_logic'))
+                                    ->helperText(__('filament-custom-forms::fcf.admin.skip_logic_helper'))
+                                    ->default(false)
+                                    ->live()
+                                    ->columnSpanFull()
+                                    ->afterStateHydrated(function ($component, $record): void {
+                                        $options = self::normalizeOptions($record?->options ?? []);
+                                        $conditionalField = data_get($options, 'conditional_when.field');
+                                        $visibleField = data_get($options, 'visible_when.field');
+                                        $visibleValue = data_get($options, 'visible_when.value');
+
+                                        if (blank($conditionalField) && filled($visibleField) && $visibleField !== 'form_selection') {
+                                            $component->state(filled($visibleValue));
+
+                                            return;
+                                        }
+
+                                        $component->state(filled($conditionalField));
+                                    })
+                                    ->afterStateUpdated(function ($state, $set): void {
+                                        if (! $state) {
+                                            $set('options.conditional_when.field', null);
+                                            $set('options.conditional_when.values', null);
+                                        }
+                                    }),
+
+                                \Filament\Forms\Components\Select::make('options.conditional_when.field')
+                                    ->label(__('filament-custom-forms::fcf.admin.show_field_when'))
+                                    ->options(fn ($livewire, ?object $record = null): array => self::conditionalFieldOptions(
+                                        $livewire->getOwnerRecord(),
+                                        $record?->id
+                                    ))
+                                    ->searchable()
+                                    ->preload()
+                                    ->native(false)
+                                    ->live()
+                                    ->required(fn ($get): bool => (bool) $get('options.conditional_when.enabled'))
+                                    ->visible(fn ($get): bool => (bool) $get('options.conditional_when.enabled'))
+                                    ->afterStateUpdated(fn ($set): mixed => $set('options.conditional_when.values', null)),
+
+                                \Filament\Forms\Components\Select::make('options.conditional_when.values')
+                                    ->label(__('filament-custom-forms::fcf.admin.has_value'))
+                                    ->options(fn ($get, $livewire): array => self::conditionalValueOptions(
+                                        $livewire->getOwnerRecord(),
+                                        $get('options.conditional_when.field')
+                                    ))
+                                    ->searchable()
+                                    ->preload()
+                                    ->native(false)
+                                    ->disabled(fn ($get): bool => blank($get('options.conditional_when.field')))
+                                    ->required(fn ($get): bool => (bool) $get('options.conditional_when.enabled'))
+                                    ->visible(fn ($get): bool => (bool) $get('options.conditional_when.enabled'))
+                                    ->helperText(__('filament-custom-forms::fcf.admin.skip_logic_value_helper')),
+                            ]),
+
                         \Filament\Schemas\Components\Section::make(__('filament-custom-forms::fcf.admin.multiple_creating_selection_field'))
                             ->columnSpanFull()
                             ->columns(2)
@@ -711,6 +774,23 @@ class FieldsRelationManager extends RelationManager
                         $choices = $options['choices'] ?? [];
 
                         $data['options'] = $options;
+
+                        if (
+                            blank(data_get($options, 'conditional_when.field'))
+                            && filled(data_get($options, 'visible_when.field'))
+                            && data_get($options, 'visible_when.field') !== 'form_selection'
+                        ) {
+                            $visibleValue = data_get($options, 'visible_when.value');
+
+                            if (is_array($visibleValue)) {
+                                $visibleValue = head($visibleValue);
+                            }
+
+                            data_set($data, 'options.conditional_when.field', data_get($options, 'visible_when.field'));
+                            data_set($data, 'options.conditional_when.values', $visibleValue);
+                            data_set($data, 'options.conditional_when.enabled', filled($visibleValue));
+                        }
+
                         $data['label_en'] = self::getLangValue($record->label, 'en');
                         $data['label_km'] = self::getLangValue($record->label, 'km');
                         $data['choice_rows'] = self::choicesToRows(
@@ -876,6 +956,7 @@ class FieldsRelationManager extends RelationManager
 
         unset($data['choice_rows']);
 
+        $conditionalEnabled = data_get($data, 'options.conditional_when.enabled');
         $conditionalField = data_get($data, 'options.conditional_when.field');
         $conditionalValues = data_get($data, 'options.conditional_when.values', []);
 
@@ -885,7 +966,13 @@ class FieldsRelationManager extends RelationManager
 
         $conditionalValues = array_values(array_filter($conditionalValues, fn ($value): bool => filled($value)));
 
-        if (filled($conditionalField) && ! empty($conditionalValues)) {
+        if ($conditionalEnabled === false) {
+            $visibleField = data_get($data, 'options.visible_when.field');
+
+            if ($visibleField !== 'form_selection') {
+                data_forget($data, 'options.visible_when');
+            }
+        } elseif (filled($conditionalField) && ! empty($conditionalValues)) {
             data_set($data, 'options.visible_when.field', $conditionalField);
             data_set($data, 'options.visible_when.operator', 'in');
             data_set($data, 'options.visible_when.value', $conditionalValues);
@@ -895,6 +982,12 @@ class FieldsRelationManager extends RelationManager
             $data['custom_form_id'] = $ownerForm->id;
 
             return $data;
+        } elseif (filled($conditionalField)) {
+            $visibleField = data_get($data, 'options.visible_when.field');
+
+            if ($visibleField !== 'form_selection') {
+                data_forget($data, 'options.visible_when');
+            }
         }
 
         data_forget($data, 'options.conditional_when');
@@ -1055,6 +1148,66 @@ class FieldsRelationManager extends RelationManager
         }
 
         return ! in_array($options['is_field_input_enabled'], [false, 'false', 0, '0'], true);
+    }
+
+    private static function conditionalFieldOptions(?object $ownerForm, ?int $recordId = null): array
+    {
+        if (! $ownerForm) {
+            return [];
+        }
+
+        return $ownerForm->fields()
+            ->when($recordId, fn ($query) => $query->whereKeyNot($recordId))
+            ->where('type', 'select_dropdown')
+            ->orderBy('sort')
+            ->get(['name', 'label'])
+            ->filter(fn ($field): bool => filled($field->name))
+            ->mapWithKeys(function ($field): array {
+                $label = self::localeText($field->label ?? $field->name);
+                $name = (string) $field->name;
+
+                return [$name => $label !== $name ? "{$label} ({$name})" : $name];
+            })
+            ->all();
+    }
+
+    private static function conditionalValueOptions(?object $ownerForm, mixed $fieldName): array
+    {
+        if (! $ownerForm || blank($fieldName)) {
+            return [];
+        }
+
+        $field = $ownerForm->fields()->where('name', (string) $fieldName)->first();
+
+        if (! $field) {
+            return [];
+        }
+
+        $type = strtolower((string) $field->type);
+
+        if (in_array($type, ['boolean', 'toggle'], true)) {
+            return [
+                '1' => app()->getLocale() === 'km' ? 'បាទ/ចាស' : 'Yes',
+                '0' => app()->getLocale() === 'km' ? 'ទេ' : 'No',
+            ];
+        }
+
+        $options = self::normalizeOptions($field->options ?? []);
+        $choices = $options['choices'] ?? [];
+
+        if (! is_array($choices)) {
+            return [];
+        }
+
+        return collect($choices)
+            ->mapWithKeys(function ($label, $value): array {
+                if (is_array($label) && array_key_exists('value', $label)) {
+                    return [(string) $label['value'] => self::localeText($label['label'] ?? $label['value'])];
+                }
+
+                return [(string) $value => self::localeText($label)];
+            })
+            ->all();
     }
 
     private static function getLangValue(mixed $value, string $locale): string
