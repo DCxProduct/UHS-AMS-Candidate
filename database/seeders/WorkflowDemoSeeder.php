@@ -18,6 +18,8 @@ class WorkflowDemoSeeder extends Seeder
 {
     private const BATCH = 'workflow-demo-2026-09';
 
+    private const CANDIDATE_DRAFT_BATCH = 'candidate-draft-2026-09';
+
     private const MIN_ENTRIES_PER_FORM = 5;
 
     private const ENTRY_COUNT_VARIATIONS = 5;
@@ -94,6 +96,8 @@ class WorkflowDemoSeeder extends Seeder
                     }
                 }
             }
+
+            $this->seedCandidateDraftAccounts($reviewerId, $forms);
         });
     }
 
@@ -381,6 +385,125 @@ class WorkflowDemoSeeder extends Seeder
                 'updated_at' => $createdAt,
             ]);
         }
+    }
+
+    private function seedCandidateDraftAccounts(int $reviewerId, array $forms): void
+    {
+        $profileFormId = $this->profileFormId();
+
+        if (! $profileFormId || count($forms) < 13) {
+            $this->command?->warn('Candidate draft accounts skipped: profile or all 13 application forms are missing.');
+
+            return;
+        }
+
+        $scenario = [
+            'review_status' => 'draft',
+            'reviewed' => false,
+            'review_note' => null,
+            'passed' => false,
+            'payment_record' => false,
+            'payment_status' => 'pending',
+            'payment_channel' => 'in_system',
+        ];
+
+        for ($number = 1; $number <= 13; $number++) {
+            $form = $forms[$number - 1];
+            $candidate = $this->candidateAccount($number, $form['role']);
+            $this->removeCandidateDraftEntries($candidate->id);
+
+            $this->seedCompletedProfile(
+                $profileFormId,
+                $candidate,
+                $number,
+                $reviewerId,
+                now(),
+                [
+                    'first_name_kh' => 'សុភា',
+                    'last_name_kh' => 'កែវ',
+                    'first_name_en' => 'Candidate',
+                    'last_name_en' => (string) $number,
+                ],
+                self::CANDIDATE_DRAFT_BATCH,
+            );
+
+            $submittedAt = now()->subMinutes($number);
+            $data = $this->entryData(
+                $number,
+                $form,
+                $candidate,
+                $scenario,
+                $submittedAt,
+                self::CANDIDATE_DRAFT_BATCH,
+            );
+            $data['student_id'] = 'CAND-' . str_pad((string) $number, 3, '0', STR_PAD_LEFT);
+            $data['first_name_kh'] = 'សុភា';
+            $data['last_name_kh'] = 'កែវ';
+            $data['first_name_en'] = 'Candidate';
+            $data['last_name_en'] = (string) $number;
+
+            DB::table('custom_form_entries')->insert([
+                'custom_form_id' => $form['id'],
+                'data' => json_encode($data, JSON_UNESCAPED_UNICODE),
+                'created_by' => $candidate->id,
+                'reviewed_by' => null,
+                'review_status' => 'draft',
+                'review_note' => null,
+                'reviewed_at' => null,
+                'created_at' => $submittedAt,
+                'updated_at' => $submittedAt,
+            ]);
+        }
+    }
+
+    private function candidateAccount(int $number, string $role): User
+    {
+        $username = 'candidate' . $number;
+        $password = Hash::make('1234567a');
+
+        $candidate = User::query()->updateOrCreate(
+            ['username' => $username],
+            [
+                'registration_type' => 'student',
+                'academic_year' => '2025-2026',
+                'name' => 'Candidate ' . $number,
+                'name_latin' => 'Candidate ' . $number,
+                'email' => $username . '@gmail.com',
+                'email_verified_at' => now(),
+                'phone' => '011' . str_pad((string) $number, 7, '0', STR_PAD_LEFT),
+                'date_of_birth' => '2001-01-' . str_pad((string) $number, 2, '0', STR_PAD_LEFT),
+                'seat_number' => 'CAND-' . str_pad((string) $number, 3, '0', STR_PAD_LEFT),
+                'is_active' => true,
+                'password' => $password,
+            ],
+        );
+
+        $candidate->syncRoles(['candidate']);
+
+        SystemUser::query()->updateOrCreate(
+            ['username' => $username],
+            [
+                'name' => $candidate->name,
+                'email' => $candidate->email,
+                'phone' => $candidate->phone,
+                'password' => $password,
+                'roles' => [$role],
+                'permissions' => null,
+                'is_active' => true,
+                'email_verified_at' => now(),
+                'last_login_at' => null,
+            ],
+        );
+
+        return $candidate->fresh();
+    }
+
+    private function removeCandidateDraftEntries(int $candidateId): void
+    {
+        DB::table('custom_form_entries')
+            ->where('created_by', $candidateId)
+            ->where('data->seed_batch', self::CANDIDATE_DRAFT_BATCH)
+            ->delete();
     }
 
     private function reviewTemplateContent(): string
@@ -716,18 +839,20 @@ HTML;
         int $number,
         int $reviewerId,
         $submittedAt,
+        ?array $profileNames = null,
+        string $batch = self::BATCH,
     ): void {
         $existing = DB::table('custom_form_entries')
             ->where('custom_form_id', $profileFormId)
             ->where('created_by', $candidate->id)
-            ->where('data->seed_batch', self::BATCH)
+            ->where('data->seed_batch', $batch)
             ->exists();
 
         if ($existing) {
             return;
         }
 
-        $names = $this->candidateName($number);
+        $names = $profileNames ?? $this->candidateName($number);
         $geo = $this->profileGeoValues();
         $birthDate = $candidate->date_of_birth?->copy() ?? $submittedAt->copy()->subYears(18);
         $currentYear = (int) $submittedAt->format('Y');
@@ -812,7 +937,7 @@ HTML;
                 'cv_ministry' => 'Ministry of Health',
                 'cv_position' => 'Student Assistant',
             ]],
-            'seed_batch' => self::BATCH,
+            'seed_batch' => $batch,
             'registration_status' => 'approved',
             'submitted_at' => $submittedAt->toDateTimeString(),
         ]);
@@ -1201,7 +1326,14 @@ HTML;
         };
     }
 
-    private function entryData(int $number, array $form, User $candidate, array $scenario, $submittedAt): array
+    private function entryData(
+        int $number,
+        array $form,
+        User $candidate,
+        array $scenario,
+        $submittedAt,
+        string $batch = self::BATCH,
+    ): array
     {
         $suffix = str_pad((string) $number, 3, '0', STR_PAD_LEFT);
         $names = $this->candidateName($number);
@@ -1224,7 +1356,7 @@ HTML;
             'submitted_at' => $submittedAt->toDateTimeString(),
             'payment_status' => $scenario['payment_status'],
             'payment_channel' => $scenario['payment_channel'],
-            'seed_batch' => self::BATCH,
+            'seed_batch' => $batch,
         ];
 
         $data = array_merge(
