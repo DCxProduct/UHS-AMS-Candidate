@@ -2,12 +2,15 @@
 
 namespace Database\Seeders;
 
+use App\Models\ClosingDate;
 use App\Models\SystemUser;
 use App\Models\User;
+use App\Support\UserTypeOptions;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 class WorkflowDemoSeeder extends Seeder
 {
@@ -27,11 +30,16 @@ class WorkflowDemoSeeder extends Seeder
             return;
         }
 
+        // Keep this seeder runnable on its own, not only through DatabaseSeeder.
+        $this->call(StudentProfileSeeder::class);
+
         DB::transaction(function (): void {
             $this->seedPaymentReferences();
             $forms = $this->resolveForms();
+            $this->seedClosingDates($forms);
             $this->seedReviewTemplates($forms);
             $reviewerId = $this->reviewerId();
+            $profileFormId = $this->profileFormId();
 
             if (count($forms) < 1 || ! $reviewerId) {
                 $this->command?->warn('WorkflowDemoSeeder skipped: at least one form and an admin reviewer are required.');
@@ -53,6 +61,16 @@ class WorkflowDemoSeeder extends Seeder
                     $candidate = $this->candidate($number, $form['role']);
                     $scenario = $this->scenario($formNumber);
                     $submittedAt = now()->subDays($totalEntries - $number + 1);
+
+                    if ($profileFormId) {
+                        $this->seedCompletedProfile(
+                            $profileFormId,
+                            $candidate,
+                            $number,
+                            $reviewerId,
+                            $submittedAt,
+                        );
+                    }
 
                     $data = $this->entryData($number, $form, $candidate, $scenario, $submittedAt);
                     $entryId = DB::table('custom_form_entries')->insertGetId([
@@ -125,6 +143,59 @@ class WorkflowDemoSeeder extends Seeder
                 DB::table('document_templates')->insert([...$data, 'created_at' => $now]);
             }
         }
+    }
+
+    private function seedClosingDates(array $forms): void
+    {
+        if (! Schema::hasTable('closing_dates')) {
+            return;
+        }
+
+        $now = now();
+
+        foreach ($forms as $form) {
+            $type = ClosingDate::customFormTypeKey($form['id']);
+            $existing = DB::table('closing_dates')
+                ->where('type', $type)
+                ->whereNull('deleted_at')
+                ->latest('id')
+                ->first();
+
+            $data = [
+                'name' => $this->formDisplayName($form['name']),
+                'status' => ClosingDate::STATUS_OPEN,
+                'start_date' => '2026-09-23 00:00:00',
+                'end_date' => '2026-11-01 23:59:59',
+                'updated_at' => $now,
+            ];
+
+            if ($existing) {
+                DB::table('closing_dates')->where('id', $existing->id)->update($data);
+            } else {
+                DB::table('closing_dates')->insert([
+                    ...$data,
+                    'type' => $type,
+                    'created_at' => $now,
+                ]);
+            }
+        }
+    }
+
+    private function formDisplayName(mixed $name): string
+    {
+        if (is_string($name)) {
+            $decoded = json_decode($name, true);
+
+            if (is_array($decoded)) {
+                return (string) ($decoded['en'] ?? $decoded['km'] ?? $decoded['kh'] ?? 'Application Form');
+            }
+        }
+
+        if (is_array($name)) {
+            return (string) ($name['en'] ?? $name['km'] ?? $name['kh'] ?? 'Application Form');
+        }
+
+        return (string) ($name ?: 'Application Form');
     }
 
     private function reviewTemplateContent(): string
@@ -224,20 +295,7 @@ HTML;
             ->values();
 
         if ($existingForms->isEmpty()) {
-            $fallbackDefinitions = [
-                [
-                    'slug' => 'national-entrance-exam-application',
-                    'name' => ['en' => 'National Entrance Exam Application', 'km' => 'ពាក្យសុំប្រឡងចូលថ្នាក់ជាតិ', 'kh' => 'ពាក្យសុំប្រឡងចូលថ្នាក់ជាតិ'],
-                    'role' => 'national_entrance_exam_application_bachelor',
-                    'passed_result_menu' => 'exam_results',
-                ],
-                [
-                    'slug' => 'national-exit-exam-application',
-                    'name' => ['en' => 'National Exit Exam Application', 'km' => 'ពាក្យសុំប្រឡងចេញថ្នាក់ជាតិ', 'kh' => 'ពាក្យសុំប្រឡងចេញថ្នាក់ជាតិ'],
-                    'role' => 'national_exit_exam_application_bachelor',
-                    'passed_result_menu' => 'exit_exam_results',
-                ],
-            ];
+            $fallbackDefinitions = $this->workflowFormDefinitions();
 
             foreach ($fallbackDefinitions as $index => $definition) {
                 $formId = $this->upsertForm($definition, $index + 1);
@@ -245,7 +303,7 @@ HTML;
                     'id' => $formId,
                     'slug' => $definition['slug'],
                     'name' => json_encode($definition['name'], JSON_UNESCAPED_UNICODE),
-                    'allowed_roles' => json_encode([$definition['role']], JSON_UNESCAPED_UNICODE),
+                    'allowed_roles' => json_encode($definition['allowed_roles'], JSON_UNESCAPED_UNICODE),
                 ]);
             }
         }
@@ -280,6 +338,33 @@ HTML;
         })->all();
     }
 
+    /**
+     * Provide the complete demo menu when no application forms have been configured yet.
+     */
+    private function workflowFormDefinitions(): array
+    {
+        return collect(UserTypeOptions::defaultRecords())
+            ->map(function (array $record): array {
+                $key = (string) $record['key'];
+
+                return [
+                    'slug' => Str::slug($key),
+                    'name' => [
+                        'en' => $record['label_en'],
+                        'km' => $record['label_kh'],
+                        'kh' => $record['label_kh'],
+                    ],
+                    'role' => $key,
+                    'allowed_roles' => ['student', 'candidate'],
+                    'passed_result_menu' => str_starts_with($key, 'national_entrance_')
+                        ? 'exam_results'
+                        : (str_starts_with($key, 'national_exit_') ? 'exit_exam_results' : null),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
     private function upsertForm(array $definition, int $displayOrder): int
     {
         $now = now();
@@ -289,7 +374,10 @@ HTML;
             'slug' => $definition['slug'],
             'schema' => null,
             'is_active' => true,
-            'allowed_roles' => json_encode([$definition['role']], JSON_UNESCAPED_UNICODE),
+            'allowed_roles' => json_encode(
+                $definition['allowed_roles'] ?? [$definition['role']],
+                JSON_UNESCAPED_UNICODE,
+            ),
             'menu_placement' => 'sidebar',
             'parent_sidebar' => null,
             'sub_item_type' => null,
@@ -426,6 +514,73 @@ HTML;
             ->whereIn('username', ['admin', 'registrar'])
             ->orderByRaw("CASE username WHEN 'admin' THEN 1 ELSE 2 END")
             ->value('id');
+    }
+
+    private function profileFormId(): ?int
+    {
+        $id = DB::table('custom_forms')
+            ->where('slug', 'profile')
+            ->value('id');
+
+        return $id ? (int) $id : null;
+    }
+
+    private function seedCompletedProfile(
+        int $profileFormId,
+        User $candidate,
+        int $number,
+        int $reviewerId,
+        $submittedAt,
+    ): void {
+        $existing = DB::table('custom_form_entries')
+            ->where('custom_form_id', $profileFormId)
+            ->where('created_by', $candidate->id)
+            ->where('data->seed_batch', self::BATCH)
+            ->exists();
+
+        if ($existing) {
+            return;
+        }
+
+        $names = $this->candidateName($number);
+        $province = Schema::hasTable('geo_locations')
+            ? DB::table('geo_locations')->where('type', 'province')->value('id')
+            : null;
+
+        $data = [
+            'first_name_kh' => $names['first_name_kh'],
+            'last_name_kh' => $names['last_name_kh'],
+            'first_name_en' => $names['first_name_en'],
+            'last_name_en' => $names['last_name_en'],
+            'gender' => $number % 2 === 0 ? 'female' : 'male',
+            'nationality' => 'khmer',
+            'ethnicity' => 'khmer',
+            'religion' => 'buddhism',
+            'married_status' => 'single',
+            'date_of_birth' => $candidate->date_of_birth?->toDateString(),
+            'birth_province_city' => $province,
+            'current_capital_province' => $province,
+            'father_name' => 'Demo Father ' . $number,
+            'father_status' => 'alive',
+            'mother_name' => 'Demo Mother ' . $number,
+            'mother_status' => 'alive',
+            'culture_level' => 'high_school_diploma',
+            'seed_batch' => self::BATCH,
+            'registration_status' => 'approved',
+            'submitted_at' => $submittedAt->toDateTimeString(),
+        ];
+
+        DB::table('custom_form_entries')->insert([
+            'custom_form_id' => $profileFormId,
+            'data' => json_encode($data, JSON_UNESCAPED_UNICODE),
+            'created_by' => $candidate->id,
+            'reviewed_by' => $reviewerId,
+            'review_status' => 'accepted',
+            'review_note' => 'Demo profile completed.',
+            'reviewed_at' => $submittedAt->copy()->addDay(),
+            'created_at' => $submittedAt,
+            'updated_at' => $submittedAt->copy()->addDay(),
+        ]);
     }
 
     private function candidateName(int $number): array
