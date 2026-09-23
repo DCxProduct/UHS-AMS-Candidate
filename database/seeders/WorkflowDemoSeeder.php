@@ -5,7 +5,9 @@ namespace Database\Seeders;
 use App\Models\ClosingDate;
 use App\Models\SystemUser;
 use App\Models\User;
+use App\Support\NotificationLanguage;
 use App\Support\UserTypeOptions;
+use Filament\Notifications\Notification;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -15,6 +17,8 @@ use Illuminate\Support\Str;
 class WorkflowDemoSeeder extends Seeder
 {
     private const BATCH = 'workflow-demo-2026-09';
+
+    private const CANDIDATE_DRAFT_BATCH = 'candidate-draft-2026-09';
 
     private const MIN_ENTRIES_PER_FORM = 5;
 
@@ -85,11 +89,15 @@ class WorkflowDemoSeeder extends Seeder
                         'updated_at' => $scenario['reviewed'] ? $submittedAt->copy()->addDay() : $submittedAt,
                     ]);
 
+                    $this->seedWorkflowNotifications($entryId, $form, $candidate, $scenario, $submittedAt);
+
                     if ($scenario['payment_record']) {
                         $this->createPayment($entryId, $form['id'], $candidate->id, $number, $scenario, $submittedAt);
                     }
                 }
             }
+
+            $this->seedCandidateDraftAccounts($reviewerId, $forms);
         });
     }
 
@@ -196,6 +204,317 @@ class WorkflowDemoSeeder extends Seeder
         }
 
         return (string) ($name ?: 'Application Form');
+    }
+
+    private function seedWorkflowNotifications(
+        int $entryId,
+        array $form,
+        User $candidate,
+        array $scenario,
+        $submittedAt,
+    ): void {
+        if (! Schema::hasTable('notifications')) {
+            return;
+        }
+
+        $formName = $this->formDisplayName($form['name']);
+        $workflowData = [
+            'seed_batch' => self::BATCH,
+            'workflow_entry_id' => (string) $entryId,
+            'workflow_form_id' => (string) $form['id'],
+        ];
+
+        if ($scenario['review_status'] === 'accepted') {
+            $this->sendWorkflowNotification(
+                $candidate,
+                Notification::make()
+                    ->title(NotificationLanguage::transForUser(
+                        $candidate,
+                        'app.custom_form_entry_ui.notifications.application_approved_title',
+                        ['form' => $formName],
+                    ))
+                    ->body(NotificationLanguage::transForUser(
+                        $candidate,
+                        $scenario['payment_record']
+                            ? 'app.custom_form_entry_ui.notifications.application_approved_body_no_payment'
+                            : 'app.custom_form_entry_ui.notifications.application_approved_body',
+                        ['form' => $formName],
+                    ))
+                    ->icon('heroicon-o-clipboard-document-check')
+                    ->iconColor('success')
+                    ->success()
+                    ->viewData($workflowData),
+                $submittedAt->copy()->addDay(),
+            );
+        } elseif ($scenario['review_status'] === 'rejected') {
+            $this->sendWorkflowNotification(
+                $candidate,
+                Notification::make()
+                    ->title(NotificationLanguage::transForUser(
+                        $candidate,
+                        'app.custom_form_entry_ui.notifications.application_rejected_title',
+                        ['form' => $formName],
+                    ))
+                    ->body(NotificationLanguage::transForUser(
+                        $candidate,
+                        'app.custom_form_entry_ui.notifications.application_rejected_body',
+                        ['note' => $scenario['review_note'] ?? NotificationLanguage::transForUser(
+                            $candidate,
+                            'app.custom_form_entry_ui.notifications.no_note',
+                        )],
+                    ))
+                    ->icon('heroicon-o-x-circle')
+                    ->iconColor('danger')
+                    ->danger()
+                    ->viewData($workflowData),
+                $submittedAt->copy()->addDay(),
+            );
+        } else {
+            $this->sendWorkflowNotification(
+                $candidate,
+                Notification::make()
+                    ->title(NotificationLanguage::transForUser(
+                        $candidate,
+                        'app.custom_form_entry_ui.notifications.application_submitted_payment_title',
+                        ['form' => $formName],
+                    ))
+                    ->body(NotificationLanguage::transForUser(
+                        $candidate,
+                        'app.custom_form_entry_ui.notifications.application_submitted_payment_body',
+                        ['form' => $formName],
+                    ))
+                    ->icon('heroicon-o-paper-airplane')
+                    ->iconColor('warning')
+                    ->warning()
+                    ->viewData($workflowData),
+                $submittedAt,
+            );
+        }
+
+        if ($scenario['payment_record'] && $scenario['payment_status'] === 'paid') {
+            $this->sendWorkflowNotification(
+                $candidate,
+                Notification::make()
+                    ->title(NotificationLanguage::transForUser(
+                        $candidate,
+                        'app.custom_form_entry_ui.notifications.payment_completed_title',
+                    ))
+                    ->body(NotificationLanguage::transForUser(
+                        $candidate,
+                        'app.custom_form_entry_ui.notifications.payment_completed_body',
+                        ['form' => $formName],
+                    ))
+                    ->icon('heroicon-o-check-circle')
+                    ->iconColor('success')
+                    ->success()
+                    ->viewData([...$workflowData, 'workflow_payment_status' => 'paid']),
+                $submittedAt->copy()->addDay(),
+            );
+        }
+
+        if ($scenario['passed'] ?? false) {
+            $this->sendWorkflowNotification(
+                $candidate,
+                Notification::make()
+                    ->title(NotificationLanguage::transForUser(
+                        $candidate,
+                        'review_applications.notifications.student_accepted_title',
+                    ))
+                    ->body(NotificationLanguage::transForUser(
+                        $candidate,
+                        'review_applications.notifications.student_accepted_body',
+                        ['student' => $candidate->name],
+                    ))
+                    ->icon('heroicon-o-check-circle')
+                    ->iconColor('success')
+                    ->success()
+                    ->viewData([
+                        ...$workflowData,
+                        'review_result_entry_id' => (string) $entryId,
+                        'review_result_status' => 'passed',
+                    ]),
+                $submittedAt->copy()->addDays(2),
+            );
+        }
+
+        if ((string) $form['slug'] === 'enrollment') {
+            $admins = User::query()
+                ->where('registration_type', 'admin')
+                ->when(
+                    Schema::hasColumn('users', 'is_active'),
+                    fn ($query) => $query->where('is_active', true),
+                )
+                ->get();
+
+            foreach ($admins as $admin) {
+                $this->sendWorkflowNotification(
+                    $admin,
+                    Notification::make()
+                        ->title(NotificationLanguage::transForUser(
+                            $admin,
+                            'review_applications.notifications.enrollment_submitted_title',
+                        ))
+                        ->body(NotificationLanguage::transForUser(
+                            $admin,
+                            'review_applications.notifications.enrollment_submitted_body',
+                            ['student' => $candidate->name],
+                        ))
+                        ->icon('heroicon-o-clipboard-document-check')
+                        ->iconColor('warning')
+                        ->viewData([...$workflowData, 'workflow_recipient' => 'admin']),
+                    $submittedAt,
+                );
+            }
+        }
+    }
+
+    private function sendWorkflowNotification(User $recipient, Notification $notification, $createdAt): void
+    {
+        $notification->sendToDatabase($recipient);
+
+        $notificationId = DB::table('notifications')
+            ->where('notifiable_type', $recipient->getMorphClass())
+            ->where('notifiable_id', $recipient->getKey())
+            ->where('data->viewData->seed_batch', self::BATCH)
+            ->latest('created_at')
+            ->value('id');
+
+        if ($notificationId) {
+            DB::table('notifications')->where('id', $notificationId)->update([
+                'created_at' => $createdAt,
+                'updated_at' => $createdAt,
+            ]);
+        }
+    }
+
+    private function seedCandidateDraftAccounts(int $reviewerId, array $forms): void
+    {
+        $profileFormId = $this->profileFormId();
+
+        if (! $profileFormId || count($forms) < 13) {
+            $this->command?->warn('Candidate draft accounts skipped: profile or all 13 application forms are missing.');
+
+            return;
+        }
+
+        $scenario = [
+            'review_status' => 'draft',
+            'reviewed' => false,
+            'review_note' => null,
+            'passed' => false,
+            'payment_record' => false,
+            'payment_status' => 'pending',
+            'payment_channel' => 'in_system',
+        ];
+
+        for ($number = 1; $number <= 13; $number++) {
+            $form = $forms[$number - 1];
+            $candidate = $this->candidateAccount($number, $this->candidateFormRole($form));
+            $this->removeCandidateDraftEntries($candidate->id);
+
+            $this->seedCompletedProfile(
+                $profileFormId,
+                $candidate,
+                $number,
+                $reviewerId,
+                now(),
+                [
+                    'first_name_kh' => 'សុភា',
+                    'last_name_kh' => 'កែវ',
+                    'first_name_en' => 'Candidate',
+                    'last_name_en' => (string) $number,
+                ],
+                self::CANDIDATE_DRAFT_BATCH,
+            );
+
+            $submittedAt = now()->subMinutes($number);
+            $data = $this->entryData(
+                $number,
+                $form,
+                $candidate,
+                $scenario,
+                $submittedAt,
+                self::CANDIDATE_DRAFT_BATCH,
+            );
+            $data['student_id'] = 'CAND-' . str_pad((string) $number, 3, '0', STR_PAD_LEFT);
+            $data['first_name_kh'] = 'សុភា';
+            $data['last_name_kh'] = 'កែវ';
+            $data['first_name_en'] = 'Candidate';
+            $data['last_name_en'] = (string) $number;
+
+            DB::table('custom_form_entries')->insert([
+                'custom_form_id' => $form['id'],
+                'data' => json_encode($data, JSON_UNESCAPED_UNICODE),
+                'created_by' => $candidate->id,
+                'reviewed_by' => null,
+                'review_status' => 'draft',
+                'review_note' => null,
+                'reviewed_at' => null,
+                'created_at' => $submittedAt,
+                'updated_at' => $submittedAt,
+            ]);
+        }
+    }
+
+    private function candidateFormRole(array $form): string
+    {
+        foreach (UserTypeOptions::defaultRecords() as $record) {
+            if (Str::slug((string) $record['key']) === (string) $form['slug']) {
+                return (string) $record['key'];
+            }
+        }
+
+        return (string) $form['role'];
+    }
+
+    private function candidateAccount(int $number, string $role): User
+    {
+        $username = 'candidate' . $number;
+        $password = Hash::make('1234567a');
+
+        $candidate = User::query()->updateOrCreate(
+            ['username' => $username],
+            [
+                'registration_type' => 'student',
+                'academic_year' => '2025-2026',
+                'name' => 'Candidate ' . $number,
+                'name_latin' => 'Candidate ' . $number,
+                'email' => $username . '@gmail.com',
+                'email_verified_at' => now(),
+                'phone' => '011' . str_pad((string) $number, 7, '0', STR_PAD_LEFT),
+                'date_of_birth' => '2001-01-' . str_pad((string) $number, 2, '0', STR_PAD_LEFT),
+                'seat_number' => 'CAND-' . str_pad((string) $number, 3, '0', STR_PAD_LEFT),
+                'is_active' => true,
+                'password' => $password,
+            ],
+        );
+
+        $candidate->syncRoles(['candidate']);
+
+        SystemUser::query()->updateOrCreate(
+            ['username' => $username],
+            [
+                'name' => $candidate->name,
+                'email' => $candidate->email,
+                'phone' => $candidate->phone,
+                'password' => $password,
+                'roles' => [$role],
+                'permissions' => null,
+                'is_active' => true,
+                'email_verified_at' => now(),
+                'last_login_at' => null,
+            ],
+        );
+
+        return $candidate->fresh();
+    }
+
+    private function removeCandidateDraftEntries(int $candidateId): void
+    {
+        DB::table('custom_form_entries')
+            ->where('created_by', $candidateId)
+            ->where('data->seed_batch', self::CANDIDATE_DRAFT_BATCH)
+            ->delete();
     }
 
     private function reviewTemplateContent(): string
@@ -531,44 +850,108 @@ HTML;
         int $number,
         int $reviewerId,
         $submittedAt,
+        ?array $profileNames = null,
+        string $batch = self::BATCH,
     ): void {
         $existing = DB::table('custom_form_entries')
             ->where('custom_form_id', $profileFormId)
             ->where('created_by', $candidate->id)
-            ->where('data->seed_batch', self::BATCH)
+            ->where('data->seed_batch', $batch)
             ->exists();
 
         if ($existing) {
             return;
         }
 
-        $names = $this->candidateName($number);
-        $province = Schema::hasTable('geo_locations')
-            ? DB::table('geo_locations')->where('type', 'province')->value('id')
-            : null;
+        $names = $profileNames ?? $this->candidateName($number);
+        $geo = $this->profileGeoValues();
+        $birthDate = $candidate->date_of_birth?->copy() ?? $submittedAt->copy()->subYears(18);
+        $currentYear = (int) $submittedAt->format('Y');
+        $gender = $number % 2 === 0 ? 'female' : 'male';
+        $profileDefaults = $this->sampleFormData($profileFormId, $number, $candidate, $submittedAt);
 
-        $data = [
+        $data = array_merge($profileDefaults, [
             'first_name_kh' => $names['first_name_kh'],
             'last_name_kh' => $names['last_name_kh'],
             'first_name_en' => $names['first_name_en'],
             'last_name_en' => $names['last_name_en'],
-            'gender' => $number % 2 === 0 ? 'female' : 'male',
+            'gender' => $gender,
             'nationality' => 'khmer',
             'ethnicity' => 'khmer',
             'religion' => 'buddhism',
-            'married_status' => 'single',
-            'date_of_birth' => $candidate->date_of_birth?->toDateString(),
-            'birth_province_city' => $province,
-            'current_capital_province' => $province,
-            'father_name' => 'Demo Father ' . $number,
-            'father_status' => 'alive',
-            'mother_name' => 'Demo Mother ' . $number,
-            'mother_status' => 'alive',
+            'married_status' => 'married',
+            'date_of_birth' => $birthDate->toDateString(),
+            'birth_province_city' => $geo['province'],
+            'birth_district_khan' => $geo['district'],
+            'birth_commune_sangkat' => $geo['commune'],
+            'birth_village' => $geo['village'],
+            'current_house_number' => 'House ' . $number,
+            'current_street_number' => 'Street 271',
+            'current_capital_province' => $geo['province'],
+            'current_district_khan' => $geo['district'],
+            'current_commune_sangkat' => $geo['commune'],
+            'current_village' => $geo['village'],
             'culture_level' => 'high_school_diploma',
-            'seed_batch' => self::BATCH,
+            'exam_period' => $birthDate->copy()->addYears(18)->toDateString(),
+            'exam_center' => 'University of Health Sciences',
+            'current_occupation' => 'Student',
+            'place_of_work' => 'University of Health Sciences',
+            'father_name' => 'Demo Father ' . $number,
+            'father_date_of_birth' => $birthDate->copy()->subYears(28)->toDateString(),
+            'father_ethnicity' => 'khmer',
+            'father_nationality' => 'khmer',
+            'father_status' => 'alive',
+            'father_occupation' => 'Health Professional',
+            'father_place_of_work' => 'Ministry of Health',
+            'father_phone_number' => '012' . str_pad((string) ($number + 100), 6, '0', STR_PAD_LEFT),
+            'mother_name' => 'Demo Mother ' . $number,
+            'mother_date_of_birth' => $birthDate->copy()->subYears(26)->toDateString(),
+            'mother_ethnicity' => 'khmer',
+            'mother_nationality' => 'khmer',
+            'mother_status' => 'alive',
+            'mother_occupation' => 'Teacher',
+            'mother_place_of_work' => 'Public School',
+            'mother_phone_number' => '012' . str_pad((string) ($number + 200), 6, '0', STR_PAD_LEFT),
+            'parents_house_number' => 'House ' . ($number + 100),
+            'parents_street_number' => 'Street 271',
+            'parents_capital_province' => $geo['province'],
+            'parents_district_khan' => $geo['district'],
+            'parents_commune_sangkat' => $geo['commune'],
+            'parents_village' => $geo['village'],
+            'guardian_name' => 'Demo Guardian ' . $number,
+            'guardian_relationship' => 'Uncle',
+            'guardian_phone_number' => '012' . str_pad((string) ($number + 300), 6, '0', STR_PAD_LEFT),
+            'siblings' => [[
+                'sibling_name' => 'Demo Sibling ' . $number,
+                'sibling_gender' => $gender === 'male' ? 'female' : 'male',
+                'sibling_year_of_birth' => $birthDate->copy()->subYears(2)->toDateString(),
+                'sibling_occupation' => 'Student',
+            ]],
+            'spouse_name' => 'Demo Spouse ' . $number,
+            'spouse_year_of_birth' => $birthDate->copy()->subYears(1)->toDateString(),
+            'spouse_occupation' => 'Health Worker',
+            'number_of_children' => 1,
+            'number_of_sons' => 1,
+            'number_of_daughters' => 0,
+            'educations' => [[
+                'educational_institution' => 'University of Health Sciences',
+                'degree_level_major' => 'high_school_diploma',
+                'country' => 'cambodia',
+                'from_year' => (string) ($currentYear - 5),
+                'to_year' => (string) ($currentYear - 1),
+                'graduation_year' => (string) ($currentYear - 1),
+            ]],
+            'cv_work_history' => [[
+                'cv_start_year' => (string) ($currentYear - 2),
+                'cv_end_year' => (string) $currentYear,
+                'cv_organization' => 'University of Health Sciences',
+                'cv_ministry' => 'Ministry of Health',
+                'cv_position' => 'Student Assistant',
+            ]],
+            'seed_batch' => $batch,
             'registration_status' => 'approved',
             'submitted_at' => $submittedAt->toDateTimeString(),
-        ];
+        ]);
 
         DB::table('custom_form_entries')->insert([
             'custom_form_id' => $profileFormId,
@@ -581,6 +964,203 @@ HTML;
             'created_at' => $submittedAt,
             'updated_at' => $submittedAt->copy()->addDay(),
         ]);
+    }
+
+    private function profileGeoValues(): array
+    {
+        $fallback = [
+            'province' => '1',
+            'district' => '1',
+            'commune' => '1',
+            'village' => '1',
+        ];
+
+        if (! Schema::hasTable('geo_locations')) {
+            return $fallback;
+        }
+
+        $province = DB::table('geo_locations')->where('type', 'province')->orderBy('id')->first();
+
+        if (! $province) {
+            return $fallback;
+        }
+
+        $district = DB::table('geo_locations')
+            ->where('type', 'district')
+            ->where('parent_id', $province->id)
+            ->orderBy('id')
+            ->first();
+        $commune = $district
+            ? DB::table('geo_locations')
+                ->where('type', 'commune')
+                ->where('parent_id', $district->id)
+                ->orderBy('id')
+                ->first()
+            : null;
+        $village = $commune
+            ? DB::table('geo_locations')
+                ->where('type', 'village')
+                ->where('parent_id', $commune->id)
+                ->orderBy('id')
+                ->first()
+            : null;
+
+        return [
+            'province' => (string) $province->id,
+            'district' => (string) ($district->id ?? $province->id),
+            'commune' => (string) ($commune->id ?? $district->id ?? $province->id),
+            'village' => (string) ($village->id ?? $commune->id ?? $district->id ?? $province->id),
+        ];
+    }
+
+    private function sampleFormData(int $formId, int $number, User $candidate, $submittedAt): array
+    {
+        if (! Schema::hasTable('custom_form_fields')) {
+            return [];
+        }
+
+        $fields = DB::table('custom_form_fields')
+            ->where('custom_form_id', $formId)
+            ->orderBy('sort')
+            ->orderBy('id')
+            ->get();
+        $children = $fields->groupBy(fn (object $field): string => (string) ($field->parent_id ?? 'root'));
+        $geo = $this->profileGeoValues();
+
+        $build = function ($parentId) use (&$build, $children, $geo, $number, $candidate, $submittedAt): array {
+            $values = [];
+            $parentKey = $parentId === null ? 'root' : (string) $parentId;
+
+            foreach ($children->get($parentKey, collect()) as $field) {
+                $type = strtolower((string) $field->type);
+                $nested = $build($field->id);
+
+                if ($type === 'repeater') {
+                    if ($nested !== [] && filled($field->name)) {
+                        $values[$field->name] = [$nested];
+                    }
+
+                    continue;
+                }
+
+                if (in_array($type, ['section', 'wizard', 'fieldset', 'grid', 'info', 'heading', 'divider', 'html'], true)) {
+                    $values = array_merge($values, $nested);
+
+                    continue;
+                }
+
+                if (filled($field->name)) {
+                    $values[$field->name] = $this->sampleFieldValue($field, $number, $candidate, $submittedAt, $geo);
+                }
+            }
+
+            return $values;
+        };
+
+        return $build(null);
+    }
+
+    private function sampleFieldValue(
+        object $field,
+        int $number,
+        User $candidate,
+        $submittedAt,
+        array $geo,
+    ): mixed
+    {
+        $options = is_array($field->options ?? null)
+            ? $field->options
+            : (json_decode((string) ($field->options ?? ''), true) ?: []);
+
+        if (filled($field->default_value ?? null)) {
+            return $field->default_value;
+        }
+
+        if (filled($options['default_value'] ?? null)) {
+            return $options['default_value'];
+        }
+
+        $geoType = $options['geo_location_type'] ?? null;
+        if (is_string($geoType) && array_key_exists($geoType, $geo)) {
+            return $geo[$geoType];
+        }
+
+        $name = strtolower((string) $field->name);
+        $type = strtolower((string) $field->type);
+        $choices = $options['choices'] ?? null;
+        if (is_array($choices) && $choices !== []) {
+            $choiceKey = array_key_first($choices);
+            $choice = $choices[$choiceKey];
+            $value = array_is_list($choices)
+                ? (is_array($choice) ? ($choice['value'] ?? $choiceKey) : $choice)
+                : (is_array($choice) && array_key_exists('value', $choice) ? $choice['value'] : $choiceKey);
+
+            return in_array($type, ['checkbox_group', 'multi_select', 'multiselect'], true)
+                ? [$value]
+                : $value;
+        }
+
+        if (in_array($type, ['checkbox', 'toggle', 'boolean'], true)) {
+            return true;
+        }
+
+        if (str_contains($name, 'email')) {
+            return $candidate->email;
+        }
+
+        if (str_contains($name, 'phone')) {
+            return $candidate->phone;
+        }
+
+        if (in_array($type, ['number_input', 'number'], true) || str_contains($name, 'number')) {
+            return 1;
+        }
+
+        if ($name === 'age') {
+            return 30 + ($number % 5);
+        }
+
+        if (str_contains($name, 'father') && str_contains($name, 'date')) {
+            return $candidate->date_of_birth?->copy()->subYears(28)->toDateString()
+                ?? $submittedAt->copy()->subYears(28)->toDateString();
+        }
+
+        if (str_contains($name, 'mother') && str_contains($name, 'date')) {
+            return $candidate->date_of_birth?->copy()->subYears(26)->toDateString()
+                ?? $submittedAt->copy()->subYears(26)->toDateString();
+        }
+
+        if (str_contains($name, 'spouse') && str_contains($name, 'date')) {
+            return $candidate->date_of_birth?->copy()->subYears(1)->toDateString()
+                ?? $submittedAt->copy()->subYears(1)->toDateString();
+        }
+
+        if (str_contains($name, 'date') || str_contains($name, 'dob')) {
+            return $candidate->date_of_birth?->toDateString() ?? $submittedAt->toDateString();
+        }
+
+        if (str_contains($name, 'year')) {
+            return $submittedAt->format('Y');
+        }
+
+        if (in_array($type, ['file_upload', 'file', 'image_upload', 'image'], true) || str_contains($name, 'file')) {
+            return 'workflow-demo/sample-document.pdf';
+        }
+
+        return match (true) {
+            str_contains($name, 'father_name') => 'Sokha Keo',
+            str_contains($name, 'mother_name') => 'Srey Mom Keo',
+            str_contains($name, 'spouse_name') => 'Dara Chan',
+            str_contains($name, 'guardian_name') => 'Rithy Keo',
+            str_contains($name, 'occupation') => 'Healthcare Professional',
+            str_contains($name, 'place_of_work') => 'Ministry of Health',
+            str_contains($name, 'relationship') => 'Uncle',
+            str_contains($name, 'house') => 'House ' . (100 + $number),
+            str_contains($name, 'street') => 'Street 271',
+            str_contains($name, 'address') => 'Phnom Penh, Cambodia',
+            str_contains($name, 'reference') => 'Reference Person ' . $number,
+            default => Str::headline($name) . ' ' . $number,
+        };
     }
 
     private function candidateName(int $number): array
@@ -789,7 +1369,14 @@ HTML;
         };
     }
 
-    private function entryData(int $number, array $form, User $candidate, array $scenario, $submittedAt): array
+    private function entryData(
+        int $number,
+        array $form,
+        User $candidate,
+        array $scenario,
+        $submittedAt,
+        string $batch = self::BATCH,
+    ): array
     {
         $suffix = str_pad((string) $number, 3, '0', STR_PAD_LEFT);
         $names = $this->candidateName($number);
@@ -812,8 +1399,13 @@ HTML;
             'submitted_at' => $submittedAt->toDateTimeString(),
             'payment_status' => $scenario['payment_status'],
             'payment_channel' => $scenario['payment_channel'],
-            'seed_batch' => self::BATCH,
+            'seed_batch' => $batch,
         ];
+
+        $data = array_merge(
+            $this->sampleFormData((int) $form['id'], $number, $candidate, $submittedAt),
+            $data,
+        );
 
         if ($scenario['payment_channel'] === 'external') {
             $data['external_payment_reference'] = 'EXT-' . $suffix;
@@ -871,5 +1463,11 @@ HTML;
         DB::table('payments')
             ->where('description', 'like', '[workflow-demo]%')
             ->delete();
+
+        if (Schema::hasTable('notifications')) {
+            DB::table('notifications')
+                ->where('data->viewData->seed_batch', self::BATCH)
+                ->delete();
+        }
     }
 }
