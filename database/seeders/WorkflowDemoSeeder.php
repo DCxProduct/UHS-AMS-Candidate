@@ -409,7 +409,7 @@ class WorkflowDemoSeeder extends Seeder
 
         for ($number = 1; $number <= 13; $number++) {
             $form = $forms[$number - 1];
-            $candidate = $this->candidateAccount($number, $form['role']);
+            $candidate = $this->candidateAccount($number, $this->candidateFormRole($form));
             $this->removeCandidateDraftEntries($candidate->id);
 
             $this->seedCompletedProfile(
@@ -454,6 +454,17 @@ class WorkflowDemoSeeder extends Seeder
                 'updated_at' => $submittedAt,
             ]);
         }
+    }
+
+    private function candidateFormRole(array $form): string
+    {
+        foreach (UserTypeOptions::defaultRecords() as $record) {
+            if (Str::slug((string) $record['key']) === (string) $form['slug']) {
+                return (string) $record['key'];
+            }
+        }
+
+        return (string) $form['role'];
     }
 
     private function candidateAccount(int $number, string $role): User
@@ -1074,27 +1085,23 @@ HTML;
             return $geo[$geoType];
         }
 
+        $name = strtolower((string) $field->name);
+        $type = strtolower((string) $field->type);
         $choices = $options['choices'] ?? null;
         if (is_array($choices) && $choices !== []) {
-            $choice = array_values($choices)[0];
-            $value = is_array($choice)
-                ? ($choice['value'] ?? array_key_first($choice))
-                : (array_key_first($choices) ?? $choice);
+            $choiceKey = array_key_first($choices);
+            $choice = $choices[$choiceKey];
+            $value = array_is_list($choices)
+                ? (is_array($choice) ? ($choice['value'] ?? $choiceKey) : $choice)
+                : (is_array($choice) && array_key_exists('value', $choice) ? $choice['value'] : $choiceKey);
 
-            return in_array(strtolower((string) $field->type), ['checkbox_group', 'multi_select', 'multiselect'], true)
+            return in_array($type, ['checkbox_group', 'multi_select', 'multiselect'], true)
                 ? [$value]
                 : $value;
         }
 
-        $name = strtolower((string) $field->name);
-        $type = strtolower((string) $field->type);
-
         if (in_array($type, ['checkbox', 'toggle', 'boolean'], true)) {
             return true;
-        }
-
-        if (in_array($type, ['number_input', 'number'], true) || str_contains($name, 'number')) {
-            return 1;
         }
 
         if (str_contains($name, 'email')) {
@@ -1103,6 +1110,29 @@ HTML;
 
         if (str_contains($name, 'phone')) {
             return $candidate->phone;
+        }
+
+        if (in_array($type, ['number_input', 'number'], true) || str_contains($name, 'number')) {
+            return 1;
+        }
+
+        if ($name === 'age') {
+            return 30 + ($number % 5);
+        }
+
+        if (str_contains($name, 'father') && str_contains($name, 'date')) {
+            return $candidate->date_of_birth?->copy()->subYears(28)->toDateString()
+                ?? $submittedAt->copy()->subYears(28)->toDateString();
+        }
+
+        if (str_contains($name, 'mother') && str_contains($name, 'date')) {
+            return $candidate->date_of_birth?->copy()->subYears(26)->toDateString()
+                ?? $submittedAt->copy()->subYears(26)->toDateString();
+        }
+
+        if (str_contains($name, 'spouse') && str_contains($name, 'date')) {
+            return $candidate->date_of_birth?->copy()->subYears(1)->toDateString()
+                ?? $submittedAt->copy()->subYears(1)->toDateString();
         }
 
         if (str_contains($name, 'date') || str_contains($name, 'dob')) {
@@ -1117,7 +1147,20 @@ HTML;
             return 'workflow-demo/sample-document.pdf';
         }
 
-        return Str::headline($name) . ' Demo ' . $number;
+        return match (true) {
+            str_contains($name, 'father_name') => 'Sokha Keo',
+            str_contains($name, 'mother_name') => 'Srey Mom Keo',
+            str_contains($name, 'spouse_name') => 'Dara Chan',
+            str_contains($name, 'guardian_name') => 'Rithy Keo',
+            str_contains($name, 'occupation') => 'Healthcare Professional',
+            str_contains($name, 'place_of_work') => 'Ministry of Health',
+            str_contains($name, 'relationship') => 'Uncle',
+            str_contains($name, 'house') => 'House ' . (100 + $number),
+            str_contains($name, 'street') => 'Street 271',
+            str_contains($name, 'address') => 'Phnom Penh, Cambodia',
+            str_contains($name, 'reference') => 'Reference Person ' . $number,
+            default => Str::headline($name) . ' ' . $number,
+        };
     }
 
     private function candidateName(int $number): array
