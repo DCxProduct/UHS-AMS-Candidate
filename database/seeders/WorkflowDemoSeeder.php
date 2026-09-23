@@ -5,7 +5,9 @@ namespace Database\Seeders;
 use App\Models\ClosingDate;
 use App\Models\SystemUser;
 use App\Models\User;
+use App\Support\NotificationLanguage;
 use App\Support\UserTypeOptions;
+use Filament\Notifications\Notification;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -84,6 +86,8 @@ class WorkflowDemoSeeder extends Seeder
                         'created_at' => $submittedAt,
                         'updated_at' => $scenario['reviewed'] ? $submittedAt->copy()->addDay() : $submittedAt,
                     ]);
+
+                    $this->seedWorkflowNotifications($entryId, $form, $candidate, $scenario, $submittedAt);
 
                     if ($scenario['payment_record']) {
                         $this->createPayment($entryId, $form['id'], $candidate->id, $number, $scenario, $submittedAt);
@@ -196,6 +200,187 @@ class WorkflowDemoSeeder extends Seeder
         }
 
         return (string) ($name ?: 'Application Form');
+    }
+
+    private function seedWorkflowNotifications(
+        int $entryId,
+        array $form,
+        User $candidate,
+        array $scenario,
+        $submittedAt,
+    ): void {
+        if (! Schema::hasTable('notifications')) {
+            return;
+        }
+
+        $formName = $this->formDisplayName($form['name']);
+        $workflowData = [
+            'seed_batch' => self::BATCH,
+            'workflow_entry_id' => (string) $entryId,
+            'workflow_form_id' => (string) $form['id'],
+        ];
+
+        if ($scenario['review_status'] === 'accepted') {
+            $this->sendWorkflowNotification(
+                $candidate,
+                Notification::make()
+                    ->title(NotificationLanguage::transForUser(
+                        $candidate,
+                        'app.custom_form_entry_ui.notifications.application_approved_title',
+                        ['form' => $formName],
+                    ))
+                    ->body(NotificationLanguage::transForUser(
+                        $candidate,
+                        $scenario['payment_record']
+                            ? 'app.custom_form_entry_ui.notifications.application_approved_body_no_payment'
+                            : 'app.custom_form_entry_ui.notifications.application_approved_body',
+                        ['form' => $formName],
+                    ))
+                    ->icon('heroicon-o-clipboard-document-check')
+                    ->iconColor('success')
+                    ->success()
+                    ->viewData($workflowData),
+                $submittedAt->copy()->addDay(),
+            );
+        } elseif ($scenario['review_status'] === 'rejected') {
+            $this->sendWorkflowNotification(
+                $candidate,
+                Notification::make()
+                    ->title(NotificationLanguage::transForUser(
+                        $candidate,
+                        'app.custom_form_entry_ui.notifications.application_rejected_title',
+                        ['form' => $formName],
+                    ))
+                    ->body(NotificationLanguage::transForUser(
+                        $candidate,
+                        'app.custom_form_entry_ui.notifications.application_rejected_body',
+                        ['note' => $scenario['review_note'] ?? NotificationLanguage::transForUser(
+                            $candidate,
+                            'app.custom_form_entry_ui.notifications.no_note',
+                        )],
+                    ))
+                    ->icon('heroicon-o-x-circle')
+                    ->iconColor('danger')
+                    ->danger()
+                    ->viewData($workflowData),
+                $submittedAt->copy()->addDay(),
+            );
+        } else {
+            $this->sendWorkflowNotification(
+                $candidate,
+                Notification::make()
+                    ->title(NotificationLanguage::transForUser(
+                        $candidate,
+                        'app.custom_form_entry_ui.notifications.application_submitted_payment_title',
+                        ['form' => $formName],
+                    ))
+                    ->body(NotificationLanguage::transForUser(
+                        $candidate,
+                        'app.custom_form_entry_ui.notifications.application_submitted_payment_body',
+                        ['form' => $formName],
+                    ))
+                    ->icon('heroicon-o-paper-airplane')
+                    ->iconColor('warning')
+                    ->warning()
+                    ->viewData($workflowData),
+                $submittedAt,
+            );
+        }
+
+        if ($scenario['payment_record'] && $scenario['payment_status'] === 'paid') {
+            $this->sendWorkflowNotification(
+                $candidate,
+                Notification::make()
+                    ->title(NotificationLanguage::transForUser(
+                        $candidate,
+                        'app.custom_form_entry_ui.notifications.payment_completed_title',
+                    ))
+                    ->body(NotificationLanguage::transForUser(
+                        $candidate,
+                        'app.custom_form_entry_ui.notifications.payment_completed_body',
+                        ['form' => $formName],
+                    ))
+                    ->icon('heroicon-o-check-circle')
+                    ->iconColor('success')
+                    ->success()
+                    ->viewData([...$workflowData, 'workflow_payment_status' => 'paid']),
+                $submittedAt->copy()->addDay(),
+            );
+        }
+
+        if ($scenario['passed'] ?? false) {
+            $this->sendWorkflowNotification(
+                $candidate,
+                Notification::make()
+                    ->title(NotificationLanguage::transForUser(
+                        $candidate,
+                        'review_applications.notifications.student_accepted_title',
+                    ))
+                    ->body(NotificationLanguage::transForUser(
+                        $candidate,
+                        'review_applications.notifications.student_accepted_body',
+                        ['student' => $candidate->name],
+                    ))
+                    ->icon('heroicon-o-check-circle')
+                    ->iconColor('success')
+                    ->success()
+                    ->viewData([
+                        ...$workflowData,
+                        'review_result_entry_id' => (string) $entryId,
+                        'review_result_status' => 'passed',
+                    ]),
+                $submittedAt->copy()->addDays(2),
+            );
+        }
+
+        if ((string) $form['slug'] === 'enrollment') {
+            $admins = User::query()
+                ->where('registration_type', 'admin')
+                ->when(
+                    Schema::hasColumn('users', 'is_active'),
+                    fn ($query) => $query->where('is_active', true),
+                )
+                ->get();
+
+            foreach ($admins as $admin) {
+                $this->sendWorkflowNotification(
+                    $admin,
+                    Notification::make()
+                        ->title(NotificationLanguage::transForUser(
+                            $admin,
+                            'review_applications.notifications.enrollment_submitted_title',
+                        ))
+                        ->body(NotificationLanguage::transForUser(
+                            $admin,
+                            'review_applications.notifications.enrollment_submitted_body',
+                            ['student' => $candidate->name],
+                        ))
+                        ->icon('heroicon-o-clipboard-document-check')
+                        ->iconColor('warning')
+                        ->viewData([...$workflowData, 'workflow_recipient' => 'admin']),
+                    $submittedAt,
+                );
+            }
+        }
+    }
+
+    private function sendWorkflowNotification(User $recipient, Notification $notification, $createdAt): void
+    {
+        $notification->sendToDatabase($recipient);
+
+        $notificationId = DB::table('notifications')
+            ->where('notifiable_type', $recipient->getMorphClass())
+            ->where('notifiable_id', $recipient->getKey())
+            ->where('data->viewData->seed_batch', self::BATCH)
+            ->latest('created_at')
+            ->value('id');
+
+        if ($notificationId) {
+            DB::table('notifications')->where('id', $notificationId)->update([
+                'created_at' => $createdAt,
+                'updated_at' => $createdAt,
+            ]);
+        }
     }
 
     private function reviewTemplateContent(): string
@@ -543,32 +728,94 @@ HTML;
         }
 
         $names = $this->candidateName($number);
-        $province = Schema::hasTable('geo_locations')
-            ? DB::table('geo_locations')->where('type', 'province')->value('id')
-            : null;
+        $geo = $this->profileGeoValues();
+        $birthDate = $candidate->date_of_birth?->copy() ?? $submittedAt->copy()->subYears(18);
+        $currentYear = (int) $submittedAt->format('Y');
+        $gender = $number % 2 === 0 ? 'female' : 'male';
+        $profileDefaults = $this->sampleFormData($profileFormId, $number, $candidate, $submittedAt);
 
-        $data = [
+        $data = array_merge($profileDefaults, [
             'first_name_kh' => $names['first_name_kh'],
             'last_name_kh' => $names['last_name_kh'],
             'first_name_en' => $names['first_name_en'],
             'last_name_en' => $names['last_name_en'],
-            'gender' => $number % 2 === 0 ? 'female' : 'male',
+            'gender' => $gender,
             'nationality' => 'khmer',
             'ethnicity' => 'khmer',
             'religion' => 'buddhism',
-            'married_status' => 'single',
-            'date_of_birth' => $candidate->date_of_birth?->toDateString(),
-            'birth_province_city' => $province,
-            'current_capital_province' => $province,
-            'father_name' => 'Demo Father ' . $number,
-            'father_status' => 'alive',
-            'mother_name' => 'Demo Mother ' . $number,
-            'mother_status' => 'alive',
+            'married_status' => 'married',
+            'date_of_birth' => $birthDate->toDateString(),
+            'birth_province_city' => $geo['province'],
+            'birth_district_khan' => $geo['district'],
+            'birth_commune_sangkat' => $geo['commune'],
+            'birth_village' => $geo['village'],
+            'current_house_number' => 'House ' . $number,
+            'current_street_number' => 'Street 271',
+            'current_capital_province' => $geo['province'],
+            'current_district_khan' => $geo['district'],
+            'current_commune_sangkat' => $geo['commune'],
+            'current_village' => $geo['village'],
             'culture_level' => 'high_school_diploma',
+            'exam_period' => $birthDate->copy()->addYears(18)->toDateString(),
+            'exam_center' => 'University of Health Sciences',
+            'current_occupation' => 'Student',
+            'place_of_work' => 'University of Health Sciences',
+            'father_name' => 'Demo Father ' . $number,
+            'father_date_of_birth' => $birthDate->copy()->subYears(28)->toDateString(),
+            'father_ethnicity' => 'khmer',
+            'father_nationality' => 'khmer',
+            'father_status' => 'alive',
+            'father_occupation' => 'Health Professional',
+            'father_place_of_work' => 'Ministry of Health',
+            'father_phone_number' => '012' . str_pad((string) ($number + 100), 6, '0', STR_PAD_LEFT),
+            'mother_name' => 'Demo Mother ' . $number,
+            'mother_date_of_birth' => $birthDate->copy()->subYears(26)->toDateString(),
+            'mother_ethnicity' => 'khmer',
+            'mother_nationality' => 'khmer',
+            'mother_status' => 'alive',
+            'mother_occupation' => 'Teacher',
+            'mother_place_of_work' => 'Public School',
+            'mother_phone_number' => '012' . str_pad((string) ($number + 200), 6, '0', STR_PAD_LEFT),
+            'parents_house_number' => 'House ' . ($number + 100),
+            'parents_street_number' => 'Street 271',
+            'parents_capital_province' => $geo['province'],
+            'parents_district_khan' => $geo['district'],
+            'parents_commune_sangkat' => $geo['commune'],
+            'parents_village' => $geo['village'],
+            'guardian_name' => 'Demo Guardian ' . $number,
+            'guardian_relationship' => 'Uncle',
+            'guardian_phone_number' => '012' . str_pad((string) ($number + 300), 6, '0', STR_PAD_LEFT),
+            'siblings' => [[
+                'sibling_name' => 'Demo Sibling ' . $number,
+                'sibling_gender' => $gender === 'male' ? 'female' : 'male',
+                'sibling_year_of_birth' => $birthDate->copy()->subYears(2)->toDateString(),
+                'sibling_occupation' => 'Student',
+            ]],
+            'spouse_name' => 'Demo Spouse ' . $number,
+            'spouse_year_of_birth' => $birthDate->copy()->subYears(1)->toDateString(),
+            'spouse_occupation' => 'Health Worker',
+            'number_of_children' => 1,
+            'number_of_sons' => 1,
+            'number_of_daughters' => 0,
+            'educations' => [[
+                'educational_institution' => 'University of Health Sciences',
+                'degree_level_major' => 'high_school_diploma',
+                'country' => 'cambodia',
+                'from_year' => (string) ($currentYear - 5),
+                'to_year' => (string) ($currentYear - 1),
+                'graduation_year' => (string) ($currentYear - 1),
+            ]],
+            'cv_work_history' => [[
+                'cv_start_year' => (string) ($currentYear - 2),
+                'cv_end_year' => (string) $currentYear,
+                'cv_organization' => 'University of Health Sciences',
+                'cv_ministry' => 'Ministry of Health',
+                'cv_position' => 'Student Assistant',
+            ]],
             'seed_batch' => self::BATCH,
             'registration_status' => 'approved',
             'submitted_at' => $submittedAt->toDateTimeString(),
-        ];
+        ]);
 
         DB::table('custom_form_entries')->insert([
             'custom_form_id' => $profileFormId,
@@ -581,6 +828,171 @@ HTML;
             'created_at' => $submittedAt,
             'updated_at' => $submittedAt->copy()->addDay(),
         ]);
+    }
+
+    private function profileGeoValues(): array
+    {
+        $fallback = [
+            'province' => '1',
+            'district' => '1',
+            'commune' => '1',
+            'village' => '1',
+        ];
+
+        if (! Schema::hasTable('geo_locations')) {
+            return $fallback;
+        }
+
+        $province = DB::table('geo_locations')->where('type', 'province')->orderBy('id')->first();
+
+        if (! $province) {
+            return $fallback;
+        }
+
+        $district = DB::table('geo_locations')
+            ->where('type', 'district')
+            ->where('parent_id', $province->id)
+            ->orderBy('id')
+            ->first();
+        $commune = $district
+            ? DB::table('geo_locations')
+                ->where('type', 'commune')
+                ->where('parent_id', $district->id)
+                ->orderBy('id')
+                ->first()
+            : null;
+        $village = $commune
+            ? DB::table('geo_locations')
+                ->where('type', 'village')
+                ->where('parent_id', $commune->id)
+                ->orderBy('id')
+                ->first()
+            : null;
+
+        return [
+            'province' => (string) $province->id,
+            'district' => (string) ($district->id ?? $province->id),
+            'commune' => (string) ($commune->id ?? $district->id ?? $province->id),
+            'village' => (string) ($village->id ?? $commune->id ?? $district->id ?? $province->id),
+        ];
+    }
+
+    private function sampleFormData(int $formId, int $number, User $candidate, $submittedAt): array
+    {
+        if (! Schema::hasTable('custom_form_fields')) {
+            return [];
+        }
+
+        $fields = DB::table('custom_form_fields')
+            ->where('custom_form_id', $formId)
+            ->orderBy('sort')
+            ->orderBy('id')
+            ->get();
+        $children = $fields->groupBy(fn (object $field): string => (string) ($field->parent_id ?? 'root'));
+        $geo = $this->profileGeoValues();
+
+        $build = function ($parentId) use (&$build, $children, $geo, $number, $candidate, $submittedAt): array {
+            $values = [];
+            $parentKey = $parentId === null ? 'root' : (string) $parentId;
+
+            foreach ($children->get($parentKey, collect()) as $field) {
+                $type = strtolower((string) $field->type);
+                $nested = $build($field->id);
+
+                if ($type === 'repeater') {
+                    if ($nested !== [] && filled($field->name)) {
+                        $values[$field->name] = [$nested];
+                    }
+
+                    continue;
+                }
+
+                if (in_array($type, ['section', 'wizard', 'fieldset', 'grid', 'info', 'heading', 'divider', 'html'], true)) {
+                    $values = array_merge($values, $nested);
+
+                    continue;
+                }
+
+                if (filled($field->name)) {
+                    $values[$field->name] = $this->sampleFieldValue($field, $number, $candidate, $submittedAt, $geo);
+                }
+            }
+
+            return $values;
+        };
+
+        return $build(null);
+    }
+
+    private function sampleFieldValue(
+        object $field,
+        int $number,
+        User $candidate,
+        $submittedAt,
+        array $geo,
+    ): mixed
+    {
+        $options = is_array($field->options ?? null)
+            ? $field->options
+            : (json_decode((string) ($field->options ?? ''), true) ?: []);
+
+        if (filled($field->default_value ?? null)) {
+            return $field->default_value;
+        }
+
+        if (filled($options['default_value'] ?? null)) {
+            return $options['default_value'];
+        }
+
+        $geoType = $options['geo_location_type'] ?? null;
+        if (is_string($geoType) && array_key_exists($geoType, $geo)) {
+            return $geo[$geoType];
+        }
+
+        $choices = $options['choices'] ?? null;
+        if (is_array($choices) && $choices !== []) {
+            $choice = array_values($choices)[0];
+            $value = is_array($choice)
+                ? ($choice['value'] ?? array_key_first($choice))
+                : (array_key_first($choices) ?? $choice);
+
+            return in_array(strtolower((string) $field->type), ['checkbox_group', 'multi_select', 'multiselect'], true)
+                ? [$value]
+                : $value;
+        }
+
+        $name = strtolower((string) $field->name);
+        $type = strtolower((string) $field->type);
+
+        if (in_array($type, ['checkbox', 'toggle', 'boolean'], true)) {
+            return true;
+        }
+
+        if (in_array($type, ['number_input', 'number'], true) || str_contains($name, 'number')) {
+            return 1;
+        }
+
+        if (str_contains($name, 'email')) {
+            return $candidate->email;
+        }
+
+        if (str_contains($name, 'phone')) {
+            return $candidate->phone;
+        }
+
+        if (str_contains($name, 'date') || str_contains($name, 'dob')) {
+            return $candidate->date_of_birth?->toDateString() ?? $submittedAt->toDateString();
+        }
+
+        if (str_contains($name, 'year')) {
+            return $submittedAt->format('Y');
+        }
+
+        if (in_array($type, ['file_upload', 'file', 'image_upload', 'image'], true) || str_contains($name, 'file')) {
+            return 'workflow-demo/sample-document.pdf';
+        }
+
+        return Str::headline($name) . ' Demo ' . $number;
     }
 
     private function candidateName(int $number): array
@@ -815,6 +1227,11 @@ HTML;
             'seed_batch' => self::BATCH,
         ];
 
+        $data = array_merge(
+            $this->sampleFormData((int) $form['id'], $number, $candidate, $submittedAt),
+            $data,
+        );
+
         if ($scenario['payment_channel'] === 'external') {
             $data['external_payment_reference'] = 'EXT-' . $suffix;
             $data['external_payment_provider'] = $number % 2 === 0 ? 'ABA' : 'Cash Office';
@@ -871,5 +1288,11 @@ HTML;
         DB::table('payments')
             ->where('description', 'like', '[workflow-demo]%')
             ->delete();
+
+        if (Schema::hasTable('notifications')) {
+            DB::table('notifications')
+                ->where('data->viewData->seed_batch', self::BATCH)
+                ->delete();
+        }
     }
 }
