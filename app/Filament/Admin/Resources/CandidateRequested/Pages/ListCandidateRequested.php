@@ -16,6 +16,16 @@ class ListCandidateRequested extends ListRecords
 {
     protected static string $resource = CandidateRequestedResource::class;
 
+    public function updatedTableSearch(): void
+    {
+        $this->resetTablePage();
+    }
+
+    public function updatedTableFilters(): void
+    {
+        $this->resetTablePage();
+    }
+
     public function getTitle(): string | Htmlable
     {
         return __('review_applications.list_title');

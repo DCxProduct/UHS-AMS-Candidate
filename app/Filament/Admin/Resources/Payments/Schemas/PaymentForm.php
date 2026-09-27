@@ -8,6 +8,7 @@ use App\Models\ExchangeRate;
 use App\Models\PaymentType;
 use App\Models\SystemUser;
 use App\Models\User;
+use App\Support\PaymentValidation;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Forms\Components\DatePicker;
@@ -21,6 +22,7 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Schema as DatabaseSchema;
+use Illuminate\Validation\Rule;
 
 class PaymentForm
 {
@@ -57,8 +59,16 @@ class PaymentForm
                                     ->placeholder(__('payments.placeholders.receipt_number'))
                                     ->required()
                                     ->maxLength(255)
+                                    ->dehydrateStateUsing(fn (mixed $state): ?string => filled($state) ? trim((string) $state) : null)
+                                    ->rules(fn (?\App\Models\Payment $record): array => [
+                                        'required',
+                                        'string',
+                                        'max:255',
+                                        Rule::unique('payments', 'receipt_number')->ignore($record?->getKey()),
+                                    ])
                                     ->validationMessages([
                                         'required' => __('payments.validation.receipt_number_required'),
+                                        'unique' => __('payments.validation.receipt_number_unique'),
                                     ]),
 
                                 Select::make('type_payment')
@@ -92,6 +102,7 @@ class PaymentForm
                                     ->suffix('KHR')
                                     ->inputMode('decimal')
                                     ->required()
+                                    ->rules(PaymentValidation::amountKhRules())
                                     ->extraInputAttributes([
                                         'oninput' => "this.value = this.value.replace(/[^0-9,]/g, '')",
                                     ])
@@ -128,7 +139,7 @@ class PaymentForm
                                     ->extraInputAttributes([
                                         'oninput' => "this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\\..*)\\./g, '$1')",
                                     ])
-                                    ->rule('numeric')
+                                    ->rules(PaymentValidation::amountUsdRules())
                                     ->live(onBlur: true)
                                     ->afterStateHydrated(function (TextInput $component, mixed $state): void {
                                         $component->state(self::normalizeUsdAmount($state));
@@ -168,8 +179,9 @@ class PaymentForm
                         FileUpload::make('payment_slip_path')
                             ->label(__('payments.fields.payment_slip'))
                             ->placeholder(__('payments.placeholders.payment_slip'))
-                            ->disk('public')
+                            ->disk('private')
                             ->directory('payment-slips')
+                            ->visibility('private')
                             ->acceptedFileTypes([
                                 'image/jpeg',
                                 'image/png',

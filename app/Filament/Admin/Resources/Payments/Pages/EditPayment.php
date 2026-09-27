@@ -3,8 +3,12 @@
 namespace App\Filament\Admin\Resources\Payments\Pages;
 
 use App\Filament\Admin\Resources\Payments\PaymentResource;
+use App\Models\Payment;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\QueryException;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\ValidationException;
 
 class EditPayment extends EditRecord
 {
@@ -17,6 +21,23 @@ class EditPayment extends EditRecord
         }
 
         return $data;
+    }
+
+    protected function handleRecordUpdate(Model $record, array $data): Model
+    {
+        try {
+            $record->update($data);
+
+            return $record;
+        } catch (QueryException $exception) {
+            if (Payment::isReceiptNumberUniqueViolation($exception)) {
+                throw ValidationException::withMessages([
+                    'receipt_number' => __('payments.validation.receipt_number_unique'),
+                ]);
+            }
+
+            throw $exception;
+        }
     }
 
     protected function getRedirectUrl(): string

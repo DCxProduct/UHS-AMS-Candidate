@@ -13,6 +13,7 @@ use App\Support\FormEntryData;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
 use App\Support\NotificationLanguage;
+use App\Support\PaymentValidation;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormField;
 use Filament\Actions\Action;
@@ -31,8 +32,10 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\Rule;
 
 class CandidatePaymentListsTable
 {
@@ -229,8 +232,16 @@ class CandidatePaymentListsTable
                                 ->placeholder(__('payments.placeholders.receipt_number'))
                                 ->required()
                                 ->maxLength(255)
+                                ->dehydrateStateUsing(fn (mixed $state): ?string => filled($state) ? trim((string) $state) : null)
+                                ->rules([
+                                    'required',
+                                    'string',
+                                    'max:255',
+                                    Rule::unique('payments', 'receipt_number'),
+                                ])
                                 ->validationMessages([
                                     'required' => __('payments.validation.receipt_number_required'),
+                                    'unique' => __('payments.validation.receipt_number_unique'),
                                 ]),
 
                             Select::make('type_payment')
@@ -266,6 +277,7 @@ class CandidatePaymentListsTable
                                 ->extraInputAttributes([
                                     'oninput' => "this.value = this.value.replace(/[^0-9,]/g, '')",
                                 ])
+                                ->rules(PaymentValidation::amountKhRules())
                                 ->rule(static function (): \Closure {
                                     return static function (string $attribute, mixed $value, \Closure $fail): void {
                                         if ($value === null || trim((string) $value) === '') {
@@ -299,7 +311,7 @@ class CandidatePaymentListsTable
                                 ->extraInputAttributes([
                                     'oninput' => "this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\\..*)\\./g, '$1')",
                                 ])
-                                ->rule('numeric')
+                                ->rules(PaymentValidation::amountUsdRules())
                                 ->live(onBlur: true)
                                 ->afterStateHydrated(function (TextInput $component, mixed $state): void {
                                     $component->state(self::normalizeUsdAmount($state));
@@ -328,8 +340,9 @@ class CandidatePaymentListsTable
                         FileUpload::make('payment_slip_path')
                             ->label(__('payments.fields.payment_slip'))
                             ->placeholder(__('payments.placeholders.payment_slip'))
-                            ->disk('public')
+                            ->disk('private')
                             ->directory('payment-slips')
+                            ->visibility('private')
                             ->acceptedFileTypes([
                                 'image/jpeg',
                                 'image/png',
@@ -371,7 +384,17 @@ class CandidatePaymentListsTable
                             $paymentData['exchange_rate'] = $data['exchange_rate'] ?? self::defaultExchangeRate();
                         }
 
-                        Payment::query()->create($paymentData);
+                        try {
+                            Payment::query()->create($paymentData);
+                        } catch (QueryException $exception) {
+                            if (Payment::isReceiptNumberUniqueViolation($exception)) {
+                                throw \Illuminate\Validation\ValidationException::withMessages([
+                                    'receipt_number' => __('payments.validation.receipt_number_unique'),
+                                ]);
+                            }
+
+                            throw $exception;
+                        }
                         self::notifyStudentPaymentCompleted($record);
 
                         Notification::make()

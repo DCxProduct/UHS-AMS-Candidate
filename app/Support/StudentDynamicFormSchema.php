@@ -11,8 +11,8 @@ use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Utilities\Get;
 use Illuminate\Support\Collection;
@@ -129,7 +129,7 @@ class StudentDynamicFormSchema
         }
 
         if ($type === 'info') {
-            $infoName = filled($name) ? $name : 'info_' . ($field->id ?? Str::random(6));
+            $infoName = filled($name) ? $name : 'info_'.($field->id ?? Str::random(6));
 
             return $this->applyCommonConfig(
                 Placeholder::make($infoName)->content($this->getTranslatedInfoContent($field, $config, $label)),
@@ -194,9 +194,21 @@ class StudentDynamicFormSchema
             'date', 'date_picker', 'datepicker' => DatePickerKeyboardInput::apply(
                 DatePicker::make($name)->native(false)
             ),
-            'file', 'file_upload', 'fileupload' => FileUpload::make($name)
-                ->disk('public')
-                ->directory('student-custom-form-uploads'),
+            'image', 'image_upload', 'file', 'file_upload', 'fileupload' => FileUpload::make($name)
+                ->disk((string) config('filament-custom-forms.uploads.disk', 'private'))
+                ->directory((string) config('filament-custom-forms.uploads.directory', 'custom-form-uploads'))
+                ->visibility((string) config('filament-custom-forms.uploads.visibility', 'private'))
+                ->acceptedFileTypes(in_array($type, ['image', 'image_upload'], true)
+                    ? ['image/jpeg', 'image/png']
+                    : (array) config('filament-custom-forms.uploads.accepted_mime_types', [
+                        'application/pdf',
+                        'image/jpeg',
+                        'image/png',
+                    ]))
+                ->maxSize(in_array($type, ['image', 'image_upload'], true)
+                    ? 5120
+                    : (int) config('filament-custom-forms.uploads.max_size_kb', 10240))
+                ->when(in_array($type, ['image', 'image_upload'], true), fn (FileUpload $component): FileUpload => $component->image()),
             default => TextInput::make($name),
         };
 
@@ -501,10 +513,10 @@ class StudentDynamicFormSchema
                 $name = trim((string) ($field->name ?? ''));
 
                 if ($name !== '') {
-                    return 'name:' . strtolower($name);
+                    return 'name:'.strtolower($name);
                 }
 
-                return 'id:' . (string) ($field->id ?? spl_object_id($field));
+                return 'id:'.(string) ($field->id ?? spl_object_id($field));
             })
             ->values();
     }
@@ -574,7 +586,7 @@ class StudentDynamicFormSchema
         );
 
         return filled($name)
-            ? $this->translateOrFallback('app.form_fields.' . $name, $fallback)
+            ? $this->translateOrFallback('app.form_fields.'.$name, $fallback)
             : $fallback;
     }
 
@@ -589,7 +601,7 @@ class StudentDynamicFormSchema
         );
 
         return filled($name)
-            ? $this->translateOrFallback('app.form_fields.' . $name, $content)
+            ? $this->translateOrFallback('app.form_fields.'.$name, $content)
             : $content;
     }
 
@@ -601,7 +613,7 @@ class StudentDynamicFormSchema
             ?? $config['placeholder'] ?? null;
 
         if (filled($name)) {
-            $translated = $this->translateOrFallback('app.form_placeholders.' . $name, null);
+            $translated = $this->translateOrFallback('app.form_placeholders.'.$name, null);
 
             if (filled($translated)) {
                 return $translated;
@@ -619,7 +631,7 @@ class StudentDynamicFormSchema
             ?? $config['helper_text'] ?? null;
 
         if (filled($name)) {
-            $translated = $this->translateOrFallback('app.form_helpers.' . $name, null);
+            $translated = $this->translateOrFallback('app.form_helpers.'.$name, null);
 
             if (filled($translated)) {
                 return $translated;
@@ -641,7 +653,7 @@ class StudentDynamicFormSchema
 
         return blank($optionKey)
             ? $fallback
-            : $this->translateOrFallback('app.form_options.' . $name . '.' . $optionKey, $fallback);
+            : $this->translateOrFallback('app.form_options.'.$name.'.'.$optionKey, $fallback);
     }
 
     protected function getRepeaterAddActionLabel(array $config, string $label): string
@@ -650,14 +662,14 @@ class StudentDynamicFormSchema
 
         return is_string($fallback) && filled($fallback)
             ? $fallback
-            : __('app.add') . ' ' . $label;
+            : __('app.add').' '.$label;
     }
 
     protected function localizedConfigValue(array $config, string $key): mixed
     {
         $locale = app()->getLocale();
 
-        return $config[$key . '_' . $locale]
+        return $config[$key.'_'.$locale]
             ?? $config[$locale][$key] ?? null
             ?? (is_array($config[$key] ?? null)
                 ? ($config[$key][$locale] ?? $config[$key]['en'] ?? null)
@@ -668,8 +680,8 @@ class StudentDynamicFormSchema
     {
         $locale = app()->getLocale();
 
-        return $field->{$key . '_' . $locale}
-            ?? $field->{$key . '_en'} ?? null
+        return $field->{$key.'_'.$locale}
+            ?? $field->{$key.'_en'} ?? null
             ?? null;
     }
 
@@ -678,13 +690,13 @@ class StudentDynamicFormSchema
         $locale = app()->getLocale();
 
         return (string) (
-            $option['label_' . $locale]
+            $option['label_'.$locale]
             ?? $option[$locale]['label'] ?? null
             ?? $option['label_en'] ?? null
             ?? $option['label'] ?? null
-            ?? $option['name_' . $locale] ?? null
+            ?? $option['name_'.$locale] ?? null
             ?? $option['name'] ?? null
-            ?? $option['title_' . $locale] ?? null
+            ?? $option['title_'.$locale] ?? null
             ?? $option['title'] ?? null
             ?? $fallback
         );
@@ -695,9 +707,9 @@ class StudentDynamicFormSchema
         $locale = app()->getLocale();
 
         return $this->firstExistingColumn($columns, [
-            'name_' . $locale,
-            'label_' . $locale,
-            'title_' . $locale,
+            'name_'.$locale,
+            'label_'.$locale,
+            'title_'.$locale,
             $locale === 'km' ? 'khmer_name' : 'name_en',
             'name',
             'name_en',

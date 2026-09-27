@@ -560,9 +560,23 @@ class CustomFormEntryForm
                     case 'image_upload':
                     case 'file_upload':
                         $component = FileUpload::make("data.{$name}")
-                            ->disk(CustomFormPlugin::get()->getUploadDisk())
-                            ->directory(CustomFormPlugin::get()->getUploadDirectory())
-                            ->visibility(CustomFormPlugin::get()->getUploadVisibility());
+                            ->disk((string) config('filament-custom-forms.uploads.disk', CustomFormPlugin::get()->getUploadDisk()))
+                            ->directory((string) config('filament-custom-forms.uploads.directory', CustomFormPlugin::get()->getUploadDirectory()))
+                            ->visibility((string) config('filament-custom-forms.uploads.visibility', CustomFormPlugin::get()->getUploadVisibility()))
+                            ->acceptedFileTypes($type === 'file_upload'
+                                ? (array) config('filament-custom-forms.uploads.accepted_mime_types', [
+                                    'application/pdf',
+                                    'image/jpeg',
+                                    'image/png',
+                                ])
+                                : ['image/jpeg', 'image/png'])
+                            ->maxSize($type === 'file_upload'
+                                ? (int) config('filament-custom-forms.uploads.max_size_kb', 10240)
+                                : 5120);
+
+                        if (in_array($type, ['image', 'image_upload'], true)) {
+                            $component->image();
+                        }
                         break;
 
                     case 'select':

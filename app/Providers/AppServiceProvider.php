@@ -21,6 +21,7 @@ use App\Models\UnpaidApplication;
 use App\Models\UserType;
 use App\Models\User;
 use App\Observers\AuditLogObserver;
+use App\Support\AuditLogger;
 use App\Support\FilamentActionPermissions;
 use App\Support\NotificationLanguage;
 use BezhanSalleh\LanguageSwitch\LanguageSwitch;
@@ -28,6 +29,7 @@ use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Notifications\Notification;
 use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Logout;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
@@ -161,6 +163,20 @@ class AppServiceProvider extends ServiceProvider
                 ])->saveQuietly();
             }
 
+            AuditLogger::log(
+                action: 'login',
+                auditable: $event->user instanceof \Illuminate\Database\Eloquent\Model ? $event->user : null,
+                metadata: ['module' => 'Authentication'],
+            );
+
+        });
+
+        Event::listen(Logout::class, function (Logout $event): void {
+            AuditLogger::log(
+                action: 'logout',
+                auditable: $event->user instanceof \Illuminate\Database\Eloquent\Model ? $event->user : null,
+                metadata: ['module' => 'Authentication'],
+            );
         });
     }
 

@@ -22,7 +22,7 @@ class AuditLogsTable
     {
         return $table
             ->defaultSort('created_at', 'desc')
-            ->modifyQueryUsing(fn (Builder $query): Builder => self::adminActivityQuery($query))
+            ->modifyQueryUsing(fn (Builder $query): Builder => self::privilegedActivityQuery($query))
             ->columns([
                 TextColumn::make('module')
                     ->label(__('audit_logs.fields.module'))
@@ -61,7 +61,7 @@ class AuditLogsTable
                     ->schema([
                         Select::make('module')
                             ->label(__('audit_logs.fields.module'))
-                            ->options(fn (): array => collect(self::adminActivityQuery(self::scopedQuery())
+                            ->options(fn (): array => collect(self::privilegedActivityQuery(self::scopedQuery())
                                 ->select('module')
                                 ->distinct()
                                 ->orderBy('module')
@@ -75,7 +75,7 @@ class AuditLogsTable
 
                         Select::make('action')
                             ->label(__('audit_logs.fields.action'))
-                            ->options(fn (): array => collect(self::adminActivityQuery(self::scopedQuery())
+                            ->options(fn (): array => collect(self::privilegedActivityQuery(self::scopedQuery())
                                 ->select('action')
                                 ->distinct()
                                 ->orderBy('action')
@@ -147,20 +147,32 @@ class AuditLogsTable
         return AuditLog::query();
     }
 
-    protected static function adminActivityQuery(Builder $query): Builder
+    protected static function privilegedActivityQuery(Builder $query): Builder
     {
         return $query
-            ->whereNotIn('action', ['login', 'logout'])
-            ->whereHasMorph('actor', [User::class, SystemUser::class], function (Builder $query, string $type): void {
-                if ($type === User::class) {
-                    $query
-                        ->where('registration_type', 'admin')
-                        ->orWhereHas('roles', fn (Builder $query): Builder => $query->where('name', 'admin'));
+            ->where(function (Builder $query): void {
+                $query
+                    ->whereIn('actor_role', ['admin', 'registrar', 'cashier'])
+                    ->orWhere(function (Builder $query): void {
+                        $query
+                            ->whereNull('actor_role')
+                            ->whereHasMorph('actor', [User::class, SystemUser::class], function (Builder $query, string $type): void {
+                                if ($type === User::class) {
+                                    $query
+                                        ->where('registration_type', 'admin')
+                                        ->orWhereHas('roles', fn (Builder $query): Builder => $query->where('name', 'admin'));
 
-                    return;
-                }
+                                    return;
+                                }
 
-                $query->where('roles', 'like', '%admin%');
+                                $query->where(function (Builder $query): void {
+                                    $query
+                                        ->where('roles', 'like', '%admin%')
+                                        ->orWhere('roles', 'like', '%registrar%')
+                                        ->orWhere('roles', 'like', '%cashier%');
+                                });
+                            });
+                    });
             });
     }
 }

@@ -102,8 +102,13 @@ class CandidateRequestedTable
                     ->label(__('exam_results.seat_number'))
                     ->getStateUsing(fn ($record): string => self::entryValue($record, 'seat_number', self::entryValue($record, 'list_number', $record->creator?->seat_number)))
                     ->searchable(query: fn (Builder $query, string $search): Builder => $query
-                        ->where('data->seat_number', 'like', "%{$search}%")
-                        ->orWhere('data->list_number', 'like', "%{$search}%"))
+                        ->where(function (Builder $query) use ($search): void {
+                            $query
+                                ->where('data->seat_number', 'like', "%{$search}%")
+                                ->orWhere('data->list_number', 'like', "%{$search}%")
+                                ->orWhereHas('creator', fn (Builder $userQuery): Builder => $userQuery
+                                    ->where('seat_number', 'like', "%{$search}%"));
+                        }))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('name_khmer')

@@ -107,6 +107,7 @@ class MyProfile extends Page implements HasForms
                                 ->label(__('student_profile.avatar'))
                                 ->placeholder(__('student_profile.choose_image'))
                                 ->image()
+                                ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
                                 ->disk('public')
                                 ->directory('avatars')
                                 ->visibility('public')

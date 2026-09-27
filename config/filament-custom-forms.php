@@ -25,9 +25,16 @@ return [
     |
     */
     'uploads' => [
-        'disk' => 'public',
+        'disk' => env('CUSTOM_FORM_UPLOAD_DISK', 'private'),
+        'legacy_disk' => 'public',
         'directory' => 'custom-form-uploads',
-        'visibility' => 'public',
+        'visibility' => 'private',
+        'max_size_kb' => 10240,
+        'accepted_mime_types' => [
+            'application/pdf',
+            'image/jpeg',
+            'image/png',
+        ],
     ],
 
     /*
