@@ -467,13 +467,20 @@ class DocumentRenderer
             }
         }
 
-        $disk = config('filament-custom-forms.uploads.disk', 'public');
+        $diskNames = array_unique([
+            (string) config('filament-custom-forms.uploads.disk', 'private'),
+            (string) config('filament-custom-forms.uploads.legacy_disk', 'public'),
+        ]);
 
-        if (! Storage::disk($disk)->exists($path)) {
-            return null;
+        foreach ($diskNames as $diskName) {
+            $disk = Storage::disk($diskName);
+
+            if ($disk->exists($path)) {
+                return $disk->path($path);
+            }
         }
 
-        return Storage::disk($disk)->path($path);
+        return null;
     }
 
     protected function attachmentImagesHtml(array|object $data): string

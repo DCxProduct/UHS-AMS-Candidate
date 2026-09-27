@@ -6,6 +6,7 @@ use BezhanSalleh\LanguageSwitch\Events\LocaleChanged;
 use BezhanSalleh\LanguageSwitch\LanguageSwitch;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AdminEntryPdfReviewController;
+use App\Http\Controllers\ProtectedFileController;
 
 Route::get('/', function () {
     return redirect('/login');
@@ -41,6 +42,13 @@ Route::get('/language/{locale}', function (string $locale) {
 
 
 Route::middleware(['web', 'auth'])->group(function () {
+    Route::get('/protected/payment-slips/{payment}', [ProtectedFileController::class, 'paymentSlip'])
+        ->name('protected.payment-slip');
+
+    Route::get('/protected/custom-form-entries/{entry}/files/{field}', [ProtectedFileController::class, 'customFormEntryFile'])
+        ->where('field', '[A-Za-z0-9_.-]+')
+        ->name('protected.custom-form-entry-file');
+
     Route::get('/admin/custom-form-entries/{entry}/pdf-review', [AdminEntryPdfReviewController::class, 'show'])
         ->name('admin.custom-form-entries.pdf-review');
 

@@ -43,6 +43,22 @@ class AuditLogger
             $data['ip_address'] = request()?->ip();
         }
 
+        if (Schema::hasColumn('audit_logs', 'actor_role')) {
+            $data['actor_role'] = self::actorRole($actor);
+        }
+
+        if (Schema::hasColumn('audit_logs', 'old_values')) {
+            $data['old_values'] = self::sanitize($oldValues);
+        }
+
+        if (Schema::hasColumn('audit_logs', 'new_values')) {
+            $data['new_values'] = self::sanitize($newValues);
+        }
+
+        if (Schema::hasColumn('audit_logs', 'metadata')) {
+            $data['metadata'] = self::sanitize($metadata);
+        }
+
         AuditLog::query()->create($data);
     }
 
@@ -71,6 +87,26 @@ class AuditLogger
         }
 
         return class_basename($actor) . ' #' . $actor->getKey();
+    }
+
+    protected static function actorRole(mixed $actor): ?string
+    {
+        if ($actor instanceof SystemUser) {
+            return collect(['admin', 'registrar', 'cashier'])
+                ->first(fn (string $role): bool => $actor->hasJsonRole($role));
+        }
+
+        if ($actor instanceof User) {
+            if (method_exists($actor, 'effectiveRoleNames')) {
+                return collect(['admin', 'registrar', 'cashier'])
+                    ->first(fn (string $role): bool => $actor->effectiveRoleNames()->contains($role));
+            }
+
+            return collect(['admin', 'registrar', 'cashier'])
+                ->first(fn (string $role): bool => $actor->hasRole($role));
+        }
+
+        return null;
     }
 
     protected static function moduleName(?Model $auditable, array $metadata): string
@@ -108,11 +144,40 @@ class AuditLogger
     protected static function shouldLogForActor(mixed $actor): bool
     {
         return match (true) {
-            $actor instanceof SystemUser => $actor->hasJsonRole('admin'),
+            $actor instanceof SystemUser => $actor->hasJsonRole(['admin', 'registrar', 'cashier']),
             $actor instanceof User => method_exists($actor, 'hasEffectiveRole')
-                ? $actor->hasEffectiveRole('admin')
-                : $actor->hasRole('admin'),
+                ? $actor->hasEffectiveRole(['admin', 'registrar', 'cashier'])
+                : $actor->hasRole(['admin', 'registrar', 'cashier']),
             default => false,
         };
+    }
+
+    protected static function sanitize(array $values): ?array
+    {
+        if ($values === []) {
+            return null;
+        }
+
+        $sensitive = ['password', 'password_confirmation', 'remember_token', 'token', 'secret', 'api_key', 'access_key'];
+
+        return collect($values)
+            ->reject(function (mixed $value, mixed $key) use ($sensitive): bool {
+                $key = Str::lower((string) $key);
+
+                return $key === 'data'
+                    || collect($sensitive)->contains(fn (string $needle): bool => Str::contains($key, $needle));
+            })
+            ->map(function (mixed $value): mixed {
+                if (is_array($value)) {
+                    return self::sanitize($value);
+                }
+
+                if ($value instanceof \DateTimeInterface) {
+                    return $value->format(DATE_ATOM);
+                }
+
+                return is_scalar($value) || $value === null ? $value : (string) $value;
+            })
+            ->all() ?: null;
     }
 }

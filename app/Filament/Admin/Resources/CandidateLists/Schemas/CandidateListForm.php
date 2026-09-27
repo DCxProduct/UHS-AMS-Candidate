@@ -126,10 +126,12 @@ class CandidateListForm
                                     ->label(__('candidate_lists.fields.avatar'))
                                     ->placeholder(__('candidate_lists.placeholders.choose_image'))
                                     ->image()
+                                    ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
                                     ->imageEditor()
                                     ->disk('public')
                                     ->directory('system-users/avatars')
                                     ->visibility('public')
+                                    ->maxSize(2048)
                                     ->columnSpanFull(),
 
                                 Toggle::make('is_active')
