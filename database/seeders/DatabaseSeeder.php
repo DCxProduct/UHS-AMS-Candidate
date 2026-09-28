@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             StudentProfileSeeder::class,
             GeoLocationsSeeder::class,
             RolesAndPermissionsSeeder::class,
+            StaffRoleAccountsSeeder::class,
             DegreeLevelSeeder::class,
             CandidateTypeSeeder::class,
             WorkflowDemoSeeder::class,

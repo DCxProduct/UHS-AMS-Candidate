@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\Role;
-use App\Models\SystemUser;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -14,8 +13,6 @@ class AdminUserSeeder extends Seeder
     public function run(): void
     {
         $adminPassword = $this->seededPassword('SEEDED_ADMIN_PASSWORD');
-        $cashierPassword = $this->seededPassword('SEEDED_CASHIER_PASSWORD');
-        $registrarPassword = $this->seededPassword('SEEDED_REGISTRAR_PASSWORD');
 
         $data = [
             'registration_type' => 'admin',
@@ -59,66 +56,6 @@ class AdminUserSeeder extends Seeder
             $admin->assignRole('admin');
         }
 
-        Role::query()->updateOrCreate(
-            [
-                'name' => 'cashier',
-                'guard_name' => 'web',
-            ],
-            [
-                'name_kh' => 'បេឡា',
-                'role_type_key' => 'staff',
-            ]
-        );
-
-        Role::query()->updateOrCreate(
-            [
-                'name' => 'registrar',
-                'guard_name' => 'web',
-            ],
-            [
-                'label_en' => 'Registrar',
-                'name_kh' => 'ការិយាល័យចុះបញ្ជី',
-                'role_type_key' => 'staff',
-            ]
-        );
-
-        $cashier = SystemUser::query()->updateOrCreate(
-            [
-                'username' => 'cashier',
-            ],
-            [
-                'name' => 'Cashier',
-                'username' => 'cashier',
-                'email' => 'cashier@gmail.com',
-                'phone' => '010000098',
-                'password' => Hash::make($cashierPassword),
-                'roles' => ['cashier'],
-                'permissions' => null,
-                'is_active' => true,
-                'email_verified_at' => now(),
-            ],
-        );
-
-        $cashier->syncLoginUser();
-
-        $registrar = SystemUser::query()->updateOrCreate(
-            [
-                'username' => 'registrar',
-            ],
-            [
-                'name' => 'Registrar',
-                'username' => 'registrar',
-                'email' => 'registrar@gmail.com',
-                'phone' => '010000097',
-                'password' => Hash::make($registrarPassword),
-                'roles' => ['registrar'],
-                'permissions' => null,
-                'is_active' => true,
-                'email_verified_at' => now(),
-            ],
-        );
-
-        $registrar->syncLoginUser();
     }
 
     private function seededPassword(string $environmentKey): string
