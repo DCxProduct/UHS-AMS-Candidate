@@ -44,7 +44,7 @@ class RoleResource extends Resource
     use Essentials\HasNavigation;
     use HasShieldFormComponents;
 
-    protected static ?string $recordTitleAttribute = 'name';
+    protected static ?string $recordTitleAttribute = 'localized_name';
 
     #[Override]
     public static function form(Schema $schema): Schema
