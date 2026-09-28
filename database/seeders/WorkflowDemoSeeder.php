@@ -471,7 +471,7 @@ class WorkflowDemoSeeder extends Seeder
     private function candidateAccount(int $number, string $role): User
     {
         $username = 'candidate' . $number;
-        $password = Hash::make('1234567a');
+        $password = Hash::make('12345678');
 
         $candidate = User::query()->updateOrCreate(
             ['username' => $username],
@@ -1276,7 +1276,7 @@ HTML;
     {
         $suffix = str_pad((string) $number, 3, '0', STR_PAD_LEFT);
         $legacyUsername = 'workflow_candidate_' . $suffix;
-        $password = $this->demoPasswordHash ??= Hash::make('1234567a');
+        $password = $this->demoPasswordHash ??= Hash::make('12345678');
         $names = $this->candidateName($number);
         $legacyNameUsername = strtolower($names['first_name_en'] . '.' . $names['last_name_en']);
         $username = strtolower($names['first_name_en'] . $names['last_name_en']);

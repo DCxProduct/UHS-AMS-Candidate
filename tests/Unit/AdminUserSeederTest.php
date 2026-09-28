@@ -14,7 +14,7 @@ class AdminUserSeederTest extends TestCase
         $method = new ReflectionMethod(AdminUserSeeder::class, 'seededPassword');
 
         $this->assertSame(
-            '1234567a',
+            '12345678',
             $method->invoke(new AdminUserSeeder, 'SEEDED_ADMIN_PASSWORD'),
         );
     }

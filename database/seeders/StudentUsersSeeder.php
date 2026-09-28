@@ -17,7 +17,7 @@ class StudentUsersSeeder extends Seeder
                 $username = 'student' . $i;
                 $email = 'student' . $i . '@gmail.com';
                 $phone = '01000000' . $i;
-                $hashedPassword = Hash::make('1234567a');
+                $hashedPassword = Hash::make('12345678');
 
                 $user = User::query()->updateOrCreate(
                     [
