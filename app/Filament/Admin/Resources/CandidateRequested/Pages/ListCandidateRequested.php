@@ -18,12 +18,25 @@ class ListCandidateRequested extends ListRecords
 
     public function updatedTableSearch(): void
     {
-        $this->resetTablePage();
+        if (blank($this->tableSearch)) {
+            $this->tableSearch = '';
+            session()->forget($this->getTableSearchSessionKey());
+        }
+
+        parent::updatedTableSearch();
+        $this->flushCachedTableRecords();
+    }
+
+    public function resetTableSearch(): void
+    {
+        parent::resetTableSearch();
+        $this->flushCachedTableRecords();
     }
 
     public function updatedTableFilters(): void
     {
-        $this->resetTablePage();
+        parent::updatedTableFilters();
+        $this->flushCachedTableRecords();
     }
 
     public function getTitle(): string | Htmlable

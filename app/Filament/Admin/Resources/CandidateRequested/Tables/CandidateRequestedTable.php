@@ -170,6 +170,9 @@ class CandidateRequestedTable
                     ->sortable(false)
                     ->toggleable(isToggledHiddenByDefault: false),
             ])
+            ->searchUsing(function (Builder $query, string $search): void {
+                self::applyGlobalSearch($query, $search);
+            })
             ->filters([
                 Filter::make('application_review_filters')
                     ->label(new HtmlString('&nbsp;'))
@@ -387,6 +390,35 @@ class CandidateRequestedTable
                             ->send();
                     }),
             ]);
+    }
+
+    protected static function applyGlobalSearch(Builder $query, string $search): void
+    {
+        $like = "%{$search}%";
+
+        $query->where(function (Builder $query) use ($like): void {
+            $query
+                ->where('data->academic_year', 'like', $like)
+                ->orWhere('data->selected_academic_year', 'like', $like)
+                ->orWhere('data->seat_number', 'like', $like)
+                ->orWhere('data->list_number', 'like', $like)
+                ->orWhere('data->name_khmer', 'like', $like)
+                ->orWhere('data->name_latin', 'like', $like)
+                ->orWhere('data->first_name_kh', 'like', $like)
+                ->orWhere('data->last_name_kh', 'like', $like)
+                ->orWhere('data->first_name_en', 'like', $like)
+                ->orWhere('data->last_name_en', 'like', $like)
+                ->orWhereHas('creator', function (Builder $creatorQuery) use ($like): void {
+                    $creatorQuery
+                        ->where('seat_number', 'like', $like)
+                        ->orWhere('name', 'like', $like)
+                        ->orWhere('name_latin', 'like', $like);
+                });
+
+            foreach (FormEntryData::majorKeys() as $key) {
+                $query->orWhere("data->{$key}", 'like', $like);
+            }
+        });
     }
 
     protected static function excelRows(iterable $records, ?array $columnKeys = null): array

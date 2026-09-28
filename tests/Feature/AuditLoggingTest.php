@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\AuditLog;
 use App\Models\Role;
 use App\Models\User;
+use App\Filament\Admin\Resources\AuditLogs\AuditLogResource;
 use App\Support\AuditLogger;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -51,6 +52,27 @@ class AuditLoggingTest extends TestCase
             'actor_role' => 'cashier',
             'action' => 'payment_create',
         ]);
+    }
+
+    public function test_authorized_admin_can_open_audit_logs(): void
+    {
+        $admin = $this->createStaffUser('admin', 'audit_admin');
+
+        $this->actingAs($admin)
+            ->get('/audit-logs')
+            ->assertOk();
+    }
+
+    public function test_registrar_and_cashier_cannot_open_admin_audit_logs(): void
+    {
+        foreach (['registrar', 'cashier'] as $role) {
+            $user = $this->createStaffUser($role, $role.'_audit_access');
+
+            $this->actingAs($user);
+
+            $this->assertFalse(AuditLogResource::canAccess());
+            $this->assertFalse(AuditLogResource::canViewAny());
+        }
     }
 
     private function createStaffUser(string $role, string $username): User

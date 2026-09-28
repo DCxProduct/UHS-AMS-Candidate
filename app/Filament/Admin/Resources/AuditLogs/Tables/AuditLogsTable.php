@@ -15,6 +15,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\HtmlString;
+use Illuminate\Support\Facades\Schema;
 
 class AuditLogsTable
 {
@@ -149,6 +150,25 @@ class AuditLogsTable
 
     protected static function privilegedActivityQuery(Builder $query): Builder
     {
+        if (! Schema::hasColumn('audit_logs', 'actor_role')) {
+            return $query->whereHasMorph('actor', [User::class, SystemUser::class], function (Builder $query, string $type): void {
+                if ($type === User::class) {
+                    $query
+                        ->where('registration_type', 'admin')
+                        ->orWhereHas('roles', fn (Builder $query): Builder => $query->whereIn('name', ['admin', 'registrar', 'cashier']));
+
+                    return;
+                }
+
+                $query->where(function (Builder $query): void {
+                    $query
+                        ->where('roles', 'like', '%admin%')
+                        ->orWhere('roles', 'like', '%registrar%')
+                        ->orWhere('roles', 'like', '%cashier%');
+                });
+            });
+        }
+
         return $query
             ->where(function (Builder $query): void {
                 $query

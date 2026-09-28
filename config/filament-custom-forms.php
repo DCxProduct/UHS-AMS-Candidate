@@ -25,7 +25,9 @@ return [
     |
     */
     'uploads' => [
-        'disk' => env('CUSTOM_FORM_UPLOAD_DISK', 'private'),
+        'disk' => (($configuredUploadDisk = env('CUSTOM_FORM_UPLOAD_DISK', 'private')) === 'public')
+            ? 'private'
+            : $configuredUploadDisk,
         'legacy_disk' => 'public',
         'directory' => 'custom-form-uploads',
         'visibility' => 'private',
