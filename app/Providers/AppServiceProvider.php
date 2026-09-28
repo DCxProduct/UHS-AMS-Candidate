@@ -29,7 +29,6 @@ use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Notifications\Notification;
 use Illuminate\Auth\Events\Login;
-use Illuminate\Auth\Events\Logout;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
@@ -162,21 +161,6 @@ class AppServiceProvider extends ServiceProvider
                     'last_login_at' => now(),
                 ])->saveQuietly();
             }
-
-            AuditLogger::log(
-                action: 'login',
-                auditable: $event->user instanceof \Illuminate\Database\Eloquent\Model ? $event->user : null,
-                metadata: ['module' => 'Authentication'],
-            );
-
-        });
-
-        Event::listen(Logout::class, function (Logout $event): void {
-            AuditLogger::log(
-                action: 'logout',
-                auditable: $event->user instanceof \Illuminate\Database\Eloquent\Model ? $event->user : null,
-                metadata: ['module' => 'Authentication'],
-            );
         });
     }
 
