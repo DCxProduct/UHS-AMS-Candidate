@@ -6,6 +6,7 @@ use App\Models\ClosingDate;
 use App\Models\SystemUser;
 use App\Models\User;
 use App\Support\NotificationLanguage;
+use App\Support\PassedResultMenuOptions;
 use App\Support\UserTypeOptions;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Seeder;
@@ -707,7 +708,8 @@ HTML;
         ];
 
         if (Schema::hasColumn('custom_forms', 'passed_result_menu')) {
-            $data['passed_result_menu'] = $definition['passed_result_menu'];
+            $data['passed_result_menu'] = $definition['passed_result_menu']
+                ?? PassedResultMenuOptions::default();
         }
 
         if ($existing) {
