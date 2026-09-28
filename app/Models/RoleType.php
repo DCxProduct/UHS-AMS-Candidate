@@ -25,6 +25,12 @@ class RoleType extends Model
 
     protected static function booted(): void
     {
+        static::creating(function (RoleType $roleType): void {
+            if ($roleType->sort_order === null) {
+                $roleType->sort_order = ((int) static::query()->max('sort_order')) + 1;
+            }
+        });
+
         static::saving(function (RoleType $roleType): void {
             $roleType->key = Str::of((string) $roleType->key)
                 ->trim()
