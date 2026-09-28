@@ -8,6 +8,9 @@ use App\Models\User;
 use App\Filament\Admin\Resources\AuditLogs\AuditLogResource;
 use App\Support\AuditLogger;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Logout;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
@@ -52,6 +55,24 @@ class AuditLoggingTest extends TestCase
             'actor_role' => 'cashier',
             'action' => 'payment_create',
         ]);
+    }
+
+    public function test_login_and_logout_events_do_not_create_audit_records(): void
+    {
+        $user = $this->createStaffUser('admin', 'auth_audit_admin');
+
+        Event::dispatch(new Login('web', $user, false));
+        Event::dispatch(new Logout('web', $user));
+
+        $this->assertDatabaseMissing('audit_logs', [
+            'actor_id' => $user->getKey(),
+            'action' => 'login',
+        ]);
+        $this->assertDatabaseMissing('audit_logs', [
+            'actor_id' => $user->getKey(),
+            'action' => 'logout',
+        ]);
+
     }
 
     public function test_authorized_admin_can_open_audit_logs(): void

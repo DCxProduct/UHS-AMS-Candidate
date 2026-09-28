@@ -95,7 +95,15 @@ class RolesAndPermissionsSeeder extends Seeder
                 ->whereIn('name', $manageablePermissionNames)
                 ->where(function ($query): void {
                     $query->where('name', 'like', '%:Payment')
-                        ->orWhere('name', 'like', '%:UnpaidApplication');
+                        ->orWhere('name', 'like', '%:UnpaidApplication')
+                        ->orWhereIn('name', [
+                            'ViewAny:PaymentType',
+                            'Create:PaymentType',
+                            'Update:PaymentType',
+                            'Delete:PaymentType',
+                            'ViewAny:ExchangeRate',
+                            'Update:ExchangeRate',
+                        ]);
                 })
                 ->get()
         );
@@ -104,12 +112,8 @@ class RolesAndPermissionsSeeder extends Seeder
             Permission::query()
                 ->where('guard_name', 'web')
                 ->whereIn('name', [
-                    'ViewAny:PaymentType',
-                    'Create:PaymentType',
-                    'Update:PaymentType',
-                    'Delete:PaymentType',
-                    'ViewAny:ExchangeRate',
-                    'Update:ExchangeRate',
+                    'ViewAny:CandidateSubmitPopupSetting',
+                    'Update:CandidateSubmitPopupSetting',
                     'ViewAny:CandidateRequested',
                     'Passed:CandidateRequested',
                     'Pending:CandidateRequested',
