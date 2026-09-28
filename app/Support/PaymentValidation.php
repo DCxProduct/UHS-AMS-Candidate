@@ -10,17 +10,7 @@ class PaymentValidation
     {
         return array_values(array_filter([
             $required ? 'required' : 'nullable',
-            static function (string $attribute, mixed $value, \Closure $fail): void {
-                if (blank($value)) {
-                    return;
-                }
-
-                $normalized = str_replace(',', '', (string) $value);
-
-                if (! is_numeric($normalized) || (float) $normalized <= 0) {
-                    $fail(__('payments.validation.amount_positive'));
-                }
-            },
+            new \App\Rules\PositiveAmount(),
         ]));
     }
 

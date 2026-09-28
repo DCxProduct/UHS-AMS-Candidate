@@ -45,4 +45,9 @@ class AuditLogObserver
     {
         AuditLogger::logModelEvent('deleted', $model, $model->getAttributes(), []);
     }
+
+    public function restored(Model $model): void
+    {
+        AuditLogger::logModelEvent('restored', $model, [], $model->getAttributes());
+    }
 }

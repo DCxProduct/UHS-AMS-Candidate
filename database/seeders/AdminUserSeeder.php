@@ -13,6 +13,10 @@ class AdminUserSeeder extends Seeder
 {
     public function run(): void
     {
+        $adminPassword = $this->seededPassword('SEEDED_ADMIN_PASSWORD');
+        $cashierPassword = $this->seededPassword('SEEDED_CASHIER_PASSWORD');
+        $registrarPassword = $this->seededPassword('SEEDED_REGISTRAR_PASSWORD');
+
         $data = [
             'registration_type' => 'admin',
             'academic_year' => null,
@@ -26,7 +30,7 @@ class AdminUserSeeder extends Seeder
             'seat_number' => null,
             'avatar' => null,
             'is_active' => true,
-            'password' => Hash::make('1234567a'),
+            'password' => Hash::make($adminPassword),
         ];
 
         if (Schema::hasColumn('users', 'locale')) {
@@ -87,7 +91,7 @@ class AdminUserSeeder extends Seeder
                 'username' => 'cashier',
                 'email' => 'cashier@gmail.com',
                 'phone' => '010000098',
-                'password' => Hash::make('1234567a'),
+                'password' => Hash::make($cashierPassword),
                 'roles' => ['cashier'],
                 'permissions' => null,
                 'is_active' => true,
@@ -106,7 +110,7 @@ class AdminUserSeeder extends Seeder
                 'username' => 'registrar',
                 'email' => 'registrar@gmail.com',
                 'phone' => '010000097',
-                'password' => Hash::make('1234567a'),
+                'password' => Hash::make($registrarPassword),
                 'roles' => ['registrar'],
                 'permissions' => null,
                 'is_active' => true,
@@ -115,5 +119,18 @@ class AdminUserSeeder extends Seeder
         );
 
         $registrar->syncLoginUser();
+    }
+
+    private function seededPassword(string $environmentKey): string
+    {
+        $password = app()->environment('production')
+            ? env($environmentKey)
+            : '1234567a';
+
+        if (blank($password)) {
+            throw new \RuntimeException("{$environmentKey} must be configured before running seeders in production.");
+        }
+
+        return (string) $password;
     }
 }

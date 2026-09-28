@@ -274,9 +274,6 @@ class CandidatePaymentListsTable
                                 ->placeholder(__('payments.placeholders.amount_kh'))
                                 ->suffix('KHR')
                                 ->inputMode('decimal')
-                                ->extraInputAttributes([
-                                    'oninput' => "this.value = this.value.replace(/[^0-9,]/g, '')",
-                                ])
                                 ->rules(PaymentValidation::amountKhRules())
                                 ->rule(static function (): \Closure {
                                     return static function (string $attribute, mixed $value, \Closure $fail): void {
@@ -308,9 +305,6 @@ class CandidatePaymentListsTable
                                 ->placeholder(__('payments.placeholders.amount_usd'))
                                 ->suffix('$')
                                 ->inputMode('decimal')
-                                ->extraInputAttributes([
-                                    'oninput' => "this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\\..*)\\./g, '$1')",
-                                ])
                                 ->rules(PaymentValidation::amountUsdRules())
                                 ->live(onBlur: true)
                                 ->afterStateHydrated(function (TextInput $component, mixed $state): void {

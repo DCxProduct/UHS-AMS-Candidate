@@ -7,7 +7,9 @@ use App\Models\Payment;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\ValidationException;
 
 class CreateCandidatePaymentList extends CreateRecord
 {
@@ -22,7 +24,17 @@ class CreateCandidatePaymentList extends CreateRecord
             unset($data['exchange_rate']);
         }
 
-        return Payment::query()->create($data);
+        try {
+            return Payment::query()->create($data);
+        } catch (QueryException $exception) {
+            if (Payment::isReceiptNumberUniqueViolation($exception)) {
+                throw ValidationException::withMessages([
+                    'receipt_number' => __('payments.validation.receipt_number_unique'),
+                ]);
+            }
+
+            throw $exception;
+        }
     }
 
     public function getTitle(): string | Htmlable

@@ -40,6 +40,19 @@ class ProtectedFileAccessTest extends TestCase
             ->assertForbidden();
     }
 
+
+    public function test_anonymous_payment_slip_access_redirects_to_login(): void
+    {
+        Storage::fake('private');
+        Storage::disk('private')->put('payment-slips/own.png', 'image-data');
+
+        $candidate = $this->createCandidate('candidate-anonymous-owner');
+        $payment = $this->createPayment($candidate, 'ANON-001');
+
+        $this->get(route('protected.payment-slip', $payment))
+            ->assertRedirect('/login');
+    }
+
     private function createCandidate(string $username): User
     {
         return User::query()->create([
