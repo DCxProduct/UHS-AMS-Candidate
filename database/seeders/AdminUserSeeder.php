@@ -125,7 +125,7 @@ class AdminUserSeeder extends Seeder
     {
         $password = app()->environment('production')
             ? env($environmentKey)
-            : '1234567a';
+            : '12345678';
 
         if (blank($password)) {
             throw new \RuntimeException("{$environmentKey} must be configured before running seeders in production.");

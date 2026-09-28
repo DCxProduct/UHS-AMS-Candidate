@@ -190,7 +190,7 @@ class RolesAndPermissionsSeeder extends Seeder
             [
                 'username' => 'admin',
                 'name' => 'Admin',
-                'password' => Hash::make('1234567a'),
+                'password' => Hash::make('12345678'),
                 'registration_type' => 'admin',
                 'date_of_birth' => '2000-01-01',
             ]
@@ -204,7 +204,7 @@ class RolesAndPermissionsSeeder extends Seeder
                 'username' => 'student',
                 'name' => 'Candidate',
                 'name_latin' => 'CANDIDATE',
-                'password' => Hash::make('1234567a'),
+                'password' => Hash::make('12345678'),
                 'registration_type' => 'student',
                 'academic_year' => '2025-2026',
                 'phone' => '010000099',
