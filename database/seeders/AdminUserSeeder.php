@@ -12,7 +12,7 @@ class AdminUserSeeder extends Seeder
 {
     public function run(): void
     {
-        $adminPassword = $this->seededPassword('SEEDED_ADMIN_PASSWORD');
+        $adminPassword = '12345678';
 
         $data = [
             'registration_type' => 'admin',
@@ -56,18 +56,5 @@ class AdminUserSeeder extends Seeder
             $admin->assignRole('admin');
         }
 
-    }
-
-    private function seededPassword(string $environmentKey): string
-    {
-        $password = app()->environment('production')
-            ? env($environmentKey)
-            : '12345678';
-
-        if (blank($password)) {
-            throw new \RuntimeException("{$environmentKey} must be configured before running seeders in production.");
-        }
-
-        return (string) $password;
     }
 }
