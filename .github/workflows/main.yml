@@ -33,14 +33,13 @@ jobs:
             node -v || echo "❌ node not found"
             npm -v || echo "❌ npm not found"
 
-            # ── Pull latest code ─────────────────────────
+            # ── Pull latest code ──────────────────────────────────────────
             if [ -d "$APP_DIR" ] && [ ! -d "$APP_DIR/.git" ]; then
-              rm -rf "$APP_DIR"
+              rm -rf $APP_DIR
             fi
 
             if [ -d "$APP_DIR/.git" ]; then
-              cd "$APP_DIR"
-
+              cd $APP_DIR
               echo "📦 Cleaning working directory..."
               git reset --hard
               git clean -fd
@@ -48,71 +47,31 @@ jobs:
               echo "⬇️ Pulling latest code..."
               git pull https://oauth2:${{ secrets.TOKEN }}@github.com/DCxProduct/UHS-AMS-Candidate.git
             else
-              git clone https://oauth2:${{ secrets.TOKEN }}@github.com/DCxProduct/UHS-AMS-Candidate.git "$APP_DIR"
-              cd "$APP_DIR"
+              git clone https://oauth2:${{ secrets.TOKEN }}@github.com/DCxProduct/UHS-AMS-Candidate.git $APP_DIR
+              cd $APP_DIR
             fi
 
-            # ─────────────────────────────────────────────
-            # Production environment protection
-            # ─────────────────────────────────────────────
-            # The production environment is intentionally
-            # not stored in Git.
-            #
-            # Stop rather than booting the application
-            # with local/default values.
-            # ─────────────────────────────────────────────
+            # The production environment is intentionally not stored in Git.
+            # Stop rather than booting the application with local/default values.
             if [ ! -f "$APP_DIR/.env" ]; then
               echo "❌ Missing production .env at $APP_DIR/.env"
               exit 1
             fi
 
-            # ── Install PHP Dependencies ─────────────────
+            # ── Install Dependencies ─────────────────────────────
             echo "📦 Installing PHP dependencies..."
-            composer install \
-              --no-interaction \
-              --prefer-dist \
-              --optimize-autoloader
-
-            # ── Install Frontend Dependencies ────────────
-            echo "📦 Installing frontend dependencies..."
-            npm ci
-
-            # ── Build Frontend ───────────────────────────
-            echo "🏗️ Building frontend..."
+            composer install
+            npm install
             npm run build
 
-            # ── Laravel Database Setup ───────────────────
-            # IMPORTANT:
-            # Run migrations only.
-            #
-            # DO NOT run:
-            # php artisan migrate --seed --force
-            #
-            # Production seeders are intentionally skipped
-            # to preserve production data and prevent demo
-            # accounts/passwords from being created.
-            # ─────────────────────────────────────────────
-            echo "🗄️ Running production migrations..."
-            php artisan migrate --force
+            # ── Laravel Setup ────────────────────────────────────
+            echo "⏭️ Skipping migrations and seeders to preserve production data."
 
-            echo "🔒 Production seeders skipped."
-
-            # ── Optimize ─────────────────────────────────
-            echo "🧹 Clearing Laravel caches..."
+            # ── Optimize ────────────────────────────────────────
             php artisan optimize:clear
-
-            echo "⚡ Caching production configuration..."
             php artisan config:cache
 
-            # ── Permissions ──────────────────────────────
-            echo "🔐 Fixing Laravel writable directory permissions..."
-
-            chown -R www-data:www-data \
-              "$APP_DIR/storage" \
-              "$APP_DIR/bootstrap/cache"
-
-            chmod -R 775 \
-              "$APP_DIR/storage" \
-              "$APP_DIR/bootstrap/cache"
-
-            echo "✅ Deployment completed successfully."
+            # ── Permissions ──────────────────────────────────────
+            echo "🔐 Fixing permissions..."
+            chown -R www-data:www-data $APP_DIR
+            chmod -R 775 $APP_DIR/storage $APP_DIR/bootstrap/cache
