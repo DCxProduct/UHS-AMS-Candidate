@@ -55,6 +55,16 @@ class RolesAndPermissionsSeederTest extends TestCase
             'Delete:PaymentType',
             'ViewAny:ExchangeRate',
             'ViewAny:CandidateSubmitPopupSetting',
+            'ViewAny:GeoLocation',
+            'Delete:GeoLocation',
+            'ViewAny:SystemUser',
+            'Delete:SystemUser',
+            'ViewAny:RoleType',
+            'Delete:RoleType',
+            'ViewAny:Role',
+            'Delete:Role',
+            'ViewAny:AuditLog',
+            'ClearData:AuditLog',
         ];
         $viewerPermissions = [
             'ViewAny:CustomFormEntry',
@@ -72,6 +82,11 @@ class RolesAndPermissionsSeederTest extends TestCase
             'ViewAny:PaymentType',
             'ViewAny:ExchangeRate',
             'ViewAny:CandidateSubmitPopupSetting',
+            'ViewAny:GeoLocation',
+            'ViewAny:SystemUser',
+            'ViewAny:RoleType',
+            'ViewAny:Role',
+            'ViewAny:AuditLog',
         ];
         $dataEntryPermissions = [
             'ViewAny:CustomFormEntry',
@@ -203,6 +218,24 @@ class RolesAndPermissionsSeederTest extends TestCase
             'Update:ExchangeRate',
             'ViewAny:CandidateSubmitPopupSetting',
             'Update:CandidateSubmitPopupSetting',
+            'ViewAny:GeoLocation',
+            'Create:GeoLocation',
+            'Update:GeoLocation',
+            'Delete:GeoLocation',
+            'ViewAny:SystemUser',
+            'Create:SystemUser',
+            'Update:SystemUser',
+            'Delete:SystemUser',
+            'ViewAny:RoleType',
+            'Create:RoleType',
+            'Update:RoleType',
+            'Delete:RoleType',
+            'ViewAny:Role',
+            'Create:Role',
+            'Update:Role',
+            'Delete:Role',
+            'ViewAny:AuditLog',
+            'ClearData:AuditLog',
         ];
         $cashierManagerPermissions = [
             'ViewAny:PaymentType',
@@ -375,6 +408,14 @@ class RolesAndPermissionsSeederTest extends TestCase
                 $this->assertFalse($role->permissions->contains('name', 'Update:Payment'));
                 $this->assertFalse($role->permissions->contains('name', 'Pay:UnpaidApplication'));
                 $this->assertFalse($role->permissions->contains('name', 'Update:PaymentType'));
+                $this->assertFalse($role->permissions->contains('name', 'Create:GeoLocation'));
+                $this->assertFalse($role->permissions->contains('name', 'Update:GeoLocation'));
+                $this->assertFalse($role->permissions->contains('name', 'Create:SystemUser'));
+                $this->assertFalse($role->permissions->contains('name', 'Update:SystemUser'));
+                $this->assertFalse($role->permissions->contains('name', 'Create:RoleType'));
+                $this->assertFalse($role->permissions->contains('name', 'Update:RoleType'));
+                $this->assertFalse($role->permissions->contains('name', 'Create:Role'));
+                $this->assertFalse($role->permissions->contains('name', 'Update:Role'));
             } elseif ($name === 'viewer') {
                 $this->assertSame(
                     collect($viewerPermissions)->sort()->values()->all(),
@@ -383,7 +424,10 @@ class RolesAndPermissionsSeederTest extends TestCase
                 $this->assertFalse($role->permissions->contains('name', 'Create:Payment'));
                 $this->assertFalse($role->permissions->contains('name', 'Update:PaymentType'));
                 $this->assertFalse($role->permissions->contains('name', 'Delete:CandidateList'));
-                $this->assertFalse($role->permissions->contains('name', 'ViewAny:SystemUser'));
+                $this->assertFalse($role->permissions->contains('name', 'Create:SystemUser'));
+                $this->assertFalse($role->permissions->contains('name', 'Update:SystemUser'));
+                $this->assertFalse($role->permissions->contains('name', 'Delete:SystemUser'));
+                $this->assertFalse($role->permissions->contains('name', 'ClearData:AuditLog'));
             } elseif ($name === 'data_entry') {
             } elseif ($name === 'data_entry') {
                 $this->assertSame(
