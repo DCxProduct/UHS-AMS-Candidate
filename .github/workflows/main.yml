@@ -63,9 +63,10 @@ jobs:
             composer install
             npm install
             npm run build
-
             # ── Laravel Setup ────────────────────────────────────
-            echo "⏭️ Skipping migrations and seeders to preserve production data."
+            echo "🔧 Running migrations..."
+            php artisan migrate --force
+            php artisan db:seed --force
 
             # ── Optimize ────────────────────────────────────────
             php artisan optimize:clear
