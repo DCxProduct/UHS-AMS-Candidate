@@ -262,7 +262,8 @@ class CandidatePaymentListsTable
                                 ->format('Y-m-d')
                                 ->displayFormat('d-M-Y')
                                 ->native(false)
-                                ->suffixIcon('heroicon-o-calendar-days')
+                                ->disabled()
+                                ->dehydrated()
                                 ->validationMessages([
                                     'required' => __('payments.validation.datetime_pay_required'),
                                 ])

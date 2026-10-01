@@ -85,10 +85,13 @@ class PaymentForm
                                 DatePicker::make('datetime_pay')
                                     ->label(__('payments.fields.datetime_pay'))
                                     ->markAsRequired()
+                                    ->default(now()->toDateString())
                                     ->placeholder(__('payments.placeholders.datetime_pay'))
                                     ->native(false)
+                                    ->displayFormat('d-M-Y')
                                     ->maxDate(now()->toDateString())
-                                    ->suffixIcon('heroicon-o-calendar-days')
+                                    ->disabled()
+                                    ->dehydrated()
                                     ->required()
                                     ->validationMessages([
                                         'required' => __('payments.validation.datetime_pay_required'),

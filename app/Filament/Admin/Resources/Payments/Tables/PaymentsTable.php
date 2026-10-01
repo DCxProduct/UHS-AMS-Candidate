@@ -164,7 +164,7 @@ class PaymentsTable
                         DatePicker::make('datetime_pay')
                             ->label(__('payments.table.datetime_pay'))
                             ->placeholder(__('payments.placeholders.datetime_pay'))
-                            ->displayFormat('d-m-Y')
+                            ->displayFormat('d-M-Y')
                             ->native(false)
                             ->closeOnDateSelection()
                             ->maxDate(now())
