@@ -90,8 +90,8 @@
          'requires_payment' => 'Require Payment for This Form',
          'details' => 'Form Details',
          'passed_result_menu_options' => [
-             'exam_results' => 'Exam Results',
-             'exit_exam_results' => 'Exit Exam Results',
+             'exam_results' => 'Passed Entrance Exam',
+             'exit_exam_results' => 'Passed Exit Exam',
          ],
          'names' => [],
      ],

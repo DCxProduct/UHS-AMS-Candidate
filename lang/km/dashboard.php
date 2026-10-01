@@ -51,7 +51,7 @@ return [
 
     'profile' => 'ប្រវត្តិរូប',
     'national_examination' => 'ការស្នើប្រឡងថ្នាក់ជាតិ',
-    'exam_result' => 'បេក្ខជនជាប់',
+    'exam_result' => 'បេក្ខជនជាប់ប្រឡងចូលជ័យលាភី',
     'overall_progress' => 'វឌ្ឍនភាពសរុប',
 
     'profile_description' => 'ព័ត៌មានប្រវត្តិរូបនិស្សិតរបស់អ្នក',
@@ -98,8 +98,8 @@ return [
 
     'candidate_lists' => 'សំណើបេក្ខជន',
     'open_candidate_lists' => 'បើកសំណើបេក្ខជន',
-    'exam_results' => 'បេក្ខជនជាប់',
-    'open_exam_results' => 'បើកបេក្ខជនជាប់',
+    'exam_results' => 'បេក្ខជនជាប់ប្រឡងចូលជ័យលាភី',
+    'open_exam_results' => 'បើកបេក្ខជនជាប់ប្រឡងចូលជ័យលាភី',
     'payment_lists' => 'ពាក្យស្នើសុំមិនទាន់បង់ប្រាក់',
     'open_payment_lists' => 'បើកពាក្យស្នើសុំមិនទាន់បង់ប្រាក់',
     'payment_records' => 'កំណត់ត្រាបង់ប្រាក់',
@@ -151,8 +151,8 @@ return [
     'returned_requests_hint' => 'បានបញ្ជូនត្រឡប់ឱ្យកែប្រែ',
     'in_review_requests_hint' => 'កំពុងរង់ចាំការពិនិត្យ',
     'candidate_lists_description' => 'ពិនិត្យ និងផ្ទៀងផ្ទាត់សំណើបេក្ខជន។',
-    'exam_results_description' => 'គ្រប់គ្រង និងប្រកាសបេក្ខជនជាប់។',
-    'exit_exam_results_description' => 'ពិនិត្យ និងគ្រប់គ្រងទិន្នន័យលទ្ធផលប្រឡងបញ្ចប់។',
+    'exam_results_description' => 'គ្រប់គ្រង និងប្រកាសបេក្ខជនជាប់ប្រឡងចូលជ័យលាភី។',
+    'exit_exam_results_description' => 'ពិនិត្យ និងគ្រប់គ្រងបេក្ខជនជាប់ប្រឡងចេញជ័យលាភី។',
     'payment_lists_description' => 'តាមដានបេក្ខជនដែលនៅមិនទាន់បង់ប្រាក់។',
     'payment_records_description' => 'ពិនិត្យកំណត់ត្រាប្រតិបត្តិការបង់ប្រាក់ដែលបានកត់ត្រា។',
     'roles_description' => 'គ្រប់គ្រងតួនាទី និងការកំណត់សិទ្ធិ។',

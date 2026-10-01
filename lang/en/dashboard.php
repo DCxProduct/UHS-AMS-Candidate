@@ -51,7 +51,7 @@ return [
 
     'profile' => 'Profile',
     'national_examination' => 'National Examination',
-    'exam_result' => 'Exam Result',
+    'exam_result' => 'Passed Entrance Exam',
     'overall_progress' => 'Overall Progress',
 
     'profile_description' => 'Your student profile information',
@@ -98,8 +98,8 @@ return [
 
     'candidate_lists' => 'Candidate Requested',
     'open_candidate_lists' => 'Open candidate requested',
-    'exam_results' => 'Exam Results',
-    'open_exam_results' => 'Open exam results',
+    'exam_results' => 'Passed Entrance Exam',
+    'open_exam_results' => 'Open passed entrance exam',
     'payment_lists' => 'Unpaid Applications',
     'open_payment_lists' => 'Open unpaid applications',
     'payment_records' => 'Payment Records',
@@ -151,8 +151,8 @@ return [
     'returned_requests_hint' => 'Sent back for update',
     'in_review_requests_hint' => 'Pending review',
     'candidate_lists_description' => 'Review and verify candidate requests.',
-    'exam_results_description' => 'Publish and maintain exam result data.',
-    'exit_exam_results_description' => 'Review and manage exit exam result data.',
+    'exam_results_description' => 'Publish and maintain passed entrance exam data.',
+    'exit_exam_results_description' => 'Review and manage passed exit exam data.',
     'payment_lists_description' => 'Track candidates who still need payment.',
     'payment_records_description' => 'Review recorded payment transactions.',
     'roles_description' => 'Manage roles and permission assignments.',
