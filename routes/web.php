@@ -45,6 +45,10 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/protected/payment-slips/{payment}', [ProtectedFileController::class, 'paymentSlip'])
         ->name('protected.payment-slip');
 
+    Route::get('/protected/custom-form-entries/{entry}/document-files/{fileIndex}', [ProtectedFileController::class, 'customFormEntryDocument'])
+        ->whereNumber('fileIndex')
+        ->name('protected.custom-form-entry-document');
+
     Route::get('/protected/custom-form-entries/{entry}/files/{field}', [ProtectedFileController::class, 'customFormEntryFile'])
         ->where('field', '[A-Za-z0-9_.-]+')
         ->name('protected.custom-form-entry-file');

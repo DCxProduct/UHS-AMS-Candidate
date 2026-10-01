@@ -15,7 +15,6 @@ class AuditLog extends Model
         'action',
         'module',
         'description',
-        'ip_address',
         'old_values',
         'new_values',
         'metadata',

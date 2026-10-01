@@ -18,7 +18,6 @@ use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormField;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
@@ -263,7 +262,8 @@ class CandidatePaymentListsTable
                                 ->format('Y-m-d')
                                 ->displayFormat('d-M-Y')
                                 ->native(false)
-                                ->suffixIcon('heroicon-o-calendar-days')
+                                ->disabled()
+                                ->dehydrated()
                                 ->validationMessages([
                                     'required' => __('payments.validation.datetime_pay_required'),
                                 ])
@@ -330,28 +330,6 @@ class CandidatePaymentListsTable
                             ->label(__('payments.fields.description'))
                             ->placeholder(__('payments.placeholders.description'))
                             ->rows(4),
-
-                        FileUpload::make('payment_slip_path')
-                            ->label(__('payments.fields.payment_slip'))
-                            ->placeholder(__('payments.placeholders.payment_slip'))
-                            ->disk('private')
-                            ->directory('payment-slips')
-                            ->visibility('private')
-                            ->acceptedFileTypes([
-                                'image/jpeg',
-                                'image/png',
-                                'image/webp',
-                            ])
-                            ->image()
-                            ->imageEditor()
-                                ->maxSize(5120)
-                            ->openable()
-                            ->downloadable()
-                            ->previewable()
-                            ->required()
-                            ->validationMessages([
-                                'required' => __('payments.validation.payment_slip_required'),
-                            ]),
                     ])
                     ->action(function (UnpaidApplication $record, array $data): void {
                         FilamentActionPermissions::abortUnlessCanForResource(CandidatePaymentListResource::class, 'pay');
@@ -360,7 +338,6 @@ class CandidatePaymentListsTable
                             'users_id' => self::ownerId($record),
                             'form_id' => $record->custom_form_id,
                             'receipt_number' => $data['receipt_number'],
-                            'payment_slip_path' => $data['payment_slip_path'],
                             'type_payment' => $data['type_payment'],
                             'status_payt' => 'paid',
                             'amount_usd' => $data['amount_usd'] ?? null,

@@ -5,6 +5,7 @@ namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Ta
 use App\Filament\Admin\Resources\CandidatePaymentLists\CandidatePaymentListResource;
 use App\Models\Payment;
 use App\Support\AuditLogger;
+use App\Support\CustomFormEntryFiles;
 use App\Support\FilamentActionPermissions;
 use App\Support\FormEntryData;
 use App\Support\LocalizedDate;
@@ -394,7 +395,13 @@ class CustomFormEntriesTable
                     ->toggleable(isToggledHiddenByDefault: true)
                     ->wrap();
 
-                if (self::isGeoColumn((string) $key)) {
+                if (self::isDocumentFieldType((string) $field->type)) {
+                    $column
+                        ->icon('heroicon-o-document-text')
+                        ->formatStateUsing(
+                            fn (mixed $state): string => app(CustomFormEntryFiles::class)->displayLabel($state)
+                        );
+                } elseif (self::isGeoColumn((string) $key)) {
                     $column->formatStateUsing(fn (mixed $state): string => self::geoLocationName($state));
                 }
 
@@ -1032,8 +1039,25 @@ class CustomFormEntriesTable
                         'entry' => $record->id,
                     ]),
                 ]))
-                ->extraModalFooterActions(fn ($record): array => [
-                    Action::make('approve_from_view')
+                ->extraModalFooterActions(function ($record): array {
+                    $downloadActions = collect(app(CustomFormEntryFiles::class)->files($record))
+                        ->map(function (array $file, int $index) use ($record): Action {
+                            $fileLabel = app(CustomFormEntryFiles::class)->displayLabel($file['path']);
+
+                            return Action::make('download_file_'.$index)
+                                ->label(__('review_applications.download_file', ['file' => $fileLabel]))
+                                ->icon('heroicon-o-arrow-down-tray')
+                                ->color('gray')
+                                ->url(route('protected.custom-form-entry-document', [
+                                    'entry' => $record->id,
+                                    'fileIndex' => $index,
+                                ]));
+                        })
+                        ->values()
+                        ->all();
+
+                    return [
+                        Action::make('approve_from_view')
                         ->label(__('review_applications.statuses.accepted'))
                         ->icon('heroicon-o-check-circle')
                         ->color('success')
@@ -1095,6 +1119,7 @@ class CustomFormEntriesTable
                                 ->required()
                                 ->rows(4),
                         ])
+                        ->modalSubmitActionLabel(__('review_applications.statuses.send_back'))
                         ->visible(fn (): bool => self::entryStatus($record) === 'pending'
                             && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'rejected'))
                         ->action(function (array $data) use ($record): void {
@@ -1143,7 +1168,9 @@ class CustomFormEntriesTable
 
                             redirect(request()->header('Referer') ?: request()->fullUrl());
                         }),
-                ])
+                        ...$downloadActions,
+                    ];
+                })
                 ->visible(fn ($record): bool =>
                     self::currentPanelIsAdmin()
                     && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'view_pdf')
@@ -1303,6 +1330,7 @@ class CustomFormEntriesTable
 
         return $actions;
     }
+
     protected static function canEdit($record): bool
     {
         $status = self::entryStatus($record);
@@ -1896,6 +1924,11 @@ class CustomFormEntriesTable
     protected static function isImageFieldType(string $type): bool
     {
         return in_array($type, ['image', 'image_upload'], true);
+    }
+
+    protected static function isDocumentFieldType(string $type): bool
+    {
+        return in_array($type, ['file', 'file_upload', 'fileupload'], true);
     }
 
     protected static function isGeoColumn(string $key): bool

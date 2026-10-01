@@ -120,6 +120,18 @@ return [
 
     'file_upload' => [
 
+        'actions' => [
+
+            'download' => [
+                'label' => 'ទាញយក',
+            ],
+
+            'open' => [
+                'label' => 'មើល',
+            ],
+
+        ],
+
         'editor' => [
 
             'actions' => [

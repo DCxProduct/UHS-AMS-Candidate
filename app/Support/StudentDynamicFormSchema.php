@@ -199,11 +199,12 @@ class StudentDynamicFormSchema
                 ->directory((string) config('filament-custom-forms.uploads.directory', 'custom-form-uploads'))
                 ->visibility((string) config('filament-custom-forms.uploads.visibility', 'private'))
                 ->acceptedFileTypes(in_array($type, ['image', 'image_upload'], true)
-                    ? ['image/jpeg', 'image/png']
-                    : (array) config('filament-custom-forms.uploads.accepted_mime_types', [
-                        'application/pdf',
+                    ? (array) config('filament-custom-forms.uploads.image_mime_types', [
                         'image/jpeg',
                         'image/png',
+                    ])
+                    : (array) config('filament-custom-forms.uploads.accepted_mime_types', [
+                        'application/pdf',
                     ]))
                 ->maxSize(in_array($type, ['image', 'image_upload'], true)
                     ? 5120

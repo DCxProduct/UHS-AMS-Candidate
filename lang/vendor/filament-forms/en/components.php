@@ -124,6 +124,18 @@ return [
 
     'file_upload' => [
 
+        'actions' => [
+
+            'download' => [
+                'label' => 'Download',
+            ],
+
+            'open' => [
+                'label' => 'View',
+            ],
+
+        ],
+
         'editor' => [
 
             'actions' => [

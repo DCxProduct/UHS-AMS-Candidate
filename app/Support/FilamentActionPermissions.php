@@ -27,7 +27,6 @@ class FilamentActionPermissions
     {
         return [
             PaymentResource::class => [
-                'view_slip',
                 'download_excel',
                 'clear_data',
             ],
@@ -183,7 +182,6 @@ class FilamentActionPermissions
             PaymentResource::class => [
                 'viewAny',
                 'update',
-                'view_slip',
                 'download_excel',
                 'clear_data',
             ],

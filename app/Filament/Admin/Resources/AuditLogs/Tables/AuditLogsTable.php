@@ -51,10 +51,6 @@ class AuditLogsTable
                 TextColumn::make('created_at')
                     ->label(__('audit_logs.fields.created_at'))
                     ->formatStateUsing(fn ($state): string => LocalizedDate::auditDateTime($state)),
-
-                TextColumn::make('ip_address')
-                    ->label(__('audit_logs.fields.ip_address'))
-                    ->placeholder('-'),
             ])
             ->filters([
                 Filter::make('audit_log_filters')

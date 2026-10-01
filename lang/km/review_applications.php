@@ -110,7 +110,16 @@ return [
     'not_reviewed_yet' => 'មិនទាន់បានពិនិត្យ',
     'download_excel' => 'ទាញយក Excel',
     'download_pdf' => 'ទាញយក PDF',
+    'download_file' => 'ទាញយក :file',
     'view_application_review' => 'ពិនិត្យការវាយតម្លៃពាក្យស្នើសុំ',
+    'file_types' => [
+        'word' => 'ឯកសារ Word',
+        'excel' => 'ឯកសារ Excel',
+        'powerpoint' => 'ឯកសារ PowerPoint',
+        'pdf' => 'ឯកសារ PDF',
+        'text' => 'ឯកសារអត្ថបទ',
+        'document' => 'ឯកសារ',
+    ],
 
     'months' => [
         '1' => 'មករា',

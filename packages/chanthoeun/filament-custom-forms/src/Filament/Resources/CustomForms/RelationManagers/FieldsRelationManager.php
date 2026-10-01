@@ -119,9 +119,14 @@ class FieldsRelationManager extends RelationManager
                                     'checkbox_list' => 'Checkbox List',
                                     'multi_select' => 'Multi Select',
                                     'info' => 'Info',
-                                    'image' => __('filament-custom-forms::fcf.builder.blocks.image'),
                                     'password' => __('filament-custom-forms::fcf.builder.blocks.password'),
                                     'phone' => __('filament-custom-forms::fcf.builder.blocks.phone'),
+                                ],
+                                'Images' => [
+                                    'image' => __('filament-custom-forms::fcf.builder.blocks.image'),
+                                ],
+                                'Documents' => [
+                                    'file_upload' => __('filament-custom-forms::fcf.builder.blocks.file_upload'),
                                 ],
                             ])
                             ->default('text_input')
