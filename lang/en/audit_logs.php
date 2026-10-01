@@ -10,7 +10,6 @@ return [
         'actor' => 'User',
         'module' => 'Module',
         'action' => 'Action',
-        'ip_address' => 'IP',
     ],
     'placeholders' => [
         'date' => 'Select date',

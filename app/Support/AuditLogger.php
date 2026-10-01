@@ -39,10 +39,6 @@ class AuditLogger
             'description' => $description ?: self::defaultDescription($action, $auditable, $actor),
         ];
 
-        if (Schema::hasColumn('audit_logs', 'ip_address')) {
-            $data['ip_address'] = request()?->ip();
-        }
-
         if (Schema::hasColumn('audit_logs', 'actor_role')) {
             $data['actor_role'] = self::actorRole($actor);
         }

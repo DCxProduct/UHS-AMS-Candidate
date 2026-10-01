@@ -10,7 +10,6 @@ return [
         'actor' => 'អ្នកប្រើ',
         'module' => 'មុខងារ',
         'action' => 'សកម្មភាព',
-        'ip_address' => 'IP',
     ],
     'placeholders' => [
         'date' => 'សូមជ្រើសរើសកាលបរិច្ឆេទ',
