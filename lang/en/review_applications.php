@@ -109,7 +109,16 @@ return [
     'not_reviewed_yet' => 'Not reviewed yet',
     'download_excel' => 'Download Excel',
     'download_pdf' => 'Download PDF',
+    'download_file' => 'Download :file',
     'view_application_review' => 'View Application Review',
+    'file_types' => [
+        'word' => 'Word document',
+        'excel' => 'Excel file',
+        'powerpoint' => 'PowerPoint file',
+        'pdf' => 'PDF document',
+        'text' => 'Text file',
+        'document' => 'Document',
+    ],
 
     'months' => [
         '1' => 'January',

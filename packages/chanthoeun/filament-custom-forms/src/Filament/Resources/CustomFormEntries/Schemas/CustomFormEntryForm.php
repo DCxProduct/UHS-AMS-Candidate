@@ -4,10 +4,12 @@ namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Sc
 
 use App\Models\ClosingDate;
 use App\Models\GeoLocation;
+use App\Support\CustomFormEntryFiles;
 use App\Support\DatePickerKeyboardInput;
 use App\Support\UserTypeOptions;
 use Chanthoeun\FilamentCustomForms\CustomFormPlugin;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
+use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -566,13 +568,54 @@ class CustomFormEntryForm
                             ->acceptedFileTypes($type === 'file_upload'
                                 ? (array) config('filament-custom-forms.uploads.accepted_mime_types', [
                                     'application/pdf',
+                                ])
+                                : (array) config('filament-custom-forms.uploads.image_mime_types', [
                                     'image/jpeg',
                                     'image/png',
-                                ])
-                                : ['image/jpeg', 'image/png'])
+                                ]))
                             ->maxSize($type === 'file_upload'
                                 ? (int) config('filament-custom-forms.uploads.max_size_kb', 10240)
                                 : 5120);
+
+        if ($type === 'file_upload') {
+            $component
+                ->extraAttributes(['class' => 'uhs-document-file-upload'], merge: true)
+                ->openable()
+                ->downloadable()
+                                ->deletable(fn (string $operation): bool => $operation !== 'view')
+                                ->reorderable(fn (string $operation): bool => $operation !== 'view')
+                                ->getUploadedFileUsing(function (
+                                    FileUpload $component,
+                                    string $file,
+                                    mixed $storedFileNames,
+                                    ?CustomFormEntry $record = null,
+                                ): ?array {
+                                    $metadata = $component->getUploadedFile($file, $storedFileNames);
+
+                                    if (! is_array($metadata)) {
+                                        return null;
+                                    }
+
+                                    $fileService = app(CustomFormEntryFiles::class);
+                                    $metadata['name'] = $fileService->displayLabel($file);
+
+                                    if ($record) {
+                                        $metadata['url'] = $fileService->protectedUrl($record, $file, inline: true);
+                                    }
+
+                                    return $metadata;
+                                })
+                                ->getOpenableFileUrlUsing(
+                                    fn (string $file, ?CustomFormEntry $record = null): ?string => $record
+                                        ? app(CustomFormEntryFiles::class)->protectedUrl($record, $file, inline: true)
+                                        : null
+                                )
+                                ->getDownloadableFileUrlUsing(
+                                    fn (string $file, ?CustomFormEntry $record = null): ?string => $record
+                                        ? app(CustomFormEntryFiles::class)->protectedUrl($record, $file)
+                                        : null
+                                );
+                        }
 
                         if (in_array($type, ['image', 'image_upload'], true)) {
                             $component->image();

@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Payment;
 use App\Models\User;
+use App\Support\CustomFormEntryFiles;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Illuminate\Http\Response;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -31,13 +33,7 @@ class ProtectedFileController extends Controller
 
     public function customFormEntryFile(CustomFormEntry $entry, string $field): StreamedResponse|Response
     {
-        $actor = auth()->user();
-
-        if ($this->isCandidate($actor)) {
-            abort_unless($this->entryBelongsToUser($entry, (int) $actor->getKey()), 403);
-        } else {
-            Gate::authorize('view', $entry);
-        }
+        $this->authorizeEntryFileAccess($entry);
 
         $data = is_array($entry->data) ? $entry->data : [];
         $path = data_get($data, $field);
@@ -47,6 +43,34 @@ class ProtectedFileController extends Controller
         }
 
         return $this->fileResponse((string) $path, 'candidate-document');
+    }
+
+    public function customFormEntryDocument(Request $request, CustomFormEntry $entry, int $fileIndex): StreamedResponse|Response
+    {
+        $this->authorizeEntryFileAccess($entry);
+
+        $file = app(CustomFormEntryFiles::class)->file($entry, $fileIndex);
+
+        abort_if($file === null, 404);
+
+        return $this->fileResponse(
+            $file['path'],
+            app(CustomFormEntryFiles::class)->filename($file['path']),
+            inline: $request->boolean('inline'),
+        );
+    }
+
+    protected function authorizeEntryFileAccess(CustomFormEntry $entry): void
+    {
+        $actor = auth()->user();
+
+        if ($this->isCandidate($actor)) {
+            abort_unless($this->entryBelongsToUser($entry, (int) $actor->getKey()), 403);
+
+            return;
+        }
+
+        Gate::authorize('view', $entry);
     }
 
     protected function isCandidate(mixed $actor): bool
@@ -67,7 +91,7 @@ class ProtectedFileController extends Controller
         return (int) $entry->creator?->getKey() === $userId;
     }
 
-    protected function fileResponse(string $path, string $downloadName): StreamedResponse|Response
+    protected function fileResponse(string $path, string $downloadName, bool $inline = true): StreamedResponse|Response
     {
         $normalizedPath = $this->normalizePath($path);
 
@@ -81,9 +105,13 @@ class ProtectedFileController extends Controller
 
         $mime = $disk->mimeType($normalizedPath) ?: 'application/octet-stream';
         $extension = pathinfo($normalizedPath, PATHINFO_EXTENSION);
-        $filename = Str::slug($downloadName).($extension !== '' ? '.'.strtolower($extension) : '');
+        $filename = $downloadName;
 
-        return response()->streamDownload(function () use ($disk, $normalizedPath): void {
+        if (pathinfo($filename, PATHINFO_EXTENSION) === '' && $extension !== '') {
+            $filename .= '.'.strtolower($extension);
+        }
+
+        $stream = function () use ($disk, $normalizedPath): void {
             $stream = $disk->readStream($normalizedPath);
 
             if (! is_resource($stream)) {
@@ -92,11 +120,17 @@ class ProtectedFileController extends Controller
 
             fpassthru($stream);
             fclose($stream);
-        }, $filename, [
+        };
+
+        $headers = [
             'Content-Type' => $mime,
-            'Content-Disposition' => 'inline; filename="'.$filename.'"',
+            'Content-Disposition' => ($inline ? 'inline' : 'attachment').'; filename="'.$filename.'"',
             'X-Content-Type-Options' => 'nosniff',
-        ]);
+        ];
+
+        return $inline
+            ? response()->stream($stream, 200, $headers)
+            : response()->streamDownload($stream, $filename, $headers);
     }
 
     protected function normalizePath(string $path): ?string

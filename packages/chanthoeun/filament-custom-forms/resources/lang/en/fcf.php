@@ -133,6 +133,7 @@
              'time_picker' => 'Time Picker',
              'boolean' => 'Boolean (Toggle)',
              'image' => 'Image',
+             'file_upload' => 'File Upload',
              'select' => 'Select Dropdown',
              'section' => 'Section',
              'grid' => 'Grid',

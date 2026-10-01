@@ -133,6 +133,7 @@
              'time_picker' => 'ការរើសម៉ោង',
              'boolean' => 'ប៊ូតុងបិទបើក (Toggle)',
              'image' => 'រូបភាព',
+             'file_upload' => 'បញ្ចូលឯកសារ',
              'select' => 'បញ្ជីរើស (Dropdown)',
              'section' => 'ផ្នែក',
              'grid' => 'ក្រឡាចត្រង្គ (Grid)',
