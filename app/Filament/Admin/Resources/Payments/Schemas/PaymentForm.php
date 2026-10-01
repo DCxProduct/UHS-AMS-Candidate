@@ -12,7 +12,6 @@ use App\Support\PaymentValidation;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
@@ -157,25 +156,6 @@ class PaymentForm
                             ->label(__('payments.fields.description'))
                             ->placeholder(__('payments.placeholders.description'))
                             ->rows(4)
-                            ->columnSpanFull(),
-
-                        FileUpload::make('payment_slip_path')
-                            ->label(__('payments.fields.payment_slip'))
-                            ->placeholder(__('payments.placeholders.payment_slip'))
-                            ->disk('private')
-                            ->directory('payment-slips')
-                            ->visibility('private')
-                            ->acceptedFileTypes([
-                                'image/jpeg',
-                                'image/png',
-                                'image/webp',
-                            ])
-                            ->image()
-                            ->imageEditor()
-                            ->maxSize(5120)
-                            ->openable()
-                            ->downloadable()
-                            ->previewable()
                             ->columnSpanFull(),
                     ]),
             ]);

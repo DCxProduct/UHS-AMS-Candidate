@@ -2,15 +2,12 @@
 
 namespace App\Filament\Admin\Resources\Payments\Tables;
 
-use App\Filament\Admin\Resources\Payments\PaymentResource;
 use App\Models\PaymentType;
 use App\Models\Payment;
-use App\Support\FilamentActionPermissions;
 use App\Support\FormEntryData;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
-use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
@@ -198,19 +195,6 @@ class PaymentsTable
             ->deferFilters(false)
             ->filtersFormColumns(4)
             ->recordActions([
-                Action::make('view_slip')
-                    ->label(__('payments.actions.view_slip'))
-                    ->icon('heroicon-o-eye')
-                    ->color('danger')
-                    ->modalHeading(__('payments.actions.view_slip'))
-                    ->modalWidth('7xl')
-                    ->modalSubmitAction(false)
-                    ->modalCancelAction(false)
-                    ->modalContent(fn (Payment $record) => view('payment-slip-modal', [
-                        'imageUrl' => $record->paymentSlipUrl(),
-                    ]))
-                    ->visible(fn (Payment $record): bool => FilamentActionPermissions::canForResource(PaymentResource::class, 'view_slip')
-                        && filled($record->payment_slip_path)),
                 EditAction::make()
                     ->label(__('payments.actions.edit'))
                     ->icon('heroicon-o-pencil-square'),
