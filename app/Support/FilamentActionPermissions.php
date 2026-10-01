@@ -28,11 +28,13 @@ class FilamentActionPermissions
         return [
             PaymentResource::class => [
                 'download_excel',
+                'download_pdf',
                 'clear_data',
             ],
             CandidatePaymentListResource::class => [
                 'pay',
                 'download_excel',
+                'download_pdf',
                 'clear_data',
             ],
             AuditLogResource::class => [
@@ -177,12 +179,14 @@ class FilamentActionPermissions
                 'viewAny',
                 'pay',
                 'download_excel',
+                'download_pdf',
                 'clear_data',
             ],
             PaymentResource::class => [
                 'viewAny',
                 'update',
                 'download_excel',
+                'download_pdf',
                 'clear_data',
             ],
             CandidateRequestedResource::class => [

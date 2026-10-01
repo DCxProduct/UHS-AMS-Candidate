@@ -7,6 +7,7 @@ use App\Filament\Admin\Resources\Payments\Tables\PaymentsTable;
 use App\Support\AuditLogger;
 use App\Support\FilamentActionPermissions;
 use Filament\Actions\Action;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 
 class ListPayments extends ListRecords
@@ -31,6 +32,21 @@ class ListPayments extends ListRecords
                     );
                 JS)
                 ->action(fn () => $this->downloadExcel()),
+            Action::make('download_pdf')
+                ->label(__('payments.actions.download_pdf'))
+                ->color('success')
+                ->visible(fn (): bool => FilamentActionPermissions::canForResource(PaymentResource::class, 'download_pdf'))
+                ->alpineClickHandler(<<<'JS'
+                    const table = document.querySelector('.fi-ta');
+                    const tableData = table?._x_dataStack?.find((data) => data.selectedRecords instanceof Set);
+
+                    $wire.downloadPdfFromTableSelection(
+                        tableData ? [...tableData.selectedRecords] : [],
+                        tableData ? tableData.isTrackingDeselectedRecords : false,
+                        tableData ? [...tableData.deselectedRecords] : [],
+                    );
+                JS)
+                ->action(fn () => $this->downloadPdf()),
             Action::make('clear_data')
                 ->label(__('app.clear_data'))
                 ->color('danger')
@@ -67,6 +83,15 @@ class ListPayments extends ListRecords
         );
     }
 
+    protected function downloadPdf()
+    {
+        return $this->downloadPdfFromTableSelection(
+            $this->selectedTableRecords ?? [],
+            $this->isTrackingDeselectedTableRecords,
+            $this->deselectedTableRecords ?? [],
+        );
+    }
+
     public function downloadExcelFromTableSelection(
         array $selectedRecordKeys = [],
         bool $isTrackingDeselectedRecords = false,
@@ -90,6 +115,43 @@ class ListPayments extends ListRecords
         );
 
         return PaymentsTable::downloadExcel(
+            $records,
+            $this->visibleExportColumnKeys(),
+        );
+    }
+
+    public function downloadPdfFromTableSelection(
+        array $selectedRecordKeys = [],
+        bool $isTrackingDeselectedRecords = false,
+        array $deselectedRecordKeys = [],
+    )
+    {
+        FilamentActionPermissions::abortUnlessCanForResource(PaymentResource::class, 'download_pdf');
+
+        $records = $this->selectedOrFilteredQuery(
+            $selectedRecordKeys,
+            $isTrackingDeselectedRecords,
+            $deselectedRecordKeys,
+        )
+            ->with(['user', 'form'])
+            ->get();
+
+        if ($records->isEmpty()) {
+            Notification::make()
+                ->title(__('payments.no_records_to_export'))
+                ->warning()
+                ->send();
+
+            return null;
+        }
+
+        AuditLogger::log(
+            action: 'downloaded',
+            description: 'Downloaded Payments PDF (' . $records->count() . ' records)',
+            metadata: ['module' => 'Payments'],
+        );
+
+        return PaymentsTable::downloadPdf(
             $records,
             $this->visibleExportColumnKeys(),
         );

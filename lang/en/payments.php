@@ -79,6 +79,8 @@ return [
         'edit' => 'Edit',
         'delete' => 'Delete',
         'download_excel' => 'Download Excel',
+        'download_pdf' => 'Download PDF',
+        'no_records_to_export' => 'No records to export.',
         'actions' => 'Actions',
     ],
 

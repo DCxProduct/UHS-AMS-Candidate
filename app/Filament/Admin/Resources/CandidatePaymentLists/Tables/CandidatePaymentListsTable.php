@@ -14,6 +14,7 @@ use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
 use App\Support\NotificationLanguage;
 use App\Support\PaymentValidation;
+use App\Support\TablePdfExporter;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormField;
 use Filament\Actions\Action;
@@ -59,6 +60,19 @@ class CandidatePaymentListsTable
         return response()->download($path, $filename, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ])->deleteFileAfterSend(true);
+    }
+
+    public static function downloadPdf(iterable $records, ?array $columnKeys = null)
+    {
+        $columnKeys ??= array_keys(self::exportColumnDefinitions());
+        $rows = self::excelRows($records, $columnKeys);
+
+        return TablePdfExporter::download(
+            'payment-lists-',
+            array_shift($rows) ?? [],
+            $rows,
+            __('candidate_payment_lists.resource_plural_label'),
+        );
     }
 
     public static function configure(Table $table): Table
