@@ -31,8 +31,8 @@
          'requires_payment' => 'តម្រូវឱ្យបង់ប្រាក់សម្រាប់ទម្រង់នេះ',
          'details' => 'ព័ត៌មានលម្អិតនៃទម្រង់',
          'passed_result_menu_options' => [
-             'exam_results' => 'បេក្ខជនជាប់',
-             'exit_exam_results' => 'លទ្ធផលប្រឡងចេញ',
+             'exam_results' => 'បេក្ខជនជាប់ប្រឡងចូលជ័យលាភី',
+             'exit_exam_results' => 'បេក្ខជនជាប់ប្រឡងចេញជ័យលាភី',
          ],
          'menu_placement' => 'ទីតាំងបង្ហាញ',
          'menu_parent' => 'ម៉ឺនុយមេ',

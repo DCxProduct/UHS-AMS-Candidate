@@ -5,6 +5,8 @@ return [
     'resource_label' => 'Unpaid Application',
     'resource_plural_label' => 'Unpaid Applications',
     'download_excel' => 'Download Excel',
+    'download_pdf' => 'Download PDF',
+    'no_records_to_export' => 'No records to export.',
     'columns' => [
         'no' => 'No',
         'application_form_type' => 'Application Form Type',

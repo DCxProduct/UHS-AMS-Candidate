@@ -79,6 +79,8 @@ return [
         'edit' => 'កែប្រែ',
         'delete' => 'លុប',
         'download_excel' => 'ទាញយក Excel',
+        'download_pdf' => 'ទាញយក PDF',
+        'no_records_to_export' => 'គ្មានទិន្នន័យសម្រាប់ទាញយកទេ។',
         'actions' => 'សកម្មភាព',
     ],
 

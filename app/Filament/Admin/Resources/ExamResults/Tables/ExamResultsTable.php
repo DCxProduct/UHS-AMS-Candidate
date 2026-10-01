@@ -116,13 +116,19 @@ class ExamResultsTable
                 Filter::make('exam_result_filters')
                     ->label(new HtmlString('&nbsp;'))
                     ->schema([
+                        Select::make('degree_level')
+                            ->label(__('exam_results.degree_level'))
+                            ->options(fn (): array => UserTypeOptions::groupOptions())
+                            ->native(false)
+                            ->searchable()
+                            ->live(),
+
                         Select::make('academic_year')
                             ->label(__('exam_results.academic_year'))
                             ->options(fn (): array => self::dynamicAcademicYearOptions($resultMenu))
                             ->native(false)
                             ->searchable()
                             ->live(),
-
                         Select::make('major')
                             ->label(__('exam_results.major'))
                             ->options(fn (): array => self::dynamicMajorOptions($resultMenu))
@@ -140,6 +146,13 @@ class ExamResultsTable
                                     $query->where('data->academic_year', $data['academic_year'])
                                         ->orWhereHas('creator', fn (Builder $creatorQuery): Builder => $creatorQuery->where('academic_year', $data['academic_year']));
                                 })
+                            )
+                            ->when(
+                                filled($data['degree_level'] ?? null),
+                                fn (Builder $query): Builder => self::applyDegreeLevelFilter(
+                                    $query,
+                                    (string) $data['degree_level'],
+                                )
                             )
                             ->when(
                                 filled($data['major'] ?? null),
@@ -627,6 +640,22 @@ class ExamResultsTable
             ->sort()
             ->mapWithKeys(fn (string $value): array => [$value => FormEntryData::majorOptionLabel($value, $value)])
             ->toArray();
+    }
+
+    protected static function applyDegreeLevelFilter(Builder $query, string $degreeLevel): Builder
+    {
+        $roleKeys = UserTypeOptions::customQuery()
+            ->where('group_name', $degreeLevel)
+            ->pluck('key');
+
+        if ($roleKeys->isEmpty()) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereHas(
+            'creator.roles',
+            fn (Builder $roleQuery): Builder => $roleQuery->whereIn('name', $roleKeys),
+        );
     }
 
     protected static function dynamicFormTypeOptions(): array

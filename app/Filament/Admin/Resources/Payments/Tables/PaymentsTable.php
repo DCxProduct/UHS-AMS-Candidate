@@ -7,6 +7,7 @@ use App\Models\Payment;
 use App\Support\FormEntryData;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
+use App\Support\TablePdfExporter;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
@@ -432,6 +433,19 @@ class PaymentsTable
         return response()->download($path, $filename, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ])->deleteFileAfterSend(true);
+    }
+
+    public static function downloadPdf(iterable $records, ?array $columnKeys = null)
+    {
+        $columnKeys ??= array_keys(self::exportColumnDefinitions());
+        $rows = self::excelRows($records, $columnKeys);
+
+        return TablePdfExporter::download(
+            'payment-records-',
+            array_shift($rows) ?? [],
+            $rows,
+            __('payments.resource_plural_label'),
+        );
     }
 
     protected static function excelRows(iterable $records, ?array $columnKeys = null): array

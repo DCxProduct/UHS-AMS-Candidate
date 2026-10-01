@@ -1,11 +1,11 @@
 <?php
 
 return [
-    'model_label' => 'Exam Result',
-    'plural_model_label' => 'Exam Results',
-    'list_title' => 'Exam Results',
+    'model_label' => 'Passed Entrance Exam',
+    'plural_model_label' => 'Passed Entrance Exam',
+    'list_title' => 'Passed Entrance Exam',
     'breadcrumb_list' => 'List',
-    'exam_result' => 'Exam Result',
+    'exam_result' => 'Passed Entrance Exam',
     'passed_at' => 'Passed At',
     'download_excel' => 'Download Excel',
     'notify_all_students' => 'Notify All Students',
@@ -13,7 +13,7 @@ return [
     'notify_student' => 'Notify Student',
     'send_notification' => 'Send Notification',
     'notify_all_confirm_title' => 'Send notifications',
-    'notify_all_confirm_description' => 'Send passed exam result notifications to all students in Exam Results?',
+    'notify_all_confirm_description' => 'Send passed exam result notifications to all students in Passed Entrance Exam?',
     'notify_selected_confirm_title' => 'Send notifications',
     'notify_selected_confirm_description' => 'Send passed exam result notifications to the selected students?',
     'notify_student_confirm_title' => 'Send notification',

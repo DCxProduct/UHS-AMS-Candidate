@@ -1,11 +1,11 @@
 <?php
 
 return [
-    'model_label' => 'បេក្ខជនជាប់',
-    'plural_model_label' => 'បេក្ខជនជាប់',
-    'list_title' => 'បេក្ខជនជាប់',
+    'model_label' => 'បេក្ខជនជាប់ប្រឡងចូលជ័យលាភី',
+    'plural_model_label' => 'បេក្ខជនជាប់ប្រឡងចូលជ័យលាភី',
+    'list_title' => 'បេក្ខជនជាប់ប្រឡងចូលជ័យលាភី',
     'breadcrumb_list' => 'បញ្ជី',
-    'exam_result' => 'បេក្ខជនជាប់',
+    'exam_result' => 'បេក្ខជនជាប់ប្រឡងចូលជ័យលាភី',
     'passed_at' => 'បានជាប់នៅ',
     'download_excel' => 'ទាញយក Excel',
     'notify_all_students' => 'ជូនដំណឹងទៅនិស្សិតទាំងអស់',
@@ -13,7 +13,7 @@ return [
     'notify_student' => 'ជូនដំណឹងទៅនិស្សិត',
     'send_notification' => 'ផ្ញើការជូនដំណឹង',
     'notify_all_confirm_title' => 'ផ្ញើការជូនដំណឹង',
-    'notify_all_confirm_description' => 'ផ្ញើការជូនដំណឹងលទ្ធផលជាប់ទៅនិស្សិតទាំងអស់ក្នុងបញ្ជីបេក្ខជនជាប់?',
+    'notify_all_confirm_description' => 'ផ្ញើការជូនដំណឹងលទ្ធផលជាប់ទៅនិស្សិតទាំងអស់ក្នុងបញ្ជីបេក្ខជនជាប់ប្រឡងចូលជ័យលាភី?',
     'notify_selected_confirm_title' => 'ផ្ញើការជូនដំណឹង',
     'notify_selected_confirm_description' => 'ផ្ញើការជូនដំណឹងលទ្ធផលជាប់ទៅនិស្សិតដែលបានជ្រើស?',
     'notify_student_confirm_title' => 'ផ្ញើការជូនដំណឹង',

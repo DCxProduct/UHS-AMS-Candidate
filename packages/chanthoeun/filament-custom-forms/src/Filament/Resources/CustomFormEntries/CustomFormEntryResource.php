@@ -320,6 +320,7 @@ class CustomFormEntryResource extends Resource
 
                 $items[] = NavigationItem::make('custom-form-entry-' . $formId)
                     ->label(static::getNavigationTitle($form))
+                    ->badge(fn (): ?string => static::pendingApplicationCount($formId))
                     ->group(__('navigation.groups.form_entry'))
                     ->icon(static::getDynamicFormIcon($form))
                     ->sort(static::getFormSortNumber($form))
@@ -353,6 +354,33 @@ class CustomFormEntryResource extends Resource
         }
 
         return $items;
+    }
+
+    protected static function pendingApplicationCount(int $formId): ?string
+    {
+        if (! static::currentUserCanManageForms()) {
+            return null;
+        }
+
+        if (
+            $formId <= 0
+            || ! DatabaseSchema::hasTable('custom_form_entries')
+            || ! DatabaseSchema::hasColumn('custom_form_entries', 'review_status')
+        ) {
+            return '0';
+        }
+
+        $count = static::getModel()::query()
+            ->where('custom_form_id', $formId)
+            ->where(function ($query): void {
+                $query
+                    ->where('review_status', 'pending')
+                    ->orWhereNull('review_status')
+                    ->orWhere('review_status', '');
+            })
+            ->count();
+
+        return (string) $count;
     }
 
     protected static function canShowDynamicForm(string $slug): bool

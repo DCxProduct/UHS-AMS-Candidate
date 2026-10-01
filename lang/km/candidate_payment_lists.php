@@ -5,6 +5,8 @@ return [
     'resource_label' => 'ពាក្យស្នើសុំមិនទាន់បង់ប្រាក់',
     'resource_plural_label' => 'ពាក្យស្នើសុំមិនទាន់បង់ប្រាក់',
     'download_excel' => 'ទាញយក Excel',
+    'download_pdf' => 'ទាញយក PDF',
+    'no_records_to_export' => 'គ្មានទិន្នន័យសម្រាប់ទាញយកទេ។',
     'columns' => [
         'no' => 'ល.រ',
         'application_form_type' => 'ប្រភេទទម្រង់ពាក្យស្នើសុំ',

@@ -1,8 +1,8 @@
 <?php
 
 return [
-    'model_label' => 'Exit Exam Result',
-    'plural_model_label' => 'Exit Exam Results',
-    'list_title' => 'Exit Exam Results',
-    'breadcrumb_list' => 'Exit Exam Results',
+    'model_label' => 'Passed Exit Exam',
+    'plural_model_label' => 'Passed Exit Exam',
+    'list_title' => 'Passed Exit Exam',
+    'breadcrumb_list' => 'Passed Exit Exam',
 ];
