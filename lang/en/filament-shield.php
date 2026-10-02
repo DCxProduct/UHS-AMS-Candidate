@@ -10,6 +10,7 @@ return [
         'view_slip' => 'View Receipt',
         'download_excel' => 'Download Excel',
         'clear_data' => 'Clear Data',
+        'original_application_received' => 'Application Received',
         'pay' => 'Pay',
         'activate_account' => 'Activate Account',
         'deactivate_account' => 'Deactivate Account',

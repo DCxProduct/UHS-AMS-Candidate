@@ -389,6 +389,7 @@ return [
     'name' => 'Name',
     'created_at' => 'Created At',
     'updated_at' => 'Updated At',
+    'original_application_received' => 'Application Received',
     'data' => 'Data',
     'export_data' => 'Export Data',
     'clear_data' => 'Clear Data',

@@ -55,6 +55,31 @@ class UserTypeOptions
             ->orderBy('id');
     }
 
+    public static function isActiveCandidateTypeRole(?string $role): bool
+    {
+        if (! is_string($role) || trim($role) === '') {
+            return false;
+        }
+
+        $normalizedRole = Str::lower(trim($role));
+
+        if (in_array($normalizedRole, ['student', 'candidate'], true)) {
+            return true;
+        }
+
+        if (! Schema::hasTable('user_types')) {
+            return true;
+        }
+
+        static::ensureDefaultUserType();
+
+        $userType = UserType::query()
+            ->whereRaw('LOWER(key) = ?', [$normalizedRole])
+            ->first(['is_active']);
+
+        return $userType === null || (bool) $userType->is_active;
+    }
+
     public static function allQuery()
     {
         static::ensureDefaultUserType();
@@ -570,11 +595,8 @@ class UserTypeOptions
             ->keyBy('key');
 
         foreach ($defaultRecords as $record) {
-            $userType = $existingRecords->get($record['key']) ?? new UserType();
-            $userType->fill($record);
-
-            if ($userType->isDirty()) {
-                $userType->save();
+            if (! $existingRecords->has($record['key'])) {
+                UserType::query()->create($record);
             }
         }
 

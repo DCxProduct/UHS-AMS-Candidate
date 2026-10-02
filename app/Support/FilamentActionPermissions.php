@@ -53,6 +53,7 @@ class FilamentActionPermissions
                 'download_excel',
                 'clear_data',
                 'edit_review_note',
+                'original_application_received',
                 'view_pdf',
                 'accepted',
                 'rejected',
