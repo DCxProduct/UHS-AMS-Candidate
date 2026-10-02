@@ -2,7 +2,6 @@
 
 namespace App\Providers;
 
-use App\Models\AuditLog;
 use App\Models\CandidateList;
 use App\Models\CandidateRequested;
 use App\Models\CandidateSubmitPopupSetting;
@@ -21,7 +20,6 @@ use App\Models\UnpaidApplication;
 use App\Models\UserType;
 use App\Models\User;
 use App\Observers\AuditLogObserver;
-use App\Support\AuditLogger;
 use App\Support\FilamentActionPermissions;
 use App\Support\NotificationLanguage;
 use BezhanSalleh\LanguageSwitch\LanguageSwitch;

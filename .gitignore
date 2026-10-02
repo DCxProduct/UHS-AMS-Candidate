@@ -25,3 +25,7 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 /vendor
+.phpunit.cache/
+/.fleet
+*.bak
+*.orig

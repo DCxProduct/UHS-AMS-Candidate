@@ -17,7 +17,6 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
-use UnitEnum;
 
 class CandidateListResource extends Resource
 {

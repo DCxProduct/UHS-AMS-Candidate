@@ -2,7 +2,6 @@
 
 namespace App\Filament\Admin\Resources\Payments;
 
-use App\Filament\Admin\Resources\Payments\Pages\CreatePayment;
 use App\Filament\Admin\Resources\Payments\Pages\EditPayment;
 use App\Filament\Admin\Resources\Payments\Pages\ListPayments;
 use App\Filament\Admin\Resources\Payments\Schemas\PaymentForm;

@@ -2,7 +2,6 @@
 
 namespace App\Filament\Admin\Resources\CandidateRequested;
 
-use App\Filament\Admin\Resources\CandidateRequested\Pages;
 use App\Filament\Admin\Resources\CandidateRequested\Tables\CandidateRequestedTable;
 use App\Filament\Concerns\AdminOnly;
 use App\Models\CandidateRequested;
@@ -13,7 +12,6 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\Schema as DbSchema;
-use UnitEnum;
 
 class CandidateRequestedResource extends Resource
 {
