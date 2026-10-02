@@ -3,7 +3,6 @@
 namespace App\Filament\Admin\Resources\CandidateSubmitPopupSettings\Pages;
 
 use App\Filament\Admin\Resources\CandidateSubmitPopupSettings\CandidateSubmitPopupSettingResource;
-use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Contracts\Support\Htmlable;
 

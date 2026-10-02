@@ -2,7 +2,6 @@
 
 namespace App\Filament\Admin\Resources\ExamResults;
 
-use App\Filament\Admin\Resources\ExamResults\Pages;
 use App\Filament\Admin\Resources\ExamResults\Tables\ExamResultsTable;
 use App\Filament\Concerns\AdminOnly;
 use App\Models\ExamResult;
@@ -12,7 +11,6 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use UnitEnum;
 
 class ExamResultResource extends Resource
 {
