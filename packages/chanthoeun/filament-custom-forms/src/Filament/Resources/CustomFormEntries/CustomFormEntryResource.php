@@ -678,6 +678,7 @@ class CustomFormEntryResource extends Resource
 
         return collect($roles)
             ->flatMap(fn ($role): array => static::normalizeRoleAliases((string) $role))
+            ->filter(fn (string $role): bool => UserTypeOptions::isActiveCandidateTypeRole($role))
             ->filter()
             ->unique()
             ->values()

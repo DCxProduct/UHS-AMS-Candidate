@@ -405,6 +405,7 @@ class AppPanelProvider extends PanelProvider
 
                 return $role !== '' ? [$role] : [];
             })
+            ->filter(fn (string $role): bool => UserTypeOptions::isActiveCandidateTypeRole($role))
             ->unique()
             ->values()
             ->all();

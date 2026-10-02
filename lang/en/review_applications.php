@@ -49,6 +49,7 @@ return [
 
         'statuses' => [
             'pending' => 'Pending',
+            'received' => 'Received',
             'accepted' => 'Please go to cashier counter',
             'paid' => 'Paid',
             'rejected' => 'Incomplete',
