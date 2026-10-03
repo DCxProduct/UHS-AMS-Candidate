@@ -3,6 +3,7 @@
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomForms\Schemas;
 
 use App\Support\PassedResultMenuOptions;
+use App\Support\StatisticsMenuOptions;
 use App\Support\UserTypeOptions;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormField;
@@ -185,6 +186,14 @@ class CustomFormForm
                                 $get('menu_placement') === 'sub_item'
                                 && filled($get('parent_sidebar'))
                             ),
+
+                        Forms\Components\Select::make('statistics_menu')
+                            ->label(__('filament-custom-forms::fcf.form.statistics_menu'))
+                            ->options(StatisticsMenuOptions::options())
+                            ->default(StatisticsMenuOptions::default())
+                            ->native(false)
+                            ->required()
+                            ->visible(fn (Get $get): bool => in_array($get('menu_placement'), ['sidebar', 'sub_item'], true)),
 
                         Forms\Components\Select::make('passed_result_menu')
                             ->label(__('filament-custom-forms::fcf.form.passed_result_menu'))

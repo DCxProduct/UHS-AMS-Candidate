@@ -444,13 +444,13 @@ class CustomFormEntriesTable
 
             // 2. First Name
             TextColumn::make('data.first_name_kh')
-                ->label(__('review_applications.first_name_kh'))
+                ->label(__('candidate_entrance_statistics.first_name_kh'))
                 ->placeholder('-')
                 ->searchable(query: fn (Builder $query, string $search): Builder => $query->where('data->first_name_kh', 'like', "%{$search}%")),
 
             // 3. Last Name
             TextColumn::make('data.last_name_kh')
-                ->label(__('review_applications.last_name_kh'))
+                ->label(__('candidate_entrance_statistics.last_name_kh'))
                 ->placeholder('-')
                 ->searchable(query: fn (Builder $query, string $search): Builder => $query->where('data->last_name_kh', 'like', "%{$search}%")),
 
@@ -505,7 +505,7 @@ class CustomFormEntriesTable
         $columns[] = self::reviewStatusColumn()->toggleable(isToggledHiddenByDefault: false);
 
         $columns[] = TextColumn::make('created_at')
-            ->label(__('review_applications.request_at'))
+            ->label(__('candidate_entrance_statistics.request_at'))
             ->formatStateUsing(fn ($state, $record): string => LocalizedDate::dayMonthYear(
                 data_get($record->data, 'submitted_at') ?: $state
             ))
@@ -524,17 +524,17 @@ class CustomFormEntriesTable
     protected static function reviewStatusColumn(): TextColumn
     {
         return TextColumn::make('review_status')
-            ->label(__('review_applications.review_status'))
+            ->label(__('candidate_entrance_statistics.review_status'))
             ->badge()
             ->getStateUsing(fn ($record): string => self::displayStatus($record))
             ->formatStateUsing(function ($state): string {
                 return match ($state) {
-                    'received' => __('review_applications.statuses.received'),
-                    'passed', 'accepted', 'approved' => __('review_applications.statuses.accepted'),
-                    'paid' => __('review_applications.statuses.paid'),
-                    'failed', 'rejected' => __('review_applications.statuses.rejected'),
+                    'received' => __('candidate_entrance_statistics.statuses.received'),
+                    'passed', 'accepted', 'approved' => __('candidate_entrance_statistics.statuses.accepted'),
+                    'paid' => __('candidate_entrance_statistics.statuses.paid'),
+                    'failed', 'rejected' => __('candidate_entrance_statistics.statuses.rejected'),
                     'draft' => __('student_profile.save_as_draft'),
-                    default => __('review_applications.statuses.pending'),
+                    default => __('candidate_entrance_statistics.statuses.pending'),
                 };
             })
             ->color(function ($state): string {
@@ -641,7 +641,7 @@ class CustomFormEntriesTable
     {
         $columns = [
             TextColumn::make('data.form_selection')
-                ->label(__('review_applications.form_type'))
+                ->label(__('candidate_entrance_statistics.form_type'))
                 ->badge()
                 ->sortable()
                 ->formatStateUsing(fn (?string $state): string => self::formTypeLabel($state))
@@ -701,7 +701,7 @@ class CustomFormEntriesTable
         $columns[] = self::reviewStatusColumn();
 
         $columns[] = TextColumn::make('created_at')
-            ->label(__('review_applications.request_at'))
+            ->label(__('candidate_entrance_statistics.request_at'))
             ->formatStateUsing(fn ($state, $record): string => LocalizedDate::dayMonthYear(
                 data_get($record->data, 'submitted_at') ?: $state
             ))
@@ -713,9 +713,9 @@ class CustomFormEntriesTable
             ->color('info');
 
         $columns[] = TextColumn::make('reviewed_at')
-            ->label(__('review_applications.reviewed_at'))
+            ->label(__('candidate_entrance_statistics.reviewed_at'))
             ->dateTime('d M Y H:i')
-            ->placeholder(__('review_applications.not_reviewed_yet'))
+            ->placeholder(__('candidate_entrance_statistics.not_reviewed_yet'))
             ->color('info');
 
         return $columns;
@@ -772,17 +772,17 @@ class CustomFormEntriesTable
                         ->live(),
 
                     Select::make('review_status')
-                        ->label(__('review_applications.review_status'))
+                        ->label(__('candidate_entrance_statistics.review_status'))
                         ->options([
-                            'pending' => __('review_applications.statuses.pending'),
-                            'accepted' => __('review_applications.statuses.accepted'),
-                            'rejected' => __('review_applications.statuses.rejected'),
+                            'pending' => __('candidate_entrance_statistics.statuses.pending'),
+                            'accepted' => __('candidate_entrance_statistics.statuses.accepted'),
+                            'rejected' => __('candidate_entrance_statistics.statuses.rejected'),
                         ])
                         ->native(false)
                         ->live(),
 
                     Select::make('reviewed_year')
-                        ->label(__('review_applications.reviewed_year'))
+                        ->label(__('candidate_entrance_statistics.reviewed_year'))
                         ->options(fn (): array => self::dynamicRequestReviewedYears($formId))
                         ->native(false)
                         ->live(),
@@ -1062,10 +1062,10 @@ class CustomFormEntriesTable
 
         if (self::currentPanelIsAdmin()) {
             $actions[] = Action::make('view_template_pdf')
-                ->label(__('review_applications.view_pdf'))
+                ->label(__('candidate_entrance_statistics.view_pdf'))
                 ->icon('heroicon-o-eye')
                 ->color('info')
-                ->modalHeading(__('review_applications.view_application_review'))
+                ->modalHeading(__('candidate_entrance_statistics.view_application_review'))
                 ->modalWidth('7xl')
                 ->modalSubmitAction(false)
                 ->modalCancelAction(false)
@@ -1081,7 +1081,7 @@ class CustomFormEntriesTable
                             $fileLabel = app(CustomFormEntryFiles::class)->displayLabel($file['path']);
 
                             return Action::make('download_file_'.$index)
-                                ->label(__('review_applications.download_file', ['file' => $fileLabel]))
+                                ->label(__('candidate_entrance_statistics.download_file', ['file' => $fileLabel]))
                                 ->icon('heroicon-o-arrow-down-tray')
                                 ->color('gray')
                                 ->url(route('protected.custom-form-entry-document', [
@@ -1094,7 +1094,7 @@ class CustomFormEntriesTable
 
                     return [
                         Action::make('approve_from_view')
-                        ->label(__('review_applications.statuses.accepted'))
+                        ->label(__('candidate_entrance_statistics.statuses.accepted'))
                         ->icon('heroicon-o-check-circle')
                         ->color('success')
                         ->visible(fn (): bool => self::entryStatus($record) === 'pending'
@@ -1138,7 +1138,7 @@ class CustomFormEntriesTable
                             self::notifyStudentNationalExamResult($record, 'approved', null);
 
                             Notification::make()
-                                ->title(__('review_applications.notifications.admin_accept_success_title'))
+                                ->title(__('candidate_entrance_statistics.notifications.admin_accept_success_title'))
                                 ->success()
                                 ->send();
 
@@ -1146,16 +1146,16 @@ class CustomFormEntriesTable
                         }),
 
                     Action::make('reject_from_view')
-                        ->label(__('review_applications.statuses.send_back'))
+                        ->label(__('candidate_entrance_statistics.statuses.send_back'))
                         ->icon('heroicon-o-arrow-uturn-left')
                         ->color('danger')
                         ->form([
                             Textarea::make('review_note')
-                                ->label(__('review_applications.review_note'))
+                                ->label(__('candidate_entrance_statistics.review_note'))
                                 ->required()
                                 ->rows(4),
                         ])
-                        ->modalSubmitActionLabel(__('review_applications.statuses.send_back'))
+                        ->modalSubmitActionLabel(__('candidate_entrance_statistics.statuses.send_back'))
                         ->visible(fn (): bool => self::entryStatus($record) === 'pending'
                             && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'rejected'))
                         ->action(function (array $data) use ($record): void {
@@ -1198,7 +1198,7 @@ class CustomFormEntriesTable
                             self::notifyStudentNationalExamResult($record, 'rejected', $data['review_note'] ?? null);
 
                             Notification::make()
-                                ->title(__('review_applications.notifications.admin_reject_success_title'))
+                                ->title(__('candidate_entrance_statistics.notifications.admin_reject_success_title'))
                                 ->danger()
                                 ->send();
 
@@ -1216,7 +1216,7 @@ class CustomFormEntriesTable
                 );
 
             $actions[] = Action::make('accepted')
-                ->label(__('review_applications.statuses.accepted'))
+                ->label(__('candidate_entrance_statistics.statuses.accepted'))
                 ->icon('heroicon-o-check-circle')
                 ->color('success')
                 ->requiresConfirmation()
@@ -1266,13 +1266,13 @@ class CustomFormEntriesTable
                     self::notifyStudentNationalExamResult($record, 'approved', null);
 
                     Notification::make()
-                        ->title(__('review_applications.notifications.admin_accept_success_title'))
+                        ->title(__('candidate_entrance_statistics.notifications.admin_accept_success_title'))
                         ->success()
                         ->send();
                 });
 
             $actions[] = Action::make('rejected')
-                ->label(__('review_applications.statuses.rejected'))
+                ->label(__('candidate_entrance_statistics.statuses.rejected'))
                 ->icon('heroicon-o-x-circle')
                 ->color('danger')
                 ->visible(fn ($record): bool =>
@@ -1284,7 +1284,7 @@ class CustomFormEntriesTable
                 )
                 ->form([
                     Textarea::make('review_note')
-                        ->label(__('review_applications.review_note'))
+                        ->label(__('candidate_entrance_statistics.review_note'))
                         ->required()
                         ->rows(4),
                 ])
@@ -1328,7 +1328,7 @@ class CustomFormEntriesTable
                     self::notifyStudentNationalExamResult($record, 'rejected', $data['review_note'] ?? null);
 
                     Notification::make()
-                        ->title(__('review_applications.notifications.admin_reject_success_title'))
+                        ->title(__('candidate_entrance_statistics.notifications.admin_reject_success_title'))
                         ->danger()
                         ->send();
                 });
@@ -1336,7 +1336,7 @@ class CustomFormEntriesTable
 
         if (class_exists(\Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate::class)) {
             $actions[] = \Chanthoeun\FilamentDocumentBuilder\Tables\Actions\DownloadPdfAction::make('download_pdf')
-                ->label(__('review_applications.download_pdf'))
+                ->label(__('candidate_entrance_statistics.download_pdf'))
                 ->icon('heroicon-o-document-arrow-down')
                 ->color('success')
                 ->templateType(function ($record) {
@@ -1583,12 +1583,12 @@ class CustomFormEntriesTable
             Notification::make()
                 ->title(
                     self::recordIsNationalExam($record)
-                        ? NotificationLanguage::transForUser($student, 'review_applications.notifications.national_exam_approved_title')
+                        ? NotificationLanguage::transForUser($student, 'candidate_entrance_statistics.notifications.national_exam_approved_title')
                         : NotificationLanguage::transForUser($student, 'app.custom_form_entry_ui.notifications.application_approved_title', ['form' => $formName])
                 )
                 ->body(
                     self::recordIsNationalExam($record)
-                        ? NotificationLanguage::transForUser($student, 'review_applications.notifications.national_exam_approved_body')
+                        ? NotificationLanguage::transForUser($student, 'candidate_entrance_statistics.notifications.national_exam_approved_body')
                         : NotificationLanguage::transForUser(
                             $student,
                             $requiresPayment
@@ -1608,13 +1608,13 @@ class CustomFormEntriesTable
         Notification::make()
             ->title(
                 self::recordIsNationalExam($record)
-                    ? NotificationLanguage::transForUser($student, 'review_applications.notifications.national_exam_rejected_title')
+                    ? NotificationLanguage::transForUser($student, 'candidate_entrance_statistics.notifications.national_exam_rejected_title')
                     : NotificationLanguage::transForUser($student, 'app.custom_form_entry_ui.notifications.application_rejected_title', ['form' => $formName])
             )
             ->body(
                 self::recordIsNationalExam($record)
-                    ? NotificationLanguage::transForUser($student, 'review_applications.notifications.national_exam_rejected_body', [
-                        'note' => filled($note) ? $note : NotificationLanguage::transForUser($student, 'review_applications.notifications.no_reject_note'),
+                    ? NotificationLanguage::transForUser($student, 'candidate_entrance_statistics.notifications.national_exam_rejected_body', [
+                        'note' => filled($note) ? $note : NotificationLanguage::transForUser($student, 'candidate_entrance_statistics.notifications.no_reject_note'),
                     ])
                     : new HtmlString(NotificationLanguage::transForUser($student, 'app.custom_form_entry_ui.notifications.application_rejected_body', [
                         'form' => e($formName),

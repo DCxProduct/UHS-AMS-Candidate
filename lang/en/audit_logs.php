@@ -69,6 +69,7 @@ return [
             'custom_form_entry' => 'Custom Form Entry',
             'custom_form_entries' => 'Custom Form Entries',
             'student_dynamic_form' => 'Student Dynamic Form',
+            'candidate_entrance_statistics' => 'Entrance Exam Statistics',
             'review_applications' => 'Candidate Requested',
             'candidate_requested' => 'Candidate Requested',
             'unpaid_application' => 'Unpaid Application',

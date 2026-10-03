@@ -3,9 +3,10 @@
 namespace App\Support;
 
 use App\Filament\Admin\Resources\AuditLogs\AuditLogResource;
+use App\Filament\Admin\Resources\CandidateExitStatistics\CandidateExitStatisticResource;
 use App\Filament\Admin\Resources\CandidateLists\CandidateListResource;
 use App\Filament\Admin\Resources\CandidatePaymentLists\CandidatePaymentListResource;
-use App\Filament\Admin\Resources\CandidateRequested\CandidateRequestedResource;
+use App\Filament\Admin\Resources\CandidateEntranceStatistics\CandidateEntranceStatisticResource;
 use App\Filament\Admin\Resources\CandidateSubmitPopupSettings\CandidateSubmitPopupSettingResource;
 use App\Filament\Admin\Resources\ExamResults\ExamResultResource;
 use App\Filament\Admin\Resources\ExchangeRates\ExchangeRateResource;
@@ -40,7 +41,15 @@ class FilamentActionPermissions
             AuditLogResource::class => [
                 'clear_data',
             ],
-            CandidateRequestedResource::class => [
+            CandidateEntranceStatisticResource::class => [
+                'passed',
+                'pending',
+                'bulk_passed',
+                'bulk_pending',
+                'download_excel',
+                'clear_data',
+            ],
+            CandidateExitStatisticResource::class => [
                 'passed',
                 'pending',
                 'bulk_passed',
@@ -130,8 +139,15 @@ class FilamentActionPermissions
 
     public static function canForResource(string $resourceClass, string $action): bool
     {
-        return self::can(self::permissionForResource($resourceClass, $action))
+        $can = self::can(self::permissionForResource($resourceClass, $action))
             || self::can(self::legacyPermissionForResource($resourceClass, $action));
+
+        if ($resourceClass === CandidateEntranceStatisticResource::class) {
+            $can = $can
+                || self::can(self::permission($action, 'CandidateRequested'));
+        }
+
+        return $can;
     }
 
     public static function abortUnlessCan(string $permission): void
@@ -190,7 +206,7 @@ class FilamentActionPermissions
                 'download_pdf',
                 'clear_data',
             ],
-            CandidateRequestedResource::class => [
+            CandidateEntranceStatisticResource::class => [
                 'viewAny',
                 'passed',
                 'pending',
@@ -230,6 +246,15 @@ class FilamentActionPermissions
                 'update',
                 'delete',
             ],
+            CandidateExitStatisticResource::class => [
+                'viewAny',
+                'passed',
+                'pending',
+                'bulk_passed',
+                'bulk_pending',
+                'download_excel',
+                'clear_data',
+            ],
             ExchangeRateResource::class => [
                 'viewAny',
                 'update',
@@ -251,7 +276,7 @@ class FilamentActionPermissions
     {
         $subject = class_basename($resourceClass::getModel());
 
-        if ($subject === 'CandidateRequested') {
+        if ($subject === 'CandidateEntranceStatistic') {
             $subject = 'ReviewApplication';
         }
 

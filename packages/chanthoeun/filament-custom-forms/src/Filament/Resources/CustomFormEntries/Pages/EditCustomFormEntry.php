@@ -414,7 +414,7 @@ class EditCustomFormEntry extends EditRecord
                 ->implode(' ');
 
             if ($studentName === '') {
-                $studentName = $student?->name ?: __('review_applications.notifications.unknown_student');
+                $studentName = $student?->name ?: __('candidate_entrance_statistics.notifications.unknown_student');
             }
 
             $formName = $entry->customForm?->display_name
@@ -424,16 +424,16 @@ class EditCustomFormEntry extends EditRecord
                 Notification::make()
                     ->title(NotificationLanguage::transForUser(
                         $admin,
-                        'review_applications.notifications.admin_resubmitted_title'
+                        'candidate_entrance_statistics.notifications.admin_resubmitted_title'
                     ))
                     ->body(NotificationLanguage::transForUser(
                         $admin,
-                        'review_applications.notifications.admin_resubmitted_body',
+                        'candidate_entrance_statistics.notifications.admin_resubmitted_body',
                         [
                             'student' => $studentName,
                             'form' => $formName ?: NotificationLanguage::transForUser(
                                 $admin,
-                                'review_applications.notifications.unknown_student'
+                                'candidate_entrance_statistics.notifications.unknown_student'
                             ),
                         ]
                     ))

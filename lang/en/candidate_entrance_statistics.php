@@ -1,16 +1,16 @@
 <?php
 
 return [
-    'navigation_label' => 'Candidate Requested',
+    'navigation_label' => 'Entrance Exam Statistics',
     'navigation_group' => 'Review Document',
 
-    'model_label' => 'Candidate Requested',
-    'plural_model_label' => 'Candidate Requested',
+    'model_label' => 'Entrance Exam Statistics',
+    'plural_model_label' => 'Entrance Exam Statistics',
 
     'all_fields' => 'All Fields',
     'fields_count' => 'fields',
 
-    'list_title' => 'Candidate Requested',
+    'list_title' => 'Entrance Exam Statistics',
     'breadcrumb_list' => 'List',
 
     'id' => 'ID',

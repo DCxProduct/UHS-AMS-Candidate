@@ -69,6 +69,7 @@ return [
             'custom_form_entry' => 'ទិន្នន័យទម្រង់',
             'custom_form_entries' => 'ទិន្នន័យទម្រង់',
             'student_dynamic_form' => 'ទម្រង់បែបបទនិស្សិត',
+            'candidate_entrance_statistics' => 'ស្ថិតិបេក្ខជនប្រឡងចូល',
             'review_applications' => 'សំណើរបេក្ខជន',
             'candidate_requested' => 'សំណើរបេក្ខជន',
             'unpaid_application' => 'ពាក្យសុំមិនទាន់បង់ប្រាក់',

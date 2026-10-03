@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 
-class CandidateRequested extends CustomFormEntry
+class CandidateEntranceStatistic extends CustomFormEntry
 {
     protected $table = 'custom_form_entries';
 }

@@ -4,7 +4,7 @@ namespace App\Filament\Widgets;
 
 use App\Filament\Admin\Resources\CandidatePaymentLists\CandidatePaymentListResource;
 use App\Filament\Admin\Resources\CandidateLists\CandidateListResource;
-use App\Filament\Admin\Resources\CandidateRequested\CandidateRequestedResource;
+use App\Filament\Admin\Resources\CandidateEntranceStatistics\CandidateEntranceStatisticResource;
 use App\Filament\Admin\Resources\CandidateTypes\CandidateTypeResource;
 use App\Filament\Admin\Resources\ClosingDates\ClosingDateResource;
 use App\Filament\Admin\Resources\DegreeLevels\DegreeLevelResource;
@@ -27,7 +27,7 @@ class AdminMenuOverview extends Widget
     protected const ALLOWED_RESOURCES = [
         CandidatePaymentListResource::class,
         PaymentResource::class,
-        CandidateRequestedResource::class,
+        CandidateEntranceStatisticResource::class,
         ExamResultResource::class,
         ExitExamResultResource::class,
         ClosingDateResource::class,
@@ -36,14 +36,14 @@ class AdminMenuOverview extends Widget
     protected const SIDEBAR_ORDER = [
         CandidatePaymentListResource::class => 1,
         PaymentResource::class => 2,
-        CandidateRequestedResource::class => 3,
+        CandidateEntranceStatisticResource::class => 3,
         ExamResultResource::class => 4,
         ExitExamResultResource::class => 5,
         ClosingDateResource::class => 6,
     ];
 
     protected const REGISTRAR_RESOURCES = [
-        CandidateRequestedResource::class,
+        CandidateEntranceStatisticResource::class,
         ExamResultResource::class,
         ExitExamResultResource::class,
         CustomFormEntryResource::class,
@@ -206,7 +206,7 @@ class AdminMenuOverview extends Widget
     protected function toneForResource(string $resourceClass): string
     {
         return match ($resourceClass) {
-            CandidateRequestedResource::class => 'sky',
+            CandidateEntranceStatisticResource::class => 'sky',
             ExamResultResource::class => 'violet',
             CandidatePaymentListResource::class => 'lime',
             PaymentResource::class => 'teal',
@@ -219,7 +219,7 @@ class AdminMenuOverview extends Widget
     protected function descriptionForResource(string $resourceClass, string $label): string
     {
         return match ($resourceClass) {
-            CandidateRequestedResource::class => __('dashboard.candidate_lists_description'),
+            CandidateEntranceStatisticResource::class => __('dashboard.candidate_entrance_statistics_description'),
             ExamResultResource::class => __('dashboard.exam_results_description'),
             CandidatePaymentListResource::class => __('dashboard.payment_lists_description'),
             PaymentResource::class => __('dashboard.payment_records_description'),

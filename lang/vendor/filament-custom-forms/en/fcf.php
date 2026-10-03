@@ -31,6 +31,16 @@
          'menu_parent' => 'Menu Parent',
          'sub_form' => 'Sub Form Type',
          'form_field' => 'Form Field',
+         'passed_result_menu' => 'Passed Candidate Result Menu',
+         'statistics_menu' => 'Candidate Statistics Menu',
+         'passed_result_menu_options' => [
+             'exam_results' => 'Passed Entrance Exam',
+             'exit_exam_results' => 'Passed Exit Exam',
+         ],
+         'statistics_menu_options' => [
+             'entrance_exam_statistics' => 'Entrance Exam Statistics',
+             'exit_exam_statistics' => 'Exit Exam Statistics',
+         ],
          'label_english' => 'Name (English)',
          'label_khmer' => 'Name (Khmer)',
          'names' => [],

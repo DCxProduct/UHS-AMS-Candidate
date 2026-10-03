@@ -2,7 +2,7 @@
 
 namespace App\Filament\Admin\Resources\ExamResults\Tables;
 
-use App\Filament\Admin\Resources\CandidateRequested\Tables\CandidateRequestedTable;
+use App\Filament\Admin\Resources\CandidateEntranceStatistics\Tables\CandidateEntranceStatisticsTable;
 use App\Filament\Admin\Resources\ExamResults\ExamResultResource;
 use App\Filament\Admin\Resources\ExitExamResults\ExitExamResultResource;
 use App\Models\User;
@@ -174,11 +174,11 @@ class ExamResultsTable
                     ->modalCancelActionLabel(__('app.cancel'))
                     ->visible(fn (CustomFormEntry $record): bool => FilamentActionPermissions::can(
                         self::notificationPermissionForResultMenu($resultMenu)
-                    ) && ! CandidateRequestedTable::hasStudentReviewResultNotification($record, 'passed'))
+                    ) && ! CandidateEntranceStatisticsTable::hasStudentReviewResultNotification($record, 'passed'))
                     ->action(function (CustomFormEntry $record, $livewire) use ($resultMenu): void {
                         FilamentActionPermissions::abortUnlessCan(self::notificationPermissionForResultMenu($resultMenu));
 
-                        $sent = CandidateRequestedTable::notifyStudentReviewResult(
+                        $sent = CandidateEntranceStatisticsTable::notifyStudentReviewResult(
                             record: $record,
                             status: 'passed',
                             note: null,
@@ -569,7 +569,7 @@ class ExamResultsTable
                 continue;
             }
 
-            $sent = CandidateRequestedTable::notifyStudentReviewResult(
+            $sent = CandidateEntranceStatisticsTable::notifyStudentReviewResult(
                 record: $record,
                 status: 'passed',
                 note: null,
@@ -596,7 +596,7 @@ class ExamResultsTable
 
     public static function hasStudentPassedNotification(CustomFormEntry $record): bool
     {
-        return CandidateRequestedTable::hasStudentReviewResultNotification($record, 'passed');
+        return CandidateEntranceStatisticsTable::hasStudentReviewResultNotification($record, 'passed');
     }
 
     protected static function dynamicAcademicYearOptions(string $resultMenu = PassedResultMenuOptions::EXAM_RESULTS): array
@@ -923,7 +923,7 @@ class ExamResultsTable
     protected static function statusLabel(?string $state): string
     {
         return match (strtolower((string) $state)) {
-            'passed' => __('review_applications.statuses.passed'),
+            'passed' => __('candidate_entrance_statistics.statuses.passed'),
             default => filled($state) ? ucfirst((string) $state) : '-',
         };
     }

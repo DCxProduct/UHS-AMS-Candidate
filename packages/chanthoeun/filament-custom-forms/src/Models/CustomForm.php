@@ -3,6 +3,8 @@
 namespace Chanthoeun\FilamentCustomForms\Models;
 
 use App\Support\PassedResultMenuOptions;
+use App\Support\CandidateStatisticsSynchronizer;
+use App\Support\StatisticsMenuOptions;
 use App\Support\UserTypeOptions;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -38,6 +40,7 @@ class CustomForm extends Model
         'parent_sidebar',
         'sub_item_type',
         'passed_result_menu',
+        'statistics_menu',
         'display_order',
     ];
 
@@ -82,6 +85,11 @@ class CustomForm extends Model
             }
 
             $customForm->passed_result_menu = PassedResultMenuOptions::normalize($customForm->passed_result_menu);
+            $customForm->statistics_menu = StatisticsMenuOptions::normalize($customForm->statistics_menu);
+        });
+
+        static::saved(function (CustomForm $customForm): void {
+            CandidateStatisticsSynchronizer::syncForm($customForm);
         });
     }
 

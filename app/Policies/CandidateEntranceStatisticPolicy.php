@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Policies;
 
 use Illuminate\Foundation\Auth\User as AuthUser;
-use App\Models\CandidateRequested;
+use App\Models\CandidateEntranceStatistic;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
-class CandidateRequestedPolicy
+class CandidateEntranceStatisticPolicy
 {
     use HandlesAuthorization;
     
@@ -17,7 +17,7 @@ class CandidateRequestedPolicy
         return $this->canAction($authUser, 'ViewAny');
     }
 
-    public function view(AuthUser $authUser, CandidateRequested $candidateRequested): bool
+    public function view(AuthUser $authUser, CandidateEntranceStatistic $candidateEntranceStatistic): bool
     {
         return $this->canAction($authUser, 'View');
     }
@@ -27,12 +27,12 @@ class CandidateRequestedPolicy
         return $this->canAction($authUser, 'Create');
     }
 
-    public function update(AuthUser $authUser, CandidateRequested $candidateRequested): bool
+    public function update(AuthUser $authUser, CandidateEntranceStatistic $candidateEntranceStatistic): bool
     {
         return $this->canAction($authUser, 'Update');
     }
 
-    public function delete(AuthUser $authUser, CandidateRequested $candidateRequested): bool
+    public function delete(AuthUser $authUser, CandidateEntranceStatistic $candidateEntranceStatistic): bool
     {
         return $this->canAction($authUser, 'Delete');
     }
@@ -42,12 +42,12 @@ class CandidateRequestedPolicy
         return $this->canAction($authUser, 'DeleteAny');
     }
 
-    public function restore(AuthUser $authUser, CandidateRequested $candidateRequested): bool
+    public function restore(AuthUser $authUser, CandidateEntranceStatistic $candidateEntranceStatistic): bool
     {
         return $this->canAction($authUser, 'Restore');
     }
 
-    public function forceDelete(AuthUser $authUser, CandidateRequested $candidateRequested): bool
+    public function forceDelete(AuthUser $authUser, CandidateEntranceStatistic $candidateEntranceStatistic): bool
     {
         return $this->canAction($authUser, 'ForceDelete');
     }
@@ -62,7 +62,7 @@ class CandidateRequestedPolicy
         return $this->canAction($authUser, 'RestoreAny');
     }
 
-    public function replicate(AuthUser $authUser, CandidateRequested $candidateRequested): bool
+    public function replicate(AuthUser $authUser, CandidateEntranceStatistic $candidateEntranceStatistic): bool
     {
         return $this->canAction($authUser, 'Replicate');
     }
@@ -74,7 +74,8 @@ class CandidateRequestedPolicy
 
     protected function canAction(AuthUser $authUser, string $action): bool
     {
-        return $authUser->can($action . ':CandidateRequested')
+        return $authUser->can($action . ':CandidateEntranceStatistic')
+            || $authUser->can($action . ':CandidateRequested')
             || $authUser->can($action . ':ReviewApplication');
     }
 
