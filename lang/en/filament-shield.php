@@ -26,5 +26,6 @@ return [
         'rejected' => 'Send Back',
         'download_pdf' => 'Download PDF',
         'edit_template' => 'Build Template',
+        'preview_pdf' => 'Preview PDF',
     ],
 ];

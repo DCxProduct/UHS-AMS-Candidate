@@ -32,6 +32,11 @@ class DocumentTemplatePolicy
         return $authUser->can('Update:DocumentTemplate');
     }
 
+    public function previewPdf(AuthUser $authUser, DocumentTemplate $documentTemplate): bool
+    {
+        return $authUser->can('PreviewPdf:DocumentTemplate');
+    }
+
     public function delete(AuthUser $authUser, DocumentTemplate $documentTemplate): bool
     {
         return $authUser->can('Delete:DocumentTemplate');

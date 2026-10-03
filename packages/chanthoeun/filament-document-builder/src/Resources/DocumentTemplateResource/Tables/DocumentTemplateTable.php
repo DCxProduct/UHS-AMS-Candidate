@@ -57,7 +57,10 @@ class DocumentTemplateTable
                     ->label(__('filament-document-builder::document-builder.labels.preview_pdf'))
                     ->icon('heroicon-o-eye')
                     ->color('info')
+                    ->visible(fn (): bool => FilamentActionPermissions::canForResource(DocumentTemplateResource::class, 'preview_pdf'))
                     ->action(function (DocumentTemplate $record) {
+                        FilamentActionPermissions::abortUnlessCanForResource(DocumentTemplateResource::class, 'preview_pdf');
+
                         if (empty($record->model_class)) {
                             Notification::make()
                                 ->title(__('filament-document-builder::document-builder.labels.no_model_selected_title'))
