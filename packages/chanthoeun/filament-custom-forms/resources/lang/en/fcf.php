@@ -87,11 +87,16 @@
          'allowed_roles' => 'Allowed Roles',
          'allowed_roles_profile_help' => 'The Profile form is always open to every candidate type, so the roles are selected automatically.',
          'passed_result_menu' => 'Passed Candidate Result Menu',
+         'statistics_menu' => 'Candidate Statistics Menu',
          'requires_payment' => 'Require Payment for This Form',
          'details' => 'Form Details',
          'passed_result_menu_options' => [
              'exam_results' => 'Passed Entrance Exam',
              'exit_exam_results' => 'Passed Exit Exam',
+         ],
+         'statistics_menu_options' => [
+             'entrance_exam_statistics' => 'Entrance Exam Statistics',
+             'exit_exam_statistics' => 'Exit Exam Statistics',
          ],
          'names' => [],
      ],

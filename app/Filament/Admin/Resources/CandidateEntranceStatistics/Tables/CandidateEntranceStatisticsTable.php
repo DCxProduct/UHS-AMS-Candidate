@@ -1,10 +1,12 @@
 <?php
 
-namespace App\Filament\Admin\Resources\CandidateRequested\Tables;
+namespace App\Filament\Admin\Resources\CandidateEntranceStatistics\Tables;
 
-use App\Filament\Admin\Resources\CandidateRequested\CandidateRequestedResource;
+use App\Filament\Admin\Resources\CandidateEntranceStatistics\CandidateEntranceStatisticResource;
 use App\Models\User;
 use App\Support\AuditLogger;
+use App\Support\CandidateTypeResolver;
+use App\Support\CandidateStatisticsSynchronizer;
 use App\Support\FilamentActionPermissions;
 use App\Support\FormEntryData;
 use App\Support\LocalizedDate;
@@ -28,7 +30,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\HtmlString;
 
-class CandidateRequestedTable
+class CandidateEntranceStatisticsTable
 {
     public static function downloadExcel(iterable $records, ?array $columnKeys = null)
     {
@@ -72,7 +74,7 @@ class CandidateRequestedTable
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('form_type')
-                    ->label(__('review_applications.form_type'))
+                    ->label(__('candidate_entrance_statistics.form_type'))
                     ->getStateUsing(fn (CustomFormEntry $record): string => self::recordFormTypeLabel($record))
                     ->badge()
                     ->color('info')
@@ -87,9 +89,9 @@ class CandidateRequestedTable
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('user_type')
-                    ->label(__('review_applications.user_type'))
+                    ->label(__('candidate_entrance_statistics.user_type'))
                     ->getStateUsing(fn ($record): string => self::userTypeLabel(
-                        self::resolveCandidateRole($record->creator)
+                        self::resolveCandidateRole($record->creator, $record->data)
                     ))
                     ->badge()
                     ->color('gray')
@@ -130,7 +132,7 @@ class CandidateRequestedTable
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('major')
-                    ->label(__('review_applications.major'))
+                    ->label(__('candidate_entrance_statistics.major'))
                     ->badge()
                     ->getStateUsing(fn ($record): string => FormEntryData::majorLabel($record->data))
                     ->searchable(query: fn (Builder $query, string $search): Builder => FormEntryData::applyJsonLikeFilter($query, FormEntryData::majorKeys(), $search))
@@ -142,12 +144,12 @@ class CandidateRequestedTable
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('data.candidate_status')
-                    ->label(__('review_applications.review_status_result'))
+                    ->label(__('candidate_entrance_statistics.review_status_result'))
                     ->badge()
                     ->getStateUsing(fn ($record) => data_get($record->data, 'candidate_status', 'pending'))
                     ->formatStateUsing(fn (?string $state) => match ($state) {
-                        'passed' => __('review_applications.statuses.passed'),
-                        default => __('review_applications.statuses.pending'),
+                        'passed' => __('candidate_entrance_statistics.statuses.passed'),
+                        default => __('candidate_entrance_statistics.statuses.pending'),
                     })
                     ->color(fn (?string $state) => match ($state) {
                         'passed' => 'success',
@@ -156,7 +158,7 @@ class CandidateRequestedTable
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('data.candidate_reviewed_at')
-                    ->label(__('review_applications.reviewed_at'))
+                    ->label(__('candidate_entrance_statistics.reviewed_at'))
                     ->getStateUsing(fn (CustomFormEntry $record): ?string => data_get($record->data, 'candidate_status') === 'passed'
                         ? data_get($record->data, 'candidate_reviewed_at')
                         : null)
@@ -175,13 +177,13 @@ class CandidateRequestedTable
                     ->label(new HtmlString('&nbsp;'))
                     ->schema([
                         Select::make('form_selection')
-                            ->label(__('review_applications.form_type'))
+                            ->label(__('candidate_entrance_statistics.form_type'))
                             ->options(fn (): array => self::dynamicFormTypeOptions())
                             ->native(false)
                             ->live(),
 
                         Select::make('review_status')
-                            ->label(__('review_applications.review_status'))
+                            ->label(__('candidate_entrance_statistics.review_status'))
                             ->options([
                                 'pending' => self::statusLabel('pending'),
                                 'passed' => self::statusLabel('passed'),
@@ -190,21 +192,21 @@ class CandidateRequestedTable
                             ->live(),
 
                         Select::make('user_type')
-                            ->label(__('review_applications.user_type'))
+                            ->label(__('candidate_entrance_statistics.user_type'))
                             ->options(fn (): array => self::dynamicUserTypeOptions())
                             ->native(false)
                             ->searchable()
                             ->live(),
 
                         Select::make('major')
-                            ->label(__('review_applications.major'))
+                            ->label(__('candidate_entrance_statistics.major'))
                             ->options(fn (): array => self::dynamicMajorOptions())
                             ->native(false)
                             ->searchable()
                             ->live(),
 
                         Select::make('reviewed_year')
-                            ->label(__('review_applications.reviewed_year'))
+                            ->label(__('candidate_entrance_statistics.reviewed_year'))
                             ->options(fn (): array => self::dynamicRequestReviewedYears())
                             ->native(false)
                             ->live(),
@@ -239,9 +241,10 @@ class CandidateRequestedTable
                             )
                             ->when(
                                 filled($data['user_type'] ?? null),
-                                fn (Builder $query): Builder => $query->whereHas('creator.roles', function (Builder $query) use ($data): void {
-                                    $query->whereRaw('LOWER(name) = ?', [strtolower((string) $data['user_type'])]);
-                                })
+                                fn (Builder $query): Builder => self::applyCandidateTypeFilter(
+                                    $query,
+                                    (string) $data['user_type'],
+                                )
                             )
                             ->when(
                                 filled($data['major'] ?? null),
@@ -270,66 +273,66 @@ class CandidateRequestedTable
             ->filtersFormColumns(4)
             ->recordActions([
                 Action::make('passed')
-                    ->label(__('review_applications.statuses.passed'))
+                    ->label(__('candidate_entrance_statistics.statuses.passed'))
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->modalHeading(__('review_applications.passed_confirm_title'))
-                    ->modalDescription(__('review_applications.passed_confirm_description'))
-                    ->modalSubmitActionLabel(__('review_applications.passed_confirm_yes'))
-                    ->modalCancelActionLabel(__('review_applications.passed_confirm_no'))
-                    ->visible(fn (CustomFormEntry $record): bool => FilamentActionPermissions::canForResource(CandidateRequestedResource::class, 'passed')
+                    ->modalHeading(__('candidate_entrance_statistics.passed_confirm_title'))
+                    ->modalDescription(__('candidate_entrance_statistics.passed_confirm_description'))
+                    ->modalSubmitActionLabel(__('candidate_entrance_statistics.passed_confirm_yes'))
+                    ->modalCancelActionLabel(__('candidate_entrance_statistics.passed_confirm_no'))
+                    ->visible(fn (CustomFormEntry $record): bool => FilamentActionPermissions::canForResource(CandidateEntranceStatisticResource::class, 'passed')
                         && strtolower((string) data_get($record->data, 'candidate_status', 'pending')) === 'pending')
                     ->action(function (CustomFormEntry $record): void {
-                        FilamentActionPermissions::abortUnlessCanForResource(CandidateRequestedResource::class, 'passed');
+                        FilamentActionPermissions::abortUnlessCanForResource(CandidateEntranceStatisticResource::class, 'passed');
 
                         self::markPassed($record);
 
                         Notification::make()
-                            ->title(NotificationLanguage::trans('review_applications.notifications.admin_passed_success_title'))
-                            ->body(NotificationLanguage::trans('review_applications.notifications.admin_passed_success_body'))
+                            ->title(NotificationLanguage::trans('candidate_entrance_statistics.notifications.admin_passed_success_title'))
+                            ->body(NotificationLanguage::trans('candidate_entrance_statistics.notifications.admin_passed_success_body'))
                             ->success()
                             ->send();
                     }),
 
                 Action::make('pending')
-                    ->label(__('review_applications.actions.edit_result'))
+                    ->label(__('candidate_entrance_statistics.actions.edit_result'))
                     ->icon('heroicon-o-arrow-path')
                     ->color('danger')
                     ->requiresConfirmation()
-                    ->modalHeading(__('review_applications.pending_modal.heading'))
-                    ->modalDescription(__('review_applications.pending_modal.description'))
-                    ->modalSubmitActionLabel(__('review_applications.pending_modal.submit'))
-                    ->modalCancelActionLabel(__('review_applications.pending_modal.cancel'))
-                    ->visible(fn (CustomFormEntry $record): bool => FilamentActionPermissions::canForResource(CandidateRequestedResource::class, 'pending')
+                    ->modalHeading(__('candidate_entrance_statistics.pending_modal.heading'))
+                    ->modalDescription(__('candidate_entrance_statistics.pending_modal.description'))
+                    ->modalSubmitActionLabel(__('candidate_entrance_statistics.pending_modal.submit'))
+                    ->modalCancelActionLabel(__('candidate_entrance_statistics.pending_modal.cancel'))
+                    ->visible(fn (CustomFormEntry $record): bool => FilamentActionPermissions::canForResource(CandidateEntranceStatisticResource::class, 'pending')
                         && strtolower((string) data_get($record->data, 'candidate_status', 'pending')) === 'passed'
                         && ! self::hasStudentReviewResultNotification($record, 'passed'))
                     ->action(function (CustomFormEntry $record): void {
-                        FilamentActionPermissions::abortUnlessCanForResource(CandidateRequestedResource::class, 'pending');
+                        FilamentActionPermissions::abortUnlessCanForResource(CandidateEntranceStatisticResource::class, 'pending');
 
                         self::markCandidatePending($record);
 
                         Notification::make()
-                            ->title(NotificationLanguage::trans('review_applications.actions.edit_result'))
+                            ->title(NotificationLanguage::trans('candidate_entrance_statistics.actions.edit_result'))
                             ->success()
                             ->send();
                     }),
             ])
             ->toolbarActions([
                 BulkAction::make('bulk_passed')
-                    ->label(__('review_applications.statuses.passed'))
+                    ->label(__('candidate_entrance_statistics.statuses.passed'))
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->button()
-                    ->visible(fn (): bool => FilamentActionPermissions::canForResource(CandidateRequestedResource::class, 'bulk_passed'))
+                    ->visible(fn (): bool => FilamentActionPermissions::canForResource(CandidateEntranceStatisticResource::class, 'bulk_passed'))
                     ->requiresConfirmation()
-                    ->modalHeading(__('review_applications.passed_confirm_title'))
-                    ->modalDescription(__('review_applications.passed_confirm_description'))
-                    ->modalSubmitActionLabel(__('review_applications.passed_confirm_yes'))
-                    ->modalCancelActionLabel(__('review_applications.passed_confirm_no'))
+                    ->modalHeading(__('candidate_entrance_statistics.passed_confirm_title'))
+                    ->modalDescription(__('candidate_entrance_statistics.passed_confirm_description'))
+                    ->modalSubmitActionLabel(__('candidate_entrance_statistics.passed_confirm_yes'))
+                    ->modalCancelActionLabel(__('candidate_entrance_statistics.passed_confirm_no'))
                     ->deselectRecordsAfterCompletion()
                     ->action(function (Collection $records): void {
-                        FilamentActionPermissions::abortUnlessCanForResource(CandidateRequestedResource::class, 'bulk_passed');
+                        FilamentActionPermissions::abortUnlessCanForResource(CandidateEntranceStatisticResource::class, 'bulk_passed');
 
                         $passedCount = 0;
 
@@ -344,7 +347,7 @@ class CandidateRequestedTable
 
                         Notification::make()
                             ->title(NotificationLanguage::trans(
-                                'review_applications.notifications.bulk_passed_success_title',
+                                'candidate_entrance_statistics.notifications.bulk_passed_success_title',
                                 ['count' => $passedCount]
                             ))
                             ->success()
@@ -352,19 +355,19 @@ class CandidateRequestedTable
                     }),
 
                 BulkAction::make('bulk_pending')
-                    ->label(__('review_applications.actions.edit_result'))
+                    ->label(__('candidate_entrance_statistics.actions.edit_result'))
                     ->icon('heroicon-o-arrow-path')
                     ->color('danger')
                     ->button()
-                    ->visible(fn (): bool => FilamentActionPermissions::canForResource(CandidateRequestedResource::class, 'bulk_pending'))
+                    ->visible(fn (): bool => FilamentActionPermissions::canForResource(CandidateEntranceStatisticResource::class, 'bulk_pending'))
                     ->requiresConfirmation()
-                    ->modalHeading(__('review_applications.pending_modal.heading'))
-                    ->modalDescription(__('review_applications.pending_modal.description'))
-                    ->modalSubmitActionLabel(__('review_applications.pending_modal.submit'))
-                    ->modalCancelActionLabel(__('review_applications.pending_modal.cancel'))
+                    ->modalHeading(__('candidate_entrance_statistics.pending_modal.heading'))
+                    ->modalDescription(__('candidate_entrance_statistics.pending_modal.description'))
+                    ->modalSubmitActionLabel(__('candidate_entrance_statistics.pending_modal.submit'))
+                    ->modalCancelActionLabel(__('candidate_entrance_statistics.pending_modal.cancel'))
                     ->deselectRecordsAfterCompletion()
                     ->action(function (Collection $records): void {
-                        FilamentActionPermissions::abortUnlessCanForResource(CandidateRequestedResource::class, 'bulk_pending');
+                        FilamentActionPermissions::abortUnlessCanForResource(CandidateEntranceStatisticResource::class, 'bulk_pending');
 
                         $editedCount = 0;
 
@@ -381,8 +384,8 @@ class CandidateRequestedTable
                         });
 
                         Notification::make()
-                            ->title(NotificationLanguage::trans('review_applications.actions.edit_result'))
-                            ->body(__('review_applications.notifications.bulk_pending_success_body', ['count' => $editedCount]))
+                            ->title(NotificationLanguage::trans('candidate_entrance_statistics.actions.edit_result'))
+                            ->body(__('candidate_entrance_statistics.notifications.bulk_pending_success_body', ['count' => $editedCount]))
                             ->success()
                             ->send();
                     }),
@@ -567,7 +570,7 @@ class CandidateRequestedTable
                 'clean' => fn (CustomFormEntry $record, int $rowNumber): string => (string) $rowNumber,
             ],
             'form_type' => [
-                'label' => __('review_applications.form_type'),
+                'label' => __('candidate_entrance_statistics.form_type'),
                 'field_key' => 'form_type',
                 'value' => fn (CustomFormEntry $record): string => self::recordFormTypeLabel($record),
                 'clean' => fn (CustomFormEntry $record): string => (string) data_get($record->data, 'form_selection', ''),
@@ -581,10 +584,10 @@ class CandidateRequestedTable
                 'clean' => fn (CustomFormEntry $record): string => self::entryValue($record, 'academic_year', $record->creator?->academic_year),
             ],
             'user_type' => [
-                'label' => __('review_applications.user_type'),
+                'label' => __('candidate_entrance_statistics.user_type'),
                 'field_key' => 'user_type',
-                'value' => fn (CustomFormEntry $record): string => self::userTypeLabel(self::resolveCandidateRole($record->creator)),
-                'clean' => fn (CustomFormEntry $record): string => (string) self::resolveCandidateRole($record->creator),
+                'value' => fn (CustomFormEntry $record): string => self::userTypeLabel(self::resolveCandidateRole($record->creator, $record->data)),
+                'clean' => fn (CustomFormEntry $record): string => (string) self::resolveCandidateRole($record->creator, $record->data),
             ],
             'seat_number' => [
                 'label' => __('exam_results.seat_number'),
@@ -611,7 +614,7 @@ class CandidateRequestedTable
                 'clean' => fn (CustomFormEntry $record): string => self::entryValue($record, 'gender'),
             ],
             'major' => [
-                'label' => __('review_applications.major'),
+                'label' => __('candidate_entrance_statistics.major'),
                 'field_key' => 'major',
                 'value' => fn (CustomFormEntry $record): string => (string) FormEntryData::firstFilled($record->data, FormEntryData::majorKeys(), '-'),
                 'clean' => fn (CustomFormEntry $record): string => (string) FormEntryData::firstFilled($record->data, FormEntryData::majorKeys(), '-'),
@@ -623,16 +626,16 @@ class CandidateRequestedTable
                 'clean' => fn (CustomFormEntry $record): string => self::entryValue($record, 'date_of_birth', $record->creator?->date_of_birth),
             ],
             'data.candidate_status' => [
-                'label' => __('review_applications.review_status_result'),
+                'label' => __('candidate_entrance_statistics.review_status_result'),
                 'field_key' => 'candidate_status',
                 'value' => fn (CustomFormEntry $record): string => match ((string) data_get($record->data, 'candidate_status', 'pending')) {
-                    'passed' => __('review_applications.statuses.passed'),
-                    default => __('review_applications.statuses.pending'),
+                    'passed' => __('candidate_entrance_statistics.statuses.passed'),
+                    default => __('candidate_entrance_statistics.statuses.pending'),
                 },
                 'clean' => fn (CustomFormEntry $record): string => (string) data_get($record->data, 'candidate_status', 'pending'),
             ],
             'data.candidate_reviewed_at' => [
-                'label' => __('review_applications.reviewed_at'),
+                'label' => __('candidate_entrance_statistics.reviewed_at'),
                 'field_key' => 'candidate_reviewed_at',
                 'value' => fn (CustomFormEntry $record): string => filled(data_get($record->data, 'candidate_reviewed_at'))
                     ? LocalizedDate::dayMonthYear((string) data_get($record->data, 'candidate_reviewed_at'))
@@ -718,7 +721,7 @@ class CandidateRequestedTable
             ->with('creator')
             ->get()
             ->flatMap(function (CustomFormEntry $entry): array {
-                $role = self::resolveCandidateRole($entry->creator);
+                $role = self::resolveCandidateRole($entry->creator, $entry->data);
 
                 return filled($role) ? [$role] : [];
             })
@@ -728,6 +731,30 @@ class CandidateRequestedTable
             ->sort()
             ->mapWithKeys(fn (string $value): array => [$value => UserTypeOptions::formatLabel($value)])
             ->toArray();
+    }
+
+    protected static function applyCandidateTypeFilter(Builder $query, string $candidateType): Builder
+    {
+        $candidateType = CandidateTypeResolver::normalize($candidateType) ?? strtolower(trim($candidateType));
+        $creatorIds = User::query()
+            ->get()
+            ->filter(fn (User $user): bool => CandidateTypeResolver::resolve($user) === $candidateType)
+            ->modelKeys();
+
+        return $query->where(function (Builder $query) use ($candidateType, $creatorIds): void {
+            $hasCondition = false;
+
+            if ($creatorIds !== []) {
+                $query->whereIn('created_by', $creatorIds);
+                $hasCondition = true;
+            }
+
+            foreach (['user_type', 'candidate_type', 'student_role'] as $key) {
+                $method = $hasCondition ? 'orWhere' : 'where';
+                $query->{$method}("data->{$key}", $candidateType);
+                $hasCondition = true;
+            }
+        });
     }
 
     protected static function dynamicMajorOptions(): array
@@ -919,6 +946,7 @@ class CandidateRequestedTable
             ]);
 
         $record->refresh();
+        CandidateStatisticsSynchronizer::syncPassedEntry($record);
 
         AuditLogger::log(
             action: 'passed',
@@ -930,7 +958,7 @@ class CandidateRequestedTable
                 'review_status' => 'passed',
             ],
             description: 'Candidate result marked as passed',
-            metadata: ['module' => 'Candidate Requested'],
+            metadata: ['module' => 'Entrance Exam Statistics'],
         );
     }
 
@@ -951,6 +979,7 @@ class CandidateRequestedTable
             ]);
 
         $record->refresh();
+        CandidateStatisticsSynchronizer::syncPendingEntry($record);
 
         AuditLogger::log(
             action: 'updated',
@@ -961,7 +990,7 @@ class CandidateRequestedTable
                 'review_status' => $record->review_status,
             ],
             description: 'Candidate result changed back to pending',
-            metadata: ['module' => 'Candidate Requested'],
+            metadata: ['module' => 'Entrance Exam Statistics'],
         );
     }
 
@@ -1014,59 +1043,37 @@ class CandidateRequestedTable
         }
 
         return match ((string) $state) {
-            'associate' => __('review_applications.form_types.associate'),
-            'bachelor' => __('review_applications.form_types.bachelor'),
-            'master' => __('review_applications.form_types.master'),
-            'phd' => __('review_applications.form_types.phd'),
+            'associate' => __('candidate_entrance_statistics.form_types.associate'),
+            'bachelor' => __('candidate_entrance_statistics.form_types.bachelor'),
+            'master' => __('candidate_entrance_statistics.form_types.master'),
+            'phd' => __('candidate_entrance_statistics.form_types.phd'),
             default => filled($state) ? ucfirst((string) $state) : '-',
         };
     }
 
     protected static function userTypeLabel(?string $state): string
     {
-        if (blank($state)) {
-            return '-';
-        }
-
-        return UserTypeOptions::formatLabel((string) $state);
+        return CandidateTypeResolver::label($state);
     }
 
-    protected static function resolveCandidateRole(?User $user): ?string
+    protected static function resolveCandidateRole(?User $user, array | object | null $data = null): ?string
     {
-        if (! $user) {
-            return null;
-        }
-
-        $roles = $user->effectiveRoleNames();
-
-        $preferredRole = $roles->first(function (string $role): bool {
-            $normalized = strtolower(trim($role));
-
-            return UserTypeOptions::isCandidateManagedRole($normalized)
-                && ! in_array($normalized, ['candidate', 'student'], true);
-        });
-
-        if ($preferredRole) {
-            return $preferredRole;
-        }
-
-        return $roles->first(fn (string $role): bool => UserTypeOptions::isCandidateManagedRole($role))
-            ?? $roles->first();
+        return CandidateTypeResolver::resolve($user, $data);
     }
 
     protected static function statusLabel(?string $state): string
     {
         return match ($state) {
-            'passed', 'accepted' => __('review_applications.statuses.passed'),
-            default => __('review_applications.statuses.pending'),
+            'passed', 'accepted' => __('candidate_entrance_statistics.statuses.passed'),
+            default => __('candidate_entrance_statistics.statuses.pending'),
         };
     }
 
     protected static function actionLabel(string $action): string
     {
         return match ($action) {
-            'passed' => __('review_applications.statuses.passed'),
-            default => __('review_applications.statuses.pending'),
+            'passed' => __('candidate_entrance_statistics.statuses.passed'),
+            default => __('candidate_entrance_statistics.statuses.pending'),
         };
     }
 
@@ -1104,8 +1111,8 @@ class CandidateRequestedTable
     protected static function genderLabel(string $state): string
     {
         return match (strtolower($state)) {
-            'male' => __('review_applications.genders.male'),
-            'female' => __('review_applications.genders.female'),
+            'male' => __('candidate_entrance_statistics.genders.male'),
+            'female' => __('candidate_entrance_statistics.genders.female'),
             default => $state,
         };
     }
@@ -1142,11 +1149,11 @@ class CandidateRequestedTable
             Notification::make()
                 ->title(NotificationLanguage::transForUser(
                     $student,
-                    'review_applications.notifications.student_accepted_title'
+                    'candidate_entrance_statistics.notifications.student_accepted_title'
                 ))
                 ->body(NotificationLanguage::transForUser(
                     $student,
-                    'review_applications.notifications.student_accepted_body',
+                    'candidate_entrance_statistics.notifications.student_accepted_body',
                     [
                         'student' => $studentName,
                     ]
@@ -1167,18 +1174,18 @@ class CandidateRequestedTable
         Notification::make()
             ->title(NotificationLanguage::transForUser(
                 $student,
-                'review_applications.notifications.student_rejected_title'
+                'candidate_entrance_statistics.notifications.student_rejected_title'
             ))
             ->body(NotificationLanguage::transForUser(
                 $student,
-                'review_applications.notifications.student_rejected_body',
+                'candidate_entrance_statistics.notifications.student_rejected_body',
                 [
                     'student' => $studentName,
                     'note' => filled($note)
                         ? $note
                         : NotificationLanguage::transForUser(
                             $student,
-                            'review_applications.notifications.no_reject_note'
+                            'candidate_entrance_statistics.notifications.no_reject_note'
                         ),
                 ]
             ))
@@ -1297,6 +1304,6 @@ class CandidateRequestedTable
 
         return filled($fallbackName)
             ? $fallbackName
-            : NotificationLanguage::transForUser($user, 'review_applications.notifications.unknown_student');
+            : NotificationLanguage::transForUser($user, 'candidate_entrance_statistics.notifications.unknown_student');
     }
 }

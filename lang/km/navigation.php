@@ -13,9 +13,10 @@ return [
 
     'profile' => 'ប្រវត្តិរូប',
     'national_examination_registration' => 'ការចុះឈ្មោះប្រឡងថ្នាក់ជាតិ',
-    'review_applications' => 'សំណើបេក្ខជន',
+    'candidate_entrance_statistics' => 'ស្ថិតិបេក្ខជនប្រឡងចូល',
     'exam_results' => 'បេក្ខជនជាប់ប្រឡងចូលជ័យលាភី',
     'exit_exam_results' => 'បេក្ខជនជាប់ប្រឡងចេញជ័យលាភី',
+    'candidate_exit_statistics' => 'ស្ថិតិបេក្ខជនប្រឡងចេញ',
     'payments' => 'បញ្ជីឈ្មោះបេក្ខជនបង់លុយ',
     'custom_forms' => 'បង្កើតទម្រង់បំពេញ',
     'document_templates' => 'បញ្ជីគំរូឯកសារ',

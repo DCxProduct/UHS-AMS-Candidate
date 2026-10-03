@@ -110,12 +110,12 @@ class CustomFormEntryFiles
         $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
 
         $label = match ($extension) {
-            'doc', 'docx' => __('review_applications.file_types.word'),
-            'xls', 'xlsx' => __('review_applications.file_types.excel'),
-            'ppt', 'pptx' => __('review_applications.file_types.powerpoint'),
-            'pdf' => __('review_applications.file_types.pdf'),
-            'txt', 'csv' => __('review_applications.file_types.text'),
-            default => __('review_applications.file_types.document'),
+            'doc', 'docx' => __('candidate_entrance_statistics.file_types.word'),
+            'xls', 'xlsx' => __('candidate_entrance_statistics.file_types.excel'),
+            'ppt', 'pptx' => __('candidate_entrance_statistics.file_types.powerpoint'),
+            'pdf' => __('candidate_entrance_statistics.file_types.pdf'),
+            'txt', 'csv' => __('candidate_entrance_statistics.file_types.text'),
+            default => __('candidate_entrance_statistics.file_types.document'),
         };
 
         return $extension === ''

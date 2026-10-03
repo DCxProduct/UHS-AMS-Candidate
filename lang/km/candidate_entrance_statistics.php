@@ -1,16 +1,16 @@
 <?php
 
 return [
-    'navigation_label' => 'សំណើរបេក្ខជន',
+    'navigation_label' => 'ស្ថិតិបេក្ខជនប្រឡងចូល',
     'navigation_group' => 'ពិនិត្យឯកសារ',
 
-    'model_label' => 'សំណើរបេក្ខជន',
-    'plural_model_label' => 'សំណើបេក្ខជន',
+    'model_label' => 'ស្ថិតិបេក្ខជនប្រឡងចូល',
+    'plural_model_label' => 'ស្ថិតិបេក្ខជនប្រឡងចូល',
 
     'all_fields' => 'ព័ត៌មានទាំងអស់',
     'fields_count' => 'ចំណុច',
 
-    'list_title' => 'សំណើបេក្ខជន',
+    'list_title' => 'ស្ថិតិបេក្ខជនប្រឡងចូល',
     'breadcrumb_list' => 'បញ្ជី',
 
     'id' => 'លេខសម្គាល់',

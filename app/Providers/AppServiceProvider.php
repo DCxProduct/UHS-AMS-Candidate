@@ -2,8 +2,9 @@
 
 namespace App\Providers;
 
+use App\Models\CandidateExitStatistic;
 use App\Models\CandidateList;
-use App\Models\CandidateRequested;
+use App\Models\CandidateEntranceStatistic;
 use App\Models\CandidateSubmitPopupSetting;
 use App\Models\ClosingDate;
 use App\Models\DegreeLevel;
@@ -17,20 +18,22 @@ use App\Models\Role;
 use App\Models\RoleType;
 use App\Models\SystemUser;
 use App\Models\UnpaidApplication;
-use App\Models\UserType;
 use App\Models\User;
+use App\Models\UserType;
 use App\Observers\AuditLogObserver;
+use App\Observers\CustomFormEntryStatisticsObserver;
 use App\Support\FilamentActionPermissions;
 use App\Support\NotificationLanguage;
 use BezhanSalleh\LanguageSwitch\LanguageSwitch;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
+use Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate;
 use Filament\Notifications\Notification;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 use Throwable;
@@ -48,7 +51,7 @@ class AppServiceProvider extends ServiceProvider
 
         $this->registerAuditLogging();
 
-        //roles permission admin automatic
+        // roles permission admin automatic
         Gate::before(function ($user, string $ability): ?bool {
             if (! $user instanceof User) {
                 return null;
@@ -115,6 +118,8 @@ class AppServiceProvider extends ServiceProvider
             }
         });
 
+        CustomFormEntry::observe(CustomFormEntryStatisticsObserver::class);
+
         /*
         |--------------------------------------------------------------------------
         | Notify admin when student submits Enrollment
@@ -168,6 +173,7 @@ class AppServiceProvider extends ServiceProvider
             User::class,
             SystemUser::class,
             CandidateList::class,
+            CandidateExitStatistic::class,
             Role::class,
             Payment::class,
             PaymentType::class,
@@ -180,11 +186,11 @@ class AppServiceProvider extends ServiceProvider
             CandidateSubmitPopupSetting::class,
             CustomForm::class,
             CustomFormEntry::class,
-            CandidateRequested::class,
+            CandidateEntranceStatistic::class,
             ExamResult::class,
             ExitExamResult::class,
             UnpaidApplication::class,
-            \Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate::class,
+            DocumentTemplate::class,
         ];
     }
 
@@ -243,15 +249,15 @@ class AppServiceProvider extends ServiceProvider
                 Notification::make()
                     ->title(NotificationLanguage::transForUser(
                         $admin,
-                        'review_applications.notifications.enrollment_submitted_title'
+                        'candidate_entrance_statistics.notifications.enrollment_submitted_title'
                     ))
                     ->body(NotificationLanguage::transForUser(
                         $admin,
-                        'review_applications.notifications.enrollment_submitted_body',
+                        'candidate_entrance_statistics.notifications.enrollment_submitted_body',
                         [
                             'student' => $studentName ?: NotificationLanguage::transForUser(
                                 $admin,
-                                'review_applications.notifications.unknown_student'
+                                'candidate_entrance_statistics.notifications.unknown_student'
                             ),
                         ]
                     ))

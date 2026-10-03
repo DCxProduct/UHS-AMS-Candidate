@@ -1,61 +1,26 @@
 <?php
 
-namespace App\Filament\Admin\Resources\CandidateRequested\Pages;
+namespace App\Filament\Admin\Resources\CandidateExitStatistics\Pages;
 
-use App\Filament\Admin\Resources\CandidateRequested\CandidateRequestedResource;
-use App\Filament\Admin\Resources\CandidateRequested\Tables\CandidateRequestedTable;
+use App\Filament\Admin\Resources\CandidateExitStatistics\CandidateExitStatisticResource;
+use App\Filament\Admin\Resources\CandidateExitStatistics\Tables\CandidateExitStatisticsTable;
 use App\Support\AuditLogger;
 use App\Support\FilamentActionPermissions;
-use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\ListRecords;
-use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Model;
 
-class ListCandidateRequested extends ListRecords
+class ListCandidateExitStatistics extends ListRecords
 {
-    protected static string $resource = CandidateRequestedResource::class;
-
-    public function updatedTableSearch(): void
-    {
-        if (blank($this->tableSearch)) {
-            $this->tableSearch = '';
-            session()->forget($this->getTableSearchSessionKey());
-        }
-
-        parent::updatedTableSearch();
-        $this->flushCachedTableRecords();
-    }
-
-    public function resetTableSearch(): void
-    {
-        parent::resetTableSearch();
-        $this->flushCachedTableRecords();
-    }
-
-    public function updatedTableFilters(): void
-    {
-        parent::updatedTableFilters();
-        $this->flushCachedTableRecords();
-    }
-
-    public function getTitle(): string | Htmlable
-    {
-        return __('review_applications.list_title');
-    }
-
-    public function getBreadcrumb(): string
-    {
-        return __('review_applications.breadcrumb_list');
-    }
+    protected static string $resource = CandidateExitStatisticResource::class;
 
     protected function getHeaderActions(): array
     {
         return [
             Action::make('download_excel')
-                ->label(__('review_applications.download_excel'))
+                ->label(__('candidate_exit_statistics.download_excel'))
                 ->color('success')
-                ->visible(fn (): bool => FilamentActionPermissions::canForResource(CandidateRequestedResource::class, 'download_excel'))
+                ->visible(fn (): bool => FilamentActionPermissions::canForResource(CandidateExitStatisticResource::class, 'download_excel'))
                 ->alpineClickHandler(<<<'JS'
                     const table = document.querySelector('.fi-ta');
                     const tableData = table?._x_dataStack?.find((data) => data.selectedRecords instanceof Set);
@@ -70,7 +35,7 @@ class ListCandidateRequested extends ListRecords
             Action::make('clear_data')
                 ->label(__('app.clear_data'))
                 ->color('danger')
-                ->visible(fn (): bool => FilamentActionPermissions::canForResource(CandidateRequestedResource::class, 'clear_data'))
+                ->visible(fn (): bool => FilamentActionPermissions::canForResource(CandidateExitStatisticResource::class, 'clear_data'))
                 ->requiresConfirmation()
                 ->modalHeading(__('app.clear_data'))
                 ->modalDescription(__('app.clear_data_confirm'))
@@ -107,40 +72,25 @@ class ListCandidateRequested extends ListRecords
         array $selectedRecordKeys = [],
         bool $isTrackingDeselectedRecords = false,
         array $deselectedRecordKeys = [],
-    )
-    {
-        FilamentActionPermissions::abortUnlessCanForResource(CandidateRequestedResource::class, 'download_excel');
+    ) {
+        FilamentActionPermissions::abortUnlessCanForResource(CandidateExitStatisticResource::class, 'download_excel');
 
-        $selectedRecordKeys = array_values(array_filter($selectedRecordKeys));
-        $deselectedRecordKeys = array_values(array_filter($deselectedRecordKeys));
-
-        if ($isTrackingDeselectedRecords) {
-            $query = $this->getTableQueryForExport()
-                ->with('creator');
-
-            if (filled($deselectedRecordKeys)) {
-                $query->whereKeyNot($deselectedRecordKeys);
-            }
-
-            $records = $query->get();
-        } elseif (filled($selectedRecordKeys)) {
-            $records = CustomFormEntry::query()
-                ->with('creator')
-                ->whereKey($selectedRecordKeys)
-                ->get();
-        } else {
-            $records = $this->getTableQueryForExport()
-                ->with('creator')
-                ->get();
-        }
+        $records = $this->selectedOrFilteredQuery(
+            $selectedRecordKeys,
+            $isTrackingDeselectedRecords,
+            $deselectedRecordKeys,
+        )->get();
 
         AuditLogger::log(
             action: 'downloaded',
-            description: 'Downloaded Candidate Requested Excel (' . $records->count() . ' records)',
-            metadata: ['module' => 'Candidate Requested'],
+            description: 'Downloaded Candidate Entrance Statistics Excel ('.$records->count().' records)',
+            metadata: ['module' => 'Candidate Entrance Statistics'],
         );
 
-        return CandidateRequestedTable::downloadExcel($records, $this->visibleExportColumnKeys());
+        return CandidateExitStatisticsTable::downloadExcel(
+            $records,
+            $this->visibleExportColumnKeys(),
+        );
     }
 
     public function clearDataFromTableSelection(
@@ -148,30 +98,22 @@ class ListCandidateRequested extends ListRecords
         bool $isTrackingDeselectedRecords = false,
         array $deselectedRecordKeys = [],
     ): void {
-        FilamentActionPermissions::abortUnlessCanForResource(CandidateRequestedResource::class, 'clear_data');
+        FilamentActionPermissions::abortUnlessCanForResource(CandidateExitStatisticResource::class, 'clear_data');
 
         $this->selectedOrFilteredQuery(
             $selectedRecordKeys,
             $isTrackingDeselectedRecords,
             $deselectedRecordKeys,
         )->get()->each(function (Model $record): void {
-            $data = $record->data ?? [];
-
-            if (! is_array($data)) {
-                $data = [];
-            }
-
-            $data[CandidateRequestedResource::HIDDEN_FLAG] = true;
-
             $record->forceFill([
-                'data' => $data,
+                'hidden_from_statistics' => true,
             ])->saveQuietly();
 
             AuditLogger::log(
                 action: 'cleared',
                 auditable: $record,
-                description: 'Cleared from Candidate Requested',
-                metadata: ['module' => 'Candidate Requested'],
+                description: 'Cleared from Candidate Entrance Statistics',
+                metadata: ['module' => 'Candidate Entrance Statistics'],
             );
         });
 

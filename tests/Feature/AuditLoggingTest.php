@@ -28,7 +28,7 @@ class AuditLoggingTest extends TestCase
             description: 'Reviewed candidate application',
             oldValues: ['status' => 'pending', 'password' => 'hidden'],
             newValues: ['status' => 'approved', 'token' => 'hidden'],
-            metadata: ['module' => 'Candidate Requested'],
+            metadata: ['module' => 'Entrance Exam Statistics'],
         );
 
         $audit = AuditLog::query()->latest('id')->firstOrFail();
@@ -36,7 +36,7 @@ class AuditLoggingTest extends TestCase
         $this->assertSame('registrar', $audit->actor_role);
         $this->assertSame(['status' => 'pending'], $audit->old_values);
         $this->assertSame(['status' => 'approved'], $audit->new_values);
-        $this->assertSame('Candidate Requested', $audit->metadata['module']);
+        $this->assertSame('Entrance Exam Statistics', $audit->metadata['module']);
     }
 
     public function test_cashier_action_is_logged(): void

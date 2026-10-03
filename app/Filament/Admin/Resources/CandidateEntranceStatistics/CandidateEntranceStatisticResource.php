@@ -1,10 +1,11 @@
 <?php
 
-namespace App\Filament\Admin\Resources\CandidateRequested;
+namespace App\Filament\Admin\Resources\CandidateEntranceStatistics;
 
-use App\Filament\Admin\Resources\CandidateRequested\Tables\CandidateRequestedTable;
+use App\Filament\Admin\Resources\CandidateEntranceStatistics\Tables\CandidateEntranceStatisticsTable;
 use App\Filament\Concerns\AdminOnly;
-use App\Models\CandidateRequested;
+use App\Models\CandidateEntranceStatistic;
+use App\Support\StatisticsMenuOptions;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -13,23 +14,23 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\Schema as DbSchema;
 
-class CandidateRequestedResource extends Resource
+class CandidateEntranceStatisticResource extends Resource
 {
     use AdminOnly;
 
     public const HIDDEN_FLAG = 'hidden_from_review_applications';
 
-    protected static ?string $model = CandidateRequested::class;
+    protected static ?string $model = CandidateEntranceStatistic::class;
 
-    protected static ?string $slug = 'candidate-requested';
+    protected static ?string $slug = 'entrance-exam-statistics';
 
-    protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-clipboard-document-check';
+    protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-chart-bar';
 
     protected static ?int $navigationSort = 30;
 
     public static function getNavigationLabel(): string
     {
-        return __('navigation.review_applications');
+        return __('navigation.candidate_entrance_statistics');
     }
 
     public static function getNavigationGroup(): ?string
@@ -44,12 +45,12 @@ class CandidateRequestedResource extends Resource
 
     public static function getModelLabel(): string
     {
-        return __('review_applications.model_label');
+        return __('candidate_entrance_statistics.model_label');
     }
 
     public static function getPluralModelLabel(): string
     {
-        return __('review_applications.plural_model_label');
+        return __('candidate_entrance_statistics.plural_model_label');
     }
 
     public static function getEloquentQuery(): Builder
@@ -76,15 +77,55 @@ class CandidateRequestedResource extends Resource
                             });
                     });
             })
+            ->where(function (Builder $query): void {
+                $query
+                    ->whereHas('customForm', function (Builder $query): void {
+                        $query
+                            ->where('menu_placement', 'sidebar')
+                            ->where('is_active', true)
+                            ->where('slug', '!=', 'profile')
+                            ->where('statistics_menu', StatisticsMenuOptions::ENTRANCE_EXAM_STATISTICS)
+                            ->where(function (Builder $query): void {
+                                $query
+                                    ->whereNull('custom_form_entries.data->form_selection')
+                                    ->orWhere('custom_form_entries.data->form_selection', '')
+                                    ->orWhereNotExists(function (QueryBuilder $subQuery): void {
+                                        $subQuery->selectRaw('1')
+                                            ->from('custom_forms as child_forms')
+                                            ->whereColumn('child_forms.custom_form_id', 'custom_form_entries.custom_form_id')
+                                            ->where('child_forms.menu_placement', 'sub_item')
+                                            ->where('child_forms.is_active', true)
+                                            ->whereRaw("LOWER(child_forms.sub_item_type) = LOWER(COALESCE(custom_form_entries.data->>'form_selection', ''))");
+                                    });
+                            });
+                    })
+                    ->orWhereHas('customForm', function (Builder $query): void {
+                        $query
+                            ->where('menu_placement', 'sub_item')
+                            ->where('is_active', true)
+                            ->where('statistics_menu', StatisticsMenuOptions::ENTRANCE_EXAM_STATISTICS);
+                    })
+                    ->orWhereExists(function (QueryBuilder $subQuery): void {
+                        $subQuery->selectRaw('1')
+                            ->from('custom_forms as child_forms')
+                            ->whereColumn('child_forms.custom_form_id', 'custom_form_entries.custom_form_id')
+                            ->where('child_forms.menu_placement', 'sub_item')
+                            ->where('child_forms.is_active', true)
+                            ->where('child_forms.statistics_menu', StatisticsMenuOptions::ENTRANCE_EXAM_STATISTICS)
+                            ->whereRaw("LOWER(child_forms.sub_item_type) = LOWER(COALESCE(custom_form_entries.data->>'form_selection', ''))");
+                    });
+            })
             ->whereIn('review_status', [
                 'accepted',
                 'approved',
+                'passed',
             ])
             ->where(function (Builder $query): void {
                 $query
                     ->whereNull('data->candidate_status')
                     ->orWhere('data->candidate_status', '')
-                    ->orWhere('data->candidate_status', 'pending');
+                    ->orWhere('data->candidate_status', 'pending')
+                    ->orWhere('data->candidate_status', 'passed');
             })
             ->where(function (Builder $query): void {
                 $query
@@ -143,13 +184,13 @@ class CandidateRequestedResource extends Resource
 
     public static function table(Table $table): Table
     {
-        return CandidateRequestedTable::configure($table);
+        return CandidateEntranceStatisticsTable::configure($table);
     }
 
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListCandidateRequested::route('/'),
+            'index' => Pages\ListCandidateEntranceStatistics::route('/'),
         ];
     }
 }

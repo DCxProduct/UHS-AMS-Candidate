@@ -13,9 +13,10 @@ return [
 
     'profile' => 'Profile',
     'national_examination_registration' => 'National Examination Registration',
-    'review_applications' => 'Candidate Requested',
+    'candidate_entrance_statistics' => 'Entrance Exam Statistics',
     'exam_results' => 'Passed Entrance Exam',
     'exit_exam_results' => 'Passed Exit Exam',
+    'candidate_exit_statistics' => 'Exit Exam Statistics',
     'payments' => 'Payment Records',
     'custom_forms' => 'Custom Forms',
     'document_templates' => 'Document Templates',

@@ -7,7 +7,10 @@ use App\Models\SystemUser;
 use App\Models\User;
 use App\Support\NotificationLanguage;
 use App\Support\PassedResultMenuOptions;
+use App\Support\CandidateStatisticsSynchronizer;
+use App\Support\StatisticsMenuOptions;
 use App\Support\UserTypeOptions;
+use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -89,6 +92,14 @@ class WorkflowDemoSeeder extends Seeder
                         'created_at' => $submittedAt,
                         'updated_at' => $scenario['reviewed'] ? $submittedAt->copy()->addDay() : $submittedAt,
                     ]);
+
+                    if ($scenario['passed'] ?? false) {
+                        $entry = CustomFormEntry::query()->find($entryId);
+
+                        if ($entry) {
+                            CandidateStatisticsSynchronizer::syncPassedEntry($entry);
+                        }
+                    }
 
                     $this->seedWorkflowNotifications($entryId, $form, $candidate, $scenario, $submittedAt);
 
@@ -319,11 +330,11 @@ class WorkflowDemoSeeder extends Seeder
                 Notification::make()
                     ->title(NotificationLanguage::transForUser(
                         $candidate,
-                        'review_applications.notifications.student_accepted_title',
+                        'candidate_entrance_statistics.notifications.student_accepted_title',
                     ))
                     ->body(NotificationLanguage::transForUser(
                         $candidate,
-                        'review_applications.notifications.student_accepted_body',
+                        'candidate_entrance_statistics.notifications.student_accepted_body',
                         ['student' => $candidate->name],
                     ))
                     ->icon('heroicon-o-check-circle')
@@ -353,11 +364,11 @@ class WorkflowDemoSeeder extends Seeder
                     Notification::make()
                         ->title(NotificationLanguage::transForUser(
                             $admin,
-                            'review_applications.notifications.enrollment_submitted_title',
+                            'candidate_entrance_statistics.notifications.enrollment_submitted_title',
                         ))
                         ->body(NotificationLanguage::transForUser(
                             $admin,
-                            'review_applications.notifications.enrollment_submitted_body',
+                            'candidate_entrance_statistics.notifications.enrollment_submitted_body',
                             ['student' => $candidate->name],
                         ))
                         ->icon('heroicon-o-clipboard-document-check')
@@ -647,6 +658,17 @@ HTML;
                 }
             }
 
+            if (Schema::hasColumn('custom_forms', 'statistics_menu')) {
+                $statisticsMenu = str_contains((string) $form->slug, 'national-exit-exam-application')
+                    ? StatisticsMenuOptions::EXIT_EXAM_STATISTICS
+                    : StatisticsMenuOptions::ENTRANCE_EXAM_STATISTICS;
+
+                DB::table('custom_forms')->where('id', $form->id)->update([
+                    'statistics_menu' => $statisticsMenu,
+                    'updated_at' => now(),
+                ]);
+            }
+
             $this->ensureFields((int) $form->id);
 
             return [
@@ -679,6 +701,9 @@ HTML;
                     'passed_result_menu' => str_starts_with($key, 'national_entrance_')
                         ? 'exam_results'
                         : (str_starts_with($key, 'national_exit_') ? 'exit_exam_results' : null),
+                    'statistics_menu' => str_starts_with($key, 'national_exit_')
+                        ? StatisticsMenuOptions::EXIT_EXAM_STATISTICS
+                        : StatisticsMenuOptions::ENTRANCE_EXAM_STATISTICS,
                 ];
             })
             ->values()
@@ -710,6 +735,11 @@ HTML;
         if (Schema::hasColumn('custom_forms', 'passed_result_menu')) {
             $data['passed_result_menu'] = $definition['passed_result_menu']
                 ?? PassedResultMenuOptions::default();
+        }
+
+        if (Schema::hasColumn('custom_forms', 'statistics_menu')) {
+            $data['statistics_menu'] = $definition['statistics_menu']
+                ?? StatisticsMenuOptions::default();
         }
 
         if ($existing) {

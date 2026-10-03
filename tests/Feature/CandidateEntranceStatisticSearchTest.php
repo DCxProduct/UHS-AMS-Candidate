@@ -2,10 +2,10 @@
 
 namespace Tests\Feature;
 
-use App\Filament\Admin\Resources\CandidateRequested\CandidateRequestedResource;
-use App\Filament\Admin\Resources\CandidateRequested\Pages\ListCandidateRequested;
-use App\Filament\Admin\Resources\CandidateRequested\Tables\CandidateRequestedTable;
-use App\Models\CandidateRequested;
+use App\Filament\Admin\Resources\CandidateEntranceStatistics\CandidateEntranceStatisticResource;
+use App\Filament\Admin\Resources\CandidateEntranceStatistics\Pages\ListCandidateEntranceStatistics;
+use App\Filament\Admin\Resources\CandidateEntranceStatistics\Tables\CandidateEntranceStatisticsTable;
+use App\Models\CandidateEntranceStatistic;
 use App\Models\Role;
 use App\Models\User;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
@@ -16,11 +16,11 @@ use Livewire\Livewire;
 use ReflectionMethod;
 use Tests\TestCase;
 
-class CandidateRequestedSearchTest extends TestCase
+class CandidateEntranceStatisticSearchTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_global_search_narrows_candidate_requested_records(): void
+    public function test_global_search_narrows_candidate_entrance_statistics_records(): void
     {
         $matching = $this->createEntry(
             seatNumber: 'DEMO-087',
@@ -55,7 +55,7 @@ class CandidateRequestedSearchTest extends TestCase
             'guard_name' => 'web',
         ]);
         $permission = \Spatie\Permission\Models\Permission::query()->firstOrCreate([
-            'name' => 'ViewAny:CandidateRequested',
+            'name' => 'ViewAny:CandidateEntranceStatistic',
             'guard_name' => 'web',
         ]);
         $role->givePermissionTo($permission);
@@ -73,7 +73,7 @@ class CandidateRequestedSearchTest extends TestCase
 
         $this->actingAs($admin);
 
-        Livewire::test(ListCandidateRequested::class)
+        Livewire::test(ListCandidateEntranceStatistics::class)
             ->set('tableSearch', 'NO_SUCH_QA_927')
             ->call('resetTableSearch')
             ->assertSet('tableSearch', '');
@@ -81,14 +81,14 @@ class CandidateRequestedSearchTest extends TestCase
 
     private function search(string $term): Builder
     {
-        $query = CandidateRequestedResource::getEloquentQuery();
-        $method = new ReflectionMethod(CandidateRequestedTable::class, 'applyGlobalSearch');
+        $query = CandidateEntranceStatisticResource::getEloquentQuery();
+        $method = new ReflectionMethod(CandidateEntranceStatisticsTable::class, 'applyGlobalSearch');
         $method->invoke(null, $query, $term);
 
         return $query;
     }
 
-    private function createEntry(string $seatNumber, string $nameEnglish, string $nameKhmer): CandidateRequested
+    private function createEntry(string $seatNumber, string $nameEnglish, string $nameKhmer): CandidateEntranceStatistic
     {
         $username = strtolower(str_replace('-', '_', $seatNumber)).'_'.strtolower(str_replace(' ', '_', $nameEnglish));
         $user = User::query()->create([
@@ -111,7 +111,7 @@ class CandidateRequestedSearchTest extends TestCase
             'requires_payment' => false,
         ]);
 
-        $entry = CandidateRequested::query()->create([
+        $entry = CandidateEntranceStatistic::query()->create([
             'custom_form_id' => $form->id,
             'created_by' => $user->id,
             'data' => [

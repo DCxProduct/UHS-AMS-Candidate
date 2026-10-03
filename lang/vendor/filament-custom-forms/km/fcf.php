@@ -28,11 +28,16 @@
          'is_active' => 'សកម្ម',
          'allowed_roles' => 'តួនាទីអាចប្រើប្រាស់',
          'passed_result_menu' => 'ម៉ឺនុយបេក្ខជនជាប់',
+         'statistics_menu' => 'ម៉ឺនុយស្ថិតិបេក្ខជន',
          'requires_payment' => 'តម្រូវឱ្យបង់ប្រាក់សម្រាប់ទម្រង់នេះ',
          'details' => 'ព័ត៌មានលម្អិតនៃទម្រង់',
          'passed_result_menu_options' => [
              'exam_results' => 'បេក្ខជនជាប់ប្រឡងចូលជ័យលាភី',
              'exit_exam_results' => 'បេក្ខជនជាប់ប្រឡងចេញជ័យលាភី',
+         ],
+         'statistics_menu_options' => [
+             'entrance_exam_statistics' => 'ស្ថិតិបេក្ខជនប្រឡងចូល',
+             'exit_exam_statistics' => 'ស្ថិតិបេក្ខជនប្រឡងចេញ',
          ],
          'menu_placement' => 'ទីតាំងបង្ហាញ',
          'menu_parent' => 'ម៉ឺនុយមេ',
