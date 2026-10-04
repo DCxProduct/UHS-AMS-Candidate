@@ -50,6 +50,7 @@ return [
 
     'password' => 'ពាក្យសម្ងាត់',
     'enter_password' => 'បញ្ចូលពាក្យសម្ងាត់',
+    'register_password_placeholder' => 'សូមដាក់ពាក្យសម្ងាត់យ៉ាងតិច8ខ្ទង់',
     'password_required' => 'សូមបញ្ចូលពាក្យសម្ងាត់។',
     'password_min' => 'ពាក្យសម្ងាត់ត្រូវមានយ៉ាងហោចណាស់ 8 តួអក្សរ។',
     'password_confirmed' => 'ការបញ្ជាក់ពាក្យសម្ងាត់មិនត្រឹមត្រូវទេ។',

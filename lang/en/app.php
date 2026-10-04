@@ -50,6 +50,7 @@ return [
 
     'password' => 'Password',
     'enter_password' => 'Enter password',
+    'register_password_placeholder' => 'Enter a password with at least 8 characters',
     'password_required' => 'Password is required.',
     'password_min' => 'Password must be at least 8 characters.',
     'password_confirmed' => 'Password confirmation does not match.',

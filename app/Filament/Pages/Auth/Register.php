@@ -159,7 +159,7 @@ class Register extends BaseRegister
 
                 TextInput::make('password')
                     ->label(__('app.password'))
-                    ->placeholder(__('app.enter_password'))
+                    ->placeholder(__('app.register_password_placeholder'))
                     ->prefixIcon('heroicon-o-lock-closed')
                     ->password()
                     ->revealable()
