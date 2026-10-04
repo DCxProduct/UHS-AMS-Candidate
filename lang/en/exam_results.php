@@ -28,6 +28,8 @@ return [
     'seat_number' => 'Seat Number',
     'name_khmer' => 'Name (Khmer)',
     'name_latin' => 'Name (Latin)',
+    'first_name_latin' => 'First Name (Latin)',
+    'last_name_latin' => 'Last Name (Latin)',
     'gender' => 'Gender',
     'date_of_birth' => 'Date of Birth',
     'exam_date' => 'Exam Date',
