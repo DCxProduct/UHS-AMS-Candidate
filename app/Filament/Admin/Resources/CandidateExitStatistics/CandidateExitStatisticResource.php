@@ -29,6 +29,15 @@ class CandidateExitStatisticResource extends Resource
         return __('navigation.candidate_exit_statistics');
     }
 
+    public static function getNavigationBadge(): ?string
+    {
+        return number_format(
+            static::getEloquentQuery()
+                ->where('candidate_status', 'pending')
+                ->count(),
+        );
+    }
+
     public static function getNavigationGroup(): ?string
     {
         return __('navigation.groups.candidates');

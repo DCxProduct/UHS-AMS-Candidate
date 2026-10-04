@@ -31,6 +31,11 @@ class ExamResultResource extends Resource
         return __('navigation.exam_results');
     }
 
+    public static function getNavigationBadge(): ?string
+    {
+        return number_format(static::getEloquentQuery()->count());
+    }
+
     public static function getNavigationGroup(): ?string
     {
         return __('navigation.groups.candidates');
