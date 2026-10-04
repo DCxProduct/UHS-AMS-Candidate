@@ -76,33 +76,6 @@ class Register extends BaseRegister
                     ->default('student')
                     ->dehydrated(true),
 
-                TextInput::make('username')
-                    ->label(__('app.username'))
-                    ->placeholder(__('app.enter_username'))
-                    ->required()
-                    ->unique(User::class, 'username')
-                    ->prefixIcon('heroicon-o-identification')
-                    ->rules([
-                        'required',
-                        'string',
-                        'regex:/^[a-z0-9_]+$/',
-                        Rule::unique('system_users', 'username'),
-                    ])
-                    ->extraInputAttributes([
-                        'oninput' => "this.value = this.value.toLowerCase().replace(/[^a-z0-9_]/g, '')",
-                        'pattern' => '[a-z0-9_]+',
-                    ])
-                    ->dehydrateStateUsing(fn ($state) => blank($state)
-                        ? null
-                        : Str::lower(trim((string) $state))
-                    )
-                    ->validationMessages([
-                        'required' => __('app.username_required'),
-                        'unique' => __('app.username_unique'),
-                        'regex' => __('app.username_english_only'),
-                    ])
-                    ->autofocus(),
-
                 TextInput::make('phone')
                     ->label(__('app.phone_number'))
                     ->placeholder(__('app.enter_phone_number'))
@@ -111,6 +84,7 @@ class Register extends BaseRegister
                     ->inputMode('numeric')
                     ->minLength(9)
                     ->maxLength(10)
+                    ->autofocus()
                     ->rules([
                         'required',
                         'regex:/^[0-9]{9,10}$/',
@@ -159,7 +133,7 @@ class Register extends BaseRegister
 
                 TextInput::make('password')
                     ->label(__('app.password'))
-                    ->placeholder(__('app.enter_password'))
+                    ->placeholder(__('app.register_password_placeholder'))
                     ->prefixIcon('heroicon-o-lock-closed')
                     ->password()
                     ->revealable()
@@ -310,7 +284,6 @@ class Register extends BaseRegister
 
     protected function handleRegistration(array $data): Model
     {
-        $username = Str::lower(trim((string) ($data['username'] ?? '')));
         $studentRole = UserTypeOptions::resolve($data['student_role'] ?? null);
 
         $phone = blank($data['phone'] ?? null)
@@ -321,6 +294,7 @@ class Register extends BaseRegister
             ? Str::lower(trim((string) $data['email']))
             : null;
 
+        $username = $this->generateInternalUsername($phone);
         $dateOfBirth = '2000-01-01';
 
         return DB::transaction(function () use (
@@ -420,6 +394,22 @@ class Register extends BaseRegister
 
             return $user;
         });
+    }
+
+    protected function generateInternalUsername(?string $phone): string
+    {
+        $baseUsername = 'student_' . ($phone ?: Str::lower(Str::random(12)));
+        $username = $baseUsername;
+        $suffix = 1;
+
+        while (
+            User::withTrashed()->where('username', $username)->exists()
+            || SystemUser::withTrashed()->where('username', $username)->exists()
+        ) {
+            $username = $baseUsername . '_' . $suffix++;
+        }
+
+        return $username;
     }
 
     protected function ensureCaptchaChallenge(): void

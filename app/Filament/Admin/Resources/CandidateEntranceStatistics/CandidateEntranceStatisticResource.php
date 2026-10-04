@@ -33,6 +33,20 @@ class CandidateEntranceStatisticResource extends Resource
         return __('navigation.candidate_entrance_statistics');
     }
 
+    public static function getNavigationBadge(): ?string
+    {
+        return number_format(
+            static::getEloquentQuery()
+                ->where(function (Builder $query): void {
+                    $query
+                        ->whereNull('data->candidate_status')
+                        ->orWhere('data->candidate_status', '')
+                        ->orWhere('data->candidate_status', 'pending');
+                })
+                ->count(),
+        );
+    }
+
     public static function getNavigationGroup(): ?string
     {
         return __('navigation.groups.candidates');

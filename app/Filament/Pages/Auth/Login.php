@@ -56,8 +56,8 @@ class Login extends BaseLogin
         return $schema
             ->components([
                 TextInput::make('login')
-                    ->label(__('app.username_email_phone'))
-                    ->placeholder(__('app.username_email_phone'))
+                    ->label(__('app.email_or_phone'))
+                    ->placeholder(__('app.enter_email_or_phone'))
                     ->required()
                     ->autofocus()
                     ->autocomplete('username')
@@ -104,14 +104,16 @@ class Login extends BaseLogin
 
         $normalizedLogin = Str::lower($login);
         $normalizedPhone = preg_replace('/[^0-9]/', '', $login);
+        $isPhoneLogin = preg_match('/^[+0-9\\s().-]+$/', $login) === 1
+            && strlen($normalizedPhone) >= 9;
 
         $user = User::query()
-            ->where(function ($query) use ($normalizedLogin, $normalizedPhone): void {
+            ->where(function ($query) use ($normalizedLogin, $normalizedPhone, $isPhoneLogin): void {
                 $query
                     ->whereRaw('LOWER(username) = ?', [$normalizedLogin])
                     ->orWhereRaw('LOWER(email) = ?', [$normalizedLogin]);
 
-                if (! blank($normalizedPhone)) {
+                if ($isPhoneLogin) {
                     $query->orWhere('phone', $normalizedPhone);
                 }
             })

@@ -28,6 +28,8 @@ return [
     'seat_number' => 'លេខតុ',
     'name_khmer' => 'ឈ្មោះ (ខ្មែរ)',
     'name_latin' => 'ឈ្មោះ (ឡាតាំង)',
+    'first_name_latin' => 'នាមត្រកូល (ឡាតាំង)',
+    'last_name_latin' => 'នាមខ្លួន (ឡាតាំង)',
     'gender' => 'ភេទ',
     'date_of_birth' => 'ថ្ងៃខែឆ្នាំកំណើត',
     'exam_date' => 'ថ្ងៃប្រឡង',

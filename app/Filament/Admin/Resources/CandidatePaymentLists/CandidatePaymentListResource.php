@@ -36,6 +36,11 @@ class CandidatePaymentListResource extends Resource
         return __('candidate_payment_lists.navigation_label');
     }
 
+    public static function getNavigationBadge(): ?string
+    {
+        return number_format(static::getEloquentQuery()->count());
+    }
+
     public static function getNavigationGroup(): string | UnitEnum | null
     {
         return __('navigation.groups.cashier');

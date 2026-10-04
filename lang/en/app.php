@@ -24,6 +24,8 @@ return [
 
     'username_email_phone' => 'Username, Email, or Phone number',
     'enter_username_email_phone' => 'Enter username, email, or phone number',
+    'email_or_phone' => 'Email or Phone number',
+    'enter_email_or_phone' => 'Enter email or phone number',
 
     'username' => 'Username',
     'enter_username' => 'Enter username',
@@ -50,6 +52,7 @@ return [
 
     'password' => 'Password',
     'enter_password' => 'Enter password',
+    'register_password_placeholder' => 'Enter a password with at least 8 characters',
     'password_required' => 'Password is required.',
     'password_min' => 'Password must be at least 8 characters.',
     'password_confirmed' => 'Password confirmation does not match.',
@@ -70,7 +73,7 @@ return [
 
     'remember_me' => 'Remember me',
 
-    'login_required' => 'Username, email, or phone number is required.',
+    'login_required' => 'Email or phone number is required.',
     'invalid_credentials' => 'These credentials do not match our records.',
     'account_inactive' => 'Your account is inactive. Please contact administrator.',
     'no_panel_permission' => 'You do not have permission to access this panel.',
@@ -428,7 +431,7 @@ return [
     'form_currently_available' => 'This form is currently available.',
     'application_not_open_yet' => 'This application is not open yet.',
 
-    'login_account_not_found' => 'No account found with this username, email, or phone number.',
+    'login_account_not_found' => 'No account found with this email or phone number.',
     'login_wrong_password' => 'Your password is incorrect. Please try again.',
     'register_success_title' => 'Registration successful',
     'register_success_body' => 'Your account has been created successfully.',

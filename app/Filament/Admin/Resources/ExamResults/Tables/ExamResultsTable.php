@@ -63,9 +63,17 @@ class ExamResultsTable
                         ->orWhere('data->last_name_kh', 'like', "%{$search}%"))
                     ->toggleable(isToggledHiddenByDefault: false),
 
-                TextColumn::make('name_latin')
-                    ->label(__('exam_results.name_latin'))
-                    ->getStateUsing(fn ($record): string => self::latinName($record))
+                TextColumn::make('first_name_latin')
+                    ->label(__('exam_results.first_name_latin'))
+                    ->getStateUsing(fn ($record): string => self::latinNamePart($record, 'first_name_en'))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => $query
+                        ->where('data->first_name_en', 'like', "%{$search}%")
+                        ->orWhere('data->last_name_en', 'like', "%{$search}%"))
+                    ->toggleable(isToggledHiddenByDefault: false),
+
+                TextColumn::make('last_name_latin')
+                    ->label(__('exam_results.last_name_latin'))
+                    ->getStateUsing(fn ($record): string => self::latinNamePart($record, 'last_name_en'))
                     ->searchable(query: fn (Builder $query, string $search): Builder => $query
                         ->where('data->first_name_en', 'like', "%{$search}%")
                         ->orWhere('data->last_name_en', 'like', "%{$search}%"))
@@ -411,11 +419,17 @@ class ExamResultsTable
                 'value' => fn (CustomFormEntry $record): string => self::khmerName($record),
                 'clean' => fn (CustomFormEntry $record): string => self::khmerName($record),
             ],
-            'name_latin' => [
-                'label' => __('exam_results.name_latin'),
-                'field_key' => 'name_latin',
-                'value' => fn (CustomFormEntry $record): string => self::latinName($record),
-                'clean' => fn (CustomFormEntry $record): string => self::latinName($record),
+            'first_name_latin' => [
+                'label' => __('exam_results.first_name_latin'),
+                'field_key' => 'first_name_en',
+                'value' => fn (CustomFormEntry $record): string => self::latinNamePart($record, 'first_name_en'),
+                'clean' => fn (CustomFormEntry $record): string => self::latinNamePart($record, 'first_name_en'),
+            ],
+            'last_name_latin' => [
+                'label' => __('exam_results.last_name_latin'),
+                'field_key' => 'last_name_en',
+                'value' => fn (CustomFormEntry $record): string => self::latinNamePart($record, 'last_name_en'),
+                'clean' => fn (CustomFormEntry $record): string => self::latinNamePart($record, 'last_name_en'),
             ],
             'gender' => [
                 'label' => __('exam_results.gender'),
@@ -1015,14 +1029,27 @@ class ExamResultsTable
         return filled($name) ? $name : self::entryValue($record, 'name_khmer', $record->creator?->name);
     }
 
-    protected static function latinName($record): string
+    protected static function latinNamePart($record, string $key): string
     {
-        $name = trim(collect([
-            data_get($record->data, 'first_name_en'),
-            data_get($record->data, 'last_name_en'),
-        ])->filter()->join(' '));
+        $value = data_get($record->data, $key);
 
-        return filled($name) ? strtoupper($name) : self::entryValue($record, 'name_latin', $record->creator?->name_latin);
+        if (filled($value)) {
+            return strtoupper((string) $value);
+        }
+
+        $fallback = self::entryValue($record, 'name_latin', $record->creator?->name_latin);
+
+        if ($fallback === '-') {
+            return $fallback;
+        }
+
+        $parts = preg_split('/\s+/', trim($fallback), flags: PREG_SPLIT_NO_EMPTY) ?: [];
+
+        if ($key === 'first_name_en') {
+            return strtoupper((string) ($parts[0] ?? '-'));
+        }
+
+        return strtoupper(implode(' ', array_slice($parts, 1)) ?: '-');
     }
 
     protected static function genderLabel(string $state): string
