@@ -66,6 +66,12 @@ return [
         'created_at' => 'បានបង្កើតនៅ',
     ],
 
+    'summary' => [
+        'total' => 'សរុប',
+        'total_usd' => 'សរុបដុល្លារ',
+        'total_khr' => 'សរុបរៀល',
+    ],
+
     'actions' => [
         'new' => 'បង្កើតថ្មី',
         'create_payment' => 'បង្កើត ការទូទាត់ប្រាក់',

@@ -11,8 +11,9 @@ class TablePdfExporter
         array $headings,
         iterable $rows,
         ?string $title = null,
+        array $summaryRows = [],
     ) {
-        $html = self::html($headings, $rows, $title);
+        $html = self::html($headings, $rows, $title, $summaryRows);
         $fontDirectory = realpath(base_path('packages/chanthoeun/filament-document-builder/resources/fonts'));
 
         $pdf = Pdf::loadHTML($html, [
@@ -45,13 +46,23 @@ class TablePdfExporter
         ]);
     }
 
-    protected static function html(array $headings, iterable $rows, ?string $title): string
+    protected static function html(array $headings, iterable $rows, ?string $title, array $summaryRows = []): string
     {
         $headingHtml = collect($headings)
             ->map(fn ($heading): string => '<th>' . e((string) $heading) . '</th>')
             ->implode('');
 
         $rowHtml = collect($rows)
+            ->map(function (array $row): string {
+                $cells = collect($row)
+                    ->map(fn ($value): string => '<td>' . e((string) $value) . '</td>')
+                    ->implode('');
+
+                return '<tr>' . $cells . '</tr>';
+            })
+            ->implode('');
+
+        $summaryHtml = collect($summaryRows)
             ->map(function (array $row): string {
                 $cells = collect($row)
                     ->map(fn ($value): string => '<td>' . e((string) $value) . '</td>')
@@ -76,6 +87,7 @@ class TablePdfExporter
         th, td { border: 0.5pt solid #777; padding: 4px 5px; vertical-align: middle; }
         th { background-color: #e8eef5; font-weight: bold; text-align: center; }
         td { word-wrap: break-word; }
+        tfoot td { background-color: #e8eef5; color: #1f2937; font-weight: bold; border-top: 1.5pt solid #94a3b8; }
     </style>
 </head>
 <body>
@@ -83,6 +95,7 @@ class TablePdfExporter
     <table>
         <thead><tr>' . $headingHtml . '</tr></thead>
         <tbody>' . $rowHtml . '</tbody>
+        <tfoot>' . $summaryHtml . '</tfoot>
     </table>
 </body>
 </html>';

@@ -144,6 +144,18 @@ body,
     line-height: 1.8 !important;
 }
 
+.fi-ta-summary-row td:has(.payment-total-summary),
+.fi-ta-summary-row th:has(.payment-total-summary) {
+    background-color: #e8eef5 !important;
+    color: #1f2937 !important;
+    border-top: 1px solid #94a3b8 !important;
+}
+
+.payment-total-summary {
+    color: #1f2937 !important;
+    font-weight: 700 !important;
+}
+
 .fi-tabs,
 .fi-tabs *,
 .fi-fo-wizard,
@@ -407,4 +419,3 @@ html.dark .fi-topbar,
 .dark .fi-topbar {
     background-color: #030712 !important;
 }
-
