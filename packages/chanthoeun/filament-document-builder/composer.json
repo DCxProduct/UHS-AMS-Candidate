@@ -23,7 +23,9 @@
         "illuminate/contracts": "^10.0|^11.0|^12.0|^13.0",
         "filament/filament": "^4.0|^5.0",
         "carlos-meneses/laravel-mpdf": "^2.1",
-        "amidesfahani/filament-tinyeditor": "^4.0|^5.0"
+        "amidesfahani/filament-tinyeditor": "^4.0|^5.0",
+        "simplesoftwareio/simple-qrcode": "^4.2",
+        "picqer/php-barcode-generator": "^3.0"
     },
     "autoload": {
         "psr-4": {

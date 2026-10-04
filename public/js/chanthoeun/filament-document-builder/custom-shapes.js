@@ -89,6 +89,125 @@ function registerCustomShapes() {
                     callback(items);
                 }
             });
+
+            editor.ui.registry.addButton('insert_qrcode', {
+                text: 'QR Code',
+                icon: 'image',
+                tooltip: 'Insert QR Code',
+                onAction: function () {
+                    var vars = editor.getParam('document_variables', []);
+
+                    if (vars.length === 0) {
+                        editor.notificationManager.open({
+                            text: 'No variables available. Please select a model first.',
+                            type: 'warning',
+                            timeout: 3000
+                        });
+                        return;
+                    }
+
+                    editor.windowManager.open({
+                        title: 'Insert QR Code',
+                        body: {
+                            type: 'panel',
+                            items: [
+                                {
+                                    type: 'selectbox',
+                                    name: 'variable',
+                                    label: 'Variable',
+                                    items: vars.map(function (variable) {
+                                        return { value: variable, text: variable };
+                                    })
+                                },
+                                {
+                                    type: 'input',
+                                    name: 'size',
+                                    label: 'Size (px)',
+                                    inputMode: 'numeric',
+                                    placeholder: '100'
+                                }
+                            ]
+                        },
+                        buttons: [
+                            { type: 'cancel', name: 'cancel', text: 'Cancel' },
+                            { type: 'submit', name: 'submit', text: 'Insert', primary: true }
+                        ],
+                        initialData: { variable: vars[0], size: '100' },
+                        onSubmit: function (api) {
+                            var data = api.getData();
+                            var size = Math.max(10, Math.min(1000, parseInt(data.size, 10) || 100));
+
+                            editor.insertContent('{{#qrcode ' + data.variable + ' size=' + size + '}}');
+                            api.close();
+                        }
+                    });
+                }
+            });
+
+            editor.ui.registry.addButton('insert_barcode', {
+                text: 'Barcode',
+                icon: 'image',
+                tooltip: 'Insert Barcode',
+                onAction: function () {
+                    var vars = editor.getParam('document_variables', []);
+
+                    if (vars.length === 0) {
+                        editor.notificationManager.open({
+                            text: 'No variables available. Please select a model first.',
+                            type: 'warning',
+                            timeout: 3000
+                        });
+                        return;
+                    }
+
+                    var barcodeTypes = [
+                        { value: 'C128', text: 'Code 128 (General)' },
+                        { value: 'C128A', text: 'Code 128 A' },
+                        { value: 'C128B', text: 'Code 128 B' },
+                        { value: 'C128C', text: 'Code 128 C (Numeric)' },
+                        { value: 'C39', text: 'Code 39' },
+                        { value: 'EAN13', text: 'EAN-13' },
+                        { value: 'EAN8', text: 'EAN-8' },
+                        { value: 'UPCA', text: 'UPC-A' },
+                        { value: 'UPCE', text: 'UPC-E' },
+                        { value: 'I25', text: 'Interleaved 2 of 5' }
+                    ];
+
+                    editor.windowManager.open({
+                        title: 'Insert Barcode',
+                        body: {
+                            type: 'panel',
+                            items: [
+                                {
+                                    type: 'selectbox',
+                                    name: 'variable',
+                                    label: 'Variable',
+                                    items: vars.map(function (variable) {
+                                        return { value: variable, text: variable };
+                                    })
+                                },
+                                { type: 'selectbox', name: 'type', label: 'Barcode Type', items: barcodeTypes },
+                                { type: 'input', name: 'width', label: 'Width factor (px per bar)', inputMode: 'numeric', placeholder: '2' },
+                                { type: 'input', name: 'height', label: 'Height (px)', inputMode: 'numeric', placeholder: '30' }
+                            ]
+                        },
+                        buttons: [
+                            { type: 'cancel', name: 'cancel', text: 'Cancel' },
+                            { type: 'submit', name: 'submit', text: 'Insert', primary: true }
+                        ],
+                        initialData: { variable: vars[0], type: 'C128', width: '2', height: '30' },
+                        onSubmit: function (api) {
+                            var data = api.getData();
+                            var width = Math.max(1, Math.min(10, parseInt(data.width, 10) || 2));
+                            var height = Math.max(10, Math.min(200, parseInt(data.height, 10) || 30));
+                            var type = data.type || 'C128';
+
+                            editor.insertContent('{{#barcode ' + data.variable + ' type=' + type + ' width=' + width + ' height=' + height + '}}');
+                            api.close();
+                        }
+                    });
+                }
+            });
         });
     } else {
         setTimeout(registerCustomShapes, 100);

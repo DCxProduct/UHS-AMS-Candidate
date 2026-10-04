@@ -25,6 +25,7 @@ npm run build
 Configure your `.env` file and update the database credentials.
 
 ```bash
+
 cp .env.example .env
 ```
 
