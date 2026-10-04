@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Mccarlosen\LaravelMpdf\Facades\LaravelMpdf as Pdf;
+use Picqer\Barcode\BarcodeGeneratorPNG;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class DocumentRenderer
 {
@@ -98,10 +100,140 @@ class DocumentRenderer
                         $itemName => $item,
                     ];
 
+                    $blockContent = $this->replaceQrCodes($blockContent, $loopData);
+                    $blockContent = $this->replaceBarcodes($blockContent, $loopData);
                     $result .= $this->replaceVariables($blockContent, $loopData);
                 }
 
                 return $result;
+            },
+            $content
+        );
+    }
+
+    /**
+     * Generate a QR code image tag from a value as an embedded SVG.
+     */
+    protected function generateQrCodeTag(string $value, int $size): string
+    {
+        try {
+            $svg = (string) QrCode::format('svg')->size($size)->generate($value);
+
+            return '<img src="data:image/svg+xml;base64,'.base64_encode($svg).'" width="'.$size.'" height="'.$size.'" style="display:inline-block;" />';
+        } catch (\Throwable $e) {
+            report($e);
+
+            return '<!-- QR code generation failed -->';
+        }
+    }
+
+    protected function resolveTemplateValue(array|object $data, string $key): mixed
+    {
+        $value = data_get($data, $key);
+        $context = $data;
+
+        while ($value === null && is_array($context) && array_key_exists('_parent', $context)) {
+            $context = $context['_parent'];
+            $value = data_get($context, $key);
+        }
+
+        if ($value === null && $context instanceof Model && is_array($context->getAttribute('data'))) {
+            $value = data_get($context->getAttribute('data'), $key);
+        }
+
+        return $value;
+    }
+
+    /**
+     * Supported barcode aliases for the barcode generator package.
+     *
+     * @var array<string, string>
+     */
+    protected static array $barcodeTypes = [
+        'C128' => 'TYPE_CODE_128',
+        'C128A' => 'TYPE_CODE_128_A',
+        'C128B' => 'TYPE_CODE_128_B',
+        'C128C' => 'TYPE_CODE_128_C',
+        'C39' => 'TYPE_CODE_39',
+        'C39+' => 'TYPE_CODE_39_CHECKSUM',
+        'C93' => 'TYPE_CODE_93',
+        'EAN13' => 'TYPE_EAN_13',
+        'EAN8' => 'TYPE_EAN_8',
+        'UPCA' => 'TYPE_UPC_A',
+        'UPCE' => 'TYPE_UPC_E',
+        'I25' => 'TYPE_INTERLEAVED_2_5',
+        'S25' => 'TYPE_STANDARD_2_5',
+        'CODABAR' => 'TYPE_CODABAR',
+        'MSI' => 'TYPE_MSI',
+    ];
+
+    /**
+     * Generate a barcode image tag as an embedded PNG.
+     */
+    protected function generateBarcodeTag(string $value, string $type, int $widthFactor, int $height): string
+    {
+        try {
+            $generator = new BarcodeGeneratorPNG;
+            $constant = self::$barcodeTypes[$type] ?? 'TYPE_CODE_128';
+            $png = $generator->getBarcode($value, constant(BarcodeGeneratorPNG::class.'::'.$constant), $widthFactor, $height);
+
+            return '<img src="data:image/png;base64,'.base64_encode($png).'" style="display:inline-block; height:'.$height.'px;" />';
+        } catch (\Throwable $e) {
+            report($e);
+
+            return '<!-- Barcode generation failed -->';
+        }
+    }
+
+    /**
+     * Replace QR code blocks such as {{#qrcode data.student_id size=100}}.
+     */
+    protected function replaceQrCodes(?string $content, array|object $data): ?string
+    {
+        if (empty($content)) {
+            return $content;
+        }
+
+        return preg_replace_callback(
+            '/{{\s*#qrcode\s+([a-zA-Z0-9_\.]+)(?:\s+size=(\d+))?\s*}}/i',
+            function ($matches) use ($data) {
+                $key = trim($matches[1]);
+                $size = isset($matches[2]) ? max(10, min(1000, (int) $matches[2])) : 100;
+                $value = $this->resolveTemplateValue($data, $key);
+
+                if ($value === null || $value === '') {
+                    return '';
+                }
+
+                return $this->generateQrCodeTag((string) $value, $size);
+            },
+            $content
+        );
+    }
+
+    /**
+     * Replace barcode blocks such as {{#barcode data.student_id type=C128 width=2 height=30}}.
+     */
+    protected function replaceBarcodes(?string $content, array|object $data): ?string
+    {
+        if (empty($content)) {
+            return $content;
+        }
+
+        return preg_replace_callback(
+            '/{{\s*#barcode\s+([a-zA-Z0-9_\.]+)(?:\s+type=([a-zA-Z0-9_]+))?(?:\s+width=(\d+))?(?:\s+height=(\d+))?\s*}}/i',
+            function ($matches) use ($data) {
+                $key = trim($matches[1]);
+                $type = isset($matches[2]) ? strtoupper($matches[2]) : 'C128';
+                $widthFactor = isset($matches[3]) ? max(1, min(10, (int) $matches[3])) : 2;
+                $height = isset($matches[4]) ? max(10, min(200, (int) $matches[4])) : 30;
+                $value = $this->resolveTemplateValue($data, $key);
+
+                if ($value === null || $value === '') {
+                    return '';
+                }
+
+                return $this->generateBarcodeTag((string) $value, $type, $widthFactor, $height);
             },
             $content
         );
@@ -122,7 +254,9 @@ class DocumentRenderer
             $key = html_entity_decode(str_replace('&nbsp;', '', $key));
             $key = trim($key);
 
-            if (str_starts_with($key, '#foreach') || str_starts_with($key, '/foreach')) {
+            if (str_starts_with($key, '#foreach') || str_starts_with($key, '/foreach')
+                || str_starts_with($key, '#qrcode') || str_starts_with($key, '/qrcode')
+                || str_starts_with($key, '#barcode') || str_starts_with($key, '/barcode')) {
                 return $matches[0];
             }
 
@@ -635,6 +769,8 @@ class DocumentRenderer
         }
 
         $htmlContent = $this->replaceLoops($htmlContent, $data);
+        $htmlContent = $this->replaceQrCodes($htmlContent, $data);
+        $htmlContent = $this->replaceBarcodes($htmlContent, $data);
         $htmlContent = $this->replaceVariables($htmlContent, $data);
         $htmlContent = $this->localizeFallbackChoiceWords($htmlContent);
         $htmlContent .= $this->attachmentImagesHtml($recordData);

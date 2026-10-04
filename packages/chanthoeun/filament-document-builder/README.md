@@ -8,6 +8,7 @@ It is designed to easily integrate with standalone Filament panels or with other
 
 - **Advanced HTML Designer:** Uses `amidesfahani/filament-tinyeditor` (TinyMCE) instead of the native Tiptap editor to provide robust support for complex HTML structures and native table editing.
 - **Dynamic Variables:** Inject runtime database values directly into your text blocks (e.g., `{{ customer.name }}`). Fallbacks safely to a blank space if data is missing (perfect for printing blank forms).
+- **QR Codes & Barcodes:** Insert QR codes and barcodes from the Document Designer toolbar. The renderer embeds them directly into generated PDFs.
 - **Native PDF Engine:** Powered by `carlos-meneses/laravel-mpdf` (mPDF) for pure PHP generation.
 - **Complex Text Shaping:** Pre-configured with `autoScriptToLang` and `autoLangToFont` to perfectly render complex alphabets like Khmer natively, without needing headless Chrome or Puppeteer.
 - **Easy Integration:** Drop a simple `Action` onto any Filament table to export the current record as a PDF.
@@ -22,6 +23,7 @@ It is designed to easily integrate with standalone Filament panels or with other
 - Filament v4.0 or v5.0
 - TinyMCE (`amidesfahani/filament-tinyeditor`)
 - mPDF (`carlos-meneses/laravel-mpdf`)
+- QR codes (`simplesoftwareio/simple-qrcode`) and barcodes (`picqer/php-barcode-generator`)
 
 *(Note: Node.js, Puppeteer, and Chromium are **no longer required**!)*
 
@@ -110,6 +112,16 @@ This plugin adds several pre-configured shapes to the TinyMCE editor to make des
 
 #### Flexbox Support in mPDF
 By default, mPDF does not support modern CSS Flexbox (`display: inline-flex`), which often breaks designs created in TinyMCE. This plugin **automatically polyfills** Flexbox behaviors (such as `inline-flex`, `align-items`, and `justify-content`) directly in PHP during the export process. Your TinyMCE layouts will render pixel-perfect in the final PDF without requiring complex CSS hacks!
+
+#### QR Codes and Barcodes
+Select **QR Code** or **Barcode** in the Document Designer toolbar, choose a document variable, and insert it into the template. The editor stores a portable tag that is rendered when the PDF is generated:
+
+```text
+{{#qrcode data.student_id size=100}}
+{{#barcode data.student_id type=C128 width=2 height=30}}
+```
+
+QR codes are embedded as SVG images and barcodes as PNG images, so the generated PDF does not need to request external image URLs. The supported barcode types include Code 128, Code 39, EAN-8, EAN-13, UPC-A, UPC-E, and Interleaved 2 of 5.
 
 ### 2. Looping over Data (Table Repeaters)
 If you need to iterate over an array or Eloquent relationship (like line items on an invoice), you can use the built-in `{{#foreach}}` syntax directly in your template.
@@ -213,6 +225,10 @@ protected function getHeaderActions(): array
 
 ## Changelog
 
+### v1.4.0
+- Add QR code and barcode support to document templates.
+- Add QR Code and Barcode actions to the TinyMCE toolbar.
+
 ### v1.0.15
 - **Bug Fix**: Fixed an issue where the TinyMCE editor did not dynamically resize based on the live `page_settings` configuration.
 - **Bug Fix**: Bypassed Filament TinyEditor's `wire:ignore` caching to ensure that the "Insert Variable" dropdown accurately populates when `extra_data_sources` are modified without requiring a page refresh.
@@ -265,4 +281,3 @@ protected function getHeaderActions(): array
 ## License
 
 The MIT License (MIT).
-
