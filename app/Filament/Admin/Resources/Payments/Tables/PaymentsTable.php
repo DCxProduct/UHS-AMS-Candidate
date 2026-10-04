@@ -12,6 +12,7 @@ use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
+use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
@@ -28,6 +29,7 @@ class PaymentsTable
             ->selectable()
             ->recordAction(null)
             ->recordUrl(null)
+            ->summaries(pageCondition: false, allTableCondition: true)
             ->searchPlaceholder(__('payments.search'))
             ->defaultSort('id', 'desc')
             ->columns([
@@ -107,12 +109,25 @@ class PaymentsTable
                 TextColumn::make('amount_usd')
                     ->label(__('payments.table.amount_usd'))
                     ->money('USD')
+                    ->summarize(
+                        Sum::make('amount_usd_total')
+                            ->label(__('payments.summary.total_usd'))
+                            ->money('USD')
+                            ->extraAttributes(['class' => 'payment-total-summary']),
+                    )
                     ->alignCenter()
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('amount_kh')
                     ->label(__('payments.table.amount_kh'))
                     ->formatStateUsing(fn ($state): string => blank($state) ? '-' : number_format((float) $state, 2) . ' KHR')
+                    ->summarize(
+                        Sum::make('amount_khr_total')
+                            ->label(__('payments.summary.total_khr'))
+                            ->numeric(2)
+                            ->suffix(' KHR')
+                            ->extraAttributes(['class' => 'payment-total-summary']),
+                    )
                     ->alignCenter()
                     ->toggleable(isToggledHiddenByDefault: false),
 
@@ -417,12 +432,16 @@ class PaymentsTable
         $filename = 'payment-records-' . now()->format('Y-m-d-His') . '.xlsx';
         $path = storage_path('app/' . uniqid('payment-records-', true) . '.xlsx');
 
+        $records = collect($records);
         $columnKeys ??= array_keys(self::exportColumnDefinitions());
+        $cleanDataRows = self::excelRows($records, $columnKeys);
+        $cleanDataRows[] = self::summaryRow($records, $columnKeys);
 
         self::writeXlsx($path, [
             [
                 'name' => 'Clean Data',
-                'rows' => self::excelRows($records, $columnKeys),
+                'rows' => $cleanDataRows,
+                'styledRows' => [count($cleanDataRows)],
             ],
             [
                 'name' => 'Database Export',
@@ -437,14 +456,17 @@ class PaymentsTable
 
     public static function downloadPdf(iterable $records, ?array $columnKeys = null)
     {
+        $records = collect($records);
         $columnKeys ??= array_keys(self::exportColumnDefinitions());
         $rows = self::excelRows($records, $columnKeys);
+        $headings = array_shift($rows) ?? [];
 
         return TablePdfExporter::download(
             'payment-records-',
-            array_shift($rows) ?? [],
+            $headings,
             $rows,
             __('payments.resource_plural_label'),
+            [self::summaryRow($records, $columnKeys)],
         );
     }
 
@@ -493,18 +515,19 @@ class PaymentsTable
             . '</Relationships>');
         $zip->addFromString('xl/workbook.xml', self::workbookXml($sheets));
         $zip->addFromString('xl/_rels/workbook.xml.rels', self::workbookRelsXml($sheets));
+        $zip->addFromString('xl/styles.xml', self::stylesXml());
 
         foreach (array_values($sheets) as $index => $sheet) {
             $zip->addFromString(
                 'xl/worksheets/sheet' . ($index + 1) . '.xml',
-                self::worksheetXml($sheet['rows'])
+                self::worksheetXml($sheet['rows'], $sheet['styledRows'] ?? [])
             );
         }
 
         $zip->close();
     }
 
-    protected static function worksheetXml(array $rows): string
+    protected static function worksheetXml(array $rows, array $styledRows = []): string
     {
         $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
             . '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
@@ -516,7 +539,8 @@ class PaymentsTable
 
             foreach (array_values($row) as $columnIndex => $value) {
                 $cell = self::columnName($columnIndex + 1) . $excelRow;
-                $xml .= '<c r="' . $cell . '" t="inlineStr"><is><t>' . self::xmlValue($value) . '</t></is></c>';
+                $style = in_array($excelRow, $styledRows, true) ? ' s="1"' : '';
+                $xml .= '<c r="' . $cell . '"' . $style . ' t="inlineStr"><is><t>' . self::xmlValue($value) . '</t></is></c>';
             }
 
             $xml .= '</row>';
@@ -565,6 +589,24 @@ class PaymentsTable
         return collect($columnKeys)
             ->filter(fn (string $key): bool => array_key_exists($key, $definitions))
             ->map(fn (string $key): string => $definitions[$key]['clean']($record, $rowNumber))
+            ->values()
+            ->all();
+    }
+
+    protected static function summaryRow(iterable $records, array $columnKeys): array
+    {
+        $records = collect($records)
+            ->filter(fn (mixed $record): bool => $record instanceof Payment);
+        $totalUsd = (float) $records->sum(fn (Payment $record): float => (float) $record->amount_usd);
+        $totalKhr = (float) $records->sum(fn (Payment $record): float => (float) $record->amount_kh);
+
+        return collect($columnKeys)
+            ->map(fn (string $columnKey): string => match ($columnKey) {
+                'row_number' => __('payments.summary.total'),
+                'amount_usd' => __('payments.summary.total_usd').': $'.number_format($totalUsd, 2),
+                'amount_kh' => __('payments.summary.total_khr').': '.number_format($totalKhr, 2).' KHR',
+                default => '',
+            })
             ->values()
             ->all();
     }
@@ -676,6 +718,7 @@ class PaymentsTable
             . '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
             . '<Default Extension="xml" ContentType="application/xml"/>'
             . '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+            . '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
             . $overrides
             . '</Types>';
     }
@@ -698,10 +741,43 @@ class PaymentsTable
             ->map(fn (int $index): string => '<Relationship Id="rId' . ($index + 1) . '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' . ($index + 1) . '.xml"/>')
             ->implode('');
 
+        $styleRelationId = count($sheets) + 1;
+
         return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
             . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
             . $relationships
+            . '<Relationship Id="rId' . $styleRelationId . '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'
             . '</Relationships>';
+    }
+
+    protected static function stylesXml(): string
+    {
+        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+            . '<fonts count="2">'
+            . '<font><sz val="11"/><name val="Calibri"/><family val="2"/></font>'
+            . '<font><b/><color rgb="FF1F2937"/><sz val="11"/><name val="Calibri"/><family val="2"/></font>'
+            . '</fonts>'
+            . '<fills count="3">'
+            . '<fill><patternFill patternType="none"/></fill>'
+            . '<fill><patternFill patternType="gray125"/></fill>'
+            . '<fill><patternFill patternType="solid"><fgColor rgb="FFE8EEF5"/><bgColor indexed="64"/></patternFill></fill>'
+            . '</fills>'
+            . '<borders count="2">'
+            . '<border><left/><right/><top/><bottom/><diagonal/></border>'
+            . '<border><left/><right/><top style="thin"><color rgb="FF94A3B8"/></top><bottom/><diagonal/></border>'
+            . '</borders>'
+            . '<cellStyleXfs count="1">'
+            . '<xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>'
+            . '</cellStyleXfs>'
+            . '<cellXfs count="2">'
+            . '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
+            . '<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>'
+            . '</cellXfs>'
+            . '<cellStyles count="1">'
+            . '<cellStyle name="Normal" xfId="0" builtinId="0"/>'
+            . '</cellStyles>'
+            . '</styleSheet>';
     }
 
     protected static function sheetName(string $name): string

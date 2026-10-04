@@ -66,6 +66,12 @@ return [
         'created_at' => 'Created At',
     ],
 
+    'summary' => [
+        'total' => 'Total',
+        'total_usd' => 'Total USD',
+        'total_khr' => 'Total KHR',
+    ],
+
     'actions' => [
         'new' => 'Create New',
         'create_payment' => 'Create Record Payment',
