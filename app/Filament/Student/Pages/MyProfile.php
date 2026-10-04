@@ -50,7 +50,6 @@ class MyProfile extends Page implements HasForms
 
         $this->form->fill([
             'name' => $user->name,
-            'username' => $user->username,
             'email' => $user->email,
             'phone' => $user->phone,
             'avatar' => $this->normalizeAvatar($user->avatar),
@@ -74,14 +73,6 @@ class MyProfile extends Page implements HasForms
                                 ->label(__('student_profile.full_name'))
                                 ->required()
                                 ->maxLength(255)
-                                ->columnSpan(6),
-
-                            TextInput::make('username')
-                                ->label(__('student_profile.username'))
-                                ->maxLength(255)
-                                ->rules([
-                                    fn () => Rule::unique('users', 'username')->ignore(Auth::id()),
-                                ])
                                 ->columnSpan(6),
 
                             TextInput::make('email')
@@ -156,7 +147,6 @@ class MyProfile extends Page implements HasForms
 
         $payload = [
             'name' => $data['name'] ?? $user->name,
-            'username' => $data['username'] ?? null,
             'email' => $data['email'] ?? $user->email,
             'phone' => $data['phone'] ?? null,
             'avatar' => array_key_exists('avatar', $data)
@@ -176,7 +166,6 @@ class MyProfile extends Page implements HasForms
 
         $this->form->fill([
             'name' => $freshUser->name,
-            'username' => $freshUser->username,
             'email' => $freshUser->email,
             'phone' => $freshUser->phone,
             'avatar' => $this->normalizeAvatar($freshUser->avatar),
