@@ -213,6 +213,62 @@ class DocumentRenderer
 
     /**
      * Replace barcode blocks such as {{#barcode data.student_id type=C128 width=2 height=30}}.
+     * Multiple fields can be combined with a pipe, for example:
+     * {{#barcode first_name|last_name|phone type=C128 width=2 height=30}}.
+     */
+    protected function mergeAdjacentBarcodes(?string $content): ?string
+    {
+        if (empty($content)) {
+            return $content;
+        }
+
+        $tagPattern = '{{\s*#barcode\s+[a-zA-Z0-9_\.]+(?:\|[a-zA-Z0-9_\.]+)*(?:\s+type=[a-zA-Z0-9_]+)?(?:\s+width=\d+)?(?:\s+height=\d+)?\s*}}';
+
+        return preg_replace_callback(
+            '/'.$tagPattern.'(?:\s*'.$tagPattern.')+/i',
+            function (array $matches): string {
+                preg_match_all(
+                    '/{{\s*#barcode\s+([a-zA-Z0-9_\.]+(?:\|[a-zA-Z0-9_\.]+)*)(?:\s+type=([a-zA-Z0-9_]+))?(?:\s+width=(\d+))?(?:\s+height=(\d+))?\s*}}/i',
+                    $matches[0],
+                    $tags,
+                    PREG_SET_ORDER
+                );
+
+                if (count($tags) < 2) {
+                    return $matches[0];
+                }
+
+                $type = isset($tags[0][2]) ? strtoupper($tags[0][2]) : 'C128';
+                $widthFactor = isset($tags[0][3]) ? max(1, min(10, (int) $tags[0][3])) : 2;
+                $height = isset($tags[0][4]) ? max(10, min(200, (int) $tags[0][4])) : 30;
+                $keys = [];
+
+                foreach ($tags as $tag) {
+                    $tagType = isset($tag[2]) ? strtoupper($tag[2]) : 'C128';
+                    $tagWidthFactor = isset($tag[3]) ? max(1, min(10, (int) $tag[3])) : 2;
+                    $tagHeight = isset($tag[4]) ? max(10, min(200, (int) $tag[4])) : 30;
+
+                    if ($tagType !== $type || $tagWidthFactor !== $widthFactor || $tagHeight !== $height) {
+                        return $matches[0];
+                    }
+
+                    $keys = array_merge($keys, explode('|', $tag[1]));
+                }
+
+                $keys = array_values(array_unique(array_filter(array_map('trim', $keys))));
+
+                if ($keys === []) {
+                    return $matches[0];
+                }
+
+                return '{{#barcode '.implode('|', $keys).' type='.$type.' width='.$widthFactor.' height='.$height.'}}';
+            },
+            $content
+        );
+    }
+
+    /**
+     * Replace barcode blocks after adjacent barcode tags have been combined.
      */
     protected function replaceBarcodes(?string $content, array|object $data): ?string
     {
@@ -220,20 +276,42 @@ class DocumentRenderer
             return $content;
         }
 
+        $content = $this->mergeAdjacentBarcodes($content);
+
         return preg_replace_callback(
-            '/{{\s*#barcode\s+([a-zA-Z0-9_\.]+)(?:\s+type=([a-zA-Z0-9_]+))?(?:\s+width=(\d+))?(?:\s+height=(\d+))?\s*}}/i',
+            '/{{\s*#barcode\s+([a-zA-Z0-9_\.]+(?:\|[a-zA-Z0-9_\.]+)*)(?:\s+type=([a-zA-Z0-9_]+))?(?:\s+width=(\d+))?(?:\s+height=(\d+))?\s*}}/i',
             function ($matches) use ($data) {
-                $key = trim($matches[1]);
+                $keys = array_values(array_filter(array_map('trim', explode('|', $matches[1]))));
                 $type = isset($matches[2]) ? strtoupper($matches[2]) : 'C128';
                 $widthFactor = isset($matches[3]) ? max(1, min(10, (int) $matches[3])) : 2;
                 $height = isset($matches[4]) ? max(10, min(200, (int) $matches[4])) : 30;
-                $value = $this->resolveTemplateValue($data, $key);
 
-                if ($value === null || $value === '') {
+                if ($keys === []) {
                     return '';
                 }
 
-                return $this->generateBarcodeTag((string) $value, $type, $widthFactor, $height);
+                $values = array_map(fn (string $key): mixed => $this->resolveTemplateValue($data, $key), $keys);
+
+                if (count($values) === 1) {
+                    $value = $values[0];
+
+                    if ($value === null || $value === '') {
+                        return '';
+                    }
+
+                    return $this->generateBarcodeTag((string) $value, $type, $widthFactor, $height);
+                }
+
+                $combinedValue = implode(' ', array_values(array_filter(
+                    array_map(static fn (mixed $value): string => trim((string) $value), $values),
+                    static fn (string $value): bool => $value !== ''
+                )));
+
+                if ($combinedValue === '') {
+                    return '';
+                }
+
+                return $this->generateBarcodeTag($combinedValue, $type, $widthFactor, $height);
             },
             $content
         );

@@ -119,9 +119,15 @@ Select **QR Code** or **Barcode** in the Document Designer toolbar, choose a doc
 ```text
 {{#qrcode data.student_id size=100}}
 {{#barcode data.student_id type=C128 width=2 height=30}}
+{{#barcode first_name|last_name|phone type=C128 width=2 height=30}}
+{{#barcode data.first_name|data.last_name|data.phone type=C128 width=2 height=30}}
 ```
 
 QR codes are embedded as SVG images and barcodes as PNG images, so the generated PDF does not need to request external image URLs. The supported barcode types include Code 128, Code 39, EAN-8, EAN-13, UPC-A, UPC-E, and Interleaved 2 of 5.
+
+Use `|` between any available fields to encode multiple values in one barcode. Fields are read in the order written, trimmed, and joined with one space. Empty fields are skipped.
+
+Adjacent barcode tags with the same type, width, and height are also combined automatically, so separate father and mother barcode tags are scanned as one value.
 
 ### 2. Looping over Data (Table Repeaters)
 If you need to iterate over an array or Eloquent relationship (like line items on an invoice), you can use the built-in `{{#foreach}}` syntax directly in your template.
