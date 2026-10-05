@@ -5,13 +5,12 @@ namespace Database\Seeders;
 use App\Models\SystemUser;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
-use RuntimeException;
 
 class StaffRoleAccountsSeeder extends Seeder
 {
     public function run(): void
     {
-        $password = Hash::make($this->seededPassword('SEEDED_STAFF_PASSWORD'));
+        $password = Hash::make('12345678');
 
         foreach ($this->accounts() as $account) {
             $systemUser = SystemUser::query()->updateOrCreate(
@@ -32,29 +31,6 @@ class StaffRoleAccountsSeeder extends Seeder
 
             $systemUser->syncLoginUser();
         }
-    }
-
-    /**
-     * Resolve the password used when seeding staff accounts.
-     *
-     * Production must configure the password explicitly: seeders run on every
-     * deployment, so a hard-coded value would silently reset live accounts.
-     */
-    protected function seededPassword(string $environmentKey): string
-    {
-        $password = env($environmentKey);
-
-        if (filled($password)) {
-            return (string) $password;
-        }
-
-        if (app()->environment('production')) {
-            throw new RuntimeException(
-                "The {$environmentKey} environment variable must be set before seeding staff accounts in production."
-            );
-        }
-
-        return '12345678';
     }
 
     protected function accounts(): array

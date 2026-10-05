@@ -2,37 +2,28 @@
 
 namespace Tests\Unit;
 
+use App\Models\Role;
+use App\Models\User;
 use Database\Seeders\AdminUserSeeder;
-use ReflectionMethod;
-use RuntimeException;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 class AdminUserSeederTest extends TestCase
 {
-    public function test_non_production_seeding_keeps_existing_local_test_password(): void
+    use RefreshDatabase;
+
+    public function test_admin_seeding_uses_the_fixed_password(): void
     {
-        $method = new ReflectionMethod(AdminUserSeeder::class, 'seededPassword');
+        Role::query()->create([
+            'name' => 'admin',
+            'guard_name' => 'web',
+        ]);
 
-        $this->assertSame(
-            '12345678',
-            $method->invoke(new AdminUserSeeder, 'SEEDED_ADMIN_PASSWORD'),
-        );
-    }
+        (new AdminUserSeeder)->run();
 
-    public function test_production_seeding_requires_explicit_password_configuration(): void
-    {
-        $previousEnvironment = $this->app['env'];
-        $this->app['env'] = 'production';
+        $admin = User::query()->where('username', 'admin')->firstOrFail();
 
-        try {
-            $method = new ReflectionMethod(AdminUserSeeder::class, 'seededPassword');
-
-            $this->expectException(RuntimeException::class);
-            $this->expectExceptionMessage('SEEDED_ADMIN_PASSWORD');
-
-            $method->invoke(new AdminUserSeeder, 'SEEDED_ADMIN_PASSWORD');
-        } finally {
-            $this->app['env'] = $previousEnvironment;
-        }
+        $this->assertTrue(Hash::check('12345678', $admin->password));
     }
 }

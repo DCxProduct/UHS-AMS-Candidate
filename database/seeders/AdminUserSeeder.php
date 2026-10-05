@@ -7,13 +7,12 @@ use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
-use RuntimeException;
 
 class AdminUserSeeder extends Seeder
 {
     public function run(): void
     {
-        $adminPassword = $this->seededPassword('SEEDED_ADMIN_PASSWORD');
+        $adminPassword = '12345678';
 
         $data = [
             'registration_type' => 'admin',
@@ -58,26 +57,4 @@ class AdminUserSeeder extends Seeder
         }
     }
 
-    /**
-     * Resolve the password used when seeding a privileged account.
-     *
-     * Production must configure the password explicitly: seeders run on every
-     * deployment, so a hard-coded value would silently reset the live account.
-     */
-    protected function seededPassword(string $environmentKey): string
-    {
-        $password = env($environmentKey);
-
-        if (filled($password)) {
-            return (string) $password;
-        }
-
-        if (app()->environment('production')) {
-            throw new RuntimeException(
-                "The {$environmentKey} environment variable must be set before seeding this account in production."
-            );
-        }
-
-        return '12345678';
-    }
 }
