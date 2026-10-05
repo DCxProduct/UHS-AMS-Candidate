@@ -15,6 +15,13 @@ return [
     'candidate_type' => 'As a Candidate',
     'select_candidate_type' => 'Please Select a Request',
     'candidate_type_required' => 'Please select a user type.',
+    'first_name_latin' => 'First Name (Latin)',
+    'last_name_latin' => 'Last Name (Latin)',
+    'enter_first_name_latin' => 'Enter first name in Latin',
+    'enter_last_name_latin' => 'Enter last name in Latin',
+    'first_name_latin_required' => 'First Name (Latin) is required.',
+    'last_name_latin_required' => 'Last Name (Latin) is required.',
+    'latin_name_regex' => 'Only Latin letters, spaces, hyphens, apostrophes, and periods are allowed.',
 
     'national_examination' => 'National Examination',
 

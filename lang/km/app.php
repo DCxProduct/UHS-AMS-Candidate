@@ -15,6 +15,13 @@ return [
     'candidate_type' => 'ជាបេក្ខជន',
     'select_candidate_type' => 'សូមជ្រើសរើសពាក្យស្នើសុំ',
     'candidate_type_required' => 'សូមជ្រើសរើសប្រភេទអ្នកប្រើប្រាស់។',
+    'first_name_latin' => 'នាមខ្លួន (អក្សរឡាតាំង)',
+    'last_name_latin' => 'នាមត្រកូល (អក្សរឡាតាំង)',
+    'enter_first_name_latin' => 'សូមបញ្ចូលនាមខ្លួនជាអក្សរឡាតាំង',
+    'enter_last_name_latin' => 'សូមបញ្ចូលនាមត្រកូលជាអក្សរឡាតាំង',
+    'first_name_latin_required' => 'សូមបញ្ចូលនាមខ្លួនជាអក្សរឡាតាំង។',
+    'last_name_latin_required' => 'សូមបញ្ចូលនាមត្រកូលជាអក្សរឡាតាំង។',
+    'latin_name_regex' => 'អនុញ្ញាតតែអក្សរឡាតាំង ដកឃ្លា សញ្ញាគូស និងសញ្ញាចុចប៉ុណ្ណោះ។',
 
     'national_examination' => 'ប្រឡងថ្នាក់ជាតិ',
 

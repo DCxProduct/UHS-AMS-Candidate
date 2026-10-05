@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Support\DashboardMetrics;
+use App\Support\CandidateDisplayName;
 use App\Support\DashboardUserAccess;
 use App\Support\UserTypeOptions;
 use Filament\Widgets\Widget;
@@ -32,7 +33,7 @@ class CandidateMenuOverview extends Widget
         return [
             'eyebrow' => $this->candidateRoleLabel(),
             'title' => __('dashboard.welcome', [
-                'name' => $user?->name ?: $user?->username ?: __('dashboard.user'),
+                'name' => CandidateDisplayName::for($user),
             ]),
             'description' => __('dashboard.candidate_overview_description'),
             'highlights' => [

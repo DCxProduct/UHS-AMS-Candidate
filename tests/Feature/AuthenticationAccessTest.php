@@ -6,6 +6,7 @@ use App\Filament\Pages\Auth\Login;
 use App\Filament\Pages\Auth\Register;
 use App\Models\User;
 use App\Support\UserTypeOptions;
+use App\Support\CandidateDisplayName;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
@@ -79,6 +80,8 @@ class AuthenticationAccessTest extends TestCase
             $registerSchema = $register->instance()->getSchema('form');
 
             $this->assertNull($registerSchema?->getComponentByStatePath('username'));
+            $this->assertSame('First Name (Latin)', $registerSchema?->getComponentByStatePath('first_name_en')?->getLabel());
+            $this->assertSame('Last Name (Latin)', $registerSchema?->getComponentByStatePath('last_name_en')?->getLabel());
             $this->assertSame(
                 'Enter a password with at least 8 characters',
                 $registerSchema?->getComponentByStatePath('password')?->getPlaceholder(),
@@ -160,6 +163,27 @@ class AuthenticationAccessTest extends TestCase
             'student_010123456_1',
             $method->invoke($register->instance(), '010123456'),
         );
+    }
+
+    public function test_registration_uses_latin_name_for_display_without_changing_internal_username(): void
+    {
+        $register = Livewire::test(Register::class);
+        $method = new ReflectionMethod(Register::class, 'handleRegistration');
+
+        $user = $method->invoke($register->instance(), [
+            'student_role' => 'student',
+            'first_name_en' => '  Dara  ',
+            'last_name_en' => 'Sok',
+            'phone' => '010123456',
+            'email' => 'dara-sok@example.test',
+            'password' => 'password',
+        ]);
+
+        $this->assertSame('Dara Sok', $user->name);
+        $this->assertSame('Dara Sok', $user->name_latin);
+        $this->assertSame('student_010123456', $user->username);
+        $this->assertSame('Dara Sok', CandidateDisplayName::for($user->fresh()));
+        $this->assertSame('Dara Sok', $user->linkedSystemUser()?->name);
     }
 
     private function resetUserTypeOptionsCaches(): void
