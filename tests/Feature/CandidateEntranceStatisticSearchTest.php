@@ -109,7 +109,6 @@ class CandidateEntranceStatisticSearchTest extends TestCase
             'name' => 'Admission Form '.uniqid(),
             'slug' => 'admission-form-'.uniqid(),
             'is_active' => true,
-            'menu_placement' => 'sidebar',
             'requires_payment' => false,
         ]);
 

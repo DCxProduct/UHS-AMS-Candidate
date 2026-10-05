@@ -33,15 +33,13 @@ class CustomFormObserver
             return;
         }
 
-        $linkedFormId = $customForm->custom_form_id ?? $customForm->id;
-
         $template = \Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate::firstOrNew([
             'type' => 'custom_form_' . $customForm->id,
         ]);
 
         $template->fill([
             'name' => $this->templateName($customForm->name),
-            'custom_form_id' => $linkedFormId,
+            'custom_form_id' => $customForm->id,
             'model_class' => CustomFormEntry::class,
         ]);
 

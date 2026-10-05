@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\ClosingDates\Schemas;
 
 use App\Models\ClosingDate;
+use App\Support\DatePickerKeyboardInput;
 use Carbon\Carbon;
 use Closure;
 use Filament\Forms\Components\DatePicker;
@@ -73,12 +74,12 @@ class ClosingDateForm
                             ])
                             ->columnSpan(1),
 
-                        DatePicker::make('start_date')
-                            ->label(__('closing_dates.start_date'))
-                            ->native(false)
-                            ->displayFormat('d M Y')
+                        DatePickerKeyboardInput::applyMonthName(
+                            DatePicker::make('start_date')
+                                ->label(__('closing_dates.start_date'))
+                                ->native(false)
+                        )
                             ->format('Y-m-d')
-                            ->placeholder(__('closing_dates.start_date_placeholder'))
                             ->required()
                             ->live()
                             ->maxDate(fn (Get $get) => $get('end_date') ?: null)
@@ -103,12 +104,12 @@ class ClosingDateForm
                             ])
                             ->columnSpan(1),
 
-                        DatePicker::make('end_date')
-                            ->label(__('closing_dates.end_date'))
-                            ->native(false)
-                            ->displayFormat('d M Y')
+                        DatePickerKeyboardInput::applyMonthName(
+                            DatePicker::make('end_date')
+                                ->label(__('closing_dates.end_date'))
+                                ->native(false)
+                        )
                             ->format('Y-m-d')
-                            ->placeholder(__('closing_dates.end_date_placeholder'))
                             ->required()
                             ->live()
                             ->minDate(fn (Get $get) => $get('start_date') ?: null)

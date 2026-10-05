@@ -279,20 +279,7 @@ class ProfileFormData
 
     private function targetFormIds(int $customFormId): array
     {
-        $ids = [$customFormId];
-
-        if (Schema::hasColumn('custom_forms', 'custom_form_id')) {
-            $ids = array_merge(
-                $ids,
-                DB::table('custom_forms')
-                    ->where('custom_form_id', $customFormId)
-                    ->pluck('id')
-                    ->map(fn ($id): int => (int) $id)
-                    ->all()
-            );
-        }
-
-        return collect($ids)->unique()->values()->all();
+        return [$customFormId];
     }
 
     private function fieldsForForms(array $customFormIds): Collection

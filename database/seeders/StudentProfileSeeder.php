@@ -28,18 +28,6 @@ class StudentProfileSeeder extends Seeder
             'updated_at' => $now,
         ];
 
-        if (Schema::hasColumn('custom_forms', 'menu_placement')) {
-            $formData['menu_placement'] = 'sidebar';
-        }
-
-        if (Schema::hasColumn('custom_forms', 'parent_sidebar')) {
-            $formData['parent_sidebar'] = null;
-        }
-
-        if (Schema::hasColumn('custom_forms', 'sub_item_type')) {
-            $formData['sub_item_type'] = null;
-        }
-
         if (Schema::hasColumn('custom_forms', 'icon')) {
             $formData['icon'] = 'heroicon-o-user-circle';
         }
@@ -62,13 +50,6 @@ class StudentProfileSeeder extends Seeder
         } else {
             $formData['created_at'] = $now;
             $customFormId = (int) DB::table('custom_forms')->insertGetId($formData);
-        }
-
-        if (Schema::hasColumn('custom_forms', 'custom_form_id')) {
-            DB::table('custom_forms')->where('id', $customFormId)->update([
-                'custom_form_id' => $customFormId,
-                'updated_at' => $now,
-            ]);
         }
 
         $this->deleteFormFields($customFormId);

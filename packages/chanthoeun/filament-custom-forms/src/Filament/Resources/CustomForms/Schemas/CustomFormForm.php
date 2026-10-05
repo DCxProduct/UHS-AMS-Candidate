@@ -7,9 +7,7 @@ use App\Support\PassedResultMenuOptions;
 use App\Support\StatisticsMenuOptions;
 use App\Support\UserTypeOptions;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
-use Chanthoeun\FilamentCustomForms\Models\CustomFormField;
 use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Forms\Components\TextInput;
@@ -73,136 +71,19 @@ class CustomFormForm
                             ->maxLength(255)
                             ->unique(ignoreRecord: true),
 
-                        Forms\Components\Select::make('menu_placement')
-                            ->label(__('filament-custom-forms::fcf.form.menu_placement'))
-                            ->options([
-                                'sidebar' => __('filament-custom-forms::fcf.menu.sidebar'),
-                                'sub_item' => __('filament-custom-forms::fcf.menu.sub_item'),
-                            ])
-                            ->live()
-                            ->afterStateUpdated(function ($set) {
-                                $set('parent_sidebar', null);
-                                $set('sub_item_type', null);
-                                $set('custom_form_id', null);
-                            })
-                            ->required()
-                            ->native(false),
-
-                        Forms\Components\Hidden::make('custom_form_id'),
-
-                        Forms\Components\Select::make('parent_sidebar')
-                            ->label(__('filament-custom-forms::fcf.menu.parent_sidebar'))
-                            ->options(fn () => CustomForm::query()
-                                ->where('menu_placement', 'sidebar')
-                                ->orderBy('name')
-                                ->get()
-                                ->mapWithKeys(fn (CustomForm $form): array => [
-                                    self::englishText($form->name) => self::localeText($form->name),
-                                ])
-                                ->toArray()
-                            )
-                            ->searchable()
-                            ->preload()
-                            ->live()
-                            ->afterStateUpdated(function ($state, $set): void {
-                                $set('sub_item_type', null);
-
-                                if (blank($state)) {
-                                    $set('custom_form_id', null);
-                                    return;
-                                }
-
-                                $parentForm = CustomForm::query()
-                                    ->where(function ($query) use ($state): void {
-                                        $query->where('name', $state)
-                                            ->orWhere('name', 'like', '%"en":"' . $state . '"%')
-                                            ->orWhere('name', 'like', '%"km":"' . $state . '"%')
-                                            ->orWhere('name', 'like', '%"kh":"' . $state . '"%');
-                                    })
-                                    ->first();
-
-                                $set('custom_form_id', $parentForm?->id);
-                            })
-                            ->visible(fn (Get $get): bool => $get('menu_placement') === 'sub_item')
-                            ->required(fn (Get $get): bool => $get('menu_placement') === 'sub_item')
-                            ->native(false),
-
-                        Forms\Components\Select::make('sub_item_type')
-                            ->label(__('filament-custom-forms::fcf.form.sub_form'))
-                            ->options(function (Get $get): array {
-                                $parentSidebarName = $get('parent_sidebar');
-
-                                if (blank($parentSidebarName)) {
-                                    return [];
-                                }
-
-                                $parentForm = CustomForm::query()
-                                    ->where(function ($query) use ($parentSidebarName): void {
-                                        $query->where('name', $parentSidebarName)
-                                            ->orWhere('name', 'like', '%"en":"' . $parentSidebarName . '"%')
-                                            ->orWhere('name', 'like', '%"km":"' . $parentSidebarName . '"%')
-                                            ->orWhere('name', 'like', '%"kh":"' . $parentSidebarName . '"%');
-                                    })
-                                    ->first();
-
-                                if (! $parentForm) {
-                                    return [];
-                                }
-
-                                $field = CustomFormField::query()
-                                    ->where('custom_form_id', $parentForm->id)
-                                    ->where('name', 'form_selection')
-                                    ->where('type', 'select_dropdown')
-                                    ->first();
-
-                                if (! $field || blank($field->options)) {
-                                    return [];
-                                }
-
-                                $config = is_string($field->options)
-                                    ? json_decode($field->options, true)
-                                    : $field->options;
-
-                                if (! is_array($config)) {
-                                    return [];
-                                }
-
-                                $choices = $config['choices'] ?? [];
-
-                                if (! is_array($choices)) {
-                                    return [];
-                                }
-
-                                return self::localeOptions($choices);
-                            })
-                            ->searchable()
-                            ->preload()
-                            ->live()
-                            ->native(false)
-                            ->visible(fn (Get $get): bool =>
-                                $get('menu_placement') === 'sub_item'
-                                && filled($get('parent_sidebar'))
-                            )
-                            ->required(fn (Get $get): bool =>
-                                $get('menu_placement') === 'sub_item'
-                                && filled($get('parent_sidebar'))
-                            ),
-
                         Forms\Components\Select::make('statistics_menu')
                             ->label(__('filament-custom-forms::fcf.form.statistics_menu'))
                             ->options(StatisticsMenuOptions::options())
                             ->default(StatisticsMenuOptions::default())
                             ->native(false)
-                            ->required()
-                            ->visible(fn (Get $get): bool => in_array($get('menu_placement'), ['sidebar', 'sub_item'], true)),
+                            ->required(),
 
                         Forms\Components\Select::make('passed_result_menu')
                             ->label(__('filament-custom-forms::fcf.form.passed_result_menu'))
                             ->options(PassedResultMenuOptions::options())
                             ->default(PassedResultMenuOptions::default())
                             ->native(false)
-                            ->required()
-                            ->visible(fn (Get $get): bool => in_array($get('menu_placement'), ['sidebar', 'sub_item'], true)),
+                            ->required(),
 
                         // Stored in the workflow_notification_forms link table, not on custom_forms.
                         Forms\Components\Select::make('workflow_notification_id')

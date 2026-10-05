@@ -75,59 +75,9 @@ class CandidateEntranceStatisticResource extends Resource
                 'customForm',
             ])
             ->whereHas('customForm', function (Builder $query): void {
-                $query
-                    ->where(function (Builder $query): void {
-                        $query->where('menu_placement', 'sidebar')
-                            ->where('is_active', true)
-                            ->where('slug', '!=', 'profile');
-                    })
-                    ->orWhere(function (Builder $query): void {
-                        $query->where('menu_placement', 'sub_item')
-                            ->where('is_active', true)
-                            ->whereHas('parentForm', function (Builder $query): void {
-                                $query->where('menu_placement', 'sidebar')
-                                    ->where('is_active', true)
-                                    ->where('slug', '!=', 'profile');
-                            });
-                    });
-            })
-            ->where(function (Builder $query): void {
-                $query
-                    ->whereHas('customForm', function (Builder $query): void {
-                        $query
-                            ->where('menu_placement', 'sidebar')
-                            ->where('is_active', true)
-                            ->where('slug', '!=', 'profile')
-                            ->where('statistics_menu', StatisticsMenuOptions::ENTRANCE_EXAM_STATISTICS)
-                            ->where(function (Builder $query): void {
-                                $query
-                                    ->whereNull('custom_form_entries.data->form_selection')
-                                    ->orWhere('custom_form_entries.data->form_selection', '')
-                                    ->orWhereNotExists(function (QueryBuilder $subQuery): void {
-                                        $subQuery->selectRaw('1')
-                                            ->from('custom_forms as child_forms')
-                                            ->whereColumn('child_forms.custom_form_id', 'custom_form_entries.custom_form_id')
-                                            ->where('child_forms.menu_placement', 'sub_item')
-                                            ->where('child_forms.is_active', true)
-                                            ->whereRaw("LOWER(child_forms.sub_item_type) = LOWER(COALESCE(custom_form_entries.data->>'form_selection', ''))");
-                                    });
-                            });
-                    })
-                    ->orWhereHas('customForm', function (Builder $query): void {
-                        $query
-                            ->where('menu_placement', 'sub_item')
-                            ->where('is_active', true)
-                            ->where('statistics_menu', StatisticsMenuOptions::ENTRANCE_EXAM_STATISTICS);
-                    })
-                    ->orWhereExists(function (QueryBuilder $subQuery): void {
-                        $subQuery->selectRaw('1')
-                            ->from('custom_forms as child_forms')
-                            ->whereColumn('child_forms.custom_form_id', 'custom_form_entries.custom_form_id')
-                            ->where('child_forms.menu_placement', 'sub_item')
-                            ->where('child_forms.is_active', true)
-                            ->where('child_forms.statistics_menu', StatisticsMenuOptions::ENTRANCE_EXAM_STATISTICS)
-                            ->whereRaw("LOWER(child_forms.sub_item_type) = LOWER(COALESCE(custom_form_entries.data->>'form_selection', ''))");
-                    });
+                $query->where('is_active', true)
+                    ->where('slug', '!=', 'profile')
+                    ->where('statistics_menu', StatisticsMenuOptions::ENTRANCE_EXAM_STATISTICS);
             })
             ->whereIn('review_status', [
                 'accepted',

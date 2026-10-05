@@ -71,10 +71,6 @@ class AdminSubmissionsByFormChart extends ChartWidget
             $query->where('is_active', true);
         }
 
-        if (Schema::hasColumn('custom_forms', 'menu_placement')) {
-            $query->where('menu_placement', 'sidebar');
-        }
-
         if (Schema::hasColumn('custom_forms', 'display_order')) {
             $query->orderBy('display_order');
         }

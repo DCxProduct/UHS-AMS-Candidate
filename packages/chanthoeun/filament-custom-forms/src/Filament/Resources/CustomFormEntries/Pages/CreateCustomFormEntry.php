@@ -2,7 +2,6 @@
 
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Pages;
 
-use App\Models\ClosingDate;
 use App\Models\CandidateSubmitPopupSetting;
 use App\Support\ProfileFormData;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
@@ -152,39 +151,6 @@ class CreateCustomFormEntry extends CreateRecord
                 ->action(function (): void {
                     $state = $this->rawFormState();
 
-                    $customFormId = $this->form_id
-                        ?? data_get($state, 'custom_form_id');
-
-                    $customForm = $customFormId
-                        ? CustomForm::query()->find($customFormId)
-                        : null;
-
-                    if (
-                         $customForm
-                         && (string) $customForm->slug === 'national-examination-registration'
-                         && blank(data_get($state, 'data.form_selection'))
-                    ) {
-                        Notification::make()
-                            ->danger()
-                            ->title(__('student_forms.section.title'))
-                            ->send();
-
-                        return;
-                    }
-
-                    if (
-                        $customForm
-                        && (string) $customForm->slug === 'national-examination-registration'
-                        && ! $this->selectedSubFormIsOpen($customForm, data_get($state, 'data.form_selection'))
-                    ) {
-                        Notification::make()
-                            ->danger()
-                            ->title(__('app.form_not_open_message'))
-                            ->send();
-
-                        return;
-                    }
-
                     $this->isSavingDraft = false;
 
                     if ($this->draftEntryId) {
@@ -258,23 +224,6 @@ class CreateCustomFormEntry extends CreateRecord
         }
 
         return $data;
-    }
-
-    protected function selectedSubFormIsOpen(CustomForm $parentForm, mixed $formSelection): bool
-    {
-        if (blank($formSelection)) {
-            return false;
-        }
-
-        $subForm = CustomForm::query()
-            ->where('custom_form_id', $parentForm->id)
-            ->where('menu_placement', 'sub_item')
-            ->whereRaw('LOWER(sub_item_type) = ?', [strtolower((string) $formSelection)])
-            ->first();
-
-        return $subForm
-            ? ClosingDate::isCustomFormOpen($subForm->id)
-            : false;
     }
 
     protected function getRedirectUrl(): string
@@ -432,10 +381,6 @@ class CreateCustomFormEntry extends CreateRecord
         $wizard = $this->form->getComponent(fn ($component) => $component instanceof \Filament\Schemas\Components\Wizard);
 
         if (! $wizard) {
-            return false;
-        }
-
-        if (filled(data_get($this->rawFormState(), 'data.form_selection'))) {
             return false;
         }
 

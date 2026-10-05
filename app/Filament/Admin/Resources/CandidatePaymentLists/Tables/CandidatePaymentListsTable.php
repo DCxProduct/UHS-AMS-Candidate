@@ -1016,40 +1016,16 @@ class CandidatePaymentListsTable
 
     protected static function dynamicFormOptions(): array
     {
-        $options = [];
-
-        CustomForm::query()
-            ->where('menu_placement', 'sidebar')
+        return CustomForm::query()
             ->where('is_active', true)
             ->where('slug', '!=', 'profile')
             ->orderByRaw('COALESCE(display_order, id)')
             ->orderBy('id')
             ->get(['id', 'name'])
-            ->each(function (CustomForm $form) use (&$options): void {
-                $childForms = CustomForm::query()
-                    ->where('custom_form_id', $form->id)
-                    ->where('menu_placement', 'sub_item')
-                    ->where('is_active', true)
-                    ->whereNotNull('sub_item_type')
-                    ->orderByRaw('COALESCE(display_order, id)')
-                    ->orderBy('id')
-                    ->get(['id', 'name', 'custom_form_id', 'sub_item_type']);
-
-                if (self::formHasPaymentEntries((int) $form->id, $childForms->pluck('id')->all())) {
-                    $options[self::formFilterValue((int) $form->id)] = self::localizedFormName($form->name);
-                }
-
-                foreach ($childForms as $childForm) {
-                    if (! self::subFormHasPaymentEntries($childForm)) {
-                        continue;
-                    }
-
-                    $options[self::subFormFilterValue((int) $childForm->id)] =
-                        self::localizedFormName($form->name) . ' - ' . self::localizedFormName($childForm->name);
-                }
-            });
-
-        return $options;
+            ->mapWithKeys(fn (CustomForm $form): array => [
+                self::formFilterValue((int) $form->id) => self::localizedFormName($form->name),
+            ])
+            ->all();
     }
 
     protected static function dynamicMajorOptions(): array
@@ -1093,27 +1069,7 @@ class CandidatePaymentListsTable
             $formId = self::formIdFromFilterValue($formType);
 
             if ($formId) {
-                return $query->whereIn('custom_form_id', self::sidebarFormIdsForFilter($formId));
-            }
-        }
-
-        if (str_starts_with($formType, 'subform:')) {
-            $subFormId = self::subFormIdFromFilterValue($formType);
-            $subForm = $subFormId
-                ? CustomForm::query()->whereKey($subFormId)->first(['id', 'custom_form_id', 'sub_item_type'])
-                : null;
-
-            if ($subForm) {
-                return $query->where(function (Builder $query) use ($subForm): void {
-                    $query->where('custom_form_id', $subForm->id);
-
-                    if (filled($subForm->sub_item_type)) {
-                        $query->orWhere(function (Builder $query) use ($subForm): void {
-                            $query->where('custom_form_id', $subForm->custom_form_id)
-                                ->where('data->form_selection', $subForm->sub_item_type);
-                        });
-                    }
-                });
+                return $query->where('custom_form_id', $formId);
             }
         }
 
@@ -1125,11 +1081,6 @@ class CandidatePaymentListsTable
         return 'form:' . $formId;
     }
 
-    protected static function subFormFilterValue(int $formId): string
-    {
-        return 'subform:' . $formId;
-    }
-
     protected static function formIdFromFilterValue(string $value): ?int
     {
         if (! str_starts_with($value, 'form:')) {
@@ -1139,52 +1090,6 @@ class CandidatePaymentListsTable
         $formId = (int) substr($value, 5);
 
         return $formId > 0 ? $formId : null;
-    }
-
-    protected static function subFormIdFromFilterValue(string $value): ?int
-    {
-        if (! str_starts_with($value, 'subform:')) {
-            return null;
-        }
-
-        $formId = (int) substr($value, 8);
-
-        return $formId > 0 ? $formId : null;
-    }
-
-    protected static function sidebarFormIdsForFilter(int $formId): array
-    {
-        $childIds = CustomForm::query()
-            ->where('custom_form_id', $formId)
-            ->where('menu_placement', 'sub_item')
-            ->where('is_active', true)
-            ->pluck('id')
-            ->all();
-
-        return array_values(array_unique([$formId, ...$childIds]));
-    }
-
-    protected static function formHasPaymentEntries(int $formId, array $childFormIds = []): bool
-    {
-        return CandidatePaymentListResource::getEloquentQuery()
-            ->whereIn('custom_form_id', array_values(array_unique([$formId, ...$childFormIds])))
-            ->exists();
-    }
-
-    protected static function subFormHasPaymentEntries(CustomForm $subForm): bool
-    {
-        return CandidatePaymentListResource::getEloquentQuery()
-            ->where(function (Builder $query) use ($subForm): void {
-                $query->where('custom_form_id', $subForm->id);
-
-                if (filled($subForm->sub_item_type)) {
-                    $query->orWhere(function (Builder $query) use ($subForm): void {
-                        $query->where('custom_form_id', $subForm->custom_form_id)
-                            ->where('data->form_selection', $subForm->sub_item_type);
-                    });
-                }
-            })
-            ->exists();
     }
 
     protected static function genderLabel(string $state): string

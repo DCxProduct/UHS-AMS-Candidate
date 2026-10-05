@@ -120,26 +120,6 @@ class AdminEntryPdfReviewController extends Controller
 
     protected function findTemplate(CustomFormEntry $entry): ?DocumentTemplate
     {
-        $formSelection = strtolower((string) data_get($entry->data, 'form_selection'));
-
-        if (filled($formSelection)) {
-            $subForm = CustomForm::query()
-                ->where('custom_form_id', $entry->custom_form_id)
-                ->where('menu_placement', 'sub_item')
-                ->where('sub_item_type', $formSelection)
-                ->first();
-
-            if ($subForm) {
-                $template = DocumentTemplate::query()
-                    ->where('type', 'custom_form_' . $subForm->id)
-                    ->first();
-
-                if ($template) {
-                    return $template;
-                }
-            }
-        }
-
         return DocumentTemplate::query()
             ->where('type', 'custom_form_' . $entry->custom_form_id)
             ->first();

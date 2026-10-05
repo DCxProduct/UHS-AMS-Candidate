@@ -28,7 +28,7 @@ class CandidateStatisticsSynchronizer
 
     public static function syncEntry(CustomFormEntry $entry): void
     {
-        $entry->loadMissing(['customForm.parentForm', 'creator']);
+        $entry->loadMissing(['customForm', 'creator']);
 
         if (self::statisticsMenuFor($entry) !== StatisticsMenuOptions::EXIT_EXAM_STATISTICS) {
             CandidateExitStatistic::query()
@@ -69,17 +69,7 @@ class CandidateStatisticsSynchronizer
     public static function syncForm(CustomForm $form): void
     {
         $query = CustomFormEntry::query()
-            ->where(function ($query) use ($form): void {
-                $query->where('custom_form_id', $form->getKey());
-
-                if ($form->menu_placement === 'sub_item' && filled($form->custom_form_id)) {
-                    $query->orWhere(function ($query) use ($form): void {
-                        $query
-                            ->where('custom_form_id', $form->custom_form_id)
-                            ->where('data->form_selection', $form->sub_item_type);
-                    });
-                }
-            });
+            ->where('custom_form_id', $form->getKey());
 
         $query->chunkById(100, function ($entries): void {
             $entries->each(fn (CustomFormEntry $entry): mixed => self::syncEntry($entry));
@@ -88,30 +78,11 @@ class CandidateStatisticsSynchronizer
 
     public static function statisticsMenuFor(CustomFormEntry $entry): string
     {
-        $entry->loadMissing('customForm.parentForm');
+        $entry->loadMissing('customForm');
         $form = $entry->customForm;
 
         if (! $form) {
             return StatisticsMenuOptions::default();
-        }
-
-        if ($form->menu_placement === 'sub_item') {
-            return StatisticsMenuOptions::normalize($form->statistics_menu);
-        }
-
-        $selection = strtolower(trim((string) data_get($entry->data, 'form_selection')));
-
-        if (filled($selection)) {
-            $childForm = CustomForm::query()
-                ->where('custom_form_id', $form->getKey())
-                ->where('menu_placement', 'sub_item')
-                ->where('is_active', true)
-                ->whereRaw('LOWER(sub_item_type) = ?', [$selection])
-                ->first();
-
-            if ($childForm) {
-                return StatisticsMenuOptions::normalize($childForm->statistics_menu);
-            }
         }
 
         return StatisticsMenuOptions::normalize($form->statistics_menu);

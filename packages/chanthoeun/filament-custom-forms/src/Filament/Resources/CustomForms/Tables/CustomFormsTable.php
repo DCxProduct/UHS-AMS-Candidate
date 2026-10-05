@@ -43,41 +43,6 @@ class CustomFormsTable
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
-                TextColumn::make('menu_placement')
-                    ->label(__('filament-custom-forms::fcf.form.menu_placement'))
-                    ->hidden()
-                    ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'sidebar' => 'success',
-                        'sub_item' => 'warning',
-                        default => 'gray',
-                    })
-                    ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'sidebar' => app()->getLocale() === 'km' ? 'ម៉ឺនុយមេ' : 'Sidebar',
-                        'sub_item' => app()->getLocale() === 'km' ? 'ម៉ឺនុយរង' : 'Sub Item',
-                        default => $state,
-                    }),
-
-                TextColumn::make('parent_sidebar')
-                    ->label(__('filament-custom-forms::fcf.form.menu_parent'))
-                    ->hidden()
-                    ->default('—')
-                    ->searchable()
-                    ->badge()
-                    ->alignCenter()
-                    ->formatStateUsing(fn ($state): string => self::localeText($state))
-                    ->color('info'),
-
-                TextColumn::make('sub_item_type')
-                    ->label(__('filament-custom-forms::fcf.form.sub_form'))
-                    ->hidden()
-                    ->default('—')
-                    ->searchable()
-                    ->badge()
-                    ->alignCenter()
-                    ->formatStateUsing(fn ($state, $record): string => self::subItemTypeLabel($state, $record))
-                    ->color('warning'),
-
                 TextColumn::make('statistics_menu')
                     ->label(__('filament-custom-forms::fcf.form.statistics_menu'))
                     ->hidden()
@@ -91,15 +56,6 @@ class CustomFormsTable
                     ->badge()
                     ->formatStateUsing(fn (?string $state): string => PassedResultMenuOptions::label($state))
                     ->color(fn (?string $state): string => PassedResultMenuOptions::normalize($state) === PassedResultMenuOptions::EXIT_EXAM_RESULTS ? 'warning' : 'success'),
-
-                TextColumn::make('parentForm.name')
-                    ->label(__('filament-custom-forms::fcf.form.form_field'))
-                    ->default('—')
-                    ->badge()
-                    ->hidden()
-                    ->alignCenter()
-                    ->formatStateUsing(fn ($state): string => self::localeText($state))
-                    ->color('info'),
 
                 TextColumn::make('workflow_notification')
                     ->label(__('workflow_notifications.custom_form_column'))
@@ -280,7 +236,6 @@ class CustomFormsTable
                 'National Examination Registration' => 'ការចុះឈ្មោះប្រឡងថ្នាក់ជាតិ',
                 'Profile' => 'ប្រវត្តិរូប',
                 'Sidebar' => 'ម៉ឺនុយមេ',
-                'Sub Item' => 'ម៉ឺនុយរង',
                 default => $text,
             };
         }
@@ -324,46 +279,4 @@ class CustomFormsTable
         ], JSON_UNESCAPED_UNICODE);
     }
 
-    private static function subItemTypeLabel(mixed $state, $record = null): string
-    {
-        if (blank($state)) {
-            return '—';
-        }
-
-        $stateString = (string) $state;
-
-        if ($record && $record->custom_form_id) {
-            $field = \Chanthoeun\FilamentCustomForms\Models\CustomFormField::query()
-                ->where('custom_form_id', $record->custom_form_id)
-                ->where('name', 'form_selection')
-                ->first();
-
-            if ($field && !blank($field->options)) {
-                $config = is_string($field->options)
-                    ? json_decode($field->options, true)
-                    : $field->options;
-
-                $choices = $config['choices'] ?? [];
-                if (is_array($choices)) {
-                    foreach ($choices as $value => $label) {
-                        if (is_array($label) && isset($label['value']) && (string)$label['value'] === $stateString) {
-                            return self::localeText($label['label'] ?? $label['value']);
-                        }
-                        if ((string)$value === $stateString) {
-                            return self::localeText($label);
-                        }
-                    }
-                }
-            }
-        }
-
-        return match ($stateString) {
-            'associate' => app()->getLocale() === 'km' ? 'បរិញ្ញាបត្ររង' : 'Associate',
-            'bachelor' => app()->getLocale() === 'km' ? 'បរិញ្ញាបត្រ' : 'Bachelor',
-            'master' => app()->getLocale() === 'km' ? 'អនុបណ្ឌិត' : 'Master',
-            'phd' => app()->getLocale() === 'km' ? 'បណ្ឌិត' : 'PhD',
-            'exam' => app()->getLocale() === 'km' ? 'ការប្រឡង' : 'Exam',
-            default => filled($state) ? (string) $state : '—',
-        };
-    }
 }

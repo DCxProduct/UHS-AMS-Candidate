@@ -26,7 +26,6 @@ class CandidateStatisticsRoutingTest extends TestCase
             'name' => json_encode(['en' => 'Entrance Form']),
             'slug' => 'entrance-form',
             'is_active' => true,
-            'menu_placement' => 'sidebar',
             'requires_payment' => false,
         ]);
 
@@ -42,7 +41,6 @@ class CandidateStatisticsRoutingTest extends TestCase
             'name' => json_encode(['en' => 'Exit Form']),
             'slug' => 'exit-form',
             'is_active' => true,
-            'menu_placement' => 'sidebar',
             'requires_payment' => false,
             'statistics_menu' => StatisticsMenuOptions::EXIT_EXAM_STATISTICS,
         ]);
@@ -132,7 +130,6 @@ class CandidateStatisticsRoutingTest extends TestCase
             'name' => json_encode(['en' => 'Exit Form']),
             'slug' => 'registered-exit-form',
             'is_active' => true,
-            'menu_placement' => 'sidebar',
             'requires_payment' => false,
             'statistics_menu' => StatisticsMenuOptions::EXIT_EXAM_STATISTICS,
         ]);
@@ -160,7 +157,6 @@ class CandidateStatisticsRoutingTest extends TestCase
             'name' => json_encode(['en' => 'Entrance Form']),
             'slug' => 'entrance-pass-form',
             'is_active' => true,
-            'menu_placement' => 'sidebar',
             'requires_payment' => false,
             'statistics_menu' => StatisticsMenuOptions::ENTRANCE_EXAM_STATISTICS,
         ]);
@@ -186,7 +182,6 @@ class CandidateStatisticsRoutingTest extends TestCase
             'name' => json_encode(['en' => 'Exit Review Form']),
             'slug' => 'exit-review-form',
             'is_active' => true,
-            'menu_placement' => 'sidebar',
             'requires_payment' => false,
             'statistics_menu' => StatisticsMenuOptions::EXIT_EXAM_STATISTICS,
         ]);
