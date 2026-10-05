@@ -2,6 +2,8 @@
 
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomForms\Tables;
 
+use App\Filament\Admin\Resources\WorkflowNotifications\WorkflowNotificationResource;
+use App\Models\WorkflowNotification;
 use App\Support\PassedResultMenuOptions;
 use App\Support\FilamentActionPermissions;
 use App\Support\LocalizedDate;
@@ -14,6 +16,7 @@ use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
@@ -97,6 +100,28 @@ class CustomFormsTable
                     ->alignCenter()
                     ->formatStateUsing(fn ($state): string => self::localeText($state))
                     ->color('info'),
+
+                TextColumn::make('workflow_notification')
+                    ->label(__('workflow_notifications.custom_form_column'))
+                    ->state(fn (Model $record): ?string => WorkflowNotification::forForm($record->getKey())?->name)
+                    ->placeholder(__('workflow_notifications.not_assigned'))
+                    ->badge()
+                    ->color('info')
+                    ->url(function (Model $record): ?string {
+                        $workflowNotification = WorkflowNotification::forForm($record->getKey());
+
+                        return $workflowNotification && WorkflowNotificationResource::canView($workflowNotification)
+                            ? WorkflowNotificationResource::getUrl('view', ['record' => $workflowNotification])
+                            : null;
+                    })
+                    ->sortable(query: fn (Builder $query, string $direction): Builder => $query->orderBy(
+                        WorkflowNotification::query()
+                            ->select('workflow_notifications.name')
+                            ->join('workflow_notification_forms', 'workflow_notification_forms.workflow_notification_id', '=', 'workflow_notifications.id')
+                            ->whereColumn('workflow_notification_forms.custom_form_id', $query->getModel()->getTable().'.id')
+                            ->limit(1),
+                        $direction,
+                    )),
 
                 IconColumn::make('is_active')
                     ->label(__('filament-custom-forms::fcf.form.is_active'))

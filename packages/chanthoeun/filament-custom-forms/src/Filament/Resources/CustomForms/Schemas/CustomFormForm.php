@@ -2,6 +2,7 @@
 
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomForms\Schemas;
 
+use App\Models\WorkflowNotification;
 use App\Support\PassedResultMenuOptions;
 use App\Support\StatisticsMenuOptions;
 use App\Support\UserTypeOptions;
@@ -202,6 +203,20 @@ class CustomFormForm
                             ->native(false)
                             ->required()
                             ->visible(fn (Get $get): bool => in_array($get('menu_placement'), ['sidebar', 'sub_item'], true)),
+
+                        // Stored in the workflow_notification_forms link table, not on custom_forms.
+                        Forms\Components\Select::make('workflow_notification_id')
+                            ->label(__('workflow_notifications.custom_form_column'))
+                            ->helperText(__('workflow_notifications.custom_form_helper'))
+                            ->placeholder(__('workflow_notifications.not_assigned'))
+                            ->options(fn (): array => WorkflowNotification::query()->orderBy('name')->pluck('name', 'id')->all())
+                            ->searchable()
+                            ->native(false)
+                            ->afterStateHydrated(fn ($component, $record) => $component->state(
+                                $record ? WorkflowNotification::forForm($record->getKey())?->getKey() : null
+                            ))
+                            ->dehydrated(false)
+                            ->saveRelationshipsUsing(fn ($record, $state) => WorkflowNotification::assignForm($record->getKey(), $state)),
 
                         Forms\Components\CheckboxList::make('allowed_roles')
                             ->label(__('filament-custom-forms::fcf.form.allowed_roles'))
