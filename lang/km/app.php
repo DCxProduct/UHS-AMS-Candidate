@@ -337,7 +337,7 @@ return [
             'application_approved_title' => 'ពាក្យស្នើសុំ :form ត្រូវបានអនុម័ត',
             'application_approved_body' => 'ពាក្យស្នើសុំ :form របស់អ្នកត្រូវបានអនុម័តរួចរាល់។ សូមទៅបង់ថ្លៃសេវា។',
             'application_approved_body_no_payment' => 'ពាក្យស្នើសុំ :form របស់អ្នកត្រូវបានអនុម័តរួចរាល់ហើយ។',
-            'application_rejected_title' => 'មានការស្នើសុំកែប្រែព័ត៌មាន ពាក្យស្នើសុំ :form របស់អ្នក។',
+            'application_rejected_title' => 'ពាក្យស្នើសុំ :form របស់អ្នកត្រូវបានបដិសេធ។',
             'application_rejected_body' => 'មូលហេតុ៖ :note',
             'no_note' => 'គ្មាន',
         ],

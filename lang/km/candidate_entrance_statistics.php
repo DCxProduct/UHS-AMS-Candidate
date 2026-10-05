@@ -53,6 +53,7 @@ return [
         'accepted' => 'សូមទៅបញ្ជរបេឡា',
         'paid' => 'បានបង់ប្រាក់រួចរាល់',
         'rejected' => 'មិនគ្រប់គ្រាន់',
+        'final_rejected' => 'បដិសេធ',
         'send_back' => 'បញ្ជូនត្រឡប់',
         'passed' => 'ជាប់',
         'failed' => 'ធ្លាក់',
@@ -86,6 +87,7 @@ return [
         'admin_accept_success_body' => 'បានជូនដំណឹងទៅនិស្សិតរួចរាល់។',
         'admin_reject_success_title' => 'បានបដិសេធពាក្យស្នើសុំ',
         'admin_reject_success_body' => 'បានជូនដំណឹងទៅនិស្សិតរួចរាល់។',
+        'admin_send_back_success_title' => 'បានបញ្ជូនពាក្យស្នើសុំត្រឡប់',
         'admin_resubmitted_title' => 'មានការដាក់ស្នើឡើងវិញ',
         'admin_resubmitted_body' => ':student បានដាក់ស្នើ :form ឡើងវិញបន្ទាប់ពីកែតម្រូវ។ សូមពិនិត្យម្តងទៀត។',
 

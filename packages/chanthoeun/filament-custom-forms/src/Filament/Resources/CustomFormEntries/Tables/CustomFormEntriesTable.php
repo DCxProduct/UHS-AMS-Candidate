@@ -532,7 +532,8 @@ class CustomFormEntriesTable
                     'received' => __('candidate_entrance_statistics.statuses.received'),
                     'passed', 'accepted', 'approved' => __('candidate_entrance_statistics.statuses.accepted'),
                     'paid' => __('candidate_entrance_statistics.statuses.paid'),
-                    'failed', 'rejected' => __('candidate_entrance_statistics.statuses.rejected'),
+                    'failed' => __('candidate_entrance_statistics.statuses.final_rejected'),
+                    'rejected' => __('candidate_entrance_statistics.statuses.rejected'),
                     'draft' => __('student_profile.save_as_draft'),
                     default => __('candidate_entrance_statistics.statuses.pending'),
                 };
@@ -959,6 +960,27 @@ class CustomFormEntriesTable
                     && filled(self::reviewMessage($record))
                 ),
 
+            Action::make('view_final_rejection_note')
+                ->label(__('app.message'))
+                ->icon('heroicon-o-chat-bubble-left-ellipsis')
+                ->link()
+                ->color('danger')
+                ->modalHeading(__('app.message'))
+                ->modalSubmitAction(false)
+                ->modalCancelActionLabel(__('app.close'))
+                ->modalContent(function ($record): HtmlString {
+                    return new HtmlString(
+                        '<div class="rounded-lg border border-warning-200 bg-warning-50 p-4 text-sm leading-6 text-warning-900 dark:border-warning-800 dark:bg-warning-950 dark:text-warning-100">'
+                        . nl2br(e(self::reviewMessage($record)))
+                        . '</div>'
+                    );
+                })
+                ->visible(fn ($record): bool =>
+                    self::currentPanelIsAdmin()
+                    && self::entryStatus($record) === 'failed'
+                    && filled(self::reviewMessage($record))
+                ),
+
             Action::make('view_review_note')
                 ->label(__('app.message'))
                 ->icon('heroicon-o-chat-bubble-left-ellipsis')
@@ -976,7 +998,7 @@ class CustomFormEntriesTable
                 })
                 ->visible(fn ($record): bool =>
                     ! self::currentPanelIsAdmin()
-                    && in_array(self::entryStatus($record), ['pending', 'rejected'], true)
+                    && in_array(self::entryStatus($record), ['pending', 'rejected', 'failed'], true)
                     && filled(self::reviewMessage($record))
                 ),
 
@@ -1097,7 +1119,7 @@ class CustomFormEntriesTable
                         ->label(__('candidate_entrance_statistics.statuses.accepted'))
                         ->icon('heroicon-o-check-circle')
                         ->color('success')
-                        ->visible(fn (): bool => self::entryStatus($record) === 'pending'
+                        ->visible(fn (): bool => in_array(self::entryStatus($record), ['pending', 'failed'], true)
                             && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'accepted'))
                         ->action(function () use ($record): void {
                             FilamentActionPermissions::abortUnlessCanForResource(CustomFormEntryResource::class, 'accepted');
@@ -1148,7 +1170,7 @@ class CustomFormEntriesTable
                     Action::make('reject_from_view')
                         ->label(__('candidate_entrance_statistics.statuses.send_back'))
                         ->icon('heroicon-o-arrow-uturn-left')
-                        ->color('danger')
+                        ->color('warning')
                         ->form([
                             Textarea::make('review_note')
                                 ->label(__('candidate_entrance_statistics.review_note'))
@@ -1204,6 +1226,86 @@ class CustomFormEntriesTable
 
                             redirect(request()->header('Referer') ?: request()->fullUrl());
                         }),
+
+                    Action::make('reject_final_from_view')
+                        ->label(__('candidate_entrance_statistics.actions.reject'))
+                        ->icon('heroicon-o-x-circle')
+                        ->color('danger')
+                        ->form([
+                            Textarea::make('review_note')
+                                ->label(__('candidate_entrance_statistics.review_note'))
+                                ->required()
+                                ->rows(4),
+                        ])
+                        ->modalSubmitActionLabel(__('candidate_entrance_statistics.actions.reject'))
+                        ->visible(fn (): bool => self::entryStatus($record) === 'pending'
+                            && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'reject'))
+                        ->action(function (array $data) use ($record): void {
+                            FilamentActionPermissions::abortUnlessCanForResource(CustomFormEntryResource::class, 'reject');
+
+                            $recordData = is_array($record->data) ? $record->data : [];
+                            $oldValues = [
+                                'review_status' => $record->review_status,
+                                'registration_status' => data_get($recordData, 'registration_status'),
+                                'review_note' => $record->review_note,
+                            ];
+                            $recordData['candidate_status'] = 'failed';
+                            $recordData['registration_status'] = 'failed';
+
+                            DB::table('custom_form_entries')
+                                ->where('id', $record->id)
+                                ->update([
+                                    'review_status' => 'failed',
+                                    'review_note' => $data['review_note'] ?? null,
+                                    'reviewed_by' => auth()->id(),
+                                    'reviewed_at' => now(),
+                                    'updated_at' => now(),
+                                    'data' => json_encode($recordData),
+                                ]);
+
+                            $record->refresh();
+
+                            AuditLogger::log(
+                                action: 'final_rejected',
+                                auditable: $record,
+                                oldValues: $oldValues,
+                                newValues: [
+                                    'review_status' => 'failed',
+                                    'registration_status' => 'failed',
+                                    'review_note' => $data['review_note'] ?? null,
+                                ],
+                                description: 'Custom form entry permanently rejected',
+                                metadata: ['module' => 'Custom Form Entries'],
+                            );
+
+                            self::notifyStudentNationalExamResult($record, 'failed', $data['review_note'] ?? null);
+
+                            Notification::make()
+                                ->title(__('candidate_entrance_statistics.notifications.admin_reject_success_title'))
+                                ->danger()
+                                ->send();
+
+                            redirect(request()->header('Referer') ?: request()->fullUrl());
+                        }),
+
+                    Action::make('send_back_after_reject_from_view')
+                        ->label(__('candidate_entrance_statistics.statuses.send_back'))
+                        ->icon('heroicon-o-arrow-uturn-left')
+                        ->color('warning')
+                        ->form([
+                            Textarea::make('review_note')
+                                ->label(__('candidate_entrance_statistics.review_note'))
+                                ->required()
+                                ->rows(4),
+                        ])
+                        ->modalSubmitActionLabel(__('candidate_entrance_statistics.statuses.send_back'))
+                        ->visible(fn (): bool => self::entryStatus($record) === 'failed'
+                            && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'rejected'))
+                        ->action(function (array $data) use ($record): void {
+                            self::sendBackAfterFinalRejection($record, $data);
+
+                            redirect(request()->header('Referer') ?: request()->fullUrl());
+                        }),
                         ...$downloadActions,
                     ];
                 })
@@ -1211,7 +1313,7 @@ class CustomFormEntriesTable
                     self::currentPanelIsAdmin()
                     && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'view_pdf')
                     && ! self::isProfileForm($record->custom_form_id)
-                    && self::entryStatus($record) === 'pending'
+                    && in_array(self::entryStatus($record), ['pending', 'failed'], true)
                     && self::hasDocumentTemplate($record)
                 );
 
@@ -1224,7 +1326,7 @@ class CustomFormEntriesTable
                     self::currentPanelIsAdmin()
                     && ! self::isProfileForm($record->custom_form_id)
                     && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'accepted')
-                    && self::entryStatus($record) === 'pending'
+                    && in_array(self::entryStatus($record), ['pending', 'failed'], true)
                     && ! self::hasDocumentTemplate($record)
                 )
                 ->action(function ($record): void {
@@ -1272,9 +1374,9 @@ class CustomFormEntriesTable
                 });
 
             $actions[] = Action::make('rejected')
-                ->label(__('candidate_entrance_statistics.statuses.rejected'))
-                ->icon('heroicon-o-x-circle')
-                ->color('danger')
+                ->label(__('candidate_entrance_statistics.statuses.send_back'))
+                ->icon('heroicon-o-arrow-uturn-left')
+                ->color('warning')
                 ->visible(fn ($record): bool =>
                     self::currentPanelIsAdmin()
                     && ! self::isProfileForm($record->custom_form_id)
@@ -1326,6 +1428,92 @@ class CustomFormEntriesTable
                     );
 
                     self::notifyStudentNationalExamResult($record, 'rejected', $data['review_note'] ?? null);
+
+                    Notification::make()
+                        ->title(__('candidate_entrance_statistics.notifications.admin_reject_success_title'))
+                        ->danger()
+                        ->send();
+                });
+
+            $actions[] = Action::make('send_back_after_reject')
+                ->label(__('candidate_entrance_statistics.statuses.send_back'))
+                ->icon('heroicon-o-arrow-uturn-left')
+                ->color('warning')
+                ->visible(fn ($record): bool =>
+                    self::currentPanelIsAdmin()
+                    && ! self::isProfileForm($record->custom_form_id)
+                    && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'rejected')
+                    && self::entryStatus($record) === 'failed'
+                    && ! self::hasDocumentTemplate($record)
+                )
+                ->form([
+                    Textarea::make('review_note')
+                        ->label(__('candidate_entrance_statistics.review_note'))
+                        ->required()
+                        ->rows(4),
+                ])
+                ->modalSubmitActionLabel(__('candidate_entrance_statistics.statuses.send_back'))
+                ->action(function ($record, array $data): void {
+                    self::sendBackAfterFinalRejection($record, $data);
+                });
+
+            $actions[] = Action::make('reject')
+                ->label(__('candidate_entrance_statistics.actions.reject'))
+                ->icon('heroicon-o-x-circle')
+                ->color('danger')
+                ->visible(fn ($record): bool =>
+                    self::currentPanelIsAdmin()
+                    && ! self::isProfileForm($record->custom_form_id)
+                    && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'reject')
+                    && self::entryStatus($record) === 'pending'
+                    && ! self::hasDocumentTemplate($record)
+                )
+                ->form([
+                    Textarea::make('review_note')
+                        ->label(__('candidate_entrance_statistics.review_note'))
+                        ->required()
+                        ->rows(4),
+                ])
+                ->modalSubmitActionLabel(__('candidate_entrance_statistics.actions.reject'))
+                ->action(function ($record, array $data): void {
+                    FilamentActionPermissions::abortUnlessCanForResource(CustomFormEntryResource::class, 'reject');
+
+                    $recordData = is_array($record->data) ? $record->data : [];
+                    $oldValues = [
+                        'review_status' => $record->review_status,
+                        'registration_status' => data_get($recordData, 'registration_status'),
+                        'review_note' => $record->review_note,
+                    ];
+                    $recordData['candidate_status'] = 'failed';
+                    $recordData['registration_status'] = 'failed';
+
+                    DB::table('custom_form_entries')
+                        ->where('id', $record->id)
+                        ->update([
+                            'review_status' => 'failed',
+                            'review_note' => $data['review_note'] ?? null,
+                            'reviewed_by' => auth()->id(),
+                            'reviewed_at' => now(),
+                            'updated_at' => now(),
+                            'data' => json_encode($recordData),
+                        ]);
+
+                    $record->refresh();
+
+                    AuditLogger::log(
+                        action: 'final_rejected',
+                        auditable: $record,
+                        oldValues: $oldValues,
+                        newValues: [
+                            'review_status' => 'failed',
+                            'registration_status' => 'failed',
+                            'review_note' => $data['review_note'] ?? null,
+                        ],
+                        description: 'Custom form entry permanently rejected',
+                        metadata: ['module' => 'Custom Form Entries'],
+                    );
+
+                    self::notifyStudentNationalExamResult($record, 'failed', $data['review_note'] ?? null);
 
                     Notification::make()
                         ->title(__('candidate_entrance_statistics.notifications.admin_reject_success_title'))
@@ -1623,13 +1811,65 @@ class CustomFormEntriesTable
                             : NotificationLanguage::transForUser($student, 'app.custom_form_entry_ui.notifications.no_note')),
                     ]))
             )
-            ->actions(array_filter([
-                self::studentEditNotificationAction($record, $studentLocale),
-            ]))
+            ->actions($status === 'failed'
+                ? []
+                : array_filter([
+                    self::studentEditNotificationAction($record, $studentLocale),
+                ]))
             ->icon('heroicon-o-x-circle')
             ->iconColor('danger')
             ->danger()
             ->sendToDatabase($student);
+    }
+
+    protected static function sendBackAfterFinalRejection($record, array $data): void
+    {
+        FilamentActionPermissions::abortUnlessCanForResource(CustomFormEntryResource::class, 'rejected');
+
+        $recordData = is_array($record->data) ? $record->data : [];
+        $reviewNote = $data['review_note'] ?? null;
+        $oldValues = [
+            'review_status' => $record->review_status,
+            'registration_status' => data_get($recordData, 'registration_status'),
+            'candidate_status' => data_get($recordData, 'candidate_status'),
+            'review_note' => $record->review_note,
+        ];
+        $recordData['candidate_status'] = 'pending';
+        $recordData['registration_status'] = 'rejected';
+
+        DB::table('custom_form_entries')
+            ->where('id', $record->id)
+            ->update([
+                'review_status' => 'rejected',
+                'review_note' => $reviewNote,
+                'reviewed_by' => auth()->id(),
+                'reviewed_at' => now(),
+                'updated_at' => now(),
+                'data' => json_encode($recordData),
+            ]);
+
+        $record->refresh();
+
+        AuditLogger::log(
+            action: 'sent_back_after_rejection',
+            auditable: $record,
+            oldValues: $oldValues,
+            newValues: [
+                'review_status' => 'rejected',
+                'registration_status' => 'rejected',
+                'candidate_status' => 'pending',
+                'review_note' => $reviewNote,
+            ],
+            description: 'Custom form entry sent back after final rejection',
+            metadata: ['module' => 'Custom Form Entries'],
+        );
+
+        self::notifyStudentNationalExamResult($record, 'rejected', $reviewNote);
+
+        Notification::make()
+            ->title(__('candidate_entrance_statistics.notifications.admin_send_back_success_title'))
+            ->warning()
+            ->send();
     }
 
     protected static function entryRequiresPayment($record): bool

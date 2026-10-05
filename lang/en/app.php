@@ -337,7 +337,7 @@ return [
             'application_approved_title' => 'Application :form Approved',
             'application_approved_body' => 'Your :form application has been approved. Please go to pay the service fee.',
             'application_approved_body_no_payment' => 'Your application for :form has been approved.',
-            'application_rejected_title' => 'Your :form application requires information updates.',
+            'application_rejected_title' => 'Your :form application has been rejected.',
             'application_rejected_body' => 'Reason: :note',
             'no_note' => 'None',
         ],

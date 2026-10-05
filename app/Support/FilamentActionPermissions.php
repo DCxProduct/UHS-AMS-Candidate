@@ -65,6 +65,7 @@ class FilamentActionPermissions
                 'original_application_received',
                 'view_pdf',
                 'accepted',
+                'reject',
                 'rejected',
                 'download_pdf',
             ],

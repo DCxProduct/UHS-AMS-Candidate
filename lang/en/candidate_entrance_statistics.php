@@ -53,6 +53,7 @@ return [
             'accepted' => 'Please go to cashier counter',
             'paid' => 'Paid',
             'rejected' => 'Incomplete',
+            'final_rejected' => 'Reject',
         'send_back' => 'Send Back',
         'passed' => 'Passed',
         'failed' => 'Failed',
@@ -85,6 +86,7 @@ return [
         'admin_accept_success_body' => 'The student has been notified.',
         'admin_reject_success_title' => 'Application rejected',
         'admin_reject_success_body' => 'The student has been notified.',
+        'admin_send_back_success_title' => 'Application sent back',
         'admin_resubmitted_title' => 'Application resubmitted',
         'admin_resubmitted_body' => ':student resubmitted :form after correction. Please review again.',
 
