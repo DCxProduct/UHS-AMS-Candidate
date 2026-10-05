@@ -10,6 +10,7 @@ use App\Filament\Widgets\CandidateSidebarFormsTable;
 use App\Filament\Widgets\CandidateStatsOverview;
 use App\Filament\Widgets\CashierStatsOverview;
 use App\Support\DashboardUserAccess;
+use App\Support\CandidateDisplayName;
 use Filament\Pages\Dashboard as BaseDashboard;
 use Illuminate\Contracts\Support\Htmlable;
 
@@ -33,12 +34,8 @@ class Dashboard extends BaseDashboard
     {
         $user = auth()->user();
 
-        $name = $user?->name
-            ?: $user?->username
-                ?: __('dashboard.user');
-
         return __('dashboard.welcome', [
-            'name' => $name,
+            'name' => CandidateDisplayName::for($user),
         ]);
     }
 

@@ -42,6 +42,7 @@ class CustomFormsTable
 
                 TextColumn::make('menu_placement')
                     ->label(__('filament-custom-forms::fcf.form.menu_placement'))
+                    ->hidden()
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'sidebar' => 'success',
@@ -56,6 +57,7 @@ class CustomFormsTable
 
                 TextColumn::make('parent_sidebar')
                     ->label(__('filament-custom-forms::fcf.form.menu_parent'))
+                    ->hidden()
                     ->default('—')
                     ->searchable()
                     ->badge()
@@ -65,6 +67,7 @@ class CustomFormsTable
 
                 TextColumn::make('sub_item_type')
                     ->label(__('filament-custom-forms::fcf.form.sub_form'))
+                    ->hidden()
                     ->default('—')
                     ->searchable()
                     ->badge()
@@ -74,12 +77,14 @@ class CustomFormsTable
 
                 TextColumn::make('statistics_menu')
                     ->label(__('filament-custom-forms::fcf.form.statistics_menu'))
+                    ->hidden()
                     ->badge()
                     ->formatStateUsing(fn (?string $state): string => StatisticsMenuOptions::label($state))
                     ->color(fn (?string $state): string => StatisticsMenuOptions::normalize($state) === StatisticsMenuOptions::EXIT_EXAM_STATISTICS ? 'warning' : 'success'),
 
                 TextColumn::make('passed_result_menu')
                     ->label(__('filament-custom-forms::fcf.form.passed_result_menu'))
+                    ->hidden()
                     ->badge()
                     ->formatStateUsing(fn (?string $state): string => PassedResultMenuOptions::label($state))
                     ->color(fn (?string $state): string => PassedResultMenuOptions::normalize($state) === PassedResultMenuOptions::EXIT_EXAM_RESULTS ? 'warning' : 'success'),

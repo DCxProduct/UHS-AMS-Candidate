@@ -76,6 +76,41 @@ class Register extends BaseRegister
                     ->default('student')
                     ->dehydrated(true),
 
+                TextInput::make('first_name_en')
+                    ->label(__('app.first_name_latin'))
+                    ->placeholder(__('app.enter_first_name_latin'))
+                    ->required()
+                    ->maxLength(100)
+                    ->autofocus()
+                    ->rules([
+                        'required',
+                        'string',
+                        'max:100',
+                        "regex:/^[A-Za-z][A-Za-z .'-]*$/",
+                    ])
+                    ->validationMessages([
+                        'required' => __('app.first_name_latin_required'),
+                        'regex' => __('app.latin_name_regex'),
+                    ])
+                    ->dehydrateStateUsing(fn (?string $state): string => self::normalizeLatinNamePart($state)),
+
+                TextInput::make('last_name_en')
+                    ->label(__('app.last_name_latin'))
+                    ->placeholder(__('app.enter_last_name_latin'))
+                    ->required()
+                    ->maxLength(100)
+                    ->rules([
+                        'required',
+                        'string',
+                        'max:100',
+                        "regex:/^[A-Za-z][A-Za-z .'-]*$/",
+                    ])
+                    ->validationMessages([
+                        'required' => __('app.last_name_latin_required'),
+                        'regex' => __('app.latin_name_regex'),
+                    ])
+                    ->dehydrateStateUsing(fn (?string $state): string => self::normalizeLatinNamePart($state)),
+
                 TextInput::make('phone')
                     ->label(__('app.phone_number'))
                     ->placeholder(__('app.enter_phone_number'))
@@ -84,7 +119,6 @@ class Register extends BaseRegister
                     ->inputMode('numeric')
                     ->minLength(9)
                     ->maxLength(10)
-                    ->autofocus()
                     ->rules([
                         'required',
                         'regex:/^[0-9]{9,10}$/',
@@ -294,6 +328,11 @@ class Register extends BaseRegister
             ? Str::lower(trim((string) $data['email']))
             : null;
 
+        $fullName = trim(implode(' ', array_filter([
+            self::normalizeLatinNamePart($data['first_name_en'] ?? null),
+            self::normalizeLatinNamePart($data['last_name_en'] ?? null),
+        ])));
+
         $username = $this->generateInternalUsername($phone);
         $dateOfBirth = '2000-01-01';
 
@@ -302,6 +341,7 @@ class Register extends BaseRegister
             $studentRole,
             $phone,
             $email,
+            $fullName,
             $dateOfBirth,
             $data,
         ): Model {
@@ -315,8 +355,8 @@ class Register extends BaseRegister
             $user = User::query()->create([
                 'registration_type' => 'student',
                 'academic_year' => null,
-                'name' => $username,
-                'name_latin' => null,
+                'name' => $fullName,
+                'name_latin' => $fullName,
                 'username' => $username,
                 'email' => $email,
                 'phone' => $phone,
@@ -346,7 +386,7 @@ class Register extends BaseRegister
                     : ['phone' => $phone]);
 
             SystemUser::query()->updateOrCreate($systemUserLookup, [
-                'name' => $username,
+                'name' => $fullName,
                 'username' => $username,
                 'email' => $email,
                 'phone' => $phone,
@@ -410,6 +450,11 @@ class Register extends BaseRegister
         }
 
         return $username;
+    }
+
+    private static function normalizeLatinNamePart(?string $value): string
+    {
+        return trim((string) preg_replace('/\s+/', ' ', (string) $value));
     }
 
     protected function ensureCaptchaChallenge(): void
