@@ -23,6 +23,7 @@ return [
         'edit_review_note' => 'សារ',
         'view_pdf' => 'ពិនិត្យ',
         'accepted' => 'ទទួលយក',
+        'reject' => 'បដិសេធ',
         'rejected' => 'ផ្ញើត្រឡប់',
         'download_pdf' => 'ទាញយក PDF',
         'edit_template' => 'បង្កើតគំរូឯកសារ',

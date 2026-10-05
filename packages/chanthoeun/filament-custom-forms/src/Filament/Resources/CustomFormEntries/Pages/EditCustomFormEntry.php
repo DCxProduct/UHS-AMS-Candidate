@@ -388,13 +388,12 @@ class EditCustomFormEntry extends EditRecord
             $student = auth()->user();
 
             $admins = User::query()
+                ->where('registration_type', 'admin')
                 ->when(
                     Schema::hasColumn('users', 'is_active'),
                     fn ($query) => $query->where('is_active', true),
                 )
-                ->get()
-                ->filter(fn (User $user): bool => $user->hasEffectiveRole('admin'))
-                ->values();
+                ->get();
 
             if ($admins->isEmpty()) {
                 return;
