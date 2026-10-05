@@ -32,6 +32,11 @@ class PaymentResource extends Resource
         return __('navigation.payments');
     }
 
+    public static function getNavigationBadge(): ?string
+    {
+        return number_format(static::getEloquentQuery()->count());
+    }
+
     public static function getNavigationGroup(): string | UnitEnum | null
     {
         return __('navigation.groups.cashier');
