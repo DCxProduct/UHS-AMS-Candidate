@@ -11,15 +11,11 @@ jobs:
     steps:
       - name: Deploy using ssh
         uses: appleboy/ssh-action@master
-        env:
-          SEEDED_ADMIN_PASSWORD: ${{ secrets.SEEDED_ADMIN_PASSWORD }}
-          SEEDED_STAFF_PASSWORD: ${{ secrets.SEEDED_STAFF_PASSWORD }}
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           password: ${{ secrets.PASSWORD }}
           port: ${{ secrets.PORT }}
-          envs: SEEDED_ADMIN_PASSWORD,SEEDED_STAFF_PASSWORD
           command_timeout: 15m
           script: |
             set -e
@@ -59,16 +55,6 @@ jobs:
             # Stop rather than booting the application with local/default values.
             if [ ! -f "$APP_DIR/.env" ]; then
               echo "❌ Missing production .env at $APP_DIR/.env"
-              exit 1
-            fi
-
-            if [ -z "${SEEDED_ADMIN_PASSWORD:-}" ]; then
-              echo "❌ Missing GitHub Actions secret: SEEDED_ADMIN_PASSWORD"
-              exit 1
-            fi
-
-            if [ -z "${SEEDED_STAFF_PASSWORD:-}" ]; then
-              echo "❌ Missing GitHub Actions secret: SEEDED_STAFF_PASSWORD"
               exit 1
             fi
 
