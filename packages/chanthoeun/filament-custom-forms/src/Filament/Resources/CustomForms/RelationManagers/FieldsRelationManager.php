@@ -562,14 +562,14 @@ class FieldsRelationManager extends RelationManager
                     ->label(app()->getLocale() === 'km' ? 'ស្លាក (EN)' : 'Label (EN)')
                     ->state(fn ($record): string => self::getLangValue($record->label, 'en'))
                     ->searchable(query: function (\Illuminate\Database\Eloquent\Builder $query, string $search): \Illuminate\Database\Eloquent\Builder {
-                        return $query->where('label', 'ilike', "%{$search}%");
+                        return \App\Support\CaseInsensitiveSearch::apply($query, 'label', $search);
                     }),
 
                 TextColumn::make('label_km')
                     ->label(app()->getLocale() === 'km' ? 'ស្លាក (KM)' : 'Label (KM)')
                     ->state(fn ($record): string => self::getLangValue($record->label, 'km'))
                     ->searchable(query: function (\Illuminate\Database\Eloquent\Builder $query, string $search): \Illuminate\Database\Eloquent\Builder {
-                        return $query->where('label', 'ilike', "%{$search}%");
+                        return \App\Support\CaseInsensitiveSearch::apply($query, 'label', $search);
                     }),
 
 

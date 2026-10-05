@@ -29,6 +29,7 @@ use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate;
 use Filament\Notifications\Notification;
+use Filament\Tables\Columns\TextColumn;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Support\Facades\DB;
@@ -47,6 +48,10 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        TextColumn::configureUsing(static function (TextColumn $column): void {
+            $column->forceSearchCaseInsensitive();
+        });
+
         FilamentActionPermissions::sync();
 
         $this->registerAuditLogging();

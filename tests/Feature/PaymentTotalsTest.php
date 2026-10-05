@@ -57,7 +57,7 @@ class PaymentTotalsTest extends TestCase
         ]);
 
         $component = Livewire::test(ListPayments::class)
-            ->set('tableSearch', 'MATCH-001')
+            ->set('tableSearch', 'match-001')
             ->assertTableColumnSummarySet('amount_usd', 'amount_usd_total', 5)
             ->assertTableColumnSummarySet('amount_kh', 'amount_khr_total', 20500);
 

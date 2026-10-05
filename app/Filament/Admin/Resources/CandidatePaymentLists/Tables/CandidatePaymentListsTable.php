@@ -10,6 +10,7 @@ use App\Models\PaymentType;
 use App\Models\User;
 use App\Support\FilamentActionPermissions;
 use App\Support\FormEntryData;
+use App\Support\CaseInsensitiveSearch;
 use App\Support\LocalizedNumber;
 use App\Support\NotificationLanguage;
 use App\Support\PaymentValidation;
@@ -95,26 +96,28 @@ class CandidatePaymentListsTable
                     ->getStateUsing(fn (UnpaidApplication $record): string => self::localizedFormName($record->customForm?->name))
                     ->searchable(query: fn (Builder $query, string $search): Builder => $query
                         ->whereHas('customForm', function (Builder $formQuery) use ($search): void {
-                            $formQuery->where('name', 'like', "%{$search}%");
+                            CaseInsensitiveSearch::apply($formQuery, 'name', $search);
                         }))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('name_khmer')
                     ->label(__('candidate_payment_lists.columns.name_khmer'))
                     ->getStateUsing(fn (UnpaidApplication $record): string => self::khmerName($record))
-                    ->searchable(query: fn (Builder $query, string $search): Builder => $query
-                        ->where('data->first_name_kh', 'like', "%{$search}%")
-                        ->orWhere('data->last_name_kh', 'like', "%{$search}%")
-                        ->orWhere('data->full_name_kh', 'like', "%{$search}%"))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyAny($query, [
+                            'data->first_name_kh',
+                            'data->last_name_kh',
+                            'data->full_name_kh',
+                        ], $search))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('name_latin')
                     ->label(__('candidate_payment_lists.columns.name_latin'))
                     ->getStateUsing(fn (UnpaidApplication $record): string => self::latinName($record))
-                    ->searchable(query: fn (Builder $query, string $search): Builder => $query
-                        ->where('data->first_name_en', 'like', "%{$search}%")
-                        ->orWhere('data->last_name_en', 'like', "%{$search}%")
-                        ->orWhere('data->full_name_en', 'like', "%{$search}%"))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyAny($query, [
+                            'data->first_name_en',
+                            'data->last_name_en',
+                            'data->full_name_en',
+                        ], $search))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('gender')
