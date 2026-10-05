@@ -565,12 +565,6 @@ class ExamResultsTable
             return $selection;
         }
 
-        $subItemType = trim((string) $record->customForm?->sub_item_type);
-
-        if ($subItemType !== '') {
-            return $subItemType;
-        }
-
         $formSlug = trim((string) $record->customForm?->slug);
 
         if ($formSlug !== '') {
@@ -680,37 +674,15 @@ class ExamResultsTable
 
     protected static function dynamicFormTypeOptions(): array
     {
-        $options = [];
-
-        CustomForm::query()
-            ->where('menu_placement', 'sidebar')
+        return CustomForm::query()
             ->where('is_active', true)
             ->where('slug', '!=', 'profile')
             ->orderBy('id')
             ->get(['id', 'name'])
-            ->each(function (CustomForm $form) use (&$options): void {
-                $childForms = CustomForm::query()
-                    ->where('custom_form_id', $form->id)
-                    ->where('menu_placement', 'sub_item')
-                    ->where('is_active', true)
-                    ->whereNotNull('sub_item_type')
-                    ->orderBy('id')
-                    ->get(['id', 'name', 'custom_form_id', 'sub_item_type']);
-
-                if (self::formHasPassedEntries((int) $form->id, $childForms->pluck('id')->all())) {
-                    $options[self::formFilterValue((int) $form->id)] = $form->display_name;
-                }
-
-                foreach ($childForms as $childForm) {
-                    if (! self::subFormHasPassedEntries($childForm)) {
-                        continue;
-                    }
-
-                    $options[self::subFormFilterValue((int) $childForm->id)] = $form->display_name . ' - ' . $childForm->display_name;
-                }
-            });
-
-        return $options;
+            ->mapWithKeys(fn (CustomForm $form): array => [
+                self::formFilterValue((int) $form->id) => $form->display_name,
+            ])
+            ->all();
     }
 
     protected static function applyFormTypeFilter(Builder $query, string $formType): Builder
@@ -719,27 +691,7 @@ class ExamResultsTable
             $formId = self::formIdFromFilterValue($formType);
 
             if ($formId) {
-                return $query->whereIn('custom_form_id', self::sidebarFormIdsForFilter($formId));
-            }
-        }
-
-        if (str_starts_with($formType, 'subform:')) {
-            $subFormId = self::subFormIdFromFilterValue($formType);
-            $subForm = $subFormId
-                ? CustomForm::query()->whereKey($subFormId)->first(['id', 'custom_form_id', 'sub_item_type'])
-                : null;
-
-            if ($subForm) {
-                return $query->where(function (Builder $query) use ($subForm): void {
-                    $query->where('custom_form_id', $subForm->id);
-
-                    if (filled($subForm->sub_item_type)) {
-                        $query->orWhere(function (Builder $query) use ($subForm): void {
-                            $query->where('custom_form_id', $subForm->custom_form_id)
-                                ->where('data->form_selection', $subForm->sub_item_type);
-                        });
-                    }
-                });
+                return $query->where('custom_form_id', $formId);
             }
         }
 
@@ -762,35 +714,6 @@ class ExamResultsTable
         return $formId > 0 ? $formId : null;
     }
 
-    protected static function subFormFilterValue(int $formId): string
-    {
-        return 'subform:' . $formId;
-    }
-
-    protected static function subFormIdFromFilterValue(string $value): ?int
-    {
-        if (! str_starts_with($value, 'subform:')) {
-            return null;
-        }
-
-        $formId = (int) substr($value, 8);
-
-        return $formId > 0 ? $formId : null;
-    }
-
-    protected static function sidebarFormIdsForFilter(int $formId): array
-    {
-        $childIds = CustomForm::query()
-            ->where('custom_form_id', $formId)
-            ->where('menu_placement', 'sub_item')
-            ->where('is_active', true)
-            ->pluck('id')
-            ->map(fn ($id): int => (int) $id)
-            ->all();
-
-        return array_values(array_unique(array_merge([$formId], $childIds)));
-    }
-
     protected static function passedCandidateQuery(Builder $query, string $resultMenu = PassedResultMenuOptions::EXAM_RESULTS): Builder
     {
         return self::applyPassedResultMenuFilter(
@@ -798,31 +721,6 @@ class ExamResultsTable
             resultMenu: $resultMenu,
             hiddenFlag: null,
         );
-    }
-
-    protected static function formHasPassedEntries(int $formId, array $childFormIds = [], string $resultMenu = PassedResultMenuOptions::EXAM_RESULTS): bool
-    {
-        $formIds = array_values(array_unique(array_merge([$formId], array_map('intval', $childFormIds))));
-
-        return self::passedCandidateQuery(CustomFormEntry::query(), $resultMenu)
-            ->whereIn('custom_form_id', $formIds)
-            ->exists();
-    }
-
-    protected static function subFormHasPassedEntries(CustomForm $subForm, string $resultMenu = PassedResultMenuOptions::EXAM_RESULTS): bool
-    {
-        return self::passedCandidateQuery(CustomFormEntry::query(), $resultMenu)
-            ->where(function (Builder $query) use ($subForm): void {
-                $query->where('custom_form_id', $subForm->id);
-
-                if (filled($subForm->sub_item_type)) {
-                    $query->orWhere(function (Builder $query) use ($subForm): void {
-                        $query->where('custom_form_id', $subForm->custom_form_id)
-                            ->where('data->form_selection', $subForm->sub_item_type);
-                    });
-                }
-            })
-            ->exists();
     }
 
     public static function applyPassedResultMenuFilter(
@@ -833,41 +731,10 @@ class ExamResultsTable
         $resultMenu = PassedResultMenuOptions::normalize($resultMenu);
 
         $query->where('data->candidate_status', 'passed')
-            ->where(function (Builder $query) use ($resultMenu): void {
-                $query
-                    ->where(function (Builder $query) use ($resultMenu): void {
-                        $query->whereHas('customForm', function (Builder $query) use ($resultMenu): void {
-                            $query->where('menu_placement', 'sidebar')
-                                ->where('is_active', true)
-                                ->where('slug', '!=', 'profile')
-                                ->where('passed_result_menu', $resultMenu);
-                        })->where(function (Builder $query): void {
-                            $query->whereNull('data->form_selection')
-                                ->orWhere('data->form_selection', '')
-                                ->orWhereNotExists(function ($subQuery): void {
-                                    $subQuery->selectRaw('1')
-                                        ->from('custom_forms as child_forms')
-                                        ->whereColumn('child_forms.custom_form_id', 'custom_form_entries.custom_form_id')
-                                        ->where('child_forms.menu_placement', 'sub_item')
-                                        ->where('child_forms.is_active', true)
-                                        ->whereRaw("LOWER(child_forms.sub_item_type) = LOWER(COALESCE(custom_form_entries.data->>'form_selection', ''))");
-                                });
-                        });
-                    })
-                    ->orWhereHas('customForm', function (Builder $query) use ($resultMenu): void {
-                        $query->where('menu_placement', 'sub_item')
-                            ->where('is_active', true)
-                            ->where('passed_result_menu', $resultMenu);
-                    })
-                    ->orWhereExists(function ($subQuery) use ($resultMenu): void {
-                        $subQuery->selectRaw('1')
-                            ->from('custom_forms as child_forms')
-                            ->whereColumn('child_forms.custom_form_id', 'custom_form_entries.custom_form_id')
-                            ->where('child_forms.menu_placement', 'sub_item')
-                            ->where('child_forms.is_active', true)
-                            ->where('child_forms.passed_result_menu', $resultMenu)
-                            ->whereRaw("LOWER(child_forms.sub_item_type) = LOWER(COALESCE(custom_form_entries.data->>'form_selection', ''))");
-                    });
+            ->whereHas('customForm', function (Builder $query) use ($resultMenu): void {
+                $query->where('is_active', true)
+                    ->where('slug', '!=', 'profile')
+                    ->where('passed_result_menu', $resultMenu);
             });
 
         if ($hiddenFlag) {
@@ -887,57 +754,11 @@ class ExamResultsTable
     {
         $form = $record->customForm;
 
-        if ($form?->menu_placement === 'sub_item') {
-            $parentName = $form->parentForm?->display_name;
-
-            return filled($parentName)
-                ? $parentName . ' - ' . $form->display_name
-                : $form->display_name;
-        }
-
-        $selection = (string) data_get($record->data, 'form_selection');
-
-        if ($form?->menu_placement === 'sidebar' && filled($selection)) {
-            $subForm = CustomForm::query()
-                ->where('custom_form_id', $form->id)
-                ->where('menu_placement', 'sub_item')
-                ->where('sub_item_type', $selection)
-                ->first(['name']);
-
-            if ($subForm) {
-                return $form->display_name . ' - ' . $subForm->display_name;
-            }
-        }
-
         if ($form) {
             return $form->display_name;
         }
 
-        return self::formTypeLabel($selection);
-    }
-
-    protected static function formTypeLabel(?string $state): string
-    {
-        if (blank($state)) {
-            return '-';
-        }
-
-        $form = CustomForm::query()
-            ->where('menu_placement', 'sub_item')
-            ->where('sub_item_type', $state)
-            ->first(['name']);
-
-        if ($form) {
-            return $form->display_name;
-        }
-
-        return match ($state) {
-            'associate' => __('exam_results.options.form_type.associate'),
-            'bachelor' => __('exam_results.options.form_type.bachelor'),
-            'master' => __('exam_results.options.form_type.master'),
-            'phd' => __('exam_results.options.form_type.phd'),
-            default => filled($state) ? ucfirst((string) $state) : '-',
-        };
+        return '-';
     }
 
     protected static function statusLabel(?string $state): string

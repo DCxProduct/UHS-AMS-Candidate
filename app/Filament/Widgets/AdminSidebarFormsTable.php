@@ -31,7 +31,6 @@ class AdminSidebarFormsTable extends TableWidget
         return $table
             ->query(
                 CustomForm::query()
-                    ->with('parentForm')
                     ->withCount('entries')
                     ->where('slug', '!=', 'profile')
                     ->orderBy('display_order')
@@ -83,14 +82,6 @@ class AdminSidebarFormsTable extends TableWidget
 
     private function formMeta(CustomForm $record): string
     {
-        if ($record->menu_placement === 'sub_item') {
-            $parentName = $record->parentForm?->display_name ?: CustomForm::localeText($record->parent_sidebar);
-
-            if (filled($parentName)) {
-                return __('dashboard.sub_form_of', ['parent' => $parentName]);
-            }
-        }
-
         return '';
     }
 }

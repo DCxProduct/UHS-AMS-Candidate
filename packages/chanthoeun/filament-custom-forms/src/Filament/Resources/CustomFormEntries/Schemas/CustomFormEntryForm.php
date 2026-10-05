@@ -2,7 +2,6 @@
 
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Schemas;
 
-use App\Models\ClosingDate;
 use App\Models\GeoLocation;
 use App\Support\CustomFormEntryFiles;
 use App\Support\DatePickerKeyboardInput;
@@ -81,13 +80,6 @@ class CustomFormEntryForm
                     $isLocked = method_exists($livewire, 'isLockedForEditing')
                         && $livewire->isLockedForEditing();
 
-                    $formTypesField = self::findFieldByName($rootFields, 'form_types');
-                    $formSelectionField = self::findFieldByName($rootFields, 'form_selection');
-
-                    if ($formTypesField && $formSelectionField) {
-                        return self::getNationalExamWizard($customForm, $rootFields, $isLocked);
-                    }
-
                     $hiddenFieldNames = (string) $customForm->slug === 'profile'
                         ? ['personal_note']
                         : [];
@@ -130,142 +122,6 @@ class CustomFormEntryForm
         return null;
     }
 
-    protected static function getNationalExamWizard(CustomForm $customForm, Collection $rootFields, bool $isLocked = false): array
-    {
-        $formTypesSection = self::findFieldByName($rootFields, 'form_types');
-        $formSelectionField = self::findFieldByName($rootFields, 'form_selection');
-
-        if (! $formTypesSection || ! $formSelectionField) {
-            return self::getFields($rootFields, $isLocked, [], CustomForm::isProfileSlug($customForm->slug ?? null));
-        }
-
-        $childForms = CustomForm::query()
-            ->where('custom_form_id', $customForm->id)
-            ->where('menu_placement', 'sub_item')
-            ->whereNotNull('sub_item_type')
-            ->where('is_active', true)
-            ->orderBy('id')
-            ->get()
-            ->filter(fn (CustomForm $form): bool => ClosingDate::isCustomFormOpen($form->id))
-            ->values();
-
-        $activeSubItemTypes = $childForms
-            ->pluck('sub_item_type')
-            ->filter()
-            ->map(fn ($type) => strtolower((string) $type))
-            ->values()
-            ->all();
-
-        $selectionOptions = self::normalizeOptions($formSelectionField->options ?? []);
-        $parentFields = $rootFields
-            ->reject(fn ($field): bool => in_array((string) $field->name, ['form_types', 'form_selection'], true))
-            ->values();
-
-        $parentSchema = self::getFields($parentFields, $isLocked, ['form_selection'], true);
-
-        $formTypeStepSchema = [];
-
-        if (! empty($parentSchema)) {
-            $formTypeStepSchema[] = Section::make(self::transText($customForm->name))
-                ->schema($parentSchema)
-                ->columns(2);
-        }
-
-        $formTypesSchema = self::getFields(
-            $formTypesSection->children()
-                ->orderBy('sort')
-                ->get()
-                ->reject(fn ($field): bool => (string) $field->name === 'form_selection')
-                ->values(),
-            $isLocked,
-            ['form_selection'],
-            true
-        );
-
-        $formTypesSchema[] = Select::make('data.form_selection')
-            ->label(self::transText($formSelectionField->label ?: 'Form Selections'))
-            ->options(self::transOptionsOnlyActive($selectionOptions['choices'] ?? [], $activeSubItemTypes))
-            ->placeholder(self::selectPlaceholder())
-            ->required((bool) ($formSelectionField->required ?? false))
-            ->validationMessages([
-                'required' => __('student_profile.form_type_required'),
-            ])
-            ->dehydrated(true)
-            ->live()
-            ->afterStateUpdated(function (Select $component, $state, $livewire) {
-                if (property_exists($livewire, 'form_selection')) {
-                    $livewire->form_selection = $state ?: null;
-                }
-
-                if ($state) {
-                    $wizardKey = null;
-                    $container = $component->getContainer();
-                    while ($container) {
-                        $parentComponent = $container->getParentComponent();
-                        if ($parentComponent instanceof \Filament\Schemas\Components\Wizard) {
-                            $wizardKey = $parentComponent->getKey();
-                            break;
-                        }
-                        $container = $parentComponent?->getContainer();
-                    }
-
-                    if ($wizardKey) {
-                        $livewire->dispatch('next-wizard-step', key: $wizardKey);
-                    }
-                }
-            });
-
-        $formTypeStepSchema[] = Section::make(self::transText($formTypesSection->label ?: 'Form Types'))
-                ->schema($formTypesSchema)
-                ->columns(1);
-
-        $applicationSchema = [];
-
-        foreach ($childForms as $childForm) {
-            $childRootFields = self::uniqueFieldsForRender(
-                $childForm->fields()->roots()->orderBy('sort')->get()
-            );
-
-            if ($childRootFields->isEmpty()) {
-                continue;
-            }
-
-            $childSchema = self::getFields($childRootFields, $isLocked, [], false);
-
-            if (empty($childSchema)) {
-                continue;
-            }
-
-            $applicationSchema[] = Section::make(self::transText($childForm->name))
-                ->schema($childSchema)
-                ->columns(2)
-                ->visible(function (Get $get) use ($childForm): bool {
-                    return strtolower((string) ($get('data.form_selection') ?? ''))
-                        === strtolower((string) $childForm->sub_item_type);
-                });
-        }
-
-        return [
-            Wizard::make([
-                WizardStep::make(app()->getLocale() === 'km' ? 'ប្រភេទទម្រង់' : 'Form Type')
-                    ->schema($formTypeStepSchema)
-                    ->columns(1),
-
-                WizardStep::make(app()->getLocale() === 'km' ? 'ទម្រង់ពាក្យស្នើសុំ' : 'Application Form')
-                    ->schema($applicationSchema)
-                    ->columns(1),
-            ])
-                ->key('national-exam-wizard')
-                ->persistStepInQueryString()
-                ->startOnStep(fn (Get $get) => filled($get('data.form_selection')) ? 2 : 1)
-                ->nextAction(fn (Action $action) => $action->hidden(
-                    fn (Wizard $component) => $component->getCurrentStepIndex() === 0
-                ))
-                ->columnSpanFull()
-                ->skippable(false),
-        ];
-    }
-
     protected static function getProfileWizard(
         Collection $rootFields,
         bool $isLocked = false,
@@ -301,24 +157,6 @@ class CustomFormEntryForm
                 ->skippable(false)
                 ->columnSpanFull(),
         ];
-    }
-
-    protected static function transOptionsOnlyActive(array $choices, array $activeTypes): array
-    {
-        return collect($choices)
-            ->mapWithKeys(function ($label, $key): array {
-                if (is_array($label) && array_key_exists('value', $label)) {
-                    return [
-                        (string) $label['value'] => self::transText($label['label'] ?? $label['value']),
-                    ];
-                }
-
-                return [
-                    (string) $key => self::transText($label),
-                ];
-            })
-            ->filter(fn ($label, $key): bool => in_array(strtolower((string) $key), $activeTypes, true))
-            ->toArray();
     }
 
     protected static function uniqueFieldsForRender($fields): Collection

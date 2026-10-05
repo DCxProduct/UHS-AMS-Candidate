@@ -26,20 +26,7 @@ class AdminStatsOverview extends StatsOverviewWidget
             ->whereHas('customForm', function (Builder $query): void {
                 $query
                     ->where('slug', '!=', 'profile')
-                    ->where(function (Builder $query): void {
-                        $query->where(function (Builder $query): void {
-                            $query->where('menu_placement', 'sidebar')
-                                ->where('is_active', true);
-                        })->orWhere(function (Builder $query): void {
-                            $query->where('menu_placement', 'sub_item')
-                                ->where('is_active', true)
-                                ->whereHas('parentForm', function (Builder $query): void {
-                                    $query->where('menu_placement', 'sidebar')
-                                        ->where('is_active', true)
-                                        ->where('slug', '!=', 'profile');
-                                });
-                        });
-                    });
+                    ->where('is_active', true);
             });
 
         $totalSubmissions = (clone $entriesQuery)

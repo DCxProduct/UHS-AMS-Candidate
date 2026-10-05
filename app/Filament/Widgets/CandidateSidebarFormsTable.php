@@ -39,7 +39,6 @@ class CandidateSidebarFormsTable extends TableWidget
         return $table
             ->query(
                 CustomForm::query()
-                    ->with('parentForm')
                     ->whereIn('id', $availableFormIds)
                     ->orderBy('display_order')
                     ->orderBy('id')
@@ -79,14 +78,6 @@ class CandidateSidebarFormsTable extends TableWidget
 
     private function formMeta(CustomForm $record): string
     {
-        if ($record->menu_placement === 'sub_item') {
-            $parentName = $record->parentForm?->display_name ?: CustomForm::localeText($record->parent_sidebar);
-
-            if (filled($parentName)) {
-                return __('dashboard.sub_form_of', ['parent' => $parentName]);
-            }
-        }
-
         return '';
     }
 }

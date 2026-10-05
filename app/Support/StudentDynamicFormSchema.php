@@ -51,36 +51,6 @@ class StudentDynamicFormSchema
 
         $formIds = [$form->id];
 
-        $selectedType = strtolower((string) data_get($state, 'form_selection'));
-
-        if (filled($selectedType) && Schema::hasTable('custom_forms')) {
-            $customFormColumns = Schema::getColumnListing('custom_forms');
-
-            $subFormQuery = DB::table('custom_forms');
-
-            if (in_array('menu_placement', $customFormColumns, true)) {
-                $subFormQuery->where('menu_placement', 'sub_item');
-            }
-
-            if (in_array('parent_sidebar', $customFormColumns, true)) {
-                $subFormQuery->where('parent_sidebar', $form->name);
-            }
-
-            if (in_array('sub_item_type', $customFormColumns, true)) {
-                $subFormQuery->whereRaw('LOWER(sub_item_type) = ?', [$selectedType]);
-            }
-
-            if (in_array('is_active', $customFormColumns, true)) {
-                $subFormQuery->where('is_active', true);
-            }
-
-            $subFormId = $subFormQuery->value('id');
-
-            if ($subFormId) {
-                $formIds[] = (int) $subFormId;
-            }
-        }
-
         $query = DB::table('custom_form_fields')
             ->whereIn($formColumn, $formIds);
 

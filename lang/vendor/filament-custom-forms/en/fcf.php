@@ -27,9 +27,6 @@
          'slug' => 'Slug',
          'is_active' => 'Is Active',
          'details' => 'Form Details',
-         'menu_placement' => 'Menu Placement',
-         'menu_parent' => 'Menu Parent',
-         'sub_form' => 'Sub Form Type',
          'form_field' => 'Form Field',
          'passed_result_menu' => 'Passed Candidate Result Menu',
          'statistics_menu' => 'Candidate Statistics Menu',
@@ -123,8 +120,6 @@
 
      'menu' => [
          'sidebar' => 'Create with Sidebar',
-         'sub_item' => 'Form Builder Sub Item',
-         'parent_sidebar' => 'Select Parent Sidebar',
      ],
 
      'placeholder' => [

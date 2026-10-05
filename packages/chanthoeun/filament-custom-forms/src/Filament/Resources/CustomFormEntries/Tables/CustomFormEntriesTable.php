@@ -311,36 +311,7 @@ class CustomFormEntriesTable
             return self::getProfileColumns();
         }
 
-        $nationalExamFormId = \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
-            ->where('slug', 'national-examination-registration')
-            ->value('id');
-
-        $targetFormIds = [];
-        if (empty($formId) || (string)$formId === (string)$nationalExamFormId) {
-            if ($nationalExamFormId) {
-                $targetFormIds[] = $nationalExamFormId;
-                $childFormIds = \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
-                    ->where('custom_form_id', $nationalExamFormId)
-                    ->where('menu_placement', 'sub_item')
-                    ->whereNotNull('sub_item_type')
-                    ->where('is_active', true)
-                    ->pluck('id')
-                    ->toArray();
-                $targetFormIds = array_merge($targetFormIds, $childFormIds);
-            }
-        } elseif ($formId) {
-            $targetFormIds[] = $formId;
-
-            $childFormIds = \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
-                ->where('custom_form_id', $formId)
-                ->where('menu_placement', 'sub_item')
-                ->whereNotNull('sub_item_type')
-                ->where('is_active', true)
-                ->pluck('id')
-                ->toArray();
-
-            $targetFormIds = array_merge($targetFormIds, $childFormIds);
-        }
+        $targetFormIds = $formId ? [(int) $formId] : [];
 
         $additionalColumns = [];
         if (!empty($targetFormIds)) {
@@ -629,98 +600,6 @@ class CustomFormEntriesTable
     protected static function reviewMessage($record): string
     {
         return trim((string) ($record->review_note ?? ''));
-    }
-
-    protected static function isNationalExaminationForm(string $formId): bool
-    {
-        return \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
-            ->whereKey($formId)
-            ->where('slug', 'national-examination-registration')
-            ->exists();
-    }
-
-    protected static function getNationalExaminationColumns(): array
-    {
-        $columns = [
-            TextColumn::make('data.form_selection')
-                ->label(__('candidate_entrance_statistics.form_type'))
-                ->badge()
-                ->sortable()
-                ->formatStateUsing(fn (?string $state): string => self::formTypeLabel($state))
-                ->color('info'),
-        ];
-
-        $nationalExamFormId = \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
-            ->where('slug', 'national-examination-registration')
-            ->value('id');
-
-        if ($nationalExamFormId) {
-            $childForms = \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
-                ->where('custom_form_id', $nationalExamFormId)
-                ->where('menu_placement', 'sub_item')
-                ->whereNotNull('sub_item_type')
-                ->where('is_active', true)
-                ->get();
-
-            foreach ($childForms as $childForm) {
-                $fields = \Chanthoeun\FilamentCustomForms\Models\CustomFormField::query()
-                    ->where('custom_form_id', $childForm->id)
-                    ->whereNotIn('type', ['section', 'grid', 'fieldset', 'repeater', 'wizard', 'info'])
-                    ->orderBy('sort')
-                    ->get();
-
-                foreach ($fields as $field) {
-                    $key = (string) $field->name;
-
-                    if (blank($key)) {
-                        continue;
-                    }
-
-                    $column = TextColumn::make("data.{$key}")
-                        ->label(self::transText($field->label ?: $key))
-                        ->placeholder('-')
-                        ->toggleable()
-                        ->wrap();
-
-                    if (self::isGeoColumn((string) $key)) {
-                        $column->formatStateUsing(fn (mixed $state): string => self::geoLocationName($state));
-                    }
-
-                    if (! self::isGeoColumn((string) $key)) {
-                        $fieldOptions = is_array($field->options) ? $field->options : json_decode((string) $field->options, true);
-                        $choices = $fieldOptions['choices'] ?? null;
-
-                        if (is_array($choices) && ! empty($choices)) {
-                            $column->formatStateUsing(fn (mixed $state): string => self::formatChoiceState($choices, $state));
-                        }
-                    }
-
-                    $columns[] = $column;
-                }
-            }
-        }
-
-        $columns[] = self::reviewStatusColumn();
-
-        $columns[] = TextColumn::make('created_at')
-            ->label(__('candidate_entrance_statistics.request_at'))
-            ->formatStateUsing(fn ($state, $record): string => LocalizedDate::dayMonthYear(
-                data_get($record->data, 'submitted_at') ?: $state
-            ))
-            ->color('gray');
-
-        $columns[] = TextColumn::make('updated_at')
-            ->label(__('app.updated_at'))
-            ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
-            ->color('info');
-
-        $columns[] = TextColumn::make('reviewed_at')
-            ->label(__('candidate_entrance_statistics.reviewed_at'))
-            ->dateTime('d M Y H:i')
-            ->placeholder(__('candidate_entrance_statistics.not_reviewed_yet'))
-            ->color('info');
-
-        return $columns;
     }
 
     protected static function isProfileForm(string $formId): bool
@@ -1528,23 +1407,7 @@ class CustomFormEntriesTable
                 ->label(__('candidate_entrance_statistics.download_pdf'))
                 ->icon('heroicon-o-document-arrow-down')
                 ->color('success')
-                ->templateType(function ($record) {
-                    $formSelection = strtolower((string) data_get($record->data, 'form_selection'));
-
-                    if (filled($formSelection)) {
-                        $subForm = \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
-                            ->where('custom_form_id', $record->custom_form_id)
-                            ->where('menu_placement', 'sub_item')
-                            ->where('sub_item_type', $formSelection)
-                            ->first();
-
-                        if ($subForm) {
-                            return 'custom_form_' . $subForm->id;
-                        }
-                    }
-
-                    return 'custom_form_' . $record->custom_form_id;
-                })
+                ->templateType(fn ($record): string => 'custom_form_' . $record->custom_form_id)
                 ->filename(fn ($record) => 'document-' . $record->id . '.pdf')
                 ->visible(fn ($record): bool => self::canDownloadPdf($record)
                     && (
@@ -1626,22 +1489,6 @@ class CustomFormEntriesTable
     {
         if (! class_exists(\Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate::class)) {
             return false;
-        }
-
-        $formSelection = strtolower((string) data_get($record->data, 'form_selection'));
-
-        if (filled($formSelection)) {
-            $subForm = \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
-                ->where('custom_form_id', $record->custom_form_id)
-                ->where('menu_placement', 'sub_item')
-                ->where('sub_item_type', $formSelection)
-                ->first();
-
-            if ($subForm) {
-                return \Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate::query()
-                    ->where('type', 'custom_form_' . $subForm->id)
-                    ->exists();
-            }
         }
 
         return \Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate::query()
@@ -1972,22 +1819,10 @@ class CustomFormEntriesTable
         return (string) $value;
     }
 
-    protected static function formTypeLabel(?string $state, ?string $parentFormId = null): string
+    protected static function formTypeLabel(?string $state): string
     {
         if (blank($state)) {
             return '-';
-        }
-
-        $locale = app()->getLocale();
-
-        $subForm = \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
-            ->where('menu_placement', 'sub_item')
-            ->where('sub_item_type', $state)
-            ->when($parentFormId, fn ($query) => $query->where('custom_form_id', $parentFormId))
-            ->first();
-
-        if ($subForm) {
-            return self::transText($subForm->name);
         }
 
         return match ((string) $state) {
@@ -2007,7 +1842,6 @@ class CustomFormEntriesTable
 
         $formIds = array_filter([
             $record?->custom_form_id,
-            $record?->customForm?->custom_form_id,
         ]);
 
         $formIds = self::formIdsForOptionLookup($formIds);

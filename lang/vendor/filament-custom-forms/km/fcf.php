@@ -39,9 +39,6 @@
              'entrance_exam_statistics' => 'ស្ថិតិបេក្ខជនប្រឡងចូល',
              'exit_exam_statistics' => 'ស្ថិតិបេក្ខជនប្រឡងចេញ',
          ],
-         'menu_placement' => 'ទីតាំងបង្ហាញ',
-         'menu_parent' => 'ម៉ឺនុយមេ',
-         'sub_form' => 'ប្រភេទទម្រង់រង',
          'form_field' => 'ប្រភេទទម្រង់វាល',
          'label_english' => 'ឈ្មោះអង់គ្លេស',
          'label_khmer' => 'ឈ្មោះភាសាខ្មែរ',
@@ -125,8 +122,6 @@
 
      'menu' => [
          'sidebar' => 'បង្កើតជាម៉ឺនុយមេ',
-         'sub_item' => 'បង្កើតជាម៉ឺនុយរង',
-         'parent_sidebar' => 'ជ្រើសរើសម៉ឺនុយមេ',
      ],
 
      'placeholder' => [

@@ -35,8 +35,6 @@ class FieldsRelationManager extends RelationManager
         'multi_select',
     ];
 
-    private const PARENT_FORM_TYPE = '__parent_form';
-    private const FORM_TARGET_PREFIX = 'form:';
     private const SOURCE_FIELD_PREFIX = 'field:';
 
     public function form(Schema $schema): Schema
@@ -192,66 +190,6 @@ class FieldsRelationManager extends RelationManager
                                     ->options(self::textFormatOptions())
                                     ->default('normal')
                                     ->native(false),
-                            ]),
-
-                        \Filament\Schemas\Components\Section::make(__('filament-custom-forms::fcf.admin.dynamic_form_type_field'))
-                            ->columnSpanFull()
-                            ->columns(1)
-                            ->visible(function ($livewire): bool {
-                                $owner = $livewire->getOwnerRecord();
-                                return $owner && in_array($owner->menu_placement, ['sidebar', 'sub_item'], true);
-                            })
-                            ->components([
-                                \Filament\Forms\Components\CheckboxList::make('options.visible_when.values')
-                                    ->label(__('filament-custom-forms::fcf.field.form_type'))
-                                    ->options(fn (): array => self::dynamicFormTargetOptions())
-                                    ->columns(2)
-                                    ->bulkToggleable()
-                                    ->afterStateHydrated(function ($component, $state, $record): void {
-                                        if (filled($state)) {
-                                            return;
-                                        }
-
-                                        $oldValue = data_get($record?->options, 'visible_when.value');
-
-                                        if (is_string($oldValue) && str_starts_with($oldValue, self::FORM_TARGET_PREFIX)) {
-                                            $component->state([$oldValue]);
-
-                                            return;
-                                        }
-
-                                        $ownerForm = $record?->form;
-
-                                        if ($ownerForm && $ownerForm->menu_placement === 'sidebar') {
-                                            $component->state([self::formTargetValue($ownerForm->id)]);
-
-                                            return;
-                                        }
-
-                                        if (
-                                            $ownerForm
-                                            && $ownerForm->menu_placement === 'sub_item'
-                                            && filled($ownerForm->sub_item_type)
-                                        ) {
-                                            $component->state([self::formTargetValue($ownerForm->id)]);
-                                        }
-                                    })
-                                    ->live()
-                                    ->afterStateUpdated(function ($state, $set): void {
-                                        if (filled($state)) {
-                                            $set('options.visible_when.field', 'form_selection');
-                                            $set('options.visible_when.operator', '=');
-                                        } else {
-                                            $set('options.visible_when.field', null);
-                                            $set('options.visible_when.operator', null);
-                                        }
-                                    }),
-
-                                \Filament\Forms\Components\Hidden::make('options.visible_when.field')
-                                    ->default('form_selection'),
-
-                                \Filament\Forms\Components\Hidden::make('options.visible_when.operator')
-                                    ->default('='),
                             ]),
 
                         \Filament\Schemas\Components\Section::make(__('filament-custom-forms::fcf.admin.skip_logic'))
@@ -636,90 +574,6 @@ class FieldsRelationManager extends RelationManager
                         default => 'gray',
                     }),
 
-                TextColumn::make('options.visible_when.value')
-                    ->label(app()->getLocale() === 'km' ? 'ទម្រង់ប្រភេទ' : 'Form Type')
-                    ->state(function ($record): mixed {
-                        $state = data_get($record->options, 'visible_when.value');
-
-                        if (blank($state) || $state === false || $state === 'false') {
-                            $ownerForm = $record->form;
-
-                            if ($ownerForm && $ownerForm->menu_placement === 'sub_item' && filled($ownerForm->sub_item_type)) {
-                                return $ownerForm->sub_item_type;
-                            }
-
-                            if ($ownerForm && $ownerForm->menu_placement === 'sidebar') {
-                                return self::PARENT_FORM_TYPE;
-                            }
-                        }
-
-                        return $state;
-                    })
-                    ->badge()
-                    ->formatStateUsing(function ($state, $record) {
-                        if (blank($state) || $state === false || $state === 'false') {
-                            return app()->getLocale() === 'km' ? '—' : '—';
-                        }
-
-                        $stateString = (string) $state;
-
-                        if ($stateString === self::PARENT_FORM_TYPE) {
-                            return app()->getLocale() === 'km' ? 'ទម្រង់មេ' : 'Parent Form';
-                        }
-
-                        $ownerForm = $record->form;
-
-                        if ($ownerForm) {
-                            $rootFormId = $ownerForm->id;
-                            if ($ownerForm->menu_placement === 'sub_item' && filled($ownerForm->custom_form_id)) {
-                                $rootFormId = $ownerForm->custom_form_id;
-                            }
-
-                            $selectionField = \Chanthoeun\FilamentCustomForms\Models\CustomFormField::query()
-                                ->where('custom_form_id', $rootFormId)
-                                ->where('name', 'form_selection')
-                                ->first();
-
-                            if ($selectionField && !blank($selectionField->options)) {
-                                $config = is_string($selectionField->options)
-                                    ? json_decode($selectionField->options, true)
-                                    : $selectionField->options;
-
-                                $choices = $config['choices'] ?? [];
-                                if (is_array($choices)) {
-                                    foreach ($choices as $value => $label) {
-                                        if (is_array($label) && isset($label['value']) && (string)$label['value'] === $stateString) {
-                                            return self::localeText($label['label'] ?? $label['value']);
-                                        }
-                                        if ((string)$value === $stateString) {
-                                            return self::localeText($label);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        return match ($stateString) {
-                            'associate' => app()->getLocale() === 'km' ? 'បរិញ្ញាបត្ររង' : 'Associate',
-                            'bachelor' => app()->getLocale() === 'km' ? 'បរិញ្ញាបត្រ' : 'Bachelor',
-                            'master' => app()->getLocale() === 'km' ? 'អនុបណ្ឌិត' : 'Master',
-                            'phd' => app()->getLocale() === 'km' ? 'បណ្ឌិត' : 'PhD',
-                            'exam' => app()->getLocale() === 'km' ? 'ការប្រឡង' : 'Exam',
-                            'national_candidate' => app()->getLocale() === 'km' ? 'បេក្ខជនថ្នាក់ជាតិ' : 'National Candidate',
-                            'general_candidate' => app()->getLocale() === 'km' ? 'បេក្ខជនទូទៅ' : 'General Candidate',
-                            'continuing_candidate' => app()->getLocale() === 'km' ? 'បេក្ខជនបន្តសិក្សា' : 'Continuing Candidate',
-                            'master_candidate' => app()->getLocale() === 'km' ? 'បេក្ខជនថ្នាក់អនុបណ្ឌិត' : 'Master Candidate',
-                            default => ucfirst($stateString),
-                        };
-                    })
-                    ->color(fn ($state): string => match ($state) {
-                        'associate' => 'gray',
-                        'bachelor' => 'info',
-                        'master' => 'warning',
-                        'phd' => 'success',
-                        default => 'gray',
-                    }),
-
                 TextColumn::make('parent.label')
                     ->label(__('filament-custom-forms::fcf.admin.parent_container'))
                     ->badge()
@@ -805,7 +659,7 @@ class FieldsRelationManager extends RelationManager
                         return $data;
                     })
                     ->using(function ($record, array $data) {
-                        $this->syncFieldDataAcrossSelectedForms($record, $data);
+                        $record->update($this->prepareFieldData($data));
 
                         return $record;
                     }),
@@ -835,86 +689,6 @@ class FieldsRelationManager extends RelationManager
                         ->groupByRaw('LOWER(name)');
                 });
         });
-    }
-
-    private function syncFieldDataAcrossSelectedForms(object $record, array $data): void
-    {
-        $selectedTypes = data_get($data, 'options.visible_when.values', []);
-
-        if (! is_array($selectedTypes)) {
-            $selectedTypes = filled($selectedTypes) ? [$selectedTypes] : [];
-        }
-
-        $selectedTypes = array_values(array_unique(array_filter(
-            $selectedTypes,
-            fn ($value): bool => filled($value) && $value !== false && $value !== 'false'
-        )));
-
-        if (count($selectedTypes) <= 1) {
-            $record->update($this->prepareFieldData($data));
-
-            return;
-        }
-
-        $preparedByFormId = [];
-
-        foreach ($selectedTypes as $selectedType) {
-            $copy = $data;
-
-            data_set($copy, 'options.visible_when.field', 'form_selection');
-            data_set($copy, 'options.visible_when.operator', '=');
-            data_set($copy, 'options.visible_when.value', $selectedType);
-            data_forget($copy, 'options.visible_when.values');
-
-            $prepared = $this->prepareFieldData($copy);
-            $targetFormId = $prepared['custom_form_id'] ?? null;
-
-            if (blank($targetFormId)) {
-                continue;
-            }
-
-            $preparedByFormId[(string) $targetFormId] = $prepared;
-        }
-
-        if (empty($preparedByFormId)) {
-            $record->update($this->prepareFieldData($data));
-
-            return;
-        }
-
-        $originalName = (string) $record->getOriginal('name');
-        $currentFormId = (string) $record->custom_form_id;
-        $currentData = $preparedByFormId[$currentFormId] ?? reset($preparedByFormId);
-
-        $record->update($currentData);
-        $currentFormId = (string) ($record->custom_form_id ?? ($currentData['custom_form_id'] ?? $currentFormId));
-
-        foreach ($preparedByFormId as $targetFormId => $fieldData) {
-            if ($targetFormId === $currentFormId) {
-                continue;
-            }
-
-            $matchingNames = array_values(array_unique(array_filter([
-                (string) ($fieldData['name'] ?? ''),
-                $originalName,
-            ], fn (string $name): bool => $name !== '')));
-
-            $existingFields = \Chanthoeun\FilamentCustomForms\Models\CustomFormField::query()
-                ->where('custom_form_id', $fieldData['custom_form_id'])
-                ->whereKeyNot($record->getKey())
-                ->whereIn('name', $matchingNames)
-                ->get();
-
-            if ($existingFields->isNotEmpty()) {
-                foreach ($existingFields as $existingField) {
-                    $existingField->update($fieldData);
-                }
-
-                continue;
-            }
-
-            \Chanthoeun\FilamentCustomForms\Models\CustomFormField::create($fieldData);
-        }
     }
 
     private function prepareFieldData(array $data): array
@@ -972,11 +746,7 @@ class FieldsRelationManager extends RelationManager
         $conditionalValues = array_values(array_filter($conditionalValues, fn ($value): bool => filled($value)));
 
         if ($conditionalEnabled === false) {
-            $visibleField = data_get($data, 'options.visible_when.field');
-
-            if ($visibleField !== 'form_selection') {
-                data_forget($data, 'options.visible_when');
-            }
+            data_forget($data, 'options.visible_when');
         } elseif (filled($conditionalField) && ! empty($conditionalValues)) {
             data_set($data, 'options.visible_when.field', $conditionalField);
             data_set($data, 'options.visible_when.operator', 'in');
@@ -988,98 +758,12 @@ class FieldsRelationManager extends RelationManager
 
             return $data;
         } elseif (filled($conditionalField)) {
-            $visibleField = data_get($data, 'options.visible_when.field');
-
-            if ($visibleField !== 'form_selection') {
-                data_forget($data, 'options.visible_when');
-            }
+            data_forget($data, 'options.visible_when');
         }
 
         data_forget($data, 'options.conditional_when');
 
-        $selectedValues = data_get($data, 'options.visible_when.values');
-        if (is_array($selectedValues)) {
-            $selectedTypes = array_values(array_filter(
-                $selectedValues,
-                fn ($val) => filled($val) && $val !== false && $val !== 'false'
-            ));
-
-            $selectedType = head($selectedTypes);
-            data_forget($data, 'options.visible_when.values');
-        } else {
-            $selectedType = data_get($data, 'options.visible_when.value');
-        }
-
-        $rootFormId = $ownerForm->id;
-
-        if ($ownerForm->menu_placement === 'sub_item' && filled($ownerForm->custom_form_id)) {
-            $rootFormId = $ownerForm->custom_form_id;
-        }
-
-        $targetForm = self::formTargetFromValue($selectedType);
-
-        if ($targetForm) {
-            $data['custom_form_id'] = $targetForm->id;
-
-            if ((string) $targetForm->id !== (string) $ownerForm->id) {
-                $data['parent_id'] = null;
-            }
-
-            if ($targetForm->menu_placement === 'sub_item' && filled($targetForm->sub_item_type)) {
-                data_set($data, 'options.visible_when.field', 'form_selection');
-                data_set($data, 'options.visible_when.operator', '=');
-                data_set($data, 'options.visible_when.value', $targetForm->sub_item_type);
-            } else {
-                data_forget($data, 'options.visible_when');
-            }
-
-            return $data;
-        }
-
-        if ($selectedType === self::PARENT_FORM_TYPE) {
-            data_forget($data, 'options.visible_when');
-            $data['custom_form_id'] = $rootFormId;
-
-            if ((string) $rootFormId !== (string) $ownerForm->id) {
-                $data['parent_id'] = null;
-            }
-
-            return $data;
-        }
-
-        if (blank($selectedType) || $selectedType === false || $selectedType === 'false') {
-            if (filled($ownerForm->sub_item_type)) {
-                $selectedType = $ownerForm->sub_item_type;
-
-                data_set($data, 'options.visible_when.field', 'form_selection');
-                data_set($data, 'options.visible_when.operator', '=');
-                data_set($data, 'options.visible_when.value', $selectedType);
-            } else {
-                data_forget($data, 'options.visible_when');
-            }
-        } else {
-            data_set($data, 'options.visible_when.field', 'form_selection');
-            data_set($data, 'options.visible_when.operator', '=');
-            data_set($data, 'options.visible_when.value', $selectedType);
-        }
-
-        $targetFormId = $ownerForm->id;
-
-        if (filled($selectedType)) {
-            $targetForm = \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
-                ->where('custom_form_id', $rootFormId)
-                ->whereRaw('LOWER(sub_item_type) = ?', [
-                    strtolower(trim((string) $selectedType)),
-                ])
-                ->first();
-
-            if ($targetForm) {
-                $targetFormId = $targetForm->id;
-                $data['parent_id'] = null;
-            }
-        }
-
-        $data['custom_form_id'] = $targetFormId;
+        $data['custom_form_id'] = $ownerForm->id;
 
         return $data;
     }
@@ -1290,44 +974,6 @@ class FieldsRelationManager extends RelationManager
         return $rows;
     }
 
-    private static function formTargetValue(int|string $formId): string
-    {
-        return self::FORM_TARGET_PREFIX . $formId;
-    }
-
-    private static function formTargetFromValue(mixed $value): ?\Chanthoeun\FilamentCustomForms\Models\CustomForm
-    {
-        if (! is_string($value) || ! str_starts_with($value, self::FORM_TARGET_PREFIX)) {
-            return null;
-        }
-
-        $formId = (int) substr($value, strlen(self::FORM_TARGET_PREFIX));
-
-        if ($formId <= 0) {
-            return null;
-        }
-
-        return \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
-            ->where('is_active', true)
-            ->find($formId);
-    }
-
-    private static function dynamicFormTargetOptions(): array
-    {
-        $forms = \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
-            ->where('is_active', true)
-            ->whereIn('menu_placement', ['sidebar', 'sub_item'])
-            ->orderBy('custom_form_id')
-            ->orderBy('id')
-            ->get(['id', 'name', 'menu_placement', 'custom_form_id', 'sub_item_type']);
-
-        return $forms
-            ->mapWithKeys(fn ($form): array => [
-                self::formTargetValue($form->id) => self::localeText($form->name),
-            ])
-            ->toArray();
-    }
-
     private function prepareFieldDataList(array $data): array
     {
         $selectedFields = data_get($data, 'options.visible_when.fields', []);
@@ -1338,98 +984,56 @@ class FieldsRelationManager extends RelationManager
 
         $selectedFields = array_values(array_filter($selectedFields, fn ($value): bool => filled($value)));
 
-        $selectedTypes = data_get($data, 'options.visible_when.values', []);
-
-        if (! is_array($selectedTypes)) {
-            $selectedTypes = filled($selectedTypes) ? [$selectedTypes] : [];
-        }
-
-        $selectedTypes = array_values(array_filter(
-            $selectedTypes,
-            fn ($value): bool => filled($value) && $value !== false && $value !== 'false'
-        ));
-
         if (! empty($selectedFields) && blank($data['name'] ?? null)) {
             $ownerForm = $this->getOwnerRecord();
             $sourceFields = $this->expandSelectionSourceHierarchy(
                 $this->resolveSelectionSourceFields($selectedFields)
             );
 
-            $targetForms = empty($selectedTypes)
-                ? collect([$ownerForm])
-                : collect($selectedTypes)
-                    ->map(fn ($selectedType) => self::formTargetFromValue($selectedType))
-                    ->filter();
-
             $items = [];
 
-            foreach ($targetForms as $targetForm) {
-                $existingFieldsByName = $targetForm->fields()
-                    ->get(['id', 'name'])
-                    ->filter(fn ($field): bool => filled($field->name))
-                    ->mapWithKeys(fn ($field): array => [
-                        self::normalizeFieldName((string) $field->name) => $field->id,
-                    ])
-                    ->all();
+            $existingFieldsByName = $ownerForm->fields()
+                ->get(['id', 'name'])
+                ->filter(fn ($field): bool => filled($field->name))
+                ->mapWithKeys(fn ($field): array => [
+                    self::normalizeFieldName((string) $field->name) => $field->id,
+                ])
+                ->all();
 
-                $sourceToTargetParentMap = [];
+            $sourceToTargetParentMap = [];
 
-                foreach ($sourceFields as $field) {
-                    $fieldName = self::normalizeFieldName((string) $field->name);
+            foreach ($sourceFields as $field) {
+                $fieldName = self::normalizeFieldName((string) $field->name);
 
-                    if ($fieldName === '') {
-                        continue;
-                    }
-
-                    if (array_key_exists($fieldName, $existingFieldsByName)) {
-                        $sourceToTargetParentMap[(string) $field->id] = $existingFieldsByName[$fieldName];
-                        continue;
-                    }
-
-                    $copy = $field->toArray();
-
-                    unset($copy['id'], $copy['created_at'], $copy['updated_at']);
-
-                    $copy['custom_form_id'] = $targetForm->id;
-                    $copy['__source_field_id'] = $field->id;
-                    $copy['__source_parent_field_id'] = $field->parent_id;
-                    $copy['__resolved_parent_target_id'] = $sourceToTargetParentMap[(string) ($field->parent_id ?? '')] ?? null;
-
-                    if ($targetForm->menu_placement === 'sub_item' && filled($targetForm->sub_item_type)) {
-                        data_set($copy, 'options.visible_when.field', 'form_selection');
-                        data_set($copy, 'options.visible_when.operator', '=');
-                        data_set($copy, 'options.visible_when.value', $targetForm->sub_item_type);
-                    } else {
-                        data_forget($copy, 'options.visible_when');
-                    }
-
-                    $items[] = $copy;
+                if ($fieldName === '') {
+                    continue;
                 }
+
+                if (array_key_exists($fieldName, $existingFieldsByName)) {
+                    $sourceToTargetParentMap[(string) $field->id] = $existingFieldsByName[$fieldName];
+                    continue;
+                }
+
+                $copy = $field->toArray();
+
+                unset($copy['id'], $copy['created_at'], $copy['updated_at']);
+
+                $copy['custom_form_id'] = $ownerForm->id;
+                $copy['__source_field_id'] = $field->id;
+                $copy['__source_parent_field_id'] = $field->parent_id;
+                $copy['__resolved_parent_target_id'] = $sourceToTargetParentMap[(string) ($field->parent_id ?? '')] ?? null;
+
+                data_forget($copy, 'options.visible_when');
+
+                $items[] = $copy;
             }
 
             return $items;
         }
 
-        if (empty($selectedTypes)) {
-            return [
-                $this->prepareFieldData($data),
-            ];
-        }
-
-        $items = [];
-
-        foreach ($selectedTypes as $selectedType) {
-            $copy = $data;
-
-            data_set($copy, 'options.visible_when.field', 'form_selection');
-            data_set($copy, 'options.visible_when.operator', '=');
-            data_set($copy, 'options.visible_when.value', $selectedType);
-            data_forget($copy, 'options.visible_when.values');
-
-            $items[] = $this->prepareFieldData($copy);
-        }
-
-        return $items;
+        return [
+            $this->prepareFieldData($data),
+        ];
     }
 
     private static function localeText(mixed $value): string

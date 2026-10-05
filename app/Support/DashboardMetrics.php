@@ -150,23 +150,7 @@ class DashboardMetrics
             )
             ->where('custom_forms.slug', '!=', 'profile');
 
-        $query->where(function ($query): void {
-            $query->where(function ($query): void {
-                $query->where('custom_forms.menu_placement', 'sidebar')
-                    ->where('custom_forms.is_active', true);
-            })->orWhere(function ($query): void {
-                $query->where('custom_forms.menu_placement', 'sub_item')
-                    ->where('custom_forms.is_active', true)
-                    ->whereExists(function ($query): void {
-                        $query->selectRaw('1')
-                            ->from('custom_forms as parent_forms')
-                            ->whereColumn('parent_forms.id', 'custom_forms.custom_form_id')
-                            ->where('parent_forms.menu_placement', 'sidebar')
-                            ->where('parent_forms.is_active', true)
-                            ->where('parent_forms.slug', '!=', 'profile');
-                    });
-            });
-        });
+        $query->where('custom_forms.is_active', true);
 
         if (Schema::hasColumn('custom_form_entries', 'review_status')) {
             $query->where(function ($query): void {
@@ -531,24 +515,7 @@ class DashboardMetrics
         int $userId,
         int $formId,
     ): int {
-        $formIds = [$formId];
-
-        if (
-            Schema::hasTable('custom_forms')
-            && Schema::hasColumn('custom_forms', 'custom_form_id')
-        ) {
-            $formIds = DB::table('custom_forms')
-                ->where('id', $formId)
-                ->orWhere('custom_form_id', $formId)
-                ->pluck('id')
-                ->map(fn ($id): int => (int) $id)
-                ->push($formId)
-                ->unique()
-                ->values()
-                ->all();
-        }
-
-        return static::studentSubmissionCountForForms($userId, $formIds);
+        return static::studentSubmissionCountForForms($userId, [$formId]);
     }
 
     private static function studentSubmissionCountForForms(
@@ -674,10 +641,6 @@ class DashboardMetrics
             $query->where('is_active', true);
         } elseif (Schema::hasColumn('custom_forms', 'active')) {
             $query->where('active', true);
-        }
-
-        if (Schema::hasColumn('custom_forms', 'menu_placement')) {
-            $query->where('menu_placement', 'sidebar');
         }
 
         if (Schema::hasColumn('custom_forms', 'display_order')) {
