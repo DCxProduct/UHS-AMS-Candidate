@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Resources\Payments\Tables;
 use App\Models\PaymentType;
 use App\Models\Payment;
 use App\Support\FormEntryData;
+use App\Support\CaseInsensitiveSearch;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
 use App\Support\TablePdfExporter;
@@ -52,7 +53,7 @@ class PaymentsTable
                     ->getStateUsing(fn (Payment $record): string => self::khmerName($record))
                     ->searchable(query: fn (Builder $query, string $search): Builder => $query
                         ->whereHas('user', function (Builder $userQuery) use ($search): void {
-                            $userQuery->where('name', 'like', "%{$search}%");
+                            CaseInsensitiveSearch::apply($userQuery, 'name', $search);
                         }))
                     ->toggleable(isToggledHiddenByDefault: false),
 
@@ -61,7 +62,7 @@ class PaymentsTable
                     ->getStateUsing(fn (Payment $record): string => self::latinName($record))
                     ->searchable(query: fn (Builder $query, string $search): Builder => $query
                         ->whereHas('user', function (Builder $userQuery) use ($search): void {
-                            $userQuery->where('name_latin', 'like', "%{$search}%");
+                            CaseInsensitiveSearch::apply($userQuery, 'name_latin', $search);
                         }))
                     ->toggleable(isToggledHiddenByDefault: false),
 

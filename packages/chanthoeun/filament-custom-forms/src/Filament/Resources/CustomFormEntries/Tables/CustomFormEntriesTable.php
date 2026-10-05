@@ -5,6 +5,7 @@ namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Ta
 use App\Filament\Admin\Resources\CandidatePaymentLists\CandidatePaymentListResource;
 use App\Models\Payment;
 use App\Support\AuditLogger;
+use App\Support\CaseInsensitiveSearch;
 use App\Support\CustomFormEntryFiles;
 use App\Support\FilamentActionPermissions;
 use App\Support\FormEntryData;
@@ -446,13 +447,13 @@ class CustomFormEntriesTable
             TextColumn::make('data.first_name_kh')
                 ->label(__('candidate_entrance_statistics.first_name_kh'))
                 ->placeholder('-')
-                ->searchable(query: fn (Builder $query, string $search): Builder => $query->where('data->first_name_kh', 'like', "%{$search}%")),
+                ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::apply($query, 'data->first_name_kh', $search)),
 
             // 3. Last Name
             TextColumn::make('data.last_name_kh')
                 ->label(__('candidate_entrance_statistics.last_name_kh'))
                 ->placeholder('-')
-                ->searchable(query: fn (Builder $query, string $search): Builder => $query->where('data->last_name_kh', 'like', "%{$search}%")),
+                ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::apply($query, 'data->last_name_kh', $search)),
 
             // 4. Major
             TextColumn::make('major')

@@ -36,6 +36,8 @@ class CandidateEntranceStatisticSearchTest extends TestCase
         $this->assertSame([$matching->id], $this->search('DEMO-087')->pluck('id')->all());
         $this->assertSame([$other->id, $matching->id], $this->search('DEMO')->pluck('id')->all());
         $this->assertSame([$matching->id], $this->search('Sok Dara')->pluck('id')->all());
+        $this->assertSame([$matching->id], $this->search('sok dara')->pluck('id')->all());
+        $this->assertSame([$matching->id], $this->search('SOK')->pluck('id')->all());
         $this->assertSame([$matching->id], $this->search('សុខ')->pluck('id')->all());
     }
 

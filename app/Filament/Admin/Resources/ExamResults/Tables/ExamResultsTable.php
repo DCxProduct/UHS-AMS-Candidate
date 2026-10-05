@@ -8,6 +8,7 @@ use App\Filament\Admin\Resources\ExitExamResults\ExitExamResultResource;
 use App\Models\User;
 use App\Support\FilamentActionPermissions;
 use App\Support\FormEntryData;
+use App\Support\CaseInsensitiveSearch;
 use App\Support\PassedResultMenuOptions;
 use App\Support\LocalizedNumber;
 use App\Support\UserTypeOptions;
@@ -50,33 +51,37 @@ class ExamResultsTable
                 TextColumn::make('seat_number')
                     ->label(__('exam_results.seat_number'))
                     ->getStateUsing(fn ($record): string => self::entryValue($record, 'seat_number', self::entryValue($record, 'list_number', $record->creator?->seat_number)))
-                    ->searchable(query: fn (Builder $query, string $search): Builder => $query
-                        ->where('data->seat_number', 'like', "%{$search}%")
-                        ->orWhere('data->list_number', 'like', "%{$search}%"))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyAny($query, [
+                        'data->seat_number',
+                        'data->list_number',
+                    ], $search))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('name_khmer')
                     ->label(__('exam_results.name_khmer'))
                     ->getStateUsing(fn ($record): string => self::khmerName($record))
-                    ->searchable(query: fn (Builder $query, string $search): Builder => $query
-                        ->where('data->first_name_kh', 'like', "%{$search}%")
-                        ->orWhere('data->last_name_kh', 'like', "%{$search}%"))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyAny($query, [
+                        'data->first_name_kh',
+                        'data->last_name_kh',
+                    ], $search))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('first_name_latin')
                     ->label(__('exam_results.first_name_latin'))
                     ->getStateUsing(fn ($record): string => self::latinNamePart($record, 'first_name_en'))
-                    ->searchable(query: fn (Builder $query, string $search): Builder => $query
-                        ->where('data->first_name_en', 'like', "%{$search}%")
-                        ->orWhere('data->last_name_en', 'like', "%{$search}%"))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyAny($query, [
+                        'data->first_name_en',
+                        'data->last_name_en',
+                    ], $search))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('last_name_latin')
                     ->label(__('exam_results.last_name_latin'))
                     ->getStateUsing(fn ($record): string => self::latinNamePart($record, 'last_name_en'))
-                    ->searchable(query: fn (Builder $query, string $search): Builder => $query
-                        ->where('data->first_name_en', 'like', "%{$search}%")
-                        ->orWhere('data->last_name_en', 'like', "%{$search}%"))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyAny($query, [
+                        'data->first_name_en',
+                        'data->last_name_en',
+                    ], $search))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('gender')
@@ -94,7 +99,7 @@ class ExamResultsTable
                     ->getStateUsing(fn ($record): string => FormEntryData::academicYearLabel(
                         ['academic_year' => self::entryValue($record, 'academic_year', $record->creator?->academic_year)]
                     ))
-                    ->searchable(query: fn (Builder $query, string $search): Builder => $query->where('data->academic_year', 'like', "%{$search}%"))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::apply($query, 'data->academic_year', $search))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('exam_date')
@@ -106,10 +111,11 @@ class ExamResultsTable
                     ->label(__('exam_results.degree_level'))
                     ->badge()
                     ->getStateUsing(fn ($record): string => self::degreeLevelValue($record))
-                    ->searchable(query: fn (Builder $query, string $search): Builder => $query
-                        ->where('data->degree_level', 'like', "%{$search}%")
-                        ->orWhere('data->selected_degree_level', 'like', "%{$search}%")
-                        ->orWhere('data->form_selection', 'like', "%{$search}%"))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyAny($query, [
+                        'data->degree_level',
+                        'data->selected_degree_level',
+                        'data->form_selection',
+                    ], $search))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('major')

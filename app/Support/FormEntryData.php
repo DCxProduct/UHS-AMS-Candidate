@@ -53,17 +53,11 @@ class FormEntryData
 
     public static function applyJsonLikeFilter(Builder $query, array $keys, string $search): Builder
     {
-        return $query->where(function (Builder $query) use ($keys, $search): void {
-            foreach ($keys as $index => $key) {
-                if ($index === 0) {
-                    $query->where("data->{$key}", 'like', "%{$search}%");
-
-                    continue;
-                }
-
-                $query->orWhere("data->{$key}", 'like', "%{$search}%");
-            }
-        });
+        return CaseInsensitiveSearch::applyAny(
+            $query,
+            array_map(fn (string $key): string => "data->{$key}", $keys),
+            $search,
+        );
     }
 
     public static function applyJsonExactFilter(Builder $query, array $keys, mixed $value): Builder

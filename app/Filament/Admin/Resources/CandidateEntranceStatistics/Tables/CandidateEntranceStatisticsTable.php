@@ -9,6 +9,7 @@ use App\Support\CandidateTypeResolver;
 use App\Support\CandidateStatisticsSynchronizer;
 use App\Support\FilamentActionPermissions;
 use App\Support\FormEntryData;
+use App\Support\CaseInsensitiveSearch;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
 use App\Support\NotificationLanguage;
@@ -85,7 +86,7 @@ class CandidateEntranceStatisticsTable
                     ->getStateUsing(fn ($record): string => FormEntryData::academicYearLabel(
                         ['academic_year' => self::entryValue($record, 'academic_year', $record->creator?->academic_year)]
                     ))
-                    ->searchable(query: fn (Builder $query, string $search): Builder => $query->where('data->academic_year', 'like', "%{$search}%"))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::apply($query, 'data->academic_year', $search))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('user_type')
@@ -100,30 +101,30 @@ class CandidateEntranceStatisticsTable
                 TextColumn::make('seat_number')
                     ->label(__('exam_results.seat_number'))
                     ->getStateUsing(fn ($record): string => self::entryValue($record, 'seat_number', self::entryValue($record, 'list_number', $record->creator?->seat_number)))
-                    ->searchable(query: fn (Builder $query, string $search): Builder => $query
-                        ->where(function (Builder $query) use ($search): void {
-                            $query
-                                ->where('data->seat_number', 'like', "%{$search}%")
-                                ->orWhere('data->list_number', 'like', "%{$search}%")
-                                ->orWhereHas('creator', fn (Builder $userQuery): Builder => $userQuery
-                                    ->where('seat_number', 'like', "%{$search}%"));
-                        }))
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return CaseInsensitiveSearch::applyAny($query, [
+                            'data->seat_number',
+                            'data->list_number',
+                        ], $search)->orWhereHas('creator', fn (Builder $userQuery): Builder => CaseInsensitiveSearch::apply($userQuery, 'seat_number', $search));
+                    })
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('name_khmer')
                     ->label(__('exam_results.name_khmer'))
                     ->getStateUsing(fn ($record): string => self::khmerName($record))
-                    ->searchable(query: fn (Builder $query, string $search): Builder => $query
-                        ->where('data->first_name_kh', 'like', "%{$search}%")
-                        ->orWhere('data->last_name_kh', 'like', "%{$search}%"))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyAny($query, [
+                        'data->first_name_kh',
+                        'data->last_name_kh',
+                    ], $search))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('name_latin')
                     ->label(__('exam_results.name_latin'))
                     ->getStateUsing(fn ($record): string => self::latinName($record))
-                    ->searchable(query: fn (Builder $query, string $search): Builder => $query
-                        ->where('data->first_name_en', 'like', "%{$search}%")
-                        ->orWhere('data->last_name_en', 'like', "%{$search}%"))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyAny($query, [
+                        'data->first_name_en',
+                        'data->last_name_en',
+                    ], $search))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('gender')
@@ -394,30 +395,24 @@ class CandidateEntranceStatisticsTable
 
     protected static function applyGlobalSearch(Builder $query, string $search): void
     {
-        $like = "%{$search}%";
+        $query->where(function (Builder $query) use ($search): void {
+            CaseInsensitiveSearch::applyAny($query, [
+                'data->academic_year',
+                'data->selected_academic_year',
+                'data->seat_number',
+                'data->list_number',
+                'data->name_khmer',
+                'data->name_latin',
+                'data->first_name_kh',
+                'data->last_name_kh',
+                'data->first_name_en',
+                'data->last_name_en',
+                ...array_map(fn (string $key): string => "data->{$key}", FormEntryData::majorKeys()),
+            ], $search);
 
-        $query->where(function (Builder $query) use ($like): void {
-            $query
-                ->where('data->academic_year', 'like', $like)
-                ->orWhere('data->selected_academic_year', 'like', $like)
-                ->orWhere('data->seat_number', 'like', $like)
-                ->orWhere('data->list_number', 'like', $like)
-                ->orWhere('data->name_khmer', 'like', $like)
-                ->orWhere('data->name_latin', 'like', $like)
-                ->orWhere('data->first_name_kh', 'like', $like)
-                ->orWhere('data->last_name_kh', 'like', $like)
-                ->orWhere('data->first_name_en', 'like', $like)
-                ->orWhere('data->last_name_en', 'like', $like)
-                ->orWhereHas('creator', function (Builder $creatorQuery) use ($like): void {
-                    $creatorQuery
-                        ->where('seat_number', 'like', $like)
-                        ->orWhere('name', 'like', $like)
-                        ->orWhere('name_latin', 'like', $like);
-                });
-
-            foreach (FormEntryData::majorKeys() as $key) {
-                $query->orWhere("data->{$key}", 'like', $like);
-            }
+            $query->orWhereHas('creator', function (Builder $creatorQuery) use ($search): void {
+                CaseInsensitiveSearch::applyAny($creatorQuery, ['seat_number', 'name', 'name_latin'], $search);
+            });
         });
     }
 

@@ -6,6 +6,7 @@ use App\Filament\Admin\Resources\CandidateExitStatistics\CandidateExitStatisticR
 use App\Models\CandidateExitStatistic;
 use App\Support\AuditLogger;
 use App\Support\CandidateTypeResolver;
+use App\Support\CaseInsensitiveSearch;
 use App\Support\FilamentActionPermissions;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
@@ -71,17 +72,19 @@ class CandidateExitStatisticsTable
                 TextColumn::make('name_khmer')
                     ->label(__('candidate_exit_statistics.fields.name_khmer'))
                     ->getStateUsing(fn (CandidateExitStatistic $record): string => self::joinName($record->first_name_kh, $record->last_name_kh))
-                    ->searchable(query: fn (Builder $query, string $search): Builder => $query
-                        ->where('first_name_kh', 'like', "%{$search}%")
-                        ->orWhere('last_name_kh', 'like', "%{$search}%"))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyAny($query, [
+                        'first_name_kh',
+                        'last_name_kh',
+                    ], $search))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('name_latin')
                     ->label(__('candidate_exit_statistics.fields.name_latin'))
                     ->getStateUsing(fn (CandidateExitStatistic $record): string => self::joinName($record->first_name_en, $record->last_name_en))
-                    ->searchable(query: fn (Builder $query, string $search): Builder => $query
-                        ->where('first_name_en', 'like', "%{$search}%")
-                        ->orWhere('last_name_en', 'like', "%{$search}%"))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyAny($query, [
+                        'first_name_en',
+                        'last_name_en',
+                    ], $search))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('gender')
@@ -352,22 +355,19 @@ class CandidateExitStatisticsTable
 
     protected static function applyGlobalSearch(Builder $query, string $search): void
     {
-        $like = "%{$search}%";
-
-        $query->where(function (Builder $query) use ($like): void {
-            $query
-                ->where('form_type', 'like', $like)
-                ->orWhere('academic_year', 'like', $like)
-                ->orWhere('user_type', 'like', $like)
-                ->orWhere('seat_number', 'like', $like)
-                ->orWhere('first_name_kh', 'like', $like)
-                ->orWhere('last_name_kh', 'like', $like)
-                ->orWhere('first_name_en', 'like', $like)
-                ->orWhere('last_name_en', 'like', $like)
-                ->orWhere('gender', 'like', $like)
-                ->orWhere('major', 'like', $like)
-                ->orWhere('candidate_status', 'like', $like);
-        });
+        CaseInsensitiveSearch::applyAny($query, [
+            'form_type',
+            'academic_year',
+            'user_type',
+            'seat_number',
+            'first_name_kh',
+            'last_name_kh',
+            'first_name_en',
+            'last_name_en',
+            'gender',
+            'major',
+            'candidate_status',
+        ], $search);
     }
 
     protected static function excelRows(iterable $records, array $columnKeys): array
