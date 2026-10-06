@@ -4,12 +4,9 @@ namespace App\Filament\Admin\Resources\WorkflowNotifications\Schemas;
 
 use App\Enums\WorkflowStageType;
 use App\Models\Role;
-use App\Models\WorkflowNotification;
-use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Builder;
 use Filament\Forms\Components\Builder\Block;
-use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -19,8 +16,8 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Alignment;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Support\HtmlString;
 
 class WorkflowNotificationForm
 {
@@ -38,18 +35,6 @@ class WorkflowNotificationForm
                             ->required()
                             ->maxLength(255),
 
-                        // Plain option query instead of ->relationship(): Filament
-                        // selects DISTINCT for many-to-many relationships, which
-                        // PostgreSQL rejects because custom_forms has JSON columns.
-                        // The page classes save the links.
-                        Select::make('form_ids')
-                            ->label(__('workflow_notifications.fields.assigned_forms'))
-                            ->helperText(__('workflow_notifications.helpers.assigned_forms'))
-                            ->options(fn (?WorkflowNotification $record): array => self::assignableFormOptions($record))
-                            ->afterStateHydrated(fn (Select $component, ?WorkflowNotification $record) => $component->state(
-                                $record?->forms()->pluck('custom_forms.id')->map(fn ($id): int => (int) $id)->all() ?? [],
-                            ))
-                            ->multiple(),
                     ]),
 
                 Section::make(__('workflow_notifications.sections.stages'))
@@ -60,7 +45,6 @@ class WorkflowNotificationForm
                             ->hiddenLabel()
                             ->blocks([
                                 self::stageBlock(),
-                                self::parallelGroupBlock(),
                             ])
                             ->default(fn (): array => [(string) Str::uuid() => ['type' => 'stage', 'data' => self::emptyStage()]])
                             ->addable(false)
@@ -80,16 +64,6 @@ class WorkflowNotificationForm
                             ->color('gray')
                             ->action(fn (Get $get, Set $set) => self::append($get, $set, 'stage', self::emptyStage())),
 
-                        Action::make('addParallelGroup')
-                            ->label(__('workflow_notifications.actions.add_parallel_group'))
-                            ->icon('heroicon-m-arrows-right-left')
-                            ->action(fn (Get $get, Set $set) => self::append($get, $set, 'parallel_group', [
-                                'group_name' => null,
-                                'stages' => [
-                                    (string) Str::uuid() => self::emptyStage(),
-                                    (string) Str::uuid() => self::emptyStage(),
-                                ],
-                            ])),
                     ])
                     ->footerActionsAlignment(Alignment::Center)
                     ->hidden(fn (string $operation): bool => $operation === 'view'),
@@ -101,7 +75,6 @@ class WorkflowNotificationForm
                             ->hiddenLabel()
                             ->blocks([
                                 self::stageBlock(),
-                                self::parallelGroupBlock(),
                             ])
                             ->blockNumbers(false),
                     ])
@@ -109,61 +82,18 @@ class WorkflowNotificationForm
             ]);
     }
 
-    /**
-     * Forms not yet assigned to another template, plus this template's own.
-     * A form follows one template; the link table enforces it as well.
-     */
-    public static function assignableFormOptions(?WorkflowNotification $record): array
-    {
-        return CustomForm::query()
-            ->whereNotIn('id', DB::table('workflow_notification_forms')
-                ->select('custom_form_id')
-                ->when($record, fn ($query) => $query->where('workflow_notification_id', '!=', $record->getKey())))
-            ->orderBy('id')
-            ->get()
-            ->mapWithKeys(fn (CustomForm $form): array => [$form->id => $form->display_name])
-            ->all();
-    }
-
     private static function stageBlock(): Block
     {
         return Block::make('stage')
-            ->label(fn (?array $state): string => filled($state['stage_name'] ?? null)
+            ->label(fn (?array $state): string|HtmlString => filled($state['stage_name'] ?? null)
                 ? (string) $state['stage_name']
-                : __('workflow_notifications.labels.new_stage'))
+                : new HtmlString('&nbsp;'))
             ->icon('heroicon-o-flag')
             ->schema(self::stageFields());
     }
 
-    private static function parallelGroupBlock(): Block
-    {
-        return Block::make('parallel_group')
-            ->label(fn (?array $state): string => __('workflow_notifications.labels.parallel_group', [
-                'name' => filled($state['group_name'] ?? null) ? $state['group_name'] : '',
-                'count' => count($state['stages'] ?? []),
-            ]))
-            ->icon('heroicon-o-arrows-right-left')
-            ->schema([
-                TextInput::make('group_name')
-                    ->label(__('workflow_notifications.fields.group_name'))
-                    ->placeholder(__('workflow_notifications.placeholders.group_name'))
-                    ->helperText(__('workflow_notifications.helpers.parallel_group'))
-                    ->maxLength(255)
-                    ->live(onBlur: true),
-
-                Repeater::make('stages')
-                    ->label(__('workflow_notifications.fields.parallel_stages'))
-                    ->schema(self::stageFields())
-                    ->itemLabel(fn (array $state): ?string => $state['stage_name'] ?? null)
-                    ->reorderableWithButtons()
-                    ->minItems(2)
-                    ->defaultItems(2)
-                    ->addActionLabel(__('workflow_notifications.actions.add_stage')),
-            ]);
-    }
-
     /**
-     * Fields of one stage, shared by single stages and parallel groups.
+     * Fields of one workflow stage.
      * Role and messages appear once the stage is handled by staff.
      */
     private static function stageFields(): array

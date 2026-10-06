@@ -112,13 +112,13 @@ class RolesAndPermissionsSeeder extends Seeder
 
         $manageablePermissionNames = ShieldRoleResource::manageablePermissionNames();
 
-        $admin->syncPermissions(
-            Permission::query()
-                ->where('guard_name', 'web')
-                ->whereIn('name', $manageablePermissionNames)
-                ->whereNotIn('name', $adminExcludedPermissions)
-                ->get()
-        );
+        $adminPermissions = Permission::query()
+            ->where('guard_name', 'web')
+            ->whereIn('name', $manageablePermissionNames)
+            ->whereNotIn('name', $adminExcludedPermissions)
+            ->get();
+
+        $admin->syncPermissions($adminPermissions);
         $deleteRole->syncPermissions(
             Permission::query()
                 ->where('guard_name', 'web')

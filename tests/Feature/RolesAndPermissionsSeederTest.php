@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Role;
+use BezhanSalleh\FilamentShield\Resources\Roles\RoleResource as ShieldRoleResource;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
@@ -413,6 +414,26 @@ class RolesAndPermissionsSeederTest extends TestCase
         Artisan::shouldReceive('call')->once()->andReturn(0);
 
         (new RolesAndPermissionsSeeder)->run();
+
+        $admin = Role::query()
+            ->where('name', 'admin')
+            ->where('guard_name', 'web')
+            ->firstOrFail();
+        $expectedAdminPermissions = Permission::query()
+            ->where('guard_name', 'web')
+            ->whereIn('name', ShieldRoleResource::manageablePermissionNames())
+            ->where('name', '!=', 'Create:CustomFormEntry')
+            ->pluck('name')
+            ->sort()
+            ->values()
+            ->all();
+
+        $this->assertSame(
+            $expectedAdminPermissions,
+            $admin->permissions->pluck('name')->sort()->values()->all(),
+        );
+        $this->assertTrue($admin->permissions->contains('name', 'Rejected:CustomFormEntry'));
+        $this->assertFalse($admin->permissions->contains('name', 'Create:CustomFormEntry'));
 
         $roles = [
             'data_entry' => ['Data Entry', 'អ្នកបញ្ចូលទិន្នន័យ'],

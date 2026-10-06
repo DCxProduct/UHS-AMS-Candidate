@@ -163,7 +163,8 @@ class SystemUsersTable
                     EditAction::make()
                         ->label(__('system_users.actions.edit'))
                         ->icon('heroicon-o-pencil-square')
-                        ->color('warning'),
+                        ->color('warning')
+                        ->visible(fn (SystemUser $record): bool => ! $record->hasJsonRole('admin')),
 
                     Action::make('activate_account')
                         ->label(__('system_users.actions.activate'))
@@ -189,8 +190,10 @@ class SystemUsersTable
                         ->color('danger')
                         ->requiresConfirmation()
                         ->visible(fn ($record): bool => FilamentActionPermissions::canForResource(SystemUserResource::class, 'deactivate_account')
+                            && ! $record->hasJsonRole('admin')
                             && (bool) $record->is_active)
                         ->action(function ($record): void {
+                            abort_if($record->hasJsonRole('admin'), 403);
                             FilamentActionPermissions::abortUnlessCanForResource(SystemUserResource::class, 'deactivate_account');
 
                             $record->deactivateAccount();

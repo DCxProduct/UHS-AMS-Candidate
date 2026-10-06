@@ -161,8 +161,8 @@ class StudentProfileSeeder extends Seeder
 
             ['name' => 'first_name_kh', 'label' => $this->t('First Name', 'នាមត្រកូល'), 'type' => 'text_input', 'required' => true, 'options' => ['placeholder_en' => 'Enter First Name', 'placeholder_km' => 'បញ្ចូលនាមត្រកូល']],
             ['name' => 'last_name_kh', 'label' => $this->t('Last Name', 'នាមខ្លួន'), 'type' => 'text_input', 'required' => true, 'options' => ['placeholder_en' => 'Enter Last Name', 'placeholder_km' => 'បញ្ចូលនាមខ្លួន']],
-            ['name' => 'first_name_en', 'label' => $this->t('Latin First Name', 'អក្សរឡាតាំងនាមត្រកូល'), 'type' => 'text_input', 'required' => true, 'options' => ['placeholder_en' => 'Enter Latin Family Name', 'placeholder_km' => 'បញ្ចូលអក្សរឡាតាំងនាមត្រកូល']],
-            ['name' => 'last_name_en', 'label' => $this->t('Latin Last Name', 'អក្សរឡាតាំងនាមខ្លួន'), 'type' => 'text_input', 'required' => true, 'options' => ['placeholder_en' => 'Enter Latin Given Name', 'placeholder_km' => 'បញ្ចូលអក្សរឡាតាំងនាមខ្លួន']],
+            ['name' => 'first_name_en', 'label' => $this->t('Latin First Name', 'អក្សរឡាតាំងនាមខ្លួន'), 'type' => 'text_input', 'required' => true, 'options' => ['placeholder_en' => 'Enter Latin Given Name', 'placeholder_km' => 'បញ្ចូលអក្សរឡាតាំងនាមខ្លួន']],
+            ['name' => 'last_name_en', 'label' => $this->t('Latin Last Name', 'អក្សរឡាតាំងនាមត្រកូល'), 'type' => 'text_input', 'required' => true, 'options' => ['placeholder_en' => 'Enter Latin Family Name', 'placeholder_km' => 'បញ្ចូលអក្សរឡាតាំងនាមត្រកូល']],
 
             ['name' => 'gender', 'label' => $this->t('Gender', 'ភេទ'), 'type' => 'select_dropdown', 'required' => true, 'options' => ['choices' => $genderOptions]],
             ['name' => 'nationality', 'label' => $this->t('Nationality', 'សញ្ជាតិ'), 'type' => 'select_dropdown', 'required' => true, 'options' => ['choices' => $nationalityOptions]],

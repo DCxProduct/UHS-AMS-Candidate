@@ -73,9 +73,8 @@ class WorkflowNotificationResourceTest extends TestCase
         $this->get(WorkflowNotificationResource::getUrl('edit', ['record' => $template]))->assertForbidden();
     }
 
-    public function test_template_with_stages_parallel_group_and_forms_can_be_created(): void
+    public function test_template_with_sequential_stages_can_be_created(): void
     {
-        $form = $this->customForm();
         $this->actingAs($this->admin);
 
         // The create page starts with one blank stage; replace it.
@@ -83,7 +82,6 @@ class WorkflowNotificationResourceTest extends TestCase
             ->set('data.stages', [])
             ->fillForm([
                 'name' => 'Foreign Internship Registration',
-                'form_ids' => [$form->id],
                 'stages' => [
                     'a' => ['type' => 'stage', 'data' => ['stage_name' => 'Submit application', 'stage_type' => 'form_submission']],
                     'b' => ['type' => 'stage', 'data' => [
@@ -93,12 +91,10 @@ class WorkflowNotificationResourceTest extends TestCase
                         'status_message' => 'Under review',
                         'notification_message' => 'Your documents are being checked.',
                     ]],
-                    'c' => ['type' => 'parallel_group', 'data' => [
-                        'group_name' => 'Final checks',
-                        'stages' => [
-                            'x' => ['stage_name' => 'Payment', 'stage_type' => 'payment', 'responsible_role' => 'registrar_officer'],
-                            'y' => ['stage_name' => 'Approval', 'stage_type' => 'approval', 'responsible_role' => 'admin'],
-                        ],
+                    'c' => ['type' => 'stage', 'data' => [
+                        'stage_name' => 'Payment',
+                        'stage_type' => 'payment',
+                        'responsible_role' => 'registrar_officer',
                     ]],
                 ],
             ])
@@ -108,8 +104,8 @@ class WorkflowNotificationResourceTest extends TestCase
         $template = WorkflowNotification::query()->firstOrFail();
 
         $this->assertSame('Foreign Internship Registration', $template->name);
-        $this->assertSame(4, $template->steps_count, 'Parallel stages count individually.');
-        $this->assertSame([$form->id], $template->forms()->pluck('custom_forms.id')->all());
+        $this->assertSame(3, $template->steps_count);
+        $this->assertSame([], $template->forms()->pluck('custom_forms.id')->all());
     }
 
     public function test_staff_stage_requires_a_responsible_role(): void
@@ -138,7 +134,7 @@ class WorkflowNotificationResourceTest extends TestCase
             ->assertHasFormErrors(['stages']);
     }
 
-    public function test_add_buttons_append_a_stage_and_a_parallel_group(): void
+    public function test_add_stage_button_appends_a_stage(): void
     {
         $this->actingAs($this->admin);
 
@@ -146,12 +142,11 @@ class WorkflowNotificationResourceTest extends TestCase
         $initial = count($component->get('data.stages'));
 
         $component->callAction(TestAction::make('addStage')->schemaComponent('stages-section', schema: 'form'));
-        $component->callAction(TestAction::make('addParallelGroup')->schemaComponent('stages-section', schema: 'form'));
 
         $types = collect($component->get('data.stages'))->pluck('type')->values()->all();
 
-        $this->assertCount($initial + 2, $types);
-        $this->assertSame(['stage', 'parallel_group'], array_slice($types, -2));
+        $this->assertCount($initial + 1, $types);
+        $this->assertSame(['stage'], array_slice($types, -1));
     }
 
     public function test_a_form_cannot_belong_to_two_templates(): void
