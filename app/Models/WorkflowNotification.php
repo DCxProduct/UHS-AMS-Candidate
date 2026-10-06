@@ -8,8 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Facades\DB;
 
 /**
- * A reusable workflow template: an ordered list of stages, where each item is
- * either a single stage or a parallel group of stages, assigned to forms.
+ * A reusable workflow template: an ordered list of stages assigned to forms.
  */
 class WorkflowNotification extends Model
 {
@@ -31,14 +30,9 @@ class WorkflowNotification extends Model
             ->withTimestamps();
     }
 
-    /**
-     * Stages counted individually, including those inside parallel groups.
-     */
     public function getStepsCountAttribute(): int
     {
-        return collect($this->stages ?? [])->sum(fn (array $item): int => ($item['type'] ?? null) === 'parallel_group'
-            ? count($item['data']['stages'] ?? [])
-            : 1);
+        return count($this->stages ?? []);
     }
 
     /**

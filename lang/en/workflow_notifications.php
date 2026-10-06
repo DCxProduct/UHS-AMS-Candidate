@@ -27,7 +27,6 @@ return [
         'status_message' => 'Student Status Message (Optional)',
         'notification_message' => 'Student Notification Message (Optional)',
         'group_name' => 'Group Name (Optional)',
-        'parallel_stages' => 'Stages in this group',
     ],
 
     'placeholders' => [
@@ -40,12 +39,9 @@ return [
 
     'helpers' => [
         'assigned_forms' => 'Forms that follow this workflow. A form can belong to only one template.',
-        'parallel_group' => 'Stages in a group happen at the same time; the workflow continues when all of them are done.',
     ],
 
     'labels' => [
-        'new_stage' => 'New stage',
-        'parallel_group' => 'Parallel group :name (:count stages)',
     ],
 
     'stage_types' => [
@@ -57,7 +53,6 @@ return [
 
     'actions' => [
         'add_stage' => 'Add Stage',
-        'add_parallel_group' => 'Add Parallel Group',
     ],
 
     'validation' => [

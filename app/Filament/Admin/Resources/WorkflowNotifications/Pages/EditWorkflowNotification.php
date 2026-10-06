@@ -6,7 +6,6 @@ use App\Filament\Admin\Resources\WorkflowNotifications\WorkflowNotificationResou
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Arr;
 
 class EditWorkflowNotification extends EditRecord
 {
@@ -24,16 +23,8 @@ class EditWorkflowNotification extends EditRecord
         return static::getResource()::getUrl('index');
     }
 
-    /**
-     * Assigned forms are kept in the link table, outside the model attributes.
-     */
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
-        $formIds = Arr::pull($data, 'form_ids', []);
-
-        $record = parent::handleRecordUpdate($record, $data);
-        $record->forms()->sync(array_map('intval', (array) $formIds));
-
-        return $record;
+        return parent::handleRecordUpdate($record, $data);
     }
 }
