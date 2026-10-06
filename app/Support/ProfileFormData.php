@@ -57,7 +57,7 @@ class ProfileFormData
 
         $currentForm = CustomForm::query()->find($customFormId);
 
-        if (! $currentForm || (string) $currentForm->slug === 'profile') {
+        if (! $currentForm) {
             return $state;
         }
 
@@ -65,6 +65,28 @@ class ProfileFormData
 
         if (! is_array($data)) {
             $data = [];
+        }
+
+        if ((string) $currentForm->slug === 'profile') {
+            $user = Auth::user();
+
+            if ($user) {
+                $nameParts = CandidateDisplayName::partsFor($user);
+
+                foreach ([
+                    'first_name_en' => $nameParts['first_name_en'] ?? null,
+                    'last_name_en' => $nameParts['last_name_en'] ?? null,
+                ] as $fieldName => $value) {
+                    if (! filled(data_get($data, $fieldName)) && filled($value)) {
+                        data_set($data, $fieldName, $value);
+                    }
+                }
+            }
+
+            data_set($state, 'custom_form_id', $customFormId);
+            data_set($state, $dataPath, $data);
+
+            return $state;
         }
 
         $targetFields = $this->fieldsForForms($this->targetFormIds($customFormId));
