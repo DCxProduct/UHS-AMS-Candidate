@@ -2,12 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Enums\WorkflowStageType;
 use App\Filament\Admin\Resources\WorkflowNotifications\Pages\CreateWorkflowNotification;
 use App\Filament\Admin\Resources\WorkflowNotifications\Pages\EditWorkflowNotification;
 use App\Filament\Admin\Resources\WorkflowNotifications\WorkflowNotificationResource;
 use App\Models\Role;
 use App\Models\User;
 use App\Models\WorkflowNotification;
+use App\Support\WorkflowNotificationStageSummary;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomForms\Pages\EditCustomForm;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomForms\Pages\ListCustomForms;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
@@ -16,6 +18,7 @@ use Filament\Facades\Filament;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Carbon;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
@@ -44,10 +47,246 @@ class WorkflowNotificationResourceTest extends TestCase
         $template = $this->template();
         $this->actingAs($this->admin);
 
-        $this->get(WorkflowNotificationResource::getUrl('index'))->assertOk()->assertSee('Enrollment');
+        $this->get(WorkflowNotificationResource::getUrl('index'))
+            ->assertOk()
+            ->assertSee('Enrollment')
+            ->assertSee(WorkflowNotificationResource::getUrl('edit', ['record' => $template]), false);
         $this->get(WorkflowNotificationResource::getUrl('create'))->assertOk();
         $this->get(WorkflowNotificationResource::getUrl('view', ['record' => $template]))->assertOk();
         $this->get(WorkflowNotificationResource::getUrl('edit', ['record' => $template]))->assertOk();
+    }
+
+    public function test_view_page_shows_numbered_stage_summary(): void
+    {
+        $template = WorkflowNotification::query()->create([
+            'name' => 'Foreign Internship Registration',
+            'stages' => [
+                ['type' => 'stage', 'data' => [
+                    'stage_name' => 'Submit application',
+                    'stage_type' => 'form_submission',
+                ]],
+                ['type' => 'stage', 'data' => [
+                    'stage_name' => 'Check documents',
+                    'stage_type' => 'review',
+                    'responsible_role' => 'registrar_officer',
+                    'status_message' => 'Under review',
+                    'notification_message' => 'Your documents are being checked.',
+                ]],
+                ['type' => 'stage', 'data' => [
+                    'stage_name' => 'Payment',
+                    'stage_type' => 'payment',
+                    'responsible_role' => 'registrar_officer',
+                ]],
+                ['type' => 'stage', 'data' => [
+                    'stage_name' => 'Completed',
+                    'stage_type' => 'completed',
+                ]],
+            ],
+        ]);
+
+        $this->actingAs($this->admin);
+        $originalLocale = app()->getLocale();
+
+        try {
+            app()->setLocale('en');
+
+            $this->get(WorkflowNotificationResource::getUrl('view', ['record' => $template]))
+                ->assertOk()
+                ->assertSee('4 stages')
+                ->assertSee('Submit application')
+                ->assertSee('Form Submission')
+                ->assertSee('Responsible: Candidate')
+                ->assertSee('Check documents')
+                ->assertSee('Responsible: Registrar Officer')
+                ->assertSee('Under review')
+                ->assertSee('Your documents are being checked.')
+                ->assertSee('Payment')
+                ->assertSee('Completed')
+                ->assertSee('Responsible: Automatic');
+        } finally {
+            app()->setLocale($originalLocale);
+        }
+    }
+
+    public function test_view_page_uses_the_reference_stage_card_styles(): void
+    {
+        $template = WorkflowNotification::query()->create([
+            'name' => 'Styled workflow',
+            'stages' => [[
+                'type' => 'stage',
+                'data' => [
+                    'stage_name' => 'Review application',
+                    'stage_type' => 'review',
+                    'responsible_role' => 'registrar_officer',
+                ],
+            ]],
+        ]);
+
+        $this->actingAs($this->admin);
+
+        $this->get(WorkflowNotificationResource::getUrl('view', ['record' => $template]))
+            ->assertOk()
+            ->assertSee('uhs-workflow-summary', false)
+            ->assertSee('uhs-workflow-stage-card', false)
+            ->assertSee('uhs-workflow-stage-card__number', false)
+            ->assertSee('uhs-workflow-stage-card__badge--responsible', false)
+            ->assertDontSee('shadow-sm', false);
+    }
+
+    public function test_view_page_localizes_stage_summary_labels(): void
+    {
+        $template = WorkflowNotification::query()->create([
+            'name' => 'Khmer workflow',
+            'stages' => [
+                ['type' => 'stage', 'data' => [
+                    'stage_name' => 'ការដាក់ពាក្យ',
+                    'stage_type' => 'form_submission',
+                ]],
+            ],
+        ]);
+
+        $this->actingAs($this->admin);
+        $originalLocale = app()->getLocale();
+
+        try {
+            app()->setLocale('km');
+
+            $this->get(WorkflowNotificationResource::getUrl('view', ['record' => $template]))
+                ->assertOk()
+                ->assertSee('1 ដំណាក់កាល')
+                ->assertSee('ការដាក់ស្នើទម្រង់')
+                ->assertSee('អ្នកទទួលខុសត្រូវ៖ បេក្ខជន');
+        } finally {
+            app()->setLocale($originalLocale);
+        }
+    }
+
+    public function test_view_page_localizes_known_default_stage_names_but_preserves_custom_names(): void
+    {
+        $template = WorkflowNotification::query()->create([
+            'name' => 'Localized workflow',
+            'stages' => [
+                ['type' => 'stage', 'data' => [
+                    'stage_name' => 'Review',
+                    'stage_type' => 'review',
+                    'responsible_role' => 'registrar_officer',
+                ]],
+                ['type' => 'stage', 'data' => [
+                    'stage_name' => 'Custom checkpoint',
+                    'stage_type' => 'review',
+                    'responsible_role' => 'registrar_officer',
+                ]],
+            ],
+        ]);
+
+        $this->actingAs($this->admin);
+        $originalLocale = app()->getLocale();
+
+        try {
+            app()->setLocale('km');
+
+            $this->get(WorkflowNotificationResource::getUrl('view', ['record' => $template]))
+                ->assertOk()
+                ->assertSee('ការពិនិត្យ')
+                ->assertSee('Custom checkpoint');
+        } finally {
+            app()->setLocale($originalLocale);
+        }
+    }
+
+    public function test_stage_name_display_follows_locale_without_changing_custom_values(): void
+    {
+        $originalLocale = app()->getLocale();
+        $customName = 'Custom checkpoint';
+
+        try {
+            app()->setLocale('en');
+            $this->assertSame(
+                'Review',
+                WorkflowNotificationStageSummary::localizedName('Review', WorkflowStageType::Review),
+            );
+            $this->assertSame(
+                $customName,
+                WorkflowNotificationStageSummary::localizedName($customName, WorkflowStageType::Review),
+            );
+
+            app()->setLocale('km');
+            $this->assertSame(
+                'ការពិនិត្យ',
+                WorkflowNotificationStageSummary::localizedName('Review', WorkflowStageType::Review),
+            );
+            $this->assertSame(
+                $customName,
+                WorkflowNotificationStageSummary::localizedName($customName, WorkflowStageType::Review),
+            );
+        } finally {
+            app()->setLocale($originalLocale);
+        }
+    }
+
+    public function test_view_table_action_uses_a_modal_instead_of_the_view_url(): void
+    {
+        $template = $this->template();
+        $this->actingAs($this->admin);
+
+        $this->get(WorkflowNotificationResource::getUrl('index'))
+            ->assertOk()
+            ->assertSee("wire:click=\"mountAction('view'", false)
+            ->assertDontSee('href="'.WorkflowNotificationResource::getUrl('view', ['record' => $template]).'"', false);
+    }
+
+    public function test_workflow_notification_updated_at_shows_date_without_time(): void
+    {
+        $template = $this->template();
+        $template->forceFill([
+            'updated_at' => Carbon::create(2026, 10, 6, 14, 30, 0),
+        ])->saveQuietly();
+
+        $this->actingAs($this->admin);
+        $originalLocale = app()->getLocale();
+
+        try {
+            app()->setLocale('en');
+
+            $this->get(WorkflowNotificationResource::getUrl('index'))
+                ->assertOk()
+                ->assertSee('06-Oct-2026')
+                ->assertDontSee('14:30:00');
+        } finally {
+            app()->setLocale($originalLocale);
+        }
+    }
+
+    public function test_workflow_notification_updated_at_uses_khmer_date_format(): void
+    {
+        $template = $this->template();
+        $template->forceFill([
+            'updated_at' => Carbon::create(2026, 10, 6, 14, 30, 0),
+        ])->saveQuietly();
+
+        $this->actingAs($this->admin);
+        $originalLocale = app()->getLocale();
+
+        try {
+            app()->setLocale('km');
+
+            $this->get(WorkflowNotificationResource::getUrl('index'))
+                ->assertOk()
+                ->assertSee('០៦-តុលា-២០២៦')
+                ->assertDontSee('14:30:00');
+        } finally {
+            app()->setLocale($originalLocale);
+        }
+    }
+
+    public function test_workflow_notification_candidate_terminology_is_bilingual(): void
+    {
+        $this->assertSame('Candidate', __('workflow_notifications.view.candidate', [], 'en'));
+        $this->assertSame('បេក្ខជន', __('workflow_notifications.view.candidate', [], 'km'));
+        $this->assertSame('Candidate Status Message (Optional)', __('workflow_notifications.fields.status_message', [], 'en'));
+        $this->assertSame('សារស្ថានភាពសម្រាប់បេក្ខជន (ជាជម្រើស)', __('workflow_notifications.fields.status_message', [], 'km'));
+        $this->assertSame('Example: Candidate Admission', __('workflow_notifications.placeholders.name', [], 'en'));
+        $this->assertSame('ឧទាហរណ៍៖ ការចុះឈ្មោះបេក្ខជន', __('workflow_notifications.placeholders.name', [], 'km'));
     }
 
     public function test_access_follows_role_permissions(): void
@@ -106,6 +345,110 @@ class WorkflowNotificationResourceTest extends TestCase
         $this->assertSame('Foreign Internship Registration', $template->name);
         $this->assertSame(3, $template->steps_count);
         $this->assertSame([], $template->forms()->pluck('custom_forms.id')->all());
+    }
+
+    public function test_stage_type_options_have_the_five_requested_stages(): void
+    {
+        $originalLocale = app()->getLocale();
+
+        try {
+            app()->setLocale('en');
+
+            $this->assertSame([
+                'form_submission',
+                'review',
+                'payment',
+                'awaiting_results',
+                'completed',
+            ], array_keys(WorkflowStageType::options()));
+            $this->assertSame('Awaiting Results', WorkflowStageType::AwaitingResults->label());
+            $this->assertSame('Completed', WorkflowStageType::Completed->label());
+
+            app()->setLocale('km');
+
+            $this->assertSame('ការដាក់ស្នើទម្រង់', WorkflowStageType::FormSubmission->label());
+            $this->assertSame('រង់ចាំលទ្ធផល', WorkflowStageType::AwaitingResults->label());
+            $this->assertSame('បញ្ចប់', WorkflowStageType::Completed->label());
+        } finally {
+            app()->setLocale($originalLocale);
+        }
+
+        $this->assertSame(WorkflowStageType::Approval, WorkflowStageType::tryFrom('approval'));
+        $this->assertFalse(array_key_exists('approval', WorkflowStageType::options()));
+        $this->assertFalse(WorkflowStageType::FormSubmission->requiresRole());
+        $this->assertTrue(WorkflowStageType::Completed->requiresRole());
+        $this->assertTrue(WorkflowStageType::Review->requiresRole());
+        $this->assertTrue(WorkflowStageType::Payment->requiresRole());
+        $this->assertTrue(WorkflowStageType::AwaitingResults->requiresRole());
+    }
+
+    public function test_first_stage_type_selection_sets_an_editable_localized_stage_name_default(): void
+    {
+        $this->actingAs($this->admin);
+        $originalLocale = app()->getLocale();
+
+        try {
+            foreach (['en', 'km'] as $locale) {
+                app()->setLocale($locale);
+
+                foreach (array_keys(WorkflowStageType::options()) as $stageType) {
+                    $component = Livewire::test(CreateWorkflowNotification::class);
+                    $stageKey = array_key_first($component->get('data.stages'));
+                    $stagePath = "data.stages.{$stageKey}.data";
+                    $expectedStageName = WorkflowStageType::from($stageType)->label();
+
+                    $component
+                        ->set("{$stagePath}.stage_type", $stageType)
+                        ->assertSet("{$stagePath}.stage_name", $expectedStageName);
+                }
+            }
+        } finally {
+            app()->setLocale($originalLocale);
+        }
+    }
+
+    public function test_changing_stage_type_does_not_replace_the_stage_name(): void
+    {
+        $this->actingAs($this->admin);
+
+        $component = Livewire::test(CreateWorkflowNotification::class);
+        $stageKey = array_key_first($component->get('data.stages'));
+        $stagePath = "data.stages.{$stageKey}.data";
+
+        $component
+            ->set("{$stagePath}.stage_type", WorkflowStageType::Review->value)
+            ->assertSet("{$stagePath}.stage_name", WorkflowStageType::Review->label())
+            ->set("{$stagePath}.stage_name", 'Check documents')
+            ->set("{$stagePath}.stage_type", WorkflowStageType::Payment->value)
+            ->assertSet("{$stagePath}.stage_name", 'Check documents');
+    }
+
+    public function test_completed_stage_uses_an_automatic_responsible_role(): void
+    {
+        $this->actingAs($this->admin);
+
+        Livewire::test(CreateWorkflowNotification::class)
+            ->set('data.stages', [])
+            ->fillForm([
+                'name' => 'Completed workflow',
+                'stages' => [
+                    'a' => [
+                        'type' => 'stage',
+                        'data' => [
+                            'stage_name' => 'Completed',
+                            'stage_type' => 'completed',
+                        ],
+                    ],
+                ],
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $template = WorkflowNotification::query()->firstOrFail();
+
+        $this->assertNull(data_get($template->stages, '0.data.responsible_role'));
+        $this->assertSame('Automatic', __('workflow_notifications.placeholders.automatic_role', [], 'en'));
+        $this->assertSame('ស្វ័យប្រវត្តិ', __('workflow_notifications.placeholders.automatic_role', [], 'km'));
     }
 
     public function test_staff_stage_requires_a_responsible_role(): void

@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Resources\WorkflowNotifications\Schemas;
 
 use App\Enums\WorkflowStageType;
 use App\Models\Role;
+use App\Support\WorkflowNotificationStageSummary;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Builder;
 use Filament\Forms\Components\Builder\Block;
@@ -14,6 +15,7 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Alignment;
 use Illuminate\Support\Str;
@@ -68,15 +70,13 @@ class WorkflowNotificationForm
                     ->footerActionsAlignment(Alignment::Center)
                     ->hidden(fn (string $operation): bool => $operation === 'view'),
 
-                // The view page shows the same stages without the add buttons.
+                // The view page uses a dedicated read-only stage summary.
                 Section::make(__('workflow_notifications.sections.stages'))
                     ->schema([
-                        Builder::make('stages')
-                            ->hiddenLabel()
-                            ->blocks([
-                                self::stageBlock(),
-                            ])
-                            ->blockNumbers(false),
+                        View::make('filament.admin.workflow-notifications.stage-summary')
+                            ->viewData(fn (Get $get): array => [
+                                'stages' => WorkflowNotificationStageSummary::from($get('stages') ?? []),
+                            ]),
                     ])
                     ->visible(fn (string $operation): bool => $operation === 'view'),
             ]);
@@ -86,7 +86,10 @@ class WorkflowNotificationForm
     {
         return Block::make('stage')
             ->label(fn (?array $state): string|HtmlString => filled($state['stage_name'] ?? null)
-                ? (string) $state['stage_name']
+                ? WorkflowNotificationStageSummary::localizedName(
+                    (string) $state['stage_name'],
+                    WorkflowStageType::tryFrom((string) ($state['stage_type'] ?? null)),
+                )
                 : new HtmlString('&nbsp;'))
             ->icon('heroicon-o-flag')
             ->schema(self::stageFields());
@@ -99,6 +102,8 @@ class WorkflowNotificationForm
     private static function stageFields(): array
     {
         $handledByStaff = fn (Get $get): bool => (bool) WorkflowStageType::tryFrom((string) $get('stage_type'))?->requiresRole();
+        $automaticRole = fn (Get $get): bool => WorkflowStageType::tryFrom((string) $get('stage_type')) === WorkflowStageType::Completed;
+        $requiresManualRole = fn (Get $get): bool => $handledByStaff($get) && ! $automaticRole($get);
 
         return [
             Grid::make(2)->schema([
@@ -114,6 +119,17 @@ class WorkflowNotificationForm
                     ->options(fn (): array => WorkflowStageType::options())
                     ->required()
                     ->live()
+                    ->afterStateUpdated(function (?string $state, ?string $old, Get $get, Set $set): void {
+                        $type = WorkflowStageType::tryFrom((string) $state);
+
+                        if ($type !== null && blank($old) && blank($get('stage_name'))) {
+                            $set('stage_name', $type->label());
+                        }
+
+                        if ($type === WorkflowStageType::Completed) {
+                            $set('responsible_role', null);
+                        }
+                    })
                     ->native(false),
 
                 Select::make('responsible_role')
@@ -124,8 +140,16 @@ class WorkflowNotificationForm
                         ->mapWithKeys(fn (Role $role): array => [$role->name => $role->localized_name])
                         ->all())
                     ->searchable()
-                    ->required($handledByStaff)
-                    ->visible($handledByStaff)
+                    ->required($requiresManualRole)
+                    ->visible($requiresManualRole)
+                    ->columnSpanFull(),
+
+                TextInput::make('responsible_role_automatic')
+                    ->label(__('workflow_notifications.fields.responsible_role'))
+                    ->placeholder(__('workflow_notifications.placeholders.automatic_role'))
+                    ->disabled()
+                    ->dehydrated(false)
+                    ->visible($automaticRole)
                     ->columnSpanFull(),
 
                 TextInput::make('status_message')
