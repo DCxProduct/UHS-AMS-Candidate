@@ -25,9 +25,10 @@ class SystemUserPolicy
         return $authUser->can('Create:SystemUser');
     }
 
-    public function update(AuthUser $authUser): bool
+    public function update(AuthUser $authUser, SystemUser $systemUser): bool
     {
-        return $authUser->can('Update:SystemUser');
+        return ! $systemUser->hasJsonRole('admin')
+            && $authUser->can('Update:SystemUser');
     }
 
     public function delete(AuthUser $authUser, ?SystemUser $systemUser = null): bool
