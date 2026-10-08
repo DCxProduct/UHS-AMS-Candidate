@@ -78,7 +78,7 @@ return [
         'record_payment' => 'កត់ត្រាការទូទាត់ប្រាក់',
         'pay' => 'បង់ប្រាក់',
         'view_slip' => 'មើលបង្កាន់ដៃ',
-        'submit_payment' => 'បញ្ជូនការទូទាត់',
+        'submit_payment' => 'បង់ប្រាក់',
         'print_pdf' => 'បោះពុម្ព PDF',
         'print_receipt' => 'បោះពុម្ពបង្កាន់ដៃ',
         'close' => 'បិទ',

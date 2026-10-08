@@ -3,8 +3,10 @@
 namespace App\Filament\Admin\Resources\WorkflowNotifications\Pages;
 
 use App\Filament\Admin\Resources\WorkflowNotifications\WorkflowNotificationResource;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Support\Enums\Width;
+use Illuminate\Validation\ValidationException;
 
 class CreateWorkflowNotification extends CreateRecord
 {
@@ -15,8 +17,20 @@ class CreateWorkflowNotification extends CreateRecord
         return static::getResource()::getUrl('index');
     }
 
-    protected function handleRecordCreation(array $data): Model
+    public function getMaxContentWidth(): Width|string|null
     {
-        return parent::handleRecordCreation($data);
+        return Width::Full;
+    }
+
+    protected function onValidationError(ValidationException $exception): void
+    {
+        parent::onValidationError($exception);
+
+        Notification::make()
+            ->title(__('workflow_notifications.validation.could_not_save'))
+            ->body($exception->validator->errors()->first())
+            ->danger()
+            ->persistent()
+            ->send();
     }
 }

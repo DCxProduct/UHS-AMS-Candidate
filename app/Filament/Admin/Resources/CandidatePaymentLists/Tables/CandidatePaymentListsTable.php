@@ -2,17 +2,18 @@
 
 namespace App\Filament\Admin\Resources\CandidatePaymentLists\Tables;
 
+use App\Support\WorkflowStageMessages;
+use App\Support\StaticWorkflowMessages;
+use App\Enums\WorkflowStageType;
 use App\Filament\Admin\Resources\CandidatePaymentLists\CandidatePaymentListResource;
 use App\Models\UnpaidApplication;
 use App\Models\ExchangeRate;
 use App\Models\Payment;
 use App\Models\PaymentType;
-use App\Models\User;
 use App\Support\FilamentActionPermissions;
 use App\Support\FormEntryData;
 use App\Support\CaseInsensitiveSearch;
 use App\Support\LocalizedNumber;
-use App\Support\NotificationLanguage;
 use App\Support\PaymentValidation;
 use App\Support\TablePdfExporter;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
@@ -382,7 +383,14 @@ class CandidatePaymentListsTable
 
                             throw $exception;
                         }
-                        self::notifyStudentPaymentCompleted($record);
+                        if (WorkflowStageMessages::hasConfiguredWorkflow($record)) {
+                            // The entry itself has already moved on to Awaiting Results,
+                            // but the payment event owns this configured message.
+                            WorkflowStageMessages::notifyConfiguredStage($record, WorkflowStageType::Payment);
+                            WorkflowStageMessages::notifyResponsibleRole($record);
+                        } else {
+                            StaticWorkflowMessages::notifyPaymentCompleted($record);
+                        }
 
                         Notification::make()
                             ->title(__('payments.actions.record_payment'))
@@ -390,6 +398,7 @@ class CandidatePaymentListsTable
                             ->send();
                     })
                     ->visible(fn (UnpaidApplication $record): bool => FilamentActionPermissions::canForResource(CandidatePaymentListResource::class, 'pay')
+                        && WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::Payment)
                         && self::latestPaymentRecord($record) === null),
             ]);
     }
@@ -865,42 +874,6 @@ class CandidatePaymentListsTable
         }
 
         return null;
-    }
-
-    protected static function notifyStudentPaymentCompleted(UnpaidApplication $record): void
-    {
-        $studentId = self::ownerId($record);
-
-        if (! $studentId) {
-            return;
-        }
-
-        $student = User::query()
-            ->whereKey($studentId)
-            ->where('registration_type', 'student')
-            ->first();
-
-        if (! $student) {
-            return;
-        }
-
-        $formName = $record->customForm?->display_name
-            ?: CustomForm::localeText($record->customForm?->name);
-
-        Notification::make()
-            ->title(NotificationLanguage::transForUser(
-                $student,
-                'app.custom_form_entry_ui.notifications.payment_completed_title'
-            ))
-            ->body(NotificationLanguage::transForUser(
-                $student,
-                'app.custom_form_entry_ui.notifications.payment_completed_body',
-                ['form' => $formName]
-            ))
-            ->icon('heroicon-o-check-circle')
-            ->iconColor('success')
-            ->success()
-            ->sendToDatabase($student);
     }
 
     protected static function applyPaymentOwnerMatch(QueryBuilder $query): QueryBuilder

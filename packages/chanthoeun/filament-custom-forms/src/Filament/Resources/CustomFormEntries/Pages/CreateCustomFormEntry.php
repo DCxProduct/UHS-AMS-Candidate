@@ -178,7 +178,6 @@ class CreateCustomFormEntry extends CreateRecord
                             ->update($data);
 
                         $this->record = CustomFormEntry::find($this->draftEntryId);
-                        $this->sendStudentSubmitPaymentNotificationIfNeeded($this->record);
 
                         $this->redirect($this->getRedirectUrl());
 
@@ -458,11 +457,6 @@ class CreateCustomFormEntry extends CreateRecord
         return parent::getCreatedNotificationTitle();
     }
 
-    protected function afterCreate(): void
-    {
-        $this->sendStudentSubmitPaymentNotificationIfNeeded($this->record);
-    }
-
     protected function handleSubmitValidationException(ValidationException $exception): never
     {
         $this->unmountAction(cancelParentActions: false);
@@ -503,34 +497,4 @@ class CreateCustomFormEntry extends CreateRecord
         return CandidateSubmitPopupSetting::singleton();
     }
 
-    protected function sendStudentSubmitPaymentNotificationIfNeeded(?CustomFormEntry $entry): void
-    {
-        $student = auth()->user();
-
-        if (! $student || ! $entry || ! $this->shouldSendSubmitPaymentNotification($entry)) {
-            return;
-        }
-
-        $formName = $entry->customForm?->display_name
-            ?: $this->transText($entry->customForm?->name);
-
-        Notification::make()
-            ->title(__('app.custom_form_entry_ui.notifications.application_submitted_payment_title', ['form' => $formName]))
-            ->body(__('app.custom_form_entry_ui.notifications.application_submitted_payment_body', ['form' => $formName]))
-            ->icon('heroicon-o-bell-alert')
-            ->iconColor('warning')
-            ->warning()
-            ->sendToDatabase($student);
-    }
-
-    protected function shouldSendSubmitPaymentNotification(CustomFormEntry $entry): bool
-    {
-        $customForm = $entry->customForm;
-
-        if (! $customForm || (string) $customForm->slug === 'profile') {
-            return false;
-        }
-
-        return ! (bool) ($customForm->requires_payment ?? true);
-    }
 }

@@ -84,11 +84,11 @@
          'name' => 'Name',
          'slug' => 'Slug',
          'is_active' => 'Is Active',
+         'requires_payment' => 'Require Payment for This Form',
          'allowed_roles' => 'Allowed Roles',
          'allowed_roles_profile_help' => 'The Profile form is always open to every candidate type, so the roles are selected automatically.',
          'passed_result_menu' => 'Passed Candidate Result Menu',
          'statistics_menu' => 'Candidate Statistics Menu',
-         'requires_payment' => 'Require Payment for This Form',
          'details' => 'Form Details',
          'passed_result_menu_options' => [
              'exam_results' => 'Passed Entrance Exam',

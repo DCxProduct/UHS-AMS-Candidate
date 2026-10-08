@@ -35,8 +35,7 @@ class ListExamResults extends ListRecords
                 ->label(__('exam_results.notify_all_students'))
                 ->icon('heroicon-o-bell-alert')
                 ->color('danger')
-                ->visible(fn (): bool => FilamentActionPermissions::canForResource(static::getResource(), 'notify_all_students')
-                    && ExamResultsTable::hasUnsentPassedNotifications(static::getResource()::getResultMenuTarget()))
+                ->visible(fn (): bool => FilamentActionPermissions::canForResource(static::getResource(), 'notify_all_students'))
                 ->alpineClickHandler(<<<'JS'
                     const table = document.querySelector('.fi-ta');
                     const tableData = table?._x_dataStack?.find((data) => data.selectedRecords instanceof Set);
@@ -261,7 +260,10 @@ class ListExamResults extends ListRecords
                 hiddenFlag: null,
             )
                 ->get()
-                ->reject(fn (CustomFormEntry $record): bool => ExamResultsTable::hasStudentPassedNotification($record));
+                ->reject(fn (CustomFormEntry $record): bool => ExamResultsTable::hasStudentPassedNotification(
+                    $record,
+                    static::getResource()::getResultMenuTarget(),
+                ));
         } elseif ($isTrackingDeselectedRecords) {
             $query = $this->getTableQueryForExport()
                 ->with(['creator', 'customForm']);
@@ -290,7 +292,10 @@ class ListExamResults extends ListRecords
             return;
         }
 
-        $sentCount = ExamResultsTable::sendPassedNotifications($records);
+        $sentCount = ExamResultsTable::sendPassedNotifications(
+            $records,
+            static::getResource()::getResultMenuTarget(),
+        );
 
         AuditLogger::log(
             action: 'notified',

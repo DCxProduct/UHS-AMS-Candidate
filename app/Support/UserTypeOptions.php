@@ -365,6 +365,8 @@ class UserTypeOptions
 
     public static function candidateManagedRoleKeys(): array
     {
+        static::ensureDefaultUserType();
+
         if (static::$candidateManagedRoleKeysCache !== null) {
             return static::$candidateManagedRoleKeysCache;
         }
@@ -584,7 +586,7 @@ class UserTypeOptions
 
     protected static function ensureDefaultUserType(): void
     {
-        if (static::$defaultsEnsured || ! Schema::hasTable('user_types')) {
+        if (! Schema::hasTable('user_types')) {
             return;
         }
 
@@ -594,10 +596,19 @@ class UserTypeOptions
             ->get()
             ->keyBy('key');
 
+        $createdRecord = false;
+
         foreach ($defaultRecords as $record) {
             if (! $existingRecords->has($record['key'])) {
                 UserType::query()->create($record);
+                $createdRecord = true;
             }
+        }
+
+        if ($createdRecord) {
+            static::$optionsCache = [];
+            static::$normalizedUserTypeCache = [];
+            static::$candidateManagedRoleKeysCache = null;
         }
 
         static::$defaultsEnsured = true;

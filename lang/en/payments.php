@@ -78,7 +78,7 @@ return [
         'record_payment' => 'Record Payment',
         'pay' => 'Pay',
         'view_slip' => 'View Receipt',
-        'submit_payment' => 'Submit Payment',
+        'submit_payment' => 'Pay',
         'print_pdf' => 'Print PDF',
         'print_receipt' => 'Print Receipt',
         'close' => 'Close',

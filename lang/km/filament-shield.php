@@ -4,6 +4,7 @@ return [
     'resource_permission_prefixes_labels' => [
         'view_any' => 'អាន',
         'view' => 'មើលទិន្នន័យ',
+        'view_application_stage' => 'មើល',
         'create' => 'បង្កើត',
         'update' => 'កែប្រែ',
         'delete' => 'លុប',

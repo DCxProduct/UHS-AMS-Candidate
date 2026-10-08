@@ -62,6 +62,7 @@ return [
     'actions' => [
         'view_details' => 'View Details',
         'view_data' => 'View Data',
+        'view_workflow' => 'View',
         'accept' => 'Accept',
         'reject' => 'Reject',
         'close' => 'Close',
@@ -113,6 +114,15 @@ return [
     'download_excel' => 'Download Excel',
     'download_pdf' => 'Download PDF',
     'download_file' => 'Download :file',
+    'workflow_process' => 'Workflow Process',
+    'stage_count' => ':count application stages',
+    'stage_states' => [
+        'completed' => 'Completed',
+        'current' => 'Current Stage',
+        'pending' => 'Pending',
+    ],
+    'stage_completed_at' => 'Completed At',
+    'no_application_stages' => 'No workflow stages are configured for this application.',
     'view_application_review' => 'View Application Review',
     'file_types' => [
         'word' => 'Word document',

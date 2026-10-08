@@ -2,15 +2,20 @@
 
 namespace App\Filament\Admin\Resources\CandidateExitStatistics\Tables;
 
+use App\Enums\WorkflowStageType;
 use App\Filament\Admin\Resources\CandidateExitStatistics\CandidateExitStatisticResource;
 use App\Models\CandidateExitStatistic;
 use App\Support\AuditLogger;
 use App\Support\CandidateTypeResolver;
+use App\Support\CandidateStatisticsSynchronizer;
 use App\Support\CaseInsensitiveSearch;
 use App\Support\FilamentActionPermissions;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
+use App\Support\WorkflowStageMessages;
 use Carbon\Carbon;
+use Chanthoeun\FilamentCustomForms\Models\CustomForm;
+use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Forms\Components\Select;
@@ -20,6 +25,7 @@ use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
 use Illuminate\Support\HtmlString;
 
@@ -46,7 +52,7 @@ class CandidateExitStatisticsTable
 
                 TextColumn::make('form_type')
                     ->label(__('candidate_exit_statistics.fields.form_type'))
-                    ->formatStateUsing(fn (?string $state): string => self::optionLabel('form_type', $state))
+                    ->getStateUsing(fn (CandidateExitStatistic $record): string => self::entryFormTypeLabel($record))
                     ->badge()
                     ->color('info')
                     ->searchable()
@@ -124,7 +130,7 @@ class CandidateExitStatisticsTable
                     ->schema([
                         Select::make('form_type')
                             ->label(__('candidate_exit_statistics.filters.form_type'))
-                            ->options(__('candidate_exit_statistics.options.form_type'))
+                            ->options(fn (): array => self::dynamicFormTypeOptions())
                             ->native(false)
                             ->live(),
 
@@ -158,7 +164,10 @@ class CandidateExitStatisticsTable
                     ->columnSpanFull()
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
-                            ->when(filled($data['form_type'] ?? null), fn (Builder $query): Builder => $query->where('form_type', $data['form_type']))
+                            ->when(
+                                filled($data['form_type'] ?? null),
+                                fn (Builder $query): Builder => self::applyFormTypeFilter($query, (string) $data['form_type'])
+                            )
                             ->when(filled($data['candidate_status'] ?? null), fn (Builder $query): Builder => $query->where('candidate_status', $data['candidate_status']))
                             ->when(filled($data['user_type'] ?? null), fn (Builder $query): Builder => $query->where('user_type', $data['user_type']))
                             ->when(filled($data['major'] ?? null), fn (Builder $query): Builder => $query->where('major', $data['major']))
@@ -178,11 +187,17 @@ class CandidateExitStatisticsTable
                     ->modalSubmitActionLabel(__('candidate_exit_statistics.passed_confirm_yes'))
                     ->modalCancelActionLabel(__('candidate_exit_statistics.passed_confirm_no'))
                     ->visible(fn (CandidateExitStatistic $record): bool => FilamentActionPermissions::canForResource(CandidateExitStatisticResource::class, 'passed')
+                        && WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::AwaitingResults)
                         && strtolower((string) $record->candidate_status) === 'pending')
                     ->action(function (CandidateExitStatistic $record): void {
                         FilamentActionPermissions::abortUnlessCanForResource(CandidateExitStatisticResource::class, 'passed');
 
                         self::markPassed($record);
+                        $entry = CustomFormEntry::query()->find($record->custom_form_entry_id);
+
+                        if ($entry !== null) {
+                            WorkflowStageMessages::notifyResultStage($entry);
+                        }
 
                         Notification::make()
                             ->title(__('candidate_exit_statistics.notifications.passed'))
@@ -200,6 +215,7 @@ class CandidateExitStatisticsTable
                     ->modalSubmitActionLabel(__('candidate_exit_statistics.pending_modal.submit'))
                     ->modalCancelActionLabel(__('candidate_exit_statistics.pending_modal.cancel'))
                     ->visible(fn (CandidateExitStatistic $record): bool => FilamentActionPermissions::canForResource(CandidateExitStatisticResource::class, 'pending')
+                        && WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::AwaitingResults)
                         && strtolower((string) $record->candidate_status) === 'passed')
                     ->action(function (CandidateExitStatistic $record): void {
                         FilamentActionPermissions::abortUnlessCanForResource(CandidateExitStatisticResource::class, 'pending');
@@ -232,11 +248,19 @@ class CandidateExitStatisticsTable
                         $passedCount = 0;
 
                         $records->each(function (CandidateExitStatistic $record) use (&$passedCount): void {
-                            if (strtolower((string) $record->candidate_status) !== 'pending') {
+                            if (
+                                strtolower((string) $record->candidate_status) !== 'pending'
+                                || ! WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::AwaitingResults)
+                            ) {
                                 return;
                             }
 
                             self::markPassed($record);
+                            $entry = CustomFormEntry::query()->find($record->custom_form_entry_id);
+
+                            if ($entry !== null) {
+                                WorkflowStageMessages::notifyResultStage($entry);
+                            }
                             $passedCount++;
                         });
 
@@ -264,7 +288,10 @@ class CandidateExitStatisticsTable
                         $editedCount = 0;
 
                         $records->each(function (CandidateExitStatistic $record) use (&$editedCount): void {
-                            if (strtolower((string) $record->candidate_status) !== 'passed') {
+                            if (
+                                strtolower((string) $record->candidate_status) !== 'passed'
+                                || ! WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::AwaitingResults)
+                            ) {
                                 return;
                             }
 
@@ -316,6 +343,31 @@ class CandidateExitStatisticsTable
             'candidate_reviewed_at' => now(),
         ])->saveQuietly();
 
+        $entry = CustomFormEntry::query()->find($record->custom_form_entry_id);
+
+        if ($entry !== null && WorkflowStageMessages::hasConfiguredWorkflow($entry)) {
+            $data = is_array($entry->data) ? $entry->data : [];
+            $now = now();
+
+            $data['candidate_status'] = 'passed';
+            $data['registration_status'] = 'passed';
+            $data['exam_result'] = 'passed';
+            $data['result_status'] = 'passed';
+            $data['candidate_reviewed_at'] = $now->toDateTimeString();
+
+            DB::table('custom_form_entries')
+                ->where('id', $entry->getKey())
+                ->update([
+                    'data' => json_encode($data, JSON_UNESCAPED_UNICODE),
+                    'review_status' => 'passed',
+                    'reviewed_at' => $now,
+                    'updated_at' => $now,
+                ]);
+
+            $entry->refresh();
+            CandidateStatisticsSynchronizer::syncPassedEntry($entry);
+        }
+
         AuditLogger::log(
             action: 'passed',
             auditable: $record,
@@ -339,6 +391,23 @@ class CandidateExitStatisticsTable
         $record->forceFill([
             'candidate_status' => 'pending',
         ])->saveQuietly();
+
+        $entry = CustomFormEntry::query()->find($record->custom_form_entry_id);
+
+        if ($entry !== null && WorkflowStageMessages::hasConfiguredWorkflow($entry)) {
+            $data = is_array($entry->data) ? $entry->data : [];
+            $data['candidate_status'] = 'pending';
+
+            DB::table('custom_form_entries')
+                ->where('id', $entry->getKey())
+                ->update([
+                    'data' => json_encode($data, JSON_UNESCAPED_UNICODE),
+                    'updated_at' => now(),
+                ]);
+
+            $entry->refresh();
+            CandidateStatisticsSynchronizer::syncPendingEntry($entry);
+        }
 
         AuditLogger::log(
             action: 'updated',
@@ -656,6 +725,58 @@ class CandidateExitStatisticsTable
         }
 
         return (string) (__('candidate_exit_statistics.options.'.$group.'.'.$value) ?: $value);
+    }
+
+    protected static function entryFormTypeLabel(CandidateExitStatistic $record): string
+    {
+        $form = $record->customFormEntry?->customForm;
+
+        return $form?->display_name ?: self::optionLabel('form_type', $record->form_type);
+    }
+
+    protected static function dynamicFormTypeOptions(): array
+    {
+        $formIds = CandidateExitStatisticResource::getEloquentQuery()
+            ->reorder()
+            ->whereHas('customFormEntry')
+            ->with('customFormEntry:id,custom_form_id')
+            ->get(['custom_form_entry_id'])
+            ->pluck('customFormEntry.custom_form_id')
+            ->filter()
+            ->unique()
+            ->values();
+
+        return CustomForm::query()
+            ->where('is_active', true)
+            ->where('slug', '!=', 'profile')
+            ->whereIn('id', $formIds)
+            ->orderBy('id')
+            ->get(['id', 'name'])
+            ->mapWithKeys(fn (CustomForm $form): array => [
+                self::formFilterValue((int) $form->id) => $form->display_name,
+            ])
+            ->all();
+    }
+
+    protected static function applyFormTypeFilter(Builder $query, string $formType): Builder
+    {
+        if (str_starts_with($formType, 'form:')) {
+            $formId = (int) substr($formType, 5);
+
+            if ($formId > 0) {
+                return $query->whereHas(
+                    'customFormEntry',
+                    fn (Builder $entryQuery): Builder => $entryQuery->where('custom_form_id', $formId),
+                );
+            }
+        }
+
+        return $query->where('form_type', $formType);
+    }
+
+    protected static function formFilterValue(int $formId): string
+    {
+        return 'form:' . $formId;
     }
 
     protected static function distinctOptions(string $column): array

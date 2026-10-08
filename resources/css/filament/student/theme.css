@@ -6,6 +6,7 @@
 
 @source '../../../../app/Filament//*';
 @source '../../../../resources/views/filament//*';
+@source '../../../../resources/views/filament/custom-form-entry/application-stage.blade.php';
 @source '../../../../resources/views/components//*';
 @source '../../../../resources/views/livewire//*';
 @source '../../../../app/Livewire//*';
@@ -1128,4 +1129,163 @@ html.dark .uhs-admin-overview__card--slate .uhs-admin-overview__icon-wrap,
 .dark .uhs-admin-overview__card--slate .uhs-admin-overview__icon-wrap {
     color: #cbd5e1 !important;
     background: rgba(71, 85, 105, 0.2) !important;
+}
+
+/* Keep workflow stage presentation consistent in both the page and View modal. */
+.uhs-workflow-summary,
+.uhs-workflow-modal {
+    --uhs-workflow-surface: #ffffff;
+    --uhs-workflow-border: #e2e8f0;
+    --uhs-workflow-heading: #111827;
+    --uhs-workflow-muted: #64748b;
+    --uhs-workflow-body: #475569;
+    --uhs-workflow-primary-soft: #eff6ff;
+    --uhs-workflow-primary: #1d4ed8;
+    --uhs-workflow-type-soft: #f1f5f9;
+    --uhs-workflow-type: #334155;
+    --uhs-workflow-responsible-soft: #ecfdf5;
+    --uhs-workflow-responsible: #047857;
+}
+
+.uhs-workflow-summary {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.uhs-workflow-summary__count {
+    margin: 0 0 0.25rem;
+    color: var(--uhs-workflow-muted);
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+.uhs-workflow-summary__list {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.uhs-workflow-stage-card {
+    display: grid;
+    grid-template-columns: 2.75rem minmax(0, 1fr);
+    align-items: start;
+    gap: 0.875rem;
+    padding: 1rem;
+    border: 1px solid var(--uhs-workflow-border);
+    border-radius: 0.75rem;
+    background: var(--uhs-workflow-surface);
+}
+
+.uhs-workflow-stage-card__number {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 9999px;
+    background: var(--uhs-workflow-primary-soft);
+    color: var(--uhs-workflow-primary);
+    font-size: 0.875rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.uhs-workflow-stage-card__content {
+    display: grid;
+    min-width: 0;
+    gap: 0.625rem;
+}
+
+.uhs-workflow-stage-card__title {
+    margin: 0;
+    color: var(--uhs-workflow-heading);
+    font-size: 0.9375rem;
+    font-weight: 700;
+    line-height: 1.5;
+}
+
+.uhs-workflow-stage-card__badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    font-size: 0.8125rem;
+    line-height: 1.25;
+}
+
+.uhs-workflow-stage-card__badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.5625rem;
+    border-radius: 9999px;
+}
+
+.uhs-workflow-stage-card__badge--type {
+    background: var(--uhs-workflow-type-soft);
+    color: var(--uhs-workflow-type);
+}
+
+.uhs-workflow-stage-card__badge--responsible {
+    background: var(--uhs-workflow-responsible-soft);
+    color: var(--uhs-workflow-responsible);
+}
+
+.uhs-workflow-stage-card__message {
+    margin: 0;
+    color: var(--uhs-workflow-body);
+    font-size: 0.8125rem;
+    line-height: 1.6;
+}
+
+.uhs-workflow-stage-card__message-label {
+    color: var(--uhs-workflow-heading);
+    font-weight: 600;
+}
+
+.uhs-workflow-summary__empty {
+    margin: 0;
+    padding: 1.5rem;
+    border: 1px dashed #cbd5e1;
+    border-radius: 0.75rem;
+    color: var(--uhs-workflow-muted);
+    text-align: center;
+}
+
+.uhs-workflow-modal {
+    border: 1px solid var(--uhs-workflow-border) !important;
+    border-radius: 0.75rem !important;
+    background: var(--uhs-workflow-surface) !important;
+}
+
+html.dark .uhs-workflow-summary,
+.dark .uhs-workflow-summary,
+html.dark .uhs-workflow-modal,
+.dark .uhs-workflow-modal {
+    --uhs-workflow-surface: #0f172a;
+    --uhs-workflow-border: #334155;
+    --uhs-workflow-heading: #f8fafc;
+    --uhs-workflow-muted: #94a3b8;
+    --uhs-workflow-body: #cbd5e1;
+    --uhs-workflow-primary-soft: rgba(30, 64, 175, 0.35);
+    --uhs-workflow-primary: #bfdbfe;
+    --uhs-workflow-type-soft: #1e293b;
+    --uhs-workflow-type: #cbd5e1;
+    --uhs-workflow-responsible-soft: rgba(6, 78, 59, 0.5);
+    --uhs-workflow-responsible: #a7f3d0;
+}
+
+@media (min-width: 640px) {
+    .uhs-workflow-stage-card {
+        padding: 1rem 1.25rem;
+    }
+}
+
+@media (max-width: 639px) {
+    .uhs-workflow-stage-card {
+        grid-template-columns: 2.25rem minmax(0, 1fr);
+        gap: 0.75rem;
+    }
+
+    .uhs-workflow-stage-card__number {
+        width: 2.25rem;
+        height: 2.25rem;
+    }
 }
