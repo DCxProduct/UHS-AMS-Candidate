@@ -76,7 +76,8 @@ class AdminEntryPdfReviewController extends Controller
         );
 
         if (WorkflowStageMessages::hasConfiguredWorkflow($entry)) {
-            WorkflowStageMessages::notifyConfiguredStage($entry, WorkflowStageType::Review);
+            WorkflowStageMessages::notifyReviewAction($entry, 'accept')
+                || WorkflowStageMessages::notifyConfiguredStage($entry, WorkflowStageType::Review);
         } else {
             StaticWorkflowMessages::notifyApplicationResult($entry, 'approved');
         }
@@ -125,7 +126,8 @@ class AdminEntryPdfReviewController extends Controller
         );
 
         if (WorkflowStageMessages::hasConfiguredWorkflow($entry)) {
-            WorkflowStageMessages::notify($entry, WorkflowStageType::Rejected);
+            WorkflowStageMessages::notifyReviewAction($entry, 'send_back', $request->review_note)
+                || WorkflowStageMessages::notify($entry, WorkflowStageType::Rejected);
         } else {
             StaticWorkflowMessages::notifyApplicationResult($entry, 'rejected', $request->review_note);
         }

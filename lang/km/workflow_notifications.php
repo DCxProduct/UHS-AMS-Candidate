@@ -8,6 +8,7 @@ return [
     'custom_form_column' => 'លំហូរការជូនដំណឹង',
     'custom_form_helper' => 'ស្រេចចិត្ត។ ដំណើរការដែលទម្រង់បែបបទនេះអនុវត្តតាម។',
     'candidate_notification_title' => ':form៖ :stage',
+    'candidate_action_notification_title' => ':form៖ :action',
     'staff_notification_title' => 'សកម្មភាពលំហូរការងារ៖ :form៖ :stage',
     'staff_notification_body' => ':student បានមកដល់ដំណាក់កាល :stage នៃ :form។',
     'not_assigned' => 'មិនទាន់កំណត់',
@@ -37,6 +38,24 @@ return [
         'automatic_role' => 'ស្វ័យប្រវត្តិ',
         'status_message' => 'ឧទាហរណ៍៖ កំពុងពិនិត្យ',
         'notification_message' => 'ឧទាហរណ៍៖ ឯកសាររបស់អ្នកកំពុងត្រូវបានពិនិត្យ។',
+    ],
+
+    'review_actions' => [
+        'accept' => [
+            'title' => 'សូមទៅកាន់បញ្ជរបេឡា',
+            'status_message' => 'សារស្ថានភាពសម្រាប់បេក្ខជន (ជាជម្រើស)',
+            'notification_message' => 'សារជូនដំណឹងសម្រាប់បេក្ខជន (ជាជម្រើស)',
+        ],
+        'send_back' => [
+            'title' => 'បញ្ជូនត្រឡប់',
+            'status_message' => 'សារស្ថានភាពសម្រាប់បេក្ខជន (ជាជម្រើស)',
+            'notification_message' => 'សារជូនដំណឹងសម្រាប់បេក្ខជន (ជាជម្រើស)',
+        ],
+        'reject' => [
+            'title' => 'បដិសេធ',
+            'status_message' => 'សារស្ថានភាពសម្រាប់បេក្ខជន (ជាជម្រើស)',
+            'notification_message' => 'សារជូនដំណឹងសម្រាប់បេក្ខជន (ជាជម្រើស)',
+        ],
     ],
 
     'helpers' => [

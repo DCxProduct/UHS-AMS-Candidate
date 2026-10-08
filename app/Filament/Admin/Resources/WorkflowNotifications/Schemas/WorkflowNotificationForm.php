@@ -8,6 +8,7 @@ use App\Support\WorkflowNotificationStageSummary;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Builder;
 use Filament\Forms\Components\Builder\Block;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -108,6 +109,7 @@ class WorkflowNotificationForm
         $handledByStaff = fn (Get $get): bool => (bool) WorkflowStageType::tryFrom((string) $get('stage_type'))?->requiresRole();
         $automaticRole = fn (Get $get): bool => WorkflowStageType::tryFrom((string) $get('stage_type')) === WorkflowStageType::Completed;
         $requiresManualRole = fn (Get $get): bool => $handledByStaff($get) && ! $automaticRole($get);
+        $isReviewStage = fn (Get $get): bool => WorkflowStageType::tryFrom((string) $get('stage_type')) === WorkflowStageType::Review;
 
         return [
             Grid::make(2)->schema([
@@ -136,6 +138,7 @@ class WorkflowNotificationForm
                         if ($type === WorkflowStageType::FormSubmission) {
                             $set('status_message', null);
                             $set('notification_message', null);
+                            $set('review_actions', null);
                         }
                     })
                     ->native(false),
@@ -164,7 +167,7 @@ class WorkflowNotificationForm
                         ? __('workflow_notifications.status_defaults.'.$get('stage_type'))
                         : __('workflow_notifications.placeholders.status_message'))
                     ->maxLength(255)
-                    ->visible($handledByStaff),
+                    ->visible(fn (Get $get): bool => $handledByStaff($get) && ! $isReviewStage($get)),
 
                 Textarea::make('notification_message')
                     ->label(__('workflow_notifications.fields.notification_message'))
@@ -172,7 +175,67 @@ class WorkflowNotificationForm
                     ->rows(1)
                     ->autosize()
                     ->maxLength(1000)
-                    ->visible($handledByStaff),
+                    ->visible(fn (Get $get): bool => $handledByStaff($get) && ! $isReviewStage($get)),
+
+                Placeholder::make('review_actions.accept_heading')
+                    ->content(new HtmlString('<strong class="text-info-600 dark:text-info-400">'.e(__('workflow_notifications.review_actions.accept.title')).'</strong>'))
+                    ->hiddenLabel()
+                    ->visible($isReviewStage)
+                    ->columnSpanFull(),
+
+                TextInput::make('review_actions.accept.status_message')
+                    ->label(__('workflow_notifications.review_actions.accept.status_message'))
+                    ->placeholder(__('workflow_notifications.placeholders.status_message'))
+                    ->maxLength(255)
+                    ->visible($isReviewStage),
+
+                Textarea::make('review_actions.accept.notification_message')
+                    ->label(__('workflow_notifications.review_actions.accept.notification_message'))
+                    ->placeholder(__('workflow_notifications.placeholders.notification_message'))
+                    ->rows(1)
+                    ->autosize()
+                    ->maxLength(1000)
+                    ->visible($isReviewStage),
+
+                Placeholder::make('review_actions.send_back_heading')
+                    ->content(new HtmlString('<strong class="text-info-600 dark:text-info-400">'.e(__('workflow_notifications.review_actions.send_back.title')).'</strong>'))
+                    ->hiddenLabel()
+                    ->visible($isReviewStage)
+                    ->columnSpanFull(),
+
+                TextInput::make('review_actions.send_back.status_message')
+                    ->label(__('workflow_notifications.review_actions.send_back.status_message'))
+                    ->placeholder(__('workflow_notifications.placeholders.status_message'))
+                    ->maxLength(255)
+                    ->visible($isReviewStage),
+
+                Textarea::make('review_actions.send_back.notification_message')
+                    ->label(__('workflow_notifications.review_actions.send_back.notification_message'))
+                    ->placeholder(__('workflow_notifications.placeholders.notification_message'))
+                    ->rows(1)
+                    ->autosize()
+                    ->maxLength(1000)
+                    ->visible($isReviewStage),
+
+                Placeholder::make('review_actions.reject_heading')
+                    ->content(new HtmlString('<strong class="text-info-600 dark:text-info-400">'.e(__('workflow_notifications.review_actions.reject.title')).'</strong>'))
+                    ->hiddenLabel()
+                    ->visible($isReviewStage)
+                    ->columnSpanFull(),
+
+                TextInput::make('review_actions.reject.status_message')
+                    ->label(__('workflow_notifications.review_actions.reject.status_message'))
+                    ->placeholder(__('workflow_notifications.placeholders.status_message'))
+                    ->maxLength(255)
+                    ->visible($isReviewStage),
+
+                Textarea::make('review_actions.reject.notification_message')
+                    ->label(__('workflow_notifications.review_actions.reject.notification_message'))
+                    ->placeholder(__('workflow_notifications.placeholders.notification_message'))
+                    ->rows(1)
+                    ->autosize()
+                    ->maxLength(1000)
+                    ->visible($isReviewStage),
             ]),
         ];
     }
@@ -206,6 +269,7 @@ class WorkflowNotificationForm
             'responsible_role' => null,
             'status_message' => null,
             'notification_message' => null,
+            'review_actions' => [],
         ];
     }
 
