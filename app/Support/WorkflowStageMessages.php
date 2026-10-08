@@ -104,7 +104,31 @@ final class WorkflowStageMessages
     {
         try {
             $stageType = self::stageTypeFor($entry);
+
+            if ($stageType === WorkflowStageType::Rejected) {
+                $action = strtolower(trim((string) $entry->review_status)) === 'failed'
+                    ? 'reject'
+                    : 'send_back';
+                $reviewStage = self::configuredStage($entry, WorkflowStageType::Review);
+                $actionStatus = data_get($reviewStage, 'review_actions.'.$action.'.status_message');
+
+                if (filled($actionStatus)) {
+                    return (string) $actionStatus;
+                }
+            }
+
             $stage = self::currentStage($entry) ?? [];
+
+            // A pending entry is still at Review. When the action-specific
+            // fields exist, its visible status comes from the Accept status
+            // field instead of a legacy generic Review value.
+            if ($stageType === WorkflowStageType::Review) {
+                $acceptStatus = data_get($stage, 'review_actions.accept.status_message');
+
+                if (filled($acceptStatus)) {
+                    return (string) $acceptStatus;
+                }
+            }
 
             // A passed exam keeps its Awaiting Results notification, while
             // the candidate status uses the configured success text.
@@ -126,6 +150,60 @@ final class WorkflowStageMessages
         }
     }
 
+    /**
+     * Send the configured Review action message to the candidate.
+     *
+     * The action fields are optional so older workflows continue using their
+     * original Review-stage message as a fallback.
+     */
+    public static function notifyReviewAction(
+        CustomFormEntry $entry,
+        string $action,
+        ?string $reviewNote = null,
+    ): bool
+    {
+        try {
+            if (! self::hasConfiguredWorkflow($entry)) {
+                return false;
+            }
+
+            $action = self::normalizeReviewAction($action);
+
+            if ($action === null) {
+                return false;
+            }
+
+            $stage = self::reviewActionStage($entry, $action);
+
+            $reviewNote = trim((string) $reviewNote);
+
+            if ($stage === null || (blank(self::notificationMessage($stage)) && $reviewNote === '')) {
+                return false;
+            }
+
+            $student = self::owner($entry);
+
+            // Accept is a one-time transition, while Send Back and Reject are
+            // repeatable review events and must remain in the notification history.
+            if ($student === null || ($action === 'accept' && self::hasSentReviewAction($entry, $action))) {
+                return false;
+            }
+
+            return self::sendStageNotification(
+                $entry,
+                $stage,
+                WorkflowStageType::Review,
+                $student,
+                'review_action:'.$action,
+                $reviewNote,
+            );
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return false;
+        }
+    }
+
     public static function hasConfiguredWorkflow(CustomFormEntry $entry): bool
     {
         return blank($entry->custom_form_id)
@@ -134,98 +212,17 @@ final class WorkflowStageMessages
     }
 
     /**
-     * Notify active staff users assigned to the workflow stage's responsible role.
-     * Forms without a workflow keep their existing notification path.
+     * Keep the responsible-role hook compatible without creating staff alerts.
+     * The responsible role is still enforced by canCurrentUserHandleStage().
      */
     public static function notifyResponsibleRole(
         CustomFormEntry $entry,
         ?WorkflowStageType $stageType = null,
     ): int {
-        try {
-            if (! Schema::hasTable('notifications') || ! self::hasConfiguredWorkflow($entry)) {
-                return 0;
-            }
-
-            $entry->refresh();
-            $stageType ??= self::stageTypeFor($entry);
-
-            if ($stageType === null) {
-                return 0;
-            }
-
-            $stage = self::configuredStage($entry, $stageType);
-            $responsibleRole = trim((string) ($stage['responsible_role'] ?? ''));
-            $student = self::owner($entry);
-
-            if ($stage === null || $responsibleRole === '' || $student === null) {
-                return 0;
-            }
-
-            $entry->loadMissing('customForm');
-
-            $formName = (string) ($entry->customForm?->display_name ?? '');
-            $stageName = WorkflowNotificationStageSummary::localizedName(
-                $stage['stage_name'] ?? null,
-                $stageType,
-            );
-            $recipients = User::query()
-                ->where('registration_type', 'admin')
-                ->when(
-                    Schema::hasColumn('users', 'is_active'),
-                    fn ($query) => $query->where('is_active', true),
-                )
-                ->whereHas('roles', fn ($query) => $query->whereRaw('LOWER(name) = ?', [strtolower($responsibleRole)]))
-                ->get();
-
-            $sent = 0;
-
-            foreach ($recipients as $recipient) {
-                $alreadySent = DB::table('notifications')
-                    ->where('notifiable_type', $recipient->getMorphClass())
-                    ->where('notifiable_id', $recipient->getKey())
-                    ->where('data->viewData->workflow_entry_id', (string) $entry->getKey())
-                    ->where('data->viewData->workflow_stage_type', $stageType->value)
-                    ->where('data->viewData->workflow_recipient_role', $responsibleRole)
-                    ->exists();
-
-                if ($alreadySent) {
-                    continue;
-                }
-
-                Notification::make()
-                    ->title(NotificationLanguage::transForUser(
-                        $recipient,
-                        'workflow_notifications.staff_notification_title',
-                        ['form' => $formName, 'stage' => $stageName],
-                    ))
-                    ->body(NotificationLanguage::transForUser(
-                        $recipient,
-                        'workflow_notifications.staff_notification_body',
-                        [
-                            'student' => $student->name,
-                            'form' => $formName,
-                            'stage' => $stageName,
-                        ],
-                    ))
-                    ->icon('heroicon-o-clipboard-document-check')
-                    ->iconColor('warning')
-                    ->viewData([
-                        'workflow_entry_id' => (string) $entry->getKey(),
-                        'workflow_stage_type' => $stageType->value,
-                        'workflow_recipient_role' => $responsibleRole,
-                    ])
-                    ->warning()
-                    ->sendToDatabase($recipient);
-
-                $sent++;
-            }
-
-            return $sent;
-        } catch (Throwable $exception) {
-            report($exception);
-
-            return 0;
-        }
+        // Responsible roles still control who may perform the workflow action,
+        // but configured workflows do not create generic staff notifications.
+        // Candidate-facing notifications are sent by the stage/action methods.
+        return 0;
     }
 
     public static function canCurrentUserHandleStage(
@@ -429,24 +426,71 @@ final class WorkflowStageMessages
         return [...$stage, 'stage_type' => $type->value];
     }
 
-    private static function sendStageNotification(CustomFormEntry $entry, array $stage, WorkflowStageType $stageType, User $student): bool
+    private static function sendStageNotification(
+        CustomFormEntry $entry,
+        array $stage,
+        WorkflowStageType $stageType,
+        User $student,
+        ?string $workflowEvent = null,
+        ?string $reviewNote = null,
+    ): bool
     {
-        (new self)->withLocale(NotificationLanguage::localeForUser($student), function () use ($entry, $stage, $stageType, $student): void {
+        (new self)->withLocale(NotificationLanguage::localeForUser($student), function () use ($entry, $stage, $stageType, $student, $workflowEvent, $reviewNote): void {
+            $viewData = [
+                'workflow_entry_id' => (string) $entry->getKey(),
+                'workflow_stage_type' => $stageType->value,
+            ];
+
+            $action = str_starts_with((string) $workflowEvent, 'review_action:')
+                ? substr((string) $workflowEvent, strlen('review_action:'))
+                : null;
+            $actionLabel = match ($action) {
+                'accept' => __('workflow_notifications.review_actions.accept.title'),
+                'send_back' => __('workflow_notifications.review_actions.send_back.title'),
+                'reject' => __('workflow_notifications.review_actions.reject.title'),
+                default => null,
+            };
+            $actionIcon = match ($action) {
+                'send_back' => 'heroicon-o-arrow-uturn-left',
+                'reject' => 'heroicon-o-x-circle',
+                default => 'heroicon-o-check-circle',
+            };
+
+            if ($workflowEvent !== null) {
+                $viewData['workflow_event'] = $workflowEvent;
+            }
+
+            $body = trim((string) self::notificationMessage($stage));
+            $reviewNote = trim((string) $reviewNote);
+
+            if ($reviewNote !== '') {
+                $reviewNoteText = __('candidate_entrance_statistics.review_note');
+                $body = $body === ''
+                    ? $reviewNoteText.': '.$reviewNote
+                    : $body."\n\n".$reviewNoteText.': '.$reviewNote;
+            }
+
             Notification::make()
-                ->title(__('workflow_notifications.candidate_notification_title', [
-                    'form' => $entry->customForm?->display_name ?? '',
-                    'stage' => WorkflowNotificationStageSummary::localizedName(
-                        $stage['stage_name'] ?? null,
-                        $stageType,
-                    ),
-                ]))
-                ->body((string) self::notificationMessage($stage))
-                ->icon('heroicon-o-check-circle')
-                ->iconColor('success')
-                ->viewData([
-                    'workflow_entry_id' => (string) $entry->getKey(),
-                    'workflow_stage_type' => $stageType->value,
-                ])
+                ->title($actionLabel !== null
+                    ? __('workflow_notifications.candidate_action_notification_title', [
+                        'form' => $entry->customForm?->display_name ?? '',
+                        'action' => $actionLabel,
+                    ])
+                    : __('workflow_notifications.candidate_notification_title', [
+                        'form' => $entry->customForm?->display_name ?? '',
+                        'stage' => WorkflowNotificationStageSummary::localizedName(
+                            $stage['stage_name'] ?? null,
+                            $stageType,
+                        ),
+                    ]))
+                ->body($body)
+                ->icon($actionIcon)
+                ->iconColor(match ($action) {
+                    'reject' => 'danger',
+                    'send_back' => 'warning',
+                    default => 'success',
+                })
+                ->viewData($viewData)
                 ->info()
                 ->sendToDatabase($student);
         });
@@ -496,6 +540,54 @@ final class WorkflowStageMessages
         }
 
         return $notification;
+    }
+
+    private static function reviewActionStage(CustomFormEntry $entry, string $action): ?array
+    {
+        $stage = self::configuredStage($entry, WorkflowStageType::Review);
+
+        if ($stage === null) {
+            return null;
+        }
+
+        $action = self::normalizeReviewAction($action);
+        $messages = is_array($stage['review_actions'][$action] ?? null)
+            ? $stage['review_actions'][$action]
+            : [];
+
+        return [
+            ...$stage,
+            'status_message' => trim((string) ($messages['status_message'] ?? ''))
+                ?: ($stage['status_message'] ?? null),
+            'notification_message' => trim((string) ($messages['notification_message'] ?? ''))
+                ?: ($stage['notification_message'] ?? null),
+        ];
+    }
+
+    private static function normalizeReviewAction(string $action): ?string
+    {
+        return match (strtolower(trim($action))) {
+            'accept', 'accepted', 'approve', 'approved' => 'accept',
+            'send_back', 'send-back', 'rejected', 'returned' => 'send_back',
+            'reject', 'failed', 'final_reject' => 'reject',
+            default => null,
+        };
+    }
+
+    private static function hasSentReviewAction(CustomFormEntry $entry, string $action): bool
+    {
+        $student = self::owner($entry);
+
+        if ($student === null || ! Schema::hasTable('notifications')) {
+            return false;
+        }
+
+        return DB::table('notifications')
+            ->where('notifiable_type', $student->getMorphClass())
+            ->where('notifiable_id', $student->getKey())
+            ->where('data->viewData->workflow_entry_id', (string) $entry->getKey())
+            ->where('data->viewData->workflow_event', 'review_action:'.$action)
+            ->exists();
     }
 
     private static function isPassedResult(CustomFormEntry $entry): bool

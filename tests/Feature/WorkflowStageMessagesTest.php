@@ -144,6 +144,17 @@ class WorkflowStageMessagesTest extends TestCase
         $this->assertNull(WorkflowStageMessages::statusText($this->entry('draft')));
     }
 
+    public function test_review_status_prefers_the_accept_status_over_a_legacy_generic_message(): void
+    {
+        $workflow = WorkflowNotification::query()->where('name', 'Admission')->firstOrFail();
+        $stages = $workflow->stages;
+        $stages[1]['data']['status_message'] = 'Please go to cashier counter';
+        $stages[1]['data']['review_actions']['accept']['status_message'] = 'Under review';
+        $workflow->update(['stages' => $stages]);
+
+        $this->assertSame('Under review', WorkflowStageMessages::statusText($this->entry('pending')));
+    }
+
     public function test_forms_without_a_workflow_keep_the_existing_behaviour(): void
     {
         $entry = $this->entry('pending', form: $this->customForm());
@@ -188,7 +199,69 @@ class WorkflowStageMessagesTest extends TestCase
         $this->assertStringContainsString('Review', $notification->data['title']);
     }
 
-    public function test_responsible_role_receives_the_workflow_staff_notification(): void
+    public function test_review_action_messages_are_used_for_the_three_review_actions(): void
+    {
+        $workflow = WorkflowNotification::query()->where('name', 'Admission')->firstOrFail();
+        $stages = $workflow->stages;
+        $stages[1]['data']['review_actions'] = [
+            'accept' => [
+                'status_message' => 'Accepted status',
+                'notification_message' => 'Your application was accepted.',
+            ],
+            'send_back' => [
+                'status_message' => 'Changes required',
+                'notification_message' => 'Please correct your application.',
+            ],
+            'reject' => [
+                'status_message' => 'Application rejected',
+                'notification_message' => 'Your application was rejected.',
+            ],
+        ];
+        $workflow->update(['stages' => $stages]);
+
+        $accepted = $this->entry('pending');
+        $this->assertTrue(WorkflowStageMessages::notifyReviewAction($accepted, 'accept'));
+        $this->assertFalse(WorkflowStageMessages::notifyReviewAction($accepted, 'accept'));
+        $this->assertStringContainsString(
+            'Please go to cashier counter',
+            (string) $this->student->notifications()->sole()->data['title'],
+        );
+
+        $sentBack = $this->entry('rejected');
+        $this->assertTrue(WorkflowStageMessages::notifyReviewAction(
+            $sentBack,
+            'send_back',
+            'Please correct the missing document.',
+        ));
+        $this->assertTrue(WorkflowStageMessages::notifyReviewAction(
+            $sentBack,
+            'send_back',
+            'The document is still missing.',
+        ));
+        $this->assertSame('Changes required', WorkflowStageMessages::statusText($sentBack));
+        $sendBackBodies = $this->student->notifications()->get()->pluck('data.body');
+        $this->assertTrue($sendBackBodies->contains(
+            fn ($body): bool => str_contains((string) $body, 'Please correct the missing document.'),
+        ));
+        $this->assertTrue($sendBackBodies->contains(
+            fn ($body): bool => str_contains((string) $body, 'The document is still missing.'),
+        ));
+
+        $rejected = $this->entry('failed');
+        $this->assertTrue(WorkflowStageMessages::notifyReviewAction($rejected, 'reject'));
+        $this->assertTrue(WorkflowStageMessages::notifyReviewAction($rejected, 'reject', 'Final rejection reason.'));
+        $this->assertSame('Application rejected', WorkflowStageMessages::statusText($rejected));
+
+        $this->assertEqualsCanonicalizing([
+            'Your application was rejected.',
+            "Your application was rejected.\n\nReview Note: Final rejection reason.",
+            "Please correct your application.\n\nReview Note: Please correct the missing document.",
+            "Please correct your application.\n\nReview Note: The document is still missing.",
+            'Your application was accepted.',
+        ], $this->student->notifications()->latest()->get()->pluck('data.body')->all());
+    }
+
+    public function test_responsible_role_does_not_receive_a_generic_workflow_staff_notification(): void
     {
         $entry = $this->entry('pending');
 
@@ -206,13 +279,9 @@ class WorkflowStageMessagesTest extends TestCase
         $otherUser = $this->user('other_staff', 'admin');
         $otherUser->assignRole('cashier_officer');
 
-        $this->assertSame(1, WorkflowStageMessages::notifyResponsibleRole($entry));
-        $this->assertSame(1, $assignedUser->notifications()->count());
+        $this->assertSame(0, WorkflowStageMessages::notifyResponsibleRole($entry));
+        $this->assertSame(0, $assignedUser->notifications()->count());
         $this->assertSame(0, $otherUser->notifications()->count());
-        $this->assertSame(
-            0,
-            WorkflowStageMessages::notifyResponsibleRole($entry),
-        );
     }
 
     public function test_only_the_responsible_role_can_handle_a_configured_stage(): void

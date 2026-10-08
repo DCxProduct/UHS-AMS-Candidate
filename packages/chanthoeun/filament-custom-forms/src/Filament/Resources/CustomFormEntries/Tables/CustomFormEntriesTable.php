@@ -502,8 +502,12 @@ class CustomFormEntriesTable
             ->badge()
             ->getStateUsing(fn ($record): string => self::displayStatus($record))
             ->formatStateUsing(function ($state, $record): string {
-                // Candidates see the status text of their form's workflow stage, when one is set.
-                if (self::candidateIsViewing()
+                // No-payment workflows expose their configured stage status
+                // to staff as well, so the admin list does not show a stale
+                // payment message after approval.
+                if ((self::candidateIsViewing()
+                        || (WorkflowStageMessages::hasConfiguredWorkflow($record)
+                            && ! WorkflowStageMessages::requiresPayment($record)))
                     && filled($workflowStatus = WorkflowStageMessages::statusText($record))) {
                     return $workflowStatus;
                 }
@@ -1238,8 +1242,8 @@ class CustomFormEntriesTable
                             self::notifyStudentNationalExamResult($record, 'rejected', $data['review_note'] ?? null);
 
                             Notification::make()
-                                ->title(__('candidate_entrance_statistics.notifications.admin_reject_success_title'))
-                                ->danger()
+                                ->title(__('candidate_entrance_statistics.notifications.admin_send_back_success_title'))
+                                ->warning()
                                 ->send();
 
                             redirect(request()->header('Referer') ?: request()->fullUrl());
@@ -1452,8 +1456,8 @@ class CustomFormEntriesTable
                     self::notifyStudentNationalExamResult($record, 'rejected', $data['review_note'] ?? null);
 
                     Notification::make()
-                        ->title(__('candidate_entrance_statistics.notifications.admin_reject_success_title'))
-                        ->danger()
+                        ->title(__('candidate_entrance_statistics.notifications.admin_send_back_success_title'))
+                        ->warning()
                         ->send();
                 });
 
@@ -1755,12 +1759,16 @@ class CustomFormEntriesTable
         WorkflowStageMessages::notifyResponsibleRole($record);
 
         if ($status === 'approved') {
-            WorkflowStageMessages::notifyConfiguredStage($record, WorkflowStageType::Review);
+            WorkflowStageMessages::notifyReviewAction($record, 'accept')
+                || WorkflowStageMessages::notifyConfiguredStage($record, WorkflowStageType::Review);
 
             return;
         }
 
-        WorkflowStageMessages::notify($record, WorkflowStageType::Rejected);
+        $action = $status === 'failed' ? 'reject' : 'send_back';
+
+        WorkflowStageMessages::notifyReviewAction($record, $action, $note)
+            || WorkflowStageMessages::notify($record, WorkflowStageType::Rejected);
     }
 
     protected static function sendBackAfterFinalRejection($record, array $data): void

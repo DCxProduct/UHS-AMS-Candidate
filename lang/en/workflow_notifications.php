@@ -8,6 +8,7 @@ return [
     'custom_form_column' => 'Workflow Notification',
     'custom_form_helper' => 'Optional. The workflow this form follows.',
     'candidate_notification_title' => ':form: :stage',
+    'candidate_action_notification_title' => ':form: :action',
     'staff_notification_title' => 'Workflow action: :form: :stage',
     'staff_notification_body' => ':student has reached the :stage stage for :form.',
     'not_assigned' => 'Not assigned',
@@ -37,6 +38,24 @@ return [
         'automatic_role' => 'Automatic',
         'status_message' => 'Example: Under review',
         'notification_message' => 'Example: Your documents are being checked.',
+    ],
+
+    'review_actions' => [
+        'accept' => [
+            'title' => 'Please go to cashier counter',
+            'status_message' => 'Candidate Status Message (Optional)',
+            'notification_message' => 'Candidate Notification Message (Optional)',
+        ],
+        'send_back' => [
+            'title' => 'Send Back',
+            'status_message' => 'Candidate Status Message (Optional)',
+            'notification_message' => 'Candidate Notification Message (Optional)',
+        ],
+        'reject' => [
+            'title' => 'Reject',
+            'status_message' => 'Candidate Status Message (Optional)',
+            'notification_message' => 'Candidate Notification Message (Optional)',
+        ],
     ],
 
     'helpers' => [
