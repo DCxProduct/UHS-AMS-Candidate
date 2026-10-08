@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Support\ResetPasswordEmail;
 use App\Models\CandidateExitStatistic;
 use App\Models\CandidateList;
 use App\Models\CandidateEntranceStatistic;
@@ -76,6 +77,12 @@ class AppServiceProvider extends ServiceProvider
                 'email' => $user->getEmailForPasswordReset(),
             ]);
         });
+
+        // The reset email text comes from Settings > Email Templates.
+        ResetPassword::toMailUsing(fn (User $user, string $token) => ResetPasswordEmail::build(
+            $user,
+            call_user_func(ResetPassword::$createUrlCallback, $user, $token),
+        ));
 
         CustomForm::creating(function (CustomForm $form): void {
             if (blank($form->allowed_roles)) {

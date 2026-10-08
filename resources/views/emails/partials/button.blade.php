@@ -1,0 +1,1 @@
+<a href="{{ $url }}" target="_blank" rel="noopener" style="display: inline-block; padding: 12px 24px; border-radius: 6px; background: #1e40af; color: #ffffff; font-weight: 700; text-decoration: none;">{{ $text }}</a>

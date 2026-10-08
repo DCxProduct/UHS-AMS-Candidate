@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Support\NotificationLanguage;
+use App\Support\PasswordResetOtpSms;
 use App\Support\PhonePasswordResetOtp;
 use App\Support\PlasGateSms;
 use Illuminate\Auth\Events\PasswordReset;
@@ -55,10 +55,7 @@ class PhonePasswordResetController extends Controller
         }
 
         try {
-            $sent = PlasGateSms::send($user->phone, trans('app.reset_otp_sms', [
-                'code' => $code,
-                'minutes' => PhonePasswordResetOtp::LIFETIME_MINUTES,
-            ], NotificationLanguage::localeForUser($user)));
+            $sent = PlasGateSms::send($user->phone, PasswordResetOtpSms::text($user, $code));
         } catch (Throwable $exception) {
             report($exception);
             $sent = false;
