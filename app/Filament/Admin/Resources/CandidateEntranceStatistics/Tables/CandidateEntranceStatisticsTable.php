@@ -285,6 +285,7 @@ class CandidateEntranceStatisticsTable
                     ->modalSubmitActionLabel(__('candidate_entrance_statistics.passed_confirm_yes'))
                     ->modalCancelActionLabel(__('candidate_entrance_statistics.passed_confirm_no'))
                     ->visible(fn (CustomFormEntry $record): bool => FilamentActionPermissions::canForResource(CandidateEntranceStatisticResource::class, 'passed')
+                        && WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::AwaitingResults)
                         && strtolower((string) data_get($record->data, 'candidate_status', 'pending')) === 'pending')
                     ->action(function (CustomFormEntry $record): void {
                         FilamentActionPermissions::abortUnlessCanForResource(CandidateEntranceStatisticResource::class, 'passed');
@@ -309,6 +310,7 @@ class CandidateEntranceStatisticsTable
                     ->modalSubmitActionLabel(__('candidate_entrance_statistics.pending_modal.submit'))
                     ->modalCancelActionLabel(__('candidate_entrance_statistics.pending_modal.cancel'))
                     ->visible(fn (CustomFormEntry $record): bool => FilamentActionPermissions::canForResource(CandidateEntranceStatisticResource::class, 'pending')
+                        && WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::AwaitingResults)
                         && strtolower((string) data_get($record->data, 'candidate_status', 'pending')) === 'passed'
                         && ! self::hasStudentReviewResultNotification($record, 'passed'))
                     ->action(function (CustomFormEntry $record): void {
@@ -342,6 +344,10 @@ class CandidateEntranceStatisticsTable
 
                         $records->each(function (CustomFormEntry $record) use (&$passedCount): void {
                             if (strtolower((string) data_get($record->data, 'candidate_status', 'pending')) !== 'pending') {
+                                return;
+                            }
+
+                            if (! WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::AwaitingResults)) {
                                 return;
                             }
 
@@ -380,6 +386,7 @@ class CandidateEntranceStatisticsTable
                             if (
                                 strtolower((string) data_get($record->data, 'candidate_status', 'pending')) !== 'passed'
                                 || self::hasStudentReviewResultNotification($record, 'passed')
+                                || ! WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::AwaitingResults)
                             ) {
                                 return;
                             }

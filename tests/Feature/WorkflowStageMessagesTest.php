@@ -188,6 +188,74 @@ class WorkflowStageMessagesTest extends TestCase
         $this->assertStringContainsString('Review', $notification->data['title']);
     }
 
+    public function test_responsible_role_receives_the_workflow_staff_notification(): void
+    {
+        $entry = $this->entry('pending');
+
+        Role::query()->create([
+            'name' => 'admin',
+            'guard_name' => 'web',
+        ]);
+        Role::query()->create([
+            'name' => 'cashier_officer',
+            'guard_name' => 'web',
+        ]);
+
+        $assignedUser = $this->user('assigned_admin', 'admin');
+        $assignedUser->assignRole('admin');
+        $otherUser = $this->user('other_staff', 'admin');
+        $otherUser->assignRole('cashier_officer');
+
+        $this->assertSame(1, WorkflowStageMessages::notifyResponsibleRole($entry));
+        $this->assertSame(1, $assignedUser->notifications()->count());
+        $this->assertSame(0, $otherUser->notifications()->count());
+        $this->assertSame(
+            0,
+            WorkflowStageMessages::notifyResponsibleRole($entry),
+        );
+    }
+
+    public function test_only_the_responsible_role_can_handle_a_configured_stage(): void
+    {
+        $entry = $this->entry('pending');
+
+        Role::query()->create([
+            'name' => 'registrar_officer',
+            'guard_name' => 'web',
+        ]);
+        Role::query()->create([
+            'name' => 'cashier_officer',
+            'guard_name' => 'web',
+        ]);
+
+        $assignedUser = $this->user('assigned_reviewer', 'admin');
+        $assignedUser->assignRole('registrar_officer');
+        $otherUser = $this->user('other_reviewer', 'admin');
+        $otherUser->assignRole('cashier_officer');
+
+        WorkflowNotification::query()
+            ->where('name', 'Admission')
+            ->update([
+                'stages' => [
+                    $this->stage('Submit', 'form_submission'),
+                    [
+                        'type' => 'stage',
+                        'data' => [
+                            'stage_name' => 'Review',
+                            'stage_type' => 'review',
+                            'responsible_role' => 'registrar_officer',
+                        ],
+                    ],
+                ],
+            ]);
+
+        $this->actingAs($assignedUser);
+        $this->assertTrue(WorkflowStageMessages::canCurrentUserHandleStage($entry, WorkflowStageType::Review));
+
+        $this->actingAs($otherUser);
+        $this->assertFalse(WorkflowStageMessages::canCurrentUserHandleStage($entry, WorkflowStageType::Review));
+    }
+
     public function test_nothing_is_sent_when_the_stage_is_not_the_expected_one(): void
     {
         // Payment recorded while the submission is still waiting for review.

@@ -13,6 +13,7 @@ use App\Support\CaseInsensitiveSearch;
 use App\Support\PassedResultMenuOptions;
 use App\Support\LocalizedNumber;
 use App\Support\UserTypeOptions;
+use App\Support\WorkflowStageMessages;
 use Carbon\Carbon;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
@@ -193,6 +194,9 @@ class ExamResultsTable
                         $record,
                         'passed',
                         WorkflowStageType::Completed,
+                    ) && WorkflowStageMessages::canCurrentUserHandleStage(
+                        $record,
+                        self::notificationStageForRecord($record, $resultMenu),
                     ))
                     ->action(function (CustomFormEntry $record, $livewire) use ($resultMenu): void {
                         FilamentActionPermissions::abortUnlessCan(self::notificationPermissionForResultMenu($resultMenu));

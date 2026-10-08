@@ -1136,7 +1136,8 @@ class CustomFormEntriesTable
                         ->icon('heroicon-o-check-circle')
                         ->color('success')
                         ->visible(fn (): bool => in_array(self::entryStatus($record), ['pending', 'failed'], true)
-                            && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'accepted'))
+                            && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'accepted')
+                            && WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::Review))
                         ->action(function () use ($record): void {
                             FilamentActionPermissions::abortUnlessCanForResource(CustomFormEntryResource::class, 'accepted');
 
@@ -1195,7 +1196,8 @@ class CustomFormEntriesTable
                         ])
                         ->modalSubmitActionLabel(__('candidate_entrance_statistics.statuses.send_back'))
                         ->visible(fn (): bool => self::entryStatus($record) === 'pending'
-                            && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'rejected'))
+                            && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'rejected')
+                            && WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::Review))
                         ->action(function (array $data) use ($record): void {
                             FilamentActionPermissions::abortUnlessCanForResource(CustomFormEntryResource::class, 'rejected');
 
@@ -1255,7 +1257,8 @@ class CustomFormEntriesTable
                         ])
                         ->modalSubmitActionLabel(__('candidate_entrance_statistics.actions.reject'))
                         ->visible(fn (): bool => self::entryStatus($record) === 'pending'
-                            && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'reject'))
+                            && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'reject')
+                            && WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::Review))
                         ->action(function (array $data) use ($record): void {
                             FilamentActionPermissions::abortUnlessCanForResource(CustomFormEntryResource::class, 'reject');
 
@@ -1316,7 +1319,8 @@ class CustomFormEntriesTable
                         ])
                         ->modalSubmitActionLabel(__('candidate_entrance_statistics.statuses.send_back'))
                         ->visible(fn (): bool => self::entryStatus($record) === 'failed'
-                            && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'rejected'))
+                            && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'rejected')
+                            && WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::Review))
                         ->action(function (array $data) use ($record): void {
                             self::sendBackAfterFinalRejection($record, $data);
 
@@ -1342,6 +1346,7 @@ class CustomFormEntriesTable
                     self::currentPanelIsAdmin()
                     && ! self::isProfileForm($record->custom_form_id)
                     && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'accepted')
+                    && WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::Review)
                     && in_array(self::entryStatus($record), ['pending', 'failed'], true)
                     && ! self::hasDocumentTemplate($record)
                 )
@@ -1397,6 +1402,7 @@ class CustomFormEntriesTable
                     self::currentPanelIsAdmin()
                     && ! self::isProfileForm($record->custom_form_id)
                     && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'rejected')
+                    && WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::Review)
                     && self::entryStatus($record) === 'pending'
                     && ! self::hasDocumentTemplate($record)
                 )
@@ -1459,6 +1465,7 @@ class CustomFormEntriesTable
                     self::currentPanelIsAdmin()
                     && ! self::isProfileForm($record->custom_form_id)
                     && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'rejected')
+                    && WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::Review)
                     && self::entryStatus($record) === 'failed'
                     && ! self::hasDocumentTemplate($record)
                 )
@@ -1481,6 +1488,7 @@ class CustomFormEntriesTable
                     self::currentPanelIsAdmin()
                     && ! self::isProfileForm($record->custom_form_id)
                     && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'reject')
+                    && WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::Review)
                     && self::entryStatus($record) === 'pending'
                     && ! self::hasDocumentTemplate($record)
                 )
@@ -1743,6 +1751,8 @@ class CustomFormEntriesTable
 
             return;
         }
+
+        WorkflowStageMessages::notifyResponsibleRole($record);
 
         if ($status === 'approved') {
             WorkflowStageMessages::notifyConfiguredStage($record, WorkflowStageType::Review);

@@ -24,6 +24,7 @@ use App\Observers\AuditLogObserver;
 use App\Observers\CustomFormEntryStatisticsObserver;
 use App\Support\FilamentActionPermissions;
 use App\Support\NotificationLanguage;
+use App\Support\WorkflowStageMessages;
 use BezhanSalleh\LanguageSwitch\LanguageSwitch;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
@@ -131,6 +132,12 @@ class AppServiceProvider extends ServiceProvider
         |--------------------------------------------------------------------------
         */
         CustomFormEntry::created(function (CustomFormEntry $entry): void {
+            if (WorkflowStageMessages::hasConfiguredWorkflow($entry)) {
+                WorkflowStageMessages::notifyResponsibleRole($entry);
+
+                return;
+            }
+
             $this->notifyAdminsWhenStudentSubmitEnrollment($entry);
         });
 

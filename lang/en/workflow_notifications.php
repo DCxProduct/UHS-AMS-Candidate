@@ -8,6 +8,8 @@ return [
     'custom_form_column' => 'Workflow Notification',
     'custom_form_helper' => 'Optional. The workflow this form follows.',
     'candidate_notification_title' => ':form: :stage',
+    'staff_notification_title' => 'Workflow action: :form: :stage',
+    'staff_notification_body' => ':student has reached the :stage stage for :form.',
     'not_assigned' => 'Not assigned',
 
     'sections' => [

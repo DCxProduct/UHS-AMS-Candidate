@@ -387,6 +387,7 @@ class CandidatePaymentListsTable
                             // The entry itself has already moved on to Awaiting Results,
                             // but the payment event owns this configured message.
                             WorkflowStageMessages::notifyConfiguredStage($record, WorkflowStageType::Payment);
+                            WorkflowStageMessages::notifyResponsibleRole($record);
                         } else {
                             StaticWorkflowMessages::notifyPaymentCompleted($record);
                         }
@@ -397,6 +398,7 @@ class CandidatePaymentListsTable
                             ->send();
                     })
                     ->visible(fn (UnpaidApplication $record): bool => FilamentActionPermissions::canForResource(CandidatePaymentListResource::class, 'pay')
+                        && WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::Payment)
                         && self::latestPaymentRecord($record) === null),
             ]);
     }

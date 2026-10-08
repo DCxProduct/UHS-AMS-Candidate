@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources\CandidateExitStatistics\Tables;
 
+use App\Enums\WorkflowStageType;
 use App\Filament\Admin\Resources\CandidateExitStatistics\CandidateExitStatisticResource;
 use App\Models\CandidateExitStatistic;
 use App\Support\AuditLogger;
@@ -186,6 +187,7 @@ class CandidateExitStatisticsTable
                     ->modalSubmitActionLabel(__('candidate_exit_statistics.passed_confirm_yes'))
                     ->modalCancelActionLabel(__('candidate_exit_statistics.passed_confirm_no'))
                     ->visible(fn (CandidateExitStatistic $record): bool => FilamentActionPermissions::canForResource(CandidateExitStatisticResource::class, 'passed')
+                        && WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::AwaitingResults)
                         && strtolower((string) $record->candidate_status) === 'pending')
                     ->action(function (CandidateExitStatistic $record): void {
                         FilamentActionPermissions::abortUnlessCanForResource(CandidateExitStatisticResource::class, 'passed');
@@ -213,6 +215,7 @@ class CandidateExitStatisticsTable
                     ->modalSubmitActionLabel(__('candidate_exit_statistics.pending_modal.submit'))
                     ->modalCancelActionLabel(__('candidate_exit_statistics.pending_modal.cancel'))
                     ->visible(fn (CandidateExitStatistic $record): bool => FilamentActionPermissions::canForResource(CandidateExitStatisticResource::class, 'pending')
+                        && WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::AwaitingResults)
                         && strtolower((string) $record->candidate_status) === 'passed')
                     ->action(function (CandidateExitStatistic $record): void {
                         FilamentActionPermissions::abortUnlessCanForResource(CandidateExitStatisticResource::class, 'pending');
@@ -245,7 +248,10 @@ class CandidateExitStatisticsTable
                         $passedCount = 0;
 
                         $records->each(function (CandidateExitStatistic $record) use (&$passedCount): void {
-                            if (strtolower((string) $record->candidate_status) !== 'pending') {
+                            if (
+                                strtolower((string) $record->candidate_status) !== 'pending'
+                                || ! WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::AwaitingResults)
+                            ) {
                                 return;
                             }
 
@@ -282,7 +288,10 @@ class CandidateExitStatisticsTable
                         $editedCount = 0;
 
                         $records->each(function (CandidateExitStatistic $record) use (&$editedCount): void {
-                            if (strtolower((string) $record->candidate_status) !== 'passed') {
+                            if (
+                                strtolower((string) $record->candidate_status) !== 'passed'
+                                || ! WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::AwaitingResults)
+                            ) {
                                 return;
                             }
 

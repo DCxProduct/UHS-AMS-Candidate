@@ -134,6 +134,139 @@ final class WorkflowStageMessages
     }
 
     /**
+     * Notify active staff users assigned to the workflow stage's responsible role.
+     * Forms without a workflow keep their existing notification path.
+     */
+    public static function notifyResponsibleRole(
+        CustomFormEntry $entry,
+        ?WorkflowStageType $stageType = null,
+    ): int {
+        try {
+            if (! Schema::hasTable('notifications') || ! self::hasConfiguredWorkflow($entry)) {
+                return 0;
+            }
+
+            $entry->refresh();
+            $stageType ??= self::stageTypeFor($entry);
+
+            if ($stageType === null) {
+                return 0;
+            }
+
+            $stage = self::configuredStage($entry, $stageType);
+            $responsibleRole = trim((string) ($stage['responsible_role'] ?? ''));
+            $student = self::owner($entry);
+
+            if ($stage === null || $responsibleRole === '' || $student === null) {
+                return 0;
+            }
+
+            $entry->loadMissing('customForm');
+
+            $formName = (string) ($entry->customForm?->display_name ?? '');
+            $stageName = WorkflowNotificationStageSummary::localizedName(
+                $stage['stage_name'] ?? null,
+                $stageType,
+            );
+            $recipients = User::query()
+                ->where('registration_type', 'admin')
+                ->when(
+                    Schema::hasColumn('users', 'is_active'),
+                    fn ($query) => $query->where('is_active', true),
+                )
+                ->whereHas('roles', fn ($query) => $query->whereRaw('LOWER(name) = ?', [strtolower($responsibleRole)]))
+                ->get();
+
+            $sent = 0;
+
+            foreach ($recipients as $recipient) {
+                $alreadySent = DB::table('notifications')
+                    ->where('notifiable_type', $recipient->getMorphClass())
+                    ->where('notifiable_id', $recipient->getKey())
+                    ->where('data->viewData->workflow_entry_id', (string) $entry->getKey())
+                    ->where('data->viewData->workflow_stage_type', $stageType->value)
+                    ->where('data->viewData->workflow_recipient_role', $responsibleRole)
+                    ->exists();
+
+                if ($alreadySent) {
+                    continue;
+                }
+
+                Notification::make()
+                    ->title(NotificationLanguage::transForUser(
+                        $recipient,
+                        'workflow_notifications.staff_notification_title',
+                        ['form' => $formName, 'stage' => $stageName],
+                    ))
+                    ->body(NotificationLanguage::transForUser(
+                        $recipient,
+                        'workflow_notifications.staff_notification_body',
+                        [
+                            'student' => $student->name,
+                            'form' => $formName,
+                            'stage' => $stageName,
+                        ],
+                    ))
+                    ->icon('heroicon-o-clipboard-document-check')
+                    ->iconColor('warning')
+                    ->viewData([
+                        'workflow_entry_id' => (string) $entry->getKey(),
+                        'workflow_stage_type' => $stageType->value,
+                        'workflow_recipient_role' => $responsibleRole,
+                    ])
+                    ->warning()
+                    ->sendToDatabase($recipient);
+
+                $sent++;
+            }
+
+            return $sent;
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return 0;
+        }
+    }
+
+    public static function canCurrentUserHandleStage(
+        CustomFormEntry $entry,
+        ?WorkflowStageType $stageType = null,
+    ): bool {
+        if (! auth()->check()) {
+            return false;
+        }
+
+        if (! self::hasConfiguredWorkflow($entry)) {
+            return true;
+        }
+
+        $entry->loadMissing('customForm');
+        $stageType ??= self::stageTypeFor($entry);
+
+        if ($stageType === null) {
+            return false;
+        }
+
+        $stage = self::configuredStage($entry, $stageType);
+        $responsibleRole = trim((string) ($stage['responsible_role'] ?? ''));
+
+        if ($stage === null || $responsibleRole === '') {
+            return false;
+        }
+
+        $user = auth()->user();
+
+        if (strtolower($responsibleRole) === 'admin'
+            && (string) ($user->registration_type ?? '') === 'admin') {
+            return true;
+        }
+
+        return method_exists($user, 'hasEffectiveRole')
+            ? $user->hasEffectiveRole($responsibleRole)
+            : false;
+    }
+
+    /**
      * Send the stage's notification text to the candidate, but only when the
      * submission is at one of the expected stage types.
      */
@@ -225,6 +358,8 @@ final class WorkflowStageMessages
         }
 
         $stageType = self::resultStageFor($entry) ?? WorkflowStageType::AwaitingResults;
+
+        self::notifyResponsibleRole($entry, $stageType);
 
         if (self::hasSentNotification($entry, $stageType)) {
             return false;
