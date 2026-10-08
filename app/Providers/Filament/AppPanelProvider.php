@@ -95,6 +95,11 @@ class AppPanelProvider extends PanelProvider
                 fn (): View => view('auth.register-signin-link'),
             )
 
+            ->renderHook(
+                PanelsRenderHook::SCRIPTS_AFTER,
+                fn (): View => view('filament.components.sidebar-resizer'),
+            )
+
             ->colors([
                 'primary' => Color::Blue,
             ])
