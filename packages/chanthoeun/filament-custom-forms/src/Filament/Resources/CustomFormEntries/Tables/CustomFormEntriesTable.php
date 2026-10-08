@@ -2,7 +2,9 @@
 
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Tables;
 
-use App\Filament\Admin\Resources\CandidatePaymentLists\CandidatePaymentListResource;
+use App\Support\WorkflowStageMessages;
+use App\Support\StaticWorkflowMessages;
+use App\Enums\WorkflowStageType;
 use App\Models\Payment;
 use App\Support\AuditLogger;
 use App\Support\CaseInsensitiveSearch;
@@ -11,9 +13,7 @@ use App\Support\FilamentActionPermissions;
 use App\Support\FormEntryData;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
-use App\Models\User;
 use App\Models\GeoLocation;
-use App\Support\NotificationLanguage;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
@@ -499,7 +499,13 @@ class CustomFormEntriesTable
             ->label(__('candidate_entrance_statistics.review_status'))
             ->badge()
             ->getStateUsing(fn ($record): string => self::displayStatus($record))
-            ->formatStateUsing(function ($state): string {
+            ->formatStateUsing(function ($state, $record): string {
+                // Candidates see the status text of their form's workflow stage, when one is set.
+                if (self::candidateIsViewing()
+                    && filled($workflowStatus = WorkflowStageMessages::statusText($record))) {
+                    return $workflowStatus;
+                }
+
                 return match ($state) {
                     'received' => __('candidate_entrance_statistics.statuses.received'),
                     'passed', 'accepted', 'approved' => __('candidate_entrance_statistics.statuses.accepted'),
@@ -530,6 +536,15 @@ class CustomFormEntriesTable
 
         $status = self::entryStatus($record);
 
+        // Workflow display text is candidate-only. Staff keep the stored
+        // review status, with a paid label only when payment is recorded.
+        if (! self::candidateIsViewing()) {
+            return in_array($status, ['passed', 'accepted', 'approved'], true)
+                && self::entryHasPaidPayment($record)
+                ? 'paid'
+                : $status;
+        }
+
         if (
             in_array($status, ['passed', 'accepted', 'approved'], true)
             && (! self::entryRequiresPayment($record) || self::entryHasPaidPayment($record))
@@ -538,6 +553,11 @@ class CustomFormEntriesTable
         }
 
         return $status;
+    }
+
+    protected static function candidateIsViewing(): bool
+    {
+        return auth()->user()?->registration_type === 'student';
     }
 
     protected static function entryStatus($record): string
@@ -1037,7 +1057,7 @@ class CustomFormEntriesTable
                                 metadata: ['module' => 'Custom Form Entries'],
                             );
 
-                            self::notifyStudentNationalExamResult($record, 'approved', null);
+                            self::notifyStudentNationalExamResult($record, 'approved');
 
                             Notification::make()
                                 ->title(__('candidate_entrance_statistics.notifications.admin_accept_success_title'))
@@ -1245,7 +1265,7 @@ class CustomFormEntriesTable
                         metadata: ['module' => 'Custom Form Entries'],
                     );
 
-                    self::notifyStudentNationalExamResult($record, 'approved', null);
+                    self::notifyStudentNationalExamResult($record, 'approved');
 
                     Notification::make()
                         ->title(__('candidate_entrance_statistics.notifications.admin_accept_success_title'))
@@ -1602,72 +1622,19 @@ class CustomFormEntriesTable
 
     protected static function notifyStudentNationalExamResult($record, string $status, ?string $note = null): void
     {
-        $student = self::getOwnerStudent($record);
+        if (! WorkflowStageMessages::hasConfiguredWorkflow($record)) {
+            StaticWorkflowMessages::notifyApplicationResult($record, $status, $note);
 
-        if (! $student) {
             return;
         }
-
-        $studentLocale = NotificationLanguage::localeForUser($student);
-
-        $formName = $record->customForm
-            ? ($record->customForm->display_name ?: NotificationLanguage::transForUser($student, 'app.custom_form_entry_ui.notifications.application'))
-            : NotificationLanguage::transForUser($student, 'app.custom_form_entry_ui.notifications.application');
-        $requiresPayment = self::entryRequiresPayment($record);
 
         if ($status === 'approved') {
-            Notification::make()
-                ->title(
-                    self::recordIsNationalExam($record)
-                        ? NotificationLanguage::transForUser($student, 'candidate_entrance_statistics.notifications.national_exam_approved_title')
-                        : NotificationLanguage::transForUser($student, 'app.custom_form_entry_ui.notifications.application_approved_title', ['form' => $formName])
-                )
-                ->body(
-                    self::recordIsNationalExam($record)
-                        ? NotificationLanguage::transForUser($student, 'candidate_entrance_statistics.notifications.national_exam_approved_body')
-                        : NotificationLanguage::transForUser(
-                            $student,
-                            $requiresPayment
-                                ? 'app.custom_form_entry_ui.notifications.application_approved_body'
-                                : 'app.custom_form_entry_ui.notifications.application_approved_body_no_payment',
-                            ['form' => $formName]
-                        )
-                )
-                ->icon('heroicon-o-check-circle')
-                ->iconColor('success')
-                ->success()
-                ->sendToDatabase($student);
+            WorkflowStageMessages::notifyConfiguredStage($record, WorkflowStageType::Review);
 
             return;
         }
 
-        Notification::make()
-            ->title(
-                self::recordIsNationalExam($record)
-                    ? NotificationLanguage::transForUser($student, 'candidate_entrance_statistics.notifications.national_exam_rejected_title')
-                    : NotificationLanguage::transForUser($student, 'app.custom_form_entry_ui.notifications.application_rejected_title', ['form' => $formName])
-            )
-            ->body(
-                self::recordIsNationalExam($record)
-                    ? NotificationLanguage::transForUser($student, 'candidate_entrance_statistics.notifications.national_exam_rejected_body', [
-                        'note' => filled($note) ? $note : NotificationLanguage::transForUser($student, 'candidate_entrance_statistics.notifications.no_reject_note'),
-                    ])
-                    : new HtmlString(NotificationLanguage::transForUser($student, 'app.custom_form_entry_ui.notifications.application_rejected_body', [
-                        'form' => e($formName),
-                        'note' => e(filled($note)
-                            ? $note
-                            : NotificationLanguage::transForUser($student, 'app.custom_form_entry_ui.notifications.no_note')),
-                    ]))
-            )
-            ->actions($status === 'failed'
-                ? []
-                : array_filter([
-                    self::studentEditNotificationAction($record, $studentLocale),
-                ]))
-            ->icon('heroicon-o-x-circle')
-            ->iconColor('danger')
-            ->danger()
-            ->sendToDatabase($student);
+        WorkflowStageMessages::notify($record, WorkflowStageType::Rejected);
     }
 
     protected static function sendBackAfterFinalRejection($record, array $data): void
@@ -1722,71 +1689,7 @@ class CustomFormEntriesTable
 
     protected static function entryRequiresPayment($record): bool
     {
-        return (bool) ($record->customForm?->requires_payment ?? true);
-    }
-
-    protected static function studentEditNotificationAction($record, string $locale): ?Action
-    {
-        $url = self::studentEditFormUrl($record);
-
-        if (blank($url)) {
-            return null;
-        }
-
-        return Action::make('edit_form')
-            ->label(__('app.custom_form_entry_ui.actions.edit_form', [], $locale))
-            ->button()
-            ->color('danger')
-            ->url($url);
-    }
-
-    protected static function studentPaymentNotificationAction(string $locale): ?Action
-    {
-        $url = self::studentPaymentListUrl();
-
-        if (blank($url)) {
-            return null;
-        }
-
-        return Action::make('open_payment_lists')
-            ->label(__('app.custom_form_entry_ui.actions.go_to_payment_lists', [], $locale))
-            ->button()
-            ->color('success')
-            ->url($url);
-    }
-
-    protected static function studentEditFormUrl($record): ?string
-    {
-        if (! filled($record?->id)) {
-            return null;
-        }
-
-        return CustomFormEntryResource::getUrl('edit', [
-            'record' => $record,
-        ], panel: 'app');
-    }
-
-    protected static function studentPaymentListUrl(): ?string
-    {
-        return CandidatePaymentListResource::getUrl(panel: 'app');
-    }
-
-    protected static function getOwnerStudent($record): ?User
-    {
-        if (! Schema::hasTable('users')) {
-            return null;
-        }
-
-        foreach (['created_by', 'user_id', 'created_by_id'] as $column) {
-            if (Schema::hasColumn('custom_form_entries', $column) && filled($record->{$column})) {
-                return User::query()
-                    ->where('id', $record->{$column})
-                    ->where('registration_type', 'student')
-                    ->first();
-            }
-        }
-
-        return null;
+        return WorkflowStageMessages::requiresPayment($record);
     }
 
     protected static function transText(mixed $value): string

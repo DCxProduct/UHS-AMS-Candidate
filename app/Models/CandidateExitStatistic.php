@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CandidateExitStatistic extends Model
 {
@@ -31,5 +33,10 @@ class CandidateExitStatistic extends Model
             'candidate_reviewed_at' => 'datetime',
             'hidden_from_statistics' => 'boolean',
         ];
+    }
+
+    public function customFormEntry(): BelongsTo
+    {
+        return $this->belongsTo(CustomFormEntry::class, 'custom_form_entry_id');
     }
 }

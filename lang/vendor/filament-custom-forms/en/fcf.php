@@ -26,6 +26,7 @@
          'name' => 'Name',
          'slug' => 'Slug',
          'is_active' => 'Is Active',
+         'requires_payment' => 'Require Payment for This Form',
          'details' => 'Form Details',
          'form_field' => 'Form Field',
          'passed_result_menu' => 'Passed Candidate Result Menu',

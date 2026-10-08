@@ -2,13 +2,16 @@
 
 namespace App\Filament\Admin\Resources\CandidatePaymentLists;
 
+use App\Enums\WorkflowStageType;
 use App\Filament\Admin\Resources\CandidatePaymentLists\Pages\CreateCandidatePaymentList;
 use App\Filament\Admin\Resources\CandidatePaymentLists\Pages\ListCandidatePaymentLists;
 use App\Filament\Admin\Resources\Payments\Schemas\PaymentForm;
 use App\Filament\Admin\Resources\CandidatePaymentLists\Tables\CandidatePaymentListsTable;
 use App\Filament\Concerns\AdminOnly;
 use App\Models\UnpaidApplication;
+use App\Models\WorkflowNotification;
 use BackedEnum;
+use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
@@ -68,6 +71,25 @@ class CandidatePaymentListResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
+        $configuredPaymentFormIds = WorkflowNotification::formIdsWithStage(WorkflowStageType::Payment);
+        $assignedWorkflowFormIds = WorkflowNotification::assignedFormIds();
+        $paymentFormsQuery = CustomForm::query()->where('slug', '!=', 'profile');
+
+        if ($assignedWorkflowFormIds !== []) {
+            $paymentFormsQuery->where(function (Builder $query) use ($configuredPaymentFormIds, $assignedWorkflowFormIds): void {
+                $query->whereIn('id', $configuredPaymentFormIds)
+                    ->orWhere(function (Builder $query) use ($assignedWorkflowFormIds): void {
+                        $query
+                            ->whereNotIn('id', $assignedWorkflowFormIds)
+                            ->where('requires_payment', true);
+                    });
+            });
+        } else {
+            $paymentFormsQuery->where('requires_payment', true);
+        }
+
+        $paymentFormIds = $paymentFormsQuery->pluck('id')->all();
+
         $query = parent::getEloquentQuery()
             ->with([
                 'creator',
@@ -75,9 +97,9 @@ class CandidatePaymentListResource extends Resource
             ])
             ->whereHas('customForm', function (Builder $query): void {
                 $query->where('is_active', true)
-                    ->where('requires_payment', true)
                     ->where('slug', '!=', 'profile');
             })
+            ->whereIn('custom_form_id', $paymentFormIds)
             ->where(function (Builder $query): void {
                 $query
                     ->where('data->candidate_status', 'passed')

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources\ExamResults\Tables;
 
+use App\Enums\WorkflowStageType;
 use App\Filament\Admin\Resources\CandidateEntranceStatistics\Tables\CandidateEntranceStatisticsTable;
 use App\Filament\Admin\Resources\ExamResults\ExamResultResource;
 use App\Filament\Admin\Resources\ExitExamResults\ExitExamResultResource;
@@ -188,7 +189,11 @@ class ExamResultsTable
                     ->modalCancelActionLabel(__('app.cancel'))
                     ->visible(fn (CustomFormEntry $record): bool => FilamentActionPermissions::can(
                         self::notificationPermissionForResultMenu($resultMenu)
-                    ) && ! CandidateEntranceStatisticsTable::hasStudentReviewResultNotification($record, 'passed'))
+                    ) && ! CandidateEntranceStatisticsTable::hasStudentReviewResultNotification(
+                        $record,
+                        'passed',
+                        WorkflowStageType::Completed,
+                    ))
                     ->action(function (CustomFormEntry $record, $livewire) use ($resultMenu): void {
                         FilamentActionPermissions::abortUnlessCan(self::notificationPermissionForResultMenu($resultMenu));
 
@@ -196,6 +201,7 @@ class ExamResultsTable
                             record: $record,
                             status: 'passed',
                             note: null,
+                            notificationStage: self::notificationStageForRecord($record, $resultMenu),
                         );
 
                         $notification = Notification::make()
@@ -224,6 +230,14 @@ class ExamResultsTable
             : ExamResultResource::class;
 
         return FilamentActionPermissions::permissionForResource($resourceClass, 'notify_student');
+    }
+
+    protected static function notificationStageForRecord(
+        CustomFormEntry $record,
+        string $resultMenu,
+    ): WorkflowStageType
+    {
+        return WorkflowStageType::Completed;
     }
 
     public static function downloadExcel(iterable $records, ?array $columnKeys = null, ?string $filenameLabel = null)
@@ -574,7 +588,10 @@ class ExamResultsTable
         return $record->custom_form_id ? (string) $record->custom_form_id : '-';
     }
 
-    public static function sendPassedNotifications(iterable $records): int
+    public static function sendPassedNotifications(
+        iterable $records,
+        string $resultMenu = PassedResultMenuOptions::EXAM_RESULTS,
+    ): int
     {
         $sentCount = 0;
 
@@ -587,6 +604,7 @@ class ExamResultsTable
                 record: $record,
                 status: 'passed',
                 note: null,
+                notificationStage: self::notificationStageForRecord($record, $resultMenu),
             );
 
             if ($sent) {
@@ -605,12 +623,19 @@ class ExamResultsTable
             hiddenFlag: null,
         )
             ->get()
-            ->contains(fn (CustomFormEntry $record): bool => ! self::hasStudentPassedNotification($record));
+            ->contains(fn (CustomFormEntry $record): bool => ! self::hasStudentPassedNotification($record, $resultMenu));
     }
 
-    public static function hasStudentPassedNotification(CustomFormEntry $record): bool
+    public static function hasStudentPassedNotification(
+        CustomFormEntry $record,
+        string $resultMenu = PassedResultMenuOptions::EXAM_RESULTS,
+    ): bool
     {
-        return CandidateEntranceStatisticsTable::hasStudentReviewResultNotification($record, 'passed');
+        return CandidateEntranceStatisticsTable::hasStudentReviewResultNotification(
+            $record,
+            'passed',
+            self::notificationStageForRecord($record, $resultMenu),
+        );
     }
 
     protected static function dynamicAcademicYearOptions(string $resultMenu = PassedResultMenuOptions::EXAM_RESULTS): array

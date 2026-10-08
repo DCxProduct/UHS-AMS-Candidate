@@ -18,8 +18,9 @@ use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Alignment;
-use Illuminate\Support\Str;
 use Illuminate\Support\HtmlString;
+use Illuminate\Support\Facades\Lang;
+use Illuminate\Support\Str;
 
 class WorkflowNotificationForm
 {
@@ -35,8 +36,11 @@ class WorkflowNotificationForm
                             ->label(__('workflow_notifications.fields.name'))
                             ->placeholder(__('workflow_notifications.placeholders.name'))
                             ->required()
+                            ->unique(ignoreRecord: true)
+                            ->validationMessages([
+                                'unique' => __('workflow_notifications.validation.name_already_exists'),
+                            ])
                             ->maxLength(255),
-
                     ]),
 
                 Section::make(__('workflow_notifications.sections.stages'))
@@ -126,20 +130,22 @@ class WorkflowNotificationForm
                             $set('stage_name', $type->label());
                         }
 
-                        if ($type === WorkflowStageType::Completed) {
-                            $set('responsible_role', null);
+                        // The role list depends on the stage type, so pick the role again.
+                        $set('responsible_role', null);
+
+                        if ($type === WorkflowStageType::FormSubmission) {
+                            $set('status_message', null);
+                            $set('notification_message', null);
                         }
                     })
                     ->native(false),
 
                 Select::make('responsible_role')
                     ->label(__('workflow_notifications.fields.responsible_role'))
-                    ->options(fn (): array => Role::query()
-                        ->orderBy('name')
-                        ->get()
-                        ->mapWithKeys(fn (Role $role): array => [$role->name => $role->localized_name])
-                        ->all())
+                    ->options(fn (Get $get): array => self::responsibleRoleOptions($get('stage_type')))
                     ->searchable()
+                    ->preload()
+                    ->in(fn (Get $get): array => array_keys(self::responsibleRoleOptions($get('stage_type'))))
                     ->required($requiresManualRole)
                     ->visible($requiresManualRole)
                     ->columnSpanFull(),
@@ -154,7 +160,9 @@ class WorkflowNotificationForm
 
                 TextInput::make('status_message')
                     ->label(__('workflow_notifications.fields.status_message'))
-                    ->placeholder(__('workflow_notifications.placeholders.status_message'))
+                    ->placeholder(fn (Get $get): string => filled($get('stage_type')) && Lang::has('workflow_notifications.status_defaults.'.$get('stage_type'))
+                        ? __('workflow_notifications.status_defaults.'.$get('stage_type'))
+                        : __('workflow_notifications.placeholders.status_message'))
                     ->maxLength(255)
                     ->visible($handledByStaff),
 
@@ -167,6 +175,27 @@ class WorkflowNotificationForm
                     ->visible($handledByStaff),
             ]),
         ];
+    }
+
+    /**
+     * Every role except the candidate role type, for stages handled by staff.
+     */
+    public static function responsibleRoleOptions(?string $stageType): array
+    {
+        $type = WorkflowStageType::tryFrom((string) $stageType);
+
+        if (! $type?->requiresRole() || $type === WorkflowStageType::Completed) {
+            return [];
+        }
+
+        return Role::query()
+            ->where(fn ($query) => $query
+                ->whereNull('role_type_key')
+                ->orWhere('role_type_key', '!=', 'candidate'))
+            ->orderBy('id')
+            ->get()
+            ->mapWithKeys(fn (Role $role): array => [$role->name => $role->localized_name])
+            ->all();
     }
 
     private static function emptyStage(): array

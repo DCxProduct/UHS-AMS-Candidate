@@ -2,6 +2,9 @@
 
 namespace App\Filament\Admin\Resources\CandidateEntranceStatistics\Tables;
 
+use App\Support\WorkflowStageMessages;
+use App\Support\StaticWorkflowMessages;
+use App\Enums\WorkflowStageType;
 use App\Filament\Admin\Resources\CandidateEntranceStatistics\CandidateEntranceStatisticResource;
 use App\Models\User;
 use App\Support\AuditLogger;
@@ -28,7 +31,6 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\HtmlString;
 
 class CandidateEntranceStatisticsTable
@@ -288,6 +290,7 @@ class CandidateEntranceStatisticsTable
                         FilamentActionPermissions::abortUnlessCanForResource(CandidateEntranceStatisticResource::class, 'passed');
 
                         self::markPassed($record);
+                        WorkflowStageMessages::notifyResultStage($record);
 
                         Notification::make()
                             ->title(NotificationLanguage::trans('candidate_entrance_statistics.notifications.admin_passed_success_title'))
@@ -343,6 +346,7 @@ class CandidateEntranceStatisticsTable
                             }
 
                             self::markPassed($record);
+                            WorkflowStageMessages::notifyResultStage($record);
                             $passedCount++;
                         });
 
@@ -771,9 +775,17 @@ class CandidateEntranceStatisticsTable
 
     protected static function dynamicFormTypeOptions(): array
     {
+        $formIds = CandidateEntranceStatisticResource::getEloquentQuery()
+            ->reorder()
+            ->distinct()
+            ->pluck('custom_form_id')
+            ->filter()
+            ->values();
+
         return CustomForm::query()
             ->where('is_active', true)
             ->where('slug', '!=', 'profile')
+            ->whereIn('id', $formIds)
             ->orderBy('id')
             ->get(['id', 'name'])
             ->mapWithKeys(fn (CustomForm $form): array => [
@@ -818,6 +830,17 @@ class CandidateEntranceStatisticsTable
             'accepted',
             'approved',
         ]);
+    }
+
+    protected static function normalizeData(mixed $data): array
+    {
+        if (is_array($data)) {
+            return $data;
+        }
+
+        $decoded = json_decode((string) $data, true);
+
+        return is_array($decoded) ? $decoded : [];
     }
 
     protected static function markPassed(CustomFormEntry $record): void
@@ -983,180 +1006,46 @@ class CandidateEntranceStatisticsTable
         }
     }
 
-    public static function notifyStudentReviewResult(CustomFormEntry $record, string $status, ?string $note = null): bool
+    public static function notifyStudentReviewResult(
+        CustomFormEntry $record,
+        string $status,
+        ?string $note = null,
+        ?WorkflowStageType $notificationStage = null,
+        bool $force = false,
+    ): bool
     {
-        $student = self::getOwnerStudent($record);
+        $stageType = $status === 'passed'
+            ? ($notificationStage ?? WorkflowStageMessages::resultStageFor($record) ?? WorkflowStageType::AwaitingResults)
+            : WorkflowStageType::Rejected;
 
-        if (! $student) {
+        if (! WorkflowStageMessages::hasConfiguredWorkflow($record)) {
+            return StaticWorkflowMessages::notifyReviewResult($record, $status, $note, $force);
+        }
+
+        if (! $force && WorkflowStageMessages::hasSentNotification($record, $stageType)) {
             return false;
         }
 
-        $data = self::normalizeData($record->data);
-        $studentName = self::getStudentName($data, $student->name, $student);
-
-        if ($status === 'passed') {
-            if (self::studentAlreadyHasReviewResultNotification($student, $record, $status)) {
-                return false;
-            }
-
-            Notification::make()
-                ->title(NotificationLanguage::transForUser(
-                    $student,
-                    'candidate_entrance_statistics.notifications.student_accepted_title'
-                ))
-                ->body(NotificationLanguage::transForUser(
-                    $student,
-                    'candidate_entrance_statistics.notifications.student_accepted_body',
-                    [
-                        'student' => $studentName,
-                    ]
-                ))
-                ->icon('heroicon-o-check-circle')
-                ->iconColor('success')
-                ->viewData(self::reviewResultNotificationData($record, $status))
-                ->success()
-                ->sendToDatabase($student);
-
-            return true;
-        }
-
-        if (self::studentAlreadyHasReviewResultNotification($student, $record, $status)) {
-            return false;
-        }
-
-        Notification::make()
-            ->title(NotificationLanguage::transForUser(
-                $student,
-                'candidate_entrance_statistics.notifications.student_rejected_title'
-            ))
-            ->body(NotificationLanguage::transForUser(
-                $student,
-                'candidate_entrance_statistics.notifications.student_rejected_body',
-                [
-                    'student' => $studentName,
-                    'note' => filled($note)
-                        ? $note
-                        : NotificationLanguage::transForUser(
-                            $student,
-                            'candidate_entrance_statistics.notifications.no_reject_note'
-                        ),
-                ]
-            ))
-            ->icon('heroicon-o-x-circle')
-            ->iconColor('danger')
-            ->viewData(self::reviewResultNotificationData($record, $status))
-            ->danger()
-            ->sendToDatabase($student);
-
-        return true;
+        return $status === 'passed'
+            ? WorkflowStageMessages::notifyConfiguredStage($record, $stageType, replaceExisting: $force)
+            : WorkflowStageMessages::notify($record, $stageType);
     }
 
-    public static function hasStudentReviewResultNotification(CustomFormEntry $record, string $status): bool
+    public static function hasStudentReviewResultNotification(
+        CustomFormEntry $record,
+        string $status,
+        ?WorkflowStageType $notificationStage = null,
+    ): bool
     {
-        $student = self::getOwnerStudent($record);
-
-        if (! $student) {
-            return false;
+        if (! WorkflowStageMessages::hasConfiguredWorkflow($record)) {
+            return StaticWorkflowMessages::hasReviewResultNotification($record, $status);
         }
 
-        return self::studentAlreadyHasReviewResultNotification($student, $record, $status);
-    }
-
-    protected static function studentAlreadyHasReviewResultNotification(User $student, CustomFormEntry $record, string $status): bool
-    {
-        if (! Schema::hasTable('notifications')) {
-            return false;
-        }
-
-        return DB::table('notifications')
-            ->where('notifiable_type', $student->getMorphClass())
-            ->where('notifiable_id', $student->getKey())
-            ->where(function ($query) use ($record): void {
-                $query
-                    ->where('data->viewData->review_result_entry_id', (string) $record->getKey())
-                    ->orWhere('data->viewData->review_result_entry_id', (int) $record->getKey());
-            })
-            ->where('data->viewData->review_result_status', $status)
-            ->exists();
-    }
-
-    protected static function reviewResultNotificationData(CustomFormEntry $record, string $status): array
-    {
-        return [
-            'review_result_entry_id' => (string) $record->getKey(),
-            'review_result_status' => $status,
-        ];
-    }
-
-    protected static function getOwnerStudent(CustomFormEntry $record): ?User
-    {
-        if (! Schema::hasTable('users')) {
-            return null;
-        }
-
-        $studentId = null;
-
-        foreach ([
-                     'created_by',
-                     'user_id',
-                     'created_by_id',
-                 ] as $column) {
-            if (
-                Schema::hasColumn('custom_form_entries', $column)
-                && filled($record->{$column})
-            ) {
-                $studentId = $record->{$column};
-                break;
-            }
-        }
-
-        if (! $studentId) {
-            return null;
-        }
-
-        return User::query()
-            ->where('id', $studentId)
-            ->where('registration_type', 'student')
-            ->first();
-    }
-
-    protected static function normalizeData(mixed $data): array
-    {
-        if (is_array($data)) {
-            return $data;
-        }
-
-        $decoded = json_decode((string) $data, true);
-
-        return is_array($decoded) ? $decoded : [];
-    }
-
-    protected static function getStudentName(array $data, ?string $fallbackName = null, ?User $user = null): string
-    {
-        $khmerName = trim(implode(' ', array_filter([
-            $data['first_name_kh'] ?? null,
-            $data['last_name_kh'] ?? null,
-        ])));
-
-        if (filled($khmerName)) {
-            return $khmerName;
-        }
-
-        $englishName = trim(implode(' ', array_filter([
-            $data['first_name_en'] ?? null,
-            $data['last_name_en'] ?? null,
-        ])));
-
-        if (filled($englishName)) {
-            return $englishName;
-        }
-
-        if (filled($data['student_id'] ?? null)) {
-            return (string) $data['student_id'];
-        }
-
-        return filled($fallbackName)
-            ? $fallbackName
-            : NotificationLanguage::transForUser($user, 'candidate_entrance_statistics.notifications.unknown_student');
+        return WorkflowStageMessages::hasSentNotification(
+            $record,
+            $status === 'passed'
+                ? ($notificationStage ?? WorkflowStageMessages::resultStageFor($record) ?? WorkflowStageType::AwaitingResults)
+                : WorkflowStageType::Rejected,
+        );
     }
 }

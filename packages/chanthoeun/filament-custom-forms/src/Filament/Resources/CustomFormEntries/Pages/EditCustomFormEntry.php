@@ -204,8 +204,6 @@ class EditCustomFormEntry extends EditRecord
     protected function afterSave(): void
     {
         if (! $this->shouldResetToPendingAfterSave) {
-            $this->sendStudentSubmitPaymentNotificationIfNeeded($this->record);
-
             return;
         }
 
@@ -246,7 +244,6 @@ class EditCustomFormEntry extends EditRecord
         $this->record->refresh();
         $this->isEditingProfile = false;
         $this->notifyAdminsAboutResubmissionIfNeeded($this->record);
-        $this->sendStudentSubmitPaymentNotificationIfNeeded($this->record);
     }
 
     protected function canEditSubmittedProfile(): bool
@@ -345,37 +342,6 @@ class EditCustomFormEntry extends EditRecord
         }
 
         return $this->getBackUrl();
-    }
-
-    protected function sendStudentSubmitPaymentNotificationIfNeeded(?CustomFormEntry $entry): void
-    {
-        $student = auth()->user();
-
-        if (! $student || ! $entry || ! $this->shouldSendSubmitPaymentNotification($entry)) {
-            return;
-        }
-
-        $formName = $entry->customForm?->display_name
-            ?: CustomForm::localeText($entry->customForm?->name);
-
-        Notification::make()
-            ->title(__('app.custom_form_entry_ui.notifications.application_submitted_payment_title', ['form' => $formName]))
-            ->body(__('app.custom_form_entry_ui.notifications.application_submitted_payment_body', ['form' => $formName]))
-            ->icon('heroicon-o-bell-alert')
-            ->iconColor('warning')
-            ->warning()
-            ->sendToDatabase($student);
-    }
-
-    protected function shouldSendSubmitPaymentNotification(CustomFormEntry $entry): bool
-    {
-        $customForm = $entry->customForm;
-
-        if (! $customForm || (string) $customForm->slug === 'profile') {
-            return false;
-        }
-
-        return ! (bool) ($customForm->requires_payment ?? true);
     }
 
     protected function notifyAdminsAboutResubmissionIfNeeded(?CustomFormEntry $entry): void

@@ -9,6 +9,7 @@ enum WorkflowStageType: string
     case Payment = 'payment';
     case AwaitingResults = 'awaiting_results';
     case Completed = 'completed';
+    case Rejected = 'rejected';
 
     /**
      * Kept for existing workflow templates, but no longer offered for new stages.
@@ -32,7 +33,7 @@ enum WorkflowStageType: string
     public static function options(): array
     {
         return collect(self::cases())
-            ->reject(fn (self $type): bool => $type === self::Approval)
+            ->reject(fn (self $type): bool => in_array($type, [self::Approval, self::Rejected], true))
             ->mapWithKeys(fn (self $type): array => [$type->value => $type->label()])
             ->all();
     }

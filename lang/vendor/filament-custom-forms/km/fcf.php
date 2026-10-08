@@ -26,10 +26,10 @@
          'name' => 'ឈ្មោះ',
          'slug' => 'ឈ្មោះសម្គាល់ (Slug)',
          'is_active' => 'សកម្ម',
+         'requires_payment' => 'តម្រូវឱ្យបង់ប្រាក់សម្រាប់ទម្រង់នេះ',
          'allowed_roles' => 'តួនាទីអាចប្រើប្រាស់',
          'passed_result_menu' => 'ម៉ឺនុយបេក្ខជនជាប់',
          'statistics_menu' => 'ម៉ឺនុយស្ថិតិបេក្ខជន',
-         'requires_payment' => 'តម្រូវឱ្យបង់ប្រាក់សម្រាប់ទម្រង់នេះ',
          'details' => 'ព័ត៌មានលម្អិតនៃទម្រង់',
          'passed_result_menu_options' => [
              'exam_results' => 'បេក្ខជនជាប់ប្រឡងចូលជ័យលាភី',

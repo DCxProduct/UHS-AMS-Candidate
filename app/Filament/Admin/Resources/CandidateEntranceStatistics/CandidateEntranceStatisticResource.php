@@ -2,11 +2,14 @@
 
 namespace App\Filament\Admin\Resources\CandidateEntranceStatistics;
 
+use App\Enums\WorkflowStageType;
 use App\Filament\Admin\Resources\CandidateEntranceStatistics\Tables\CandidateEntranceStatisticsTable;
 use App\Filament\Concerns\AdminOnly;
 use App\Models\CandidateEntranceStatistic;
+use App\Models\WorkflowNotification;
 use App\Support\StatisticsMenuOptions;
 use BackedEnum;
+use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
@@ -69,6 +72,19 @@ class CandidateEntranceStatisticResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
+        $configuredPaymentFormIds = WorkflowNotification::formIdsWithStage(WorkflowStageType::Payment);
+        $assignedWorkflowFormIds = WorkflowNotification::assignedFormIds();
+        $paymentFormsQuery = CustomForm::query()->where('requires_payment', true);
+
+        if ($assignedWorkflowFormIds !== []) {
+            $paymentFormsQuery->where(function (Builder $query) use ($configuredPaymentFormIds, $assignedWorkflowFormIds): void {
+                $query->whereIn('id', $configuredPaymentFormIds)
+                    ->orWhereNotIn('id', $assignedWorkflowFormIds);
+            });
+        }
+
+        $paymentFormIds = $paymentFormsQuery->pluck('id')->all();
+
         return parent::getEloquentQuery()
             ->with([
                 'creator',
@@ -91,16 +107,12 @@ class CandidateEntranceStatisticResource extends Resource
                     ->orWhere('data->candidate_status', 'pending')
                     ->orWhere('data->candidate_status', 'passed');
             })
-            ->where(function (Builder $query): void {
+            ->where(function (Builder $query) use ($paymentFormIds): void {
                 $query
-                    ->whereHas('customForm', function (Builder $query): void {
-                        $query->where('requires_payment', false);
-                    })
-                    ->orWhere(function (Builder $query): void {
+                    ->whereNotIn('custom_form_id', $paymentFormIds)
+                    ->orWhere(function (Builder $query) use ($paymentFormIds): void {
                         $query
-                            ->whereHas('customForm', function (Builder $query): void {
-                                $query->where('requires_payment', true);
-                            })
+                            ->whereIn('custom_form_id', $paymentFormIds)
                             ->whereExists(function (QueryBuilder $subQuery): void {
                                 $subQuery->selectRaw('1')
                                     ->from('payments')

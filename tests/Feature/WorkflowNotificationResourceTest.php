@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\WorkflowStageType;
 use App\Filament\Admin\Resources\WorkflowNotifications\Pages\CreateWorkflowNotification;
 use App\Filament\Admin\Resources\WorkflowNotifications\Pages\EditWorkflowNotification;
+use App\Filament\Admin\Resources\WorkflowNotifications\Schemas\WorkflowNotificationForm;
 use App\Filament\Admin\Resources\WorkflowNotifications\WorkflowNotificationResource;
 use App\Models\Role;
 use App\Models\User;
@@ -37,7 +38,10 @@ class WorkflowNotificationResourceTest extends TestCase
         Filament::setCurrentPanel(Filament::getPanel('app'));
 
         Role::query()->create(['name' => 'admin', 'guard_name' => 'web']);
-        Role::query()->create(['name' => 'registrar_officer', 'guard_name' => 'web']);
+        Role::query()->create(['name' => 'registrar_officer', 'guard_name' => 'web'])
+            ->givePermissionTo(Permission::findOrCreate('Accepted:CustomFormEntry', 'web'));
+        Role::query()->create(['name' => 'cashier_officer', 'guard_name' => 'web'])
+            ->givePermissionTo(Permission::findOrCreate('Update:Payment', 'web'));
 
         $this->admin = $this->user('admin_user', ['admin']);
     }
@@ -285,6 +289,8 @@ class WorkflowNotificationResourceTest extends TestCase
         $this->assertSame('បេក្ខជន', __('workflow_notifications.view.candidate', [], 'km'));
         $this->assertSame('Candidate Status Message (Optional)', __('workflow_notifications.fields.status_message', [], 'en'));
         $this->assertSame('សារស្ថានភាពសម្រាប់បេក្ខជន (ជាជម្រើស)', __('workflow_notifications.fields.status_message', [], 'km'));
+        $this->assertSame('Candidate Notification Message (Optional)', __('workflow_notifications.fields.notification_message', [], 'en'));
+        $this->assertSame('សារជូនដំណឹងសម្រាប់បេក្ខជន (ជាជម្រើស)', __('workflow_notifications.fields.notification_message', [], 'km'));
         $this->assertSame('Example: Candidate Admission', __('workflow_notifications.placeholders.name', [], 'en'));
         $this->assertSame('ឧទាហរណ៍៖ ការចុះឈ្មោះបេក្ខជន', __('workflow_notifications.placeholders.name', [], 'km'));
     }
@@ -333,7 +339,7 @@ class WorkflowNotificationResourceTest extends TestCase
                     'c' => ['type' => 'stage', 'data' => [
                         'stage_name' => 'Payment',
                         'stage_type' => 'payment',
-                        'responsible_role' => 'registrar_officer',
+                        'responsible_role' => 'cashier_officer',
                     ]],
                 ],
             ])
@@ -347,7 +353,7 @@ class WorkflowNotificationResourceTest extends TestCase
         $this->assertSame([], $template->forms()->pluck('custom_forms.id')->all());
     }
 
-    public function test_stage_type_options_have_the_five_requested_stages(): void
+    public function test_stage_type_options_have_the_requested_stages(): void
     {
         $originalLocale = app()->getLocale();
 
@@ -467,6 +473,70 @@ class WorkflowNotificationResourceTest extends TestCase
         $this->assertSame(0, WorkflowNotification::query()->count());
     }
 
+    public function test_responsible_role_lists_every_role_except_the_candidate_role_type(): void
+    {
+        Role::query()->create(['name' => 'candidate', 'guard_name' => 'web', 'role_type_key' => 'candidate']);
+        $staffRoles = ['admin', 'registrar_officer', 'cashier_officer'];
+
+        foreach (['review', 'payment', 'awaiting_results', 'approval'] as $stageType) {
+            $this->assertSame($staffRoles, array_keys(WorkflowNotificationForm::responsibleRoleOptions($stageType)));
+        }
+
+        $this->assertSame([], WorkflowNotificationForm::responsibleRoleOptions('form_submission'));
+        $this->assertSame([], WorkflowNotificationForm::responsibleRoleOptions('completed'));
+    }
+
+    public function test_the_candidate_role_cannot_be_responsible_for_a_stage(): void
+    {
+        Role::query()->create(['name' => 'candidate', 'guard_name' => 'web', 'role_type_key' => 'candidate']);
+        $this->actingAs($this->admin);
+
+        Livewire::test(CreateWorkflowNotification::class)
+            ->set('data.stages', [])
+            ->fillForm([
+                'name' => 'Wrong role',
+                'stages' => ['a' => ['type' => 'stage', 'data' => [
+                    'stage_name' => 'Payment',
+                    'stage_type' => 'payment',
+                    'responsible_role' => 'candidate',
+                ]]],
+            ])
+            ->call('create')
+            ->assertHasFormErrors();
+
+        $this->assertSame(0, WorkflowNotification::query()->count());
+    }
+
+    public function test_changing_stage_type_clears_the_responsible_role(): void
+    {
+        $this->actingAs($this->admin);
+
+        $component = Livewire::test(CreateWorkflowNotification::class);
+        $stagePath = 'data.stages.'.array_key_first($component->get('data.stages')).'.data';
+
+        $component
+            ->set("{$stagePath}.stage_type", 'review')
+            ->set("{$stagePath}.responsible_role", 'registrar_officer')
+            ->set("{$stagePath}.stage_type", 'payment')
+            ->assertSet("{$stagePath}.responsible_role", null);
+    }
+
+    public function test_template_names_must_be_unique(): void
+    {
+        $this->template('Enrollment');
+        $this->actingAs($this->admin);
+
+        Livewire::test(CreateWorkflowNotification::class)
+            ->set('data.stages', [])
+            ->fillForm([
+                'name' => 'Enrollment',
+                'stages' => ['a' => ['type' => 'stage', 'data' => ['stage_name' => 'Submit', 'stage_type' => 'form_submission']]],
+            ])
+            ->call('create')
+            ->assertHasFormErrors(['name' => 'unique'])
+            ->assertNotified(__('workflow_notifications.validation.could_not_save'));
+    }
+
     public function test_template_needs_at_least_one_stage(): void
     {
         $this->actingAs($this->admin);
@@ -582,7 +652,6 @@ class WorkflowNotificationResourceTest extends TestCase
             'name' => 'Admission Form '.uniqid(),
             'slug' => 'admission-form-'.uniqid(),
             'is_active' => true,
-            'requires_payment' => false,
         ]);
     }
 

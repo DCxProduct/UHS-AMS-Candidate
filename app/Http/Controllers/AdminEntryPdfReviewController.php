@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\WorkflowStageMessages;
+use App\Support\StaticWorkflowMessages;
+use App\Enums\WorkflowStageType;
 use App\Support\AuditLogger;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
@@ -72,6 +75,12 @@ class AdminEntryPdfReviewController extends Controller
             metadata: ['module' => 'Entrance Exam Statistics'],
         );
 
+        if (WorkflowStageMessages::hasConfiguredWorkflow($entry)) {
+            WorkflowStageMessages::notifyConfiguredStage($entry, WorkflowStageType::Review);
+        } else {
+            StaticWorkflowMessages::notifyApplicationResult($entry, 'approved');
+        }
+
         return redirect()->back();
     }
 
@@ -114,6 +123,12 @@ class AdminEntryPdfReviewController extends Controller
             description: 'Application rejected from PDF review',
             metadata: ['module' => 'Entrance Exam Statistics'],
         );
+
+        if (WorkflowStageMessages::hasConfiguredWorkflow($entry)) {
+            WorkflowStageMessages::notify($entry, WorkflowStageType::Rejected);
+        } else {
+            StaticWorkflowMessages::notifyApplicationResult($entry, 'rejected', $request->review_note);
+        }
 
         return redirect()->back();
     }

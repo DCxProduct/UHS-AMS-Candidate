@@ -101,7 +101,7 @@ class WorkflowDemoSeeder extends Seeder
                         }
                     }
 
-                    $this->seedWorkflowNotifications($entryId, $form, $candidate, $scenario, $submittedAt);
+                    $this->seedWorkflowNotifications($entryId, $form, $candidate, $submittedAt);
 
                     if ($scenario['payment_record']) {
                         $this->createPayment($entryId, $form['id'], $candidate->id, $number, $scenario, $submittedAt);
@@ -222,132 +222,17 @@ class WorkflowDemoSeeder extends Seeder
         int $entryId,
         array $form,
         User $candidate,
-        array $scenario,
         $submittedAt,
     ): void {
         if (! Schema::hasTable('notifications')) {
             return;
         }
 
-        $formName = $this->formDisplayName($form['name']);
         $workflowData = [
             'seed_batch' => self::BATCH,
             'workflow_entry_id' => (string) $entryId,
             'workflow_form_id' => (string) $form['id'],
         ];
-
-        if ($scenario['review_status'] === 'accepted') {
-            $this->sendWorkflowNotification(
-                $candidate,
-                Notification::make()
-                    ->title(NotificationLanguage::transForUser(
-                        $candidate,
-                        'app.custom_form_entry_ui.notifications.application_approved_title',
-                        ['form' => $formName],
-                    ))
-                    ->body(NotificationLanguage::transForUser(
-                        $candidate,
-                        $scenario['payment_record']
-                            ? 'app.custom_form_entry_ui.notifications.application_approved_body_no_payment'
-                            : 'app.custom_form_entry_ui.notifications.application_approved_body',
-                        ['form' => $formName],
-                    ))
-                    ->icon('heroicon-o-clipboard-document-check')
-                    ->iconColor('success')
-                    ->success()
-                    ->viewData($workflowData),
-                $submittedAt->copy()->addDay(),
-            );
-        } elseif ($scenario['review_status'] === 'rejected') {
-            $this->sendWorkflowNotification(
-                $candidate,
-                Notification::make()
-                    ->title(NotificationLanguage::transForUser(
-                        $candidate,
-                        'app.custom_form_entry_ui.notifications.application_rejected_title',
-                        ['form' => $formName],
-                    ))
-                    ->body(NotificationLanguage::transForUser(
-                        $candidate,
-                        'app.custom_form_entry_ui.notifications.application_rejected_body',
-                        ['note' => $scenario['review_note'] ?? NotificationLanguage::transForUser(
-                            $candidate,
-                            'app.custom_form_entry_ui.notifications.no_note',
-                        )],
-                    ))
-                    ->icon('heroicon-o-x-circle')
-                    ->iconColor('danger')
-                    ->danger()
-                    ->viewData($workflowData),
-                $submittedAt->copy()->addDay(),
-            );
-        } else {
-            $this->sendWorkflowNotification(
-                $candidate,
-                Notification::make()
-                    ->title(NotificationLanguage::transForUser(
-                        $candidate,
-                        'app.custom_form_entry_ui.notifications.application_submitted_payment_title',
-                        ['form' => $formName],
-                    ))
-                    ->body(NotificationLanguage::transForUser(
-                        $candidate,
-                        'app.custom_form_entry_ui.notifications.application_submitted_payment_body',
-                        ['form' => $formName],
-                    ))
-                    ->icon('heroicon-o-paper-airplane')
-                    ->iconColor('warning')
-                    ->warning()
-                    ->viewData($workflowData),
-                $submittedAt,
-            );
-        }
-
-        if ($scenario['payment_record'] && $scenario['payment_status'] === 'paid') {
-            $this->sendWorkflowNotification(
-                $candidate,
-                Notification::make()
-                    ->title(NotificationLanguage::transForUser(
-                        $candidate,
-                        'app.custom_form_entry_ui.notifications.payment_completed_title',
-                    ))
-                    ->body(NotificationLanguage::transForUser(
-                        $candidate,
-                        'app.custom_form_entry_ui.notifications.payment_completed_body',
-                        ['form' => $formName],
-                    ))
-                    ->icon('heroicon-o-check-circle')
-                    ->iconColor('success')
-                    ->success()
-                    ->viewData([...$workflowData, 'workflow_payment_status' => 'paid']),
-                $submittedAt->copy()->addDay(),
-            );
-        }
-
-        if ($scenario['passed'] ?? false) {
-            $this->sendWorkflowNotification(
-                $candidate,
-                Notification::make()
-                    ->title(NotificationLanguage::transForUser(
-                        $candidate,
-                        'candidate_entrance_statistics.notifications.student_accepted_title',
-                    ))
-                    ->body(NotificationLanguage::transForUser(
-                        $candidate,
-                        'candidate_entrance_statistics.notifications.student_accepted_body',
-                        ['student' => $candidate->name],
-                    ))
-                    ->icon('heroicon-o-check-circle')
-                    ->iconColor('success')
-                    ->success()
-                    ->viewData([
-                        ...$workflowData,
-                        'review_result_entry_id' => (string) $entryId,
-                        'review_result_status' => 'passed',
-                    ]),
-                $submittedAt->copy()->addDays(2),
-            );
-        }
 
         if ((string) $form['slug'] === 'enrollment') {
             $admins = User::query()
@@ -723,7 +608,6 @@ HTML;
                 $definition['allowed_roles'] ?? [$definition['role']],
                 JSON_UNESCAPED_UNICODE,
             ),
-            'requires_payment' => true,
             'display_order' => $displayOrder,
             'deleted_at' => null,
             'updated_at' => $now,

@@ -86,6 +86,7 @@ final class WorkflowNotificationStageSummary
             WorkflowStageType::Payment => ['payment'],
             WorkflowStageType::AwaitingResults => ['awaiting result', 'awaiting results', 'results'],
             WorkflowStageType::Completed => ['completion', 'complete', 'completed'],
+            WorkflowStageType::Rejected => ['rejected', 'reject', 'failed', 'failure'],
         };
 
         return in_array($normalized, $defaults, true) ? $type->label() : $name;

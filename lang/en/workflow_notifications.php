@@ -7,6 +7,7 @@ return [
 
     'custom_form_column' => 'Workflow Notification',
     'custom_form_helper' => 'Optional. The workflow this form follows.',
+    'candidate_notification_title' => ':form: :stage',
     'not_assigned' => 'Not assigned',
 
     'sections' => [
@@ -54,6 +55,7 @@ return [
         'payment' => 'Payment',
         'awaiting_results' => 'Awaiting Results',
         'completed' => 'Completed',
+        'rejected' => 'Rejected',
         'approval' => 'Approval',
     ],
 
@@ -64,5 +66,16 @@ return [
 
     'validation' => [
         'stages_required' => 'Add at least one stage.',
+        'name_already_exists' => 'A workflow with this name already exists.',
+        'could_not_save' => 'The workflow could not be saved.',
+    ],
+
+    'status_defaults' => [
+        'review' => 'Under review',
+        'payment' => 'Waiting for payment',
+        'awaiting_results' => 'Waiting for results',
+        'completed' => 'Completed',
+        'rejected' => 'Rejected',
+        'approval' => 'Waiting for approval',
     ],
 ];

@@ -7,6 +7,7 @@ return [
 
     'custom_form_column' => 'លំហូរការជូនដំណឹង',
     'custom_form_helper' => 'ស្រេចចិត្ត។ ដំណើរការដែលទម្រង់បែបបទនេះអនុវត្តតាម។',
+    'candidate_notification_title' => ':form៖ :stage',
     'not_assigned' => 'មិនទាន់កំណត់',
 
     'sections' => [
@@ -54,6 +55,7 @@ return [
         'payment' => 'ការបង់ប្រាក់',
         'awaiting_results' => 'រង់ចាំលទ្ធផល',
         'completed' => 'បញ្ចប់',
+        'rejected' => 'បានបដិសេធ',
         'approval' => 'ការអនុម័ត',
     ],
 
@@ -64,5 +66,16 @@ return [
 
     'validation' => [
         'stages_required' => 'សូមបន្ថែមដំណាក់កាលយ៉ាងហោចណាស់មួយ។',
+        'name_already_exists' => 'ឈ្មោះដំណើរការនេះមានរួចហើយ។',
+        'could_not_save' => 'មិនអាចរក្សាទុកដំណើរការបានទេ។',
+    ],
+
+    'status_defaults' => [
+        'review' => 'កំពុងពិនិត្យ',
+        'payment' => 'រង់ចាំការបង់ប្រាក់',
+        'awaiting_results' => 'រង់ចាំលទ្ធផល',
+        'completed' => 'បានបញ្ចប់',
+        'rejected' => 'បានបដិសេធ',
+        'approval' => 'រង់ចាំការអនុម័ត',
     ],
 ];

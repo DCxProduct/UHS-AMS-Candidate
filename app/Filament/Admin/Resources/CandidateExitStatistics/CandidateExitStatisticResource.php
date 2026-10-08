@@ -61,6 +61,7 @@ class CandidateExitStatisticResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
+            ->with('customFormEntry.customForm')
             ->where(function (Builder $query): void {
                 $query
                     ->whereNull('hidden_from_statistics')
