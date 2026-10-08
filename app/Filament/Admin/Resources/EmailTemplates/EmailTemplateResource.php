@@ -22,11 +22,11 @@ class EmailTemplateResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-envelope';
 
-    protected static ?int $navigationSort = 9;
+    protected static ?int $navigationSort = 91;
 
     public static function getNavigationGroup(): string|UnitEnum|null
     {
-        return __('navigation.groups.settings');
+        return __('navigation.groups.form_builder');
     }
 
     public static function getNavigationLabel(): string

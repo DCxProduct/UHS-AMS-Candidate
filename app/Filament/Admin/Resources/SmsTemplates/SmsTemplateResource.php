@@ -22,11 +22,11 @@ class SmsTemplateResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-device-phone-mobile';
 
-    protected static ?int $navigationSort = 10;
+    protected static ?int $navigationSort = 92;
 
     public static function getNavigationGroup(): string|UnitEnum|null
     {
-        return __('navigation.groups.settings');
+        return __('navigation.groups.form_builder');
     }
 
     public static function getNavigationLabel(): string
