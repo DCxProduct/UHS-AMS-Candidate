@@ -444,12 +444,6 @@ final class WorkflowStageMessages
             $action = str_starts_with((string) $workflowEvent, 'review_action:')
                 ? substr((string) $workflowEvent, strlen('review_action:'))
                 : null;
-            $actionLabel = match ($action) {
-                'accept' => __('workflow_notifications.review_actions.accept.title'),
-                'send_back' => __('workflow_notifications.review_actions.send_back.title'),
-                'reject' => __('workflow_notifications.review_actions.reject.title'),
-                default => null,
-            };
             $actionIcon = match ($action) {
                 'send_back' => 'heroicon-o-arrow-uturn-left',
                 'reject' => 'heroicon-o-x-circle',
@@ -471,18 +465,13 @@ final class WorkflowStageMessages
             }
 
             Notification::make()
-                ->title($actionLabel !== null
-                    ? __('workflow_notifications.candidate_action_notification_title', [
-                        'form' => $entry->customForm?->display_name ?? '',
-                        'action' => $actionLabel,
-                    ])
-                    : __('workflow_notifications.candidate_notification_title', [
-                        'form' => $entry->customForm?->display_name ?? '',
-                        'stage' => WorkflowNotificationStageSummary::localizedName(
-                            $stage['stage_name'] ?? null,
-                            $stageType,
-                        ),
-                    ]))
+                ->title(__('workflow_notifications.candidate_notification_title', [
+                    'form' => $entry->customForm?->display_name ?? '',
+                    'stage' => WorkflowNotificationStageSummary::localizedName(
+                        $stage['stage_name'] ?? null,
+                        $stageType,
+                    ),
+                ]))
                 ->body($body)
                 ->icon($actionIcon)
                 ->iconColor(match ($action) {

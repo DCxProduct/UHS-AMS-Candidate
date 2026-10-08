@@ -85,6 +85,12 @@ body,
     font-weight: 600 !important;
 }
 
+@media (max-width: 1023px) {
+    .uhs-sidebar-resizer {
+        display: none !important;
+    }
+}
+
 .fi-fo-field-wrp-label,
 .fi-fo-field-wrp-label span {
     font-family: 'Battambang', 'Inter', system-ui, sans-serif !important;

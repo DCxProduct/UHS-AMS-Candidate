@@ -222,10 +222,7 @@ class WorkflowStageMessagesTest extends TestCase
         $accepted = $this->entry('pending');
         $this->assertTrue(WorkflowStageMessages::notifyReviewAction($accepted, 'accept'));
         $this->assertFalse(WorkflowStageMessages::notifyReviewAction($accepted, 'accept'));
-        $this->assertStringContainsString(
-            'Please go to cashier counter',
-            (string) $this->student->notifications()->sole()->data['title'],
-        );
+        $this->assertSame('Review', $this->student->notifications()->sole()->data['title']);
 
         $sentBack = $this->entry('rejected');
         $this->assertTrue(WorkflowStageMessages::notifyReviewAction(
