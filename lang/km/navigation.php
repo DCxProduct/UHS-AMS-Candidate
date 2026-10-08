@@ -25,6 +25,7 @@ return [
     'users' => 'បញ្ជីបេក្ខជន',
     'payment_types' => 'ប្រភេទការទូទាត់',
     'system_users' => 'អ្នកប្រើប្រាស់ប្រព័ន្ធ',
+    'notification_templates' => 'ទម្រង់សារជូនដំណឹង',
 
     'forms' => [
         'profile' => 'ប្រវត្តិរូប',

@@ -25,6 +25,7 @@ return [
     'users' => 'Candidate Lists',
     'payment_types' => 'Payment Types',
     'system_users' => 'System Users',
+    'notification_templates' => 'Notification Templates',
 
     'forms' => [
         'profile' => 'Profile',
