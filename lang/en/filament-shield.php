@@ -4,6 +4,7 @@ return [
     'resource_permission_prefixes_labels' => [
         'view_any' => 'Read',
         'view' => 'View Data',
+        'view_application_stage' => 'View',
         'create' => 'Create',
         'update' => 'Update',
         'delete' => 'Delete',

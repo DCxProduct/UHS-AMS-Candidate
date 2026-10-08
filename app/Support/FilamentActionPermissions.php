@@ -59,6 +59,7 @@ class FilamentActionPermissions
             ],
             CustomFormEntryResource::class => [
                 'view',
+                'view_application_stage',
                 'download_excel',
                 'clear_data',
                 'edit_review_note',

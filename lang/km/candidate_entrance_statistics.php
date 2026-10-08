@@ -62,6 +62,7 @@ return [
     'actions' => [
         'view_details' => 'មើលលម្អិត',
         'view_data' => 'មើលទិន្នន័យ',
+        'view_workflow' => 'មើល',
         'accept' => 'ទទួលយក',
         'reject' => 'បដិសេធ',
         'close' => 'បិទ',
@@ -114,6 +115,15 @@ return [
     'download_excel' => 'ទាញយក Excel',
     'download_pdf' => 'ទាញយក PDF',
     'download_file' => 'ទាញយក :file',
+    'workflow_process' => 'ដំណើរការលំហូរការងារ',
+    'stage_count' => ':count ដំណាក់កាលពាក្យស្នើសុំ',
+    'stage_states' => [
+        'completed' => 'បានបញ្ចប់',
+        'current' => 'ដំណាក់កាលបច្ចុប្បន្ន',
+        'pending' => 'មិនទាន់ដល់',
+    ],
+    'stage_completed_at' => 'បានបញ្ចប់នៅ',
+    'no_application_stages' => 'មិនទាន់មានដំណាក់កាល Workflow សម្រាប់ពាក្យស្នើសុំនេះទេ។',
     'view_application_review' => 'ពិនិត្យការវាយតម្លៃពាក្យស្នើសុំ',
     'file_types' => [
         'word' => 'ឯកសារ Word',

@@ -6,6 +6,7 @@ use App\Support\WorkflowStageMessages;
 use App\Support\StaticWorkflowMessages;
 use App\Enums\WorkflowStageType;
 use App\Models\Payment;
+use App\Models\WorkflowNotification;
 use App\Support\AuditLogger;
 use App\Support\CaseInsensitiveSearch;
 use App\Support\CustomFormEntryFiles;
@@ -13,6 +14,7 @@ use App\Support\FilamentActionPermissions;
 use App\Support\FormEntryData;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
+use App\Support\WorkflowNotificationStageSummary;
 use App\Models\GeoLocation;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
 use Filament\Actions\Action;
@@ -622,6 +624,102 @@ class CustomFormEntriesTable
         return trim((string) ($record->review_note ?? ''));
     }
 
+    protected static function applicationStageViewData($record): array
+    {
+        $record->loadMissing(['customForm', 'creator']);
+        $workflow = filled($record->custom_form_id)
+            ? WorkflowNotification::forForm($record->custom_form_id)
+            : null;
+
+        if ($workflow === null) {
+            return ['stages' => []];
+        }
+
+        $currentType = WorkflowStageMessages::stageTypeFor($record);
+        $notificationTimes = self::workflowStageNotificationTimes($record);
+
+        $stages = collect($workflow->stages ?? [])
+            ->map(fn (mixed $stage): array => is_array($stage) && is_array($stage['data'] ?? null)
+                ? $stage['data']
+                : (is_array($stage) ? $stage : []))
+            ->filter(fn (array $stage): bool => filled($stage['stage_type'] ?? null))
+            ->values()
+            ->map(function (array $stage, int $index) use ($record, $currentType, $notificationTimes): array {
+                $type = WorkflowStageType::tryFrom((string) ($stage['stage_type'] ?? ''));
+                $typeValue = $type?->value ?? (string) $stage['stage_type'];
+                $completedAt = $notificationTimes[$typeValue] ?? null;
+
+                if ($type === WorkflowStageType::FormSubmission) {
+                    $completedAt ??= $record->created_at;
+                }
+
+                if ($type === WorkflowStageType::Review
+                    && in_array(strtolower((string) $record->review_status), ['accepted', 'approved', 'passed', 'rejected', 'failed'], true)) {
+                    $completedAt ??= $record->reviewed_at;
+                }
+
+                $isCompleted = filled($completedAt);
+                $isCurrent = ! $isCompleted
+                    && $currentType !== null
+                    && ($currentType === $type || ($type === WorkflowStageType::Approval && $currentType === WorkflowStageType::Review));
+                $state = $isCompleted ? 'completed' : ($isCurrent ? 'current' : 'pending');
+
+                return [
+                    'number' => $index + 1,
+                    'name' => WorkflowNotificationStageSummary::localizedName(
+                        self::transText($stage['stage_name'] ?? null),
+                        $type,
+                    ),
+                    'type_label' => $type?->label() ?? (string) $stage['stage_type'],
+                    'state' => $state,
+                    'state_label' => __('candidate_entrance_statistics.stage_states.'.$state),
+                    'status_message' => self::transText($stage['status_message'] ?? null),
+                    'notification_message' => self::transText($stage['notification_message'] ?? null),
+                    'completed_at' => self::stageTimestampLabel($completedAt),
+                ];
+            })
+            ->all();
+
+        return ['stages' => $stages];
+    }
+
+    protected static function workflowStageNotificationTimes($record): array
+    {
+        if (! Schema::hasTable('notifications') || blank($record->creator?->getKey())) {
+            return [];
+        }
+
+        return DB::table('notifications')
+            ->where('notifiable_type', $record->creator->getMorphClass())
+            ->where('notifiable_id', $record->creator->getKey())
+            ->where('data->viewData->workflow_entry_id', (string) $record->getKey())
+            ->orderBy('created_at')
+            ->get(['data', 'created_at'])
+            ->reduce(function (array $times, object $notification): array {
+                $data = json_decode((string) $notification->data, true);
+                $stageType = data_get($data, 'viewData.workflow_stage_type');
+
+                if (filled($stageType) && ! isset($times[$stageType])) {
+                    $times[$stageType] = $notification->created_at;
+                }
+
+                return $times;
+            }, []);
+    }
+
+    protected static function stageTimestampLabel(mixed $value): ?string
+    {
+        if (blank($value)) {
+            return null;
+        }
+
+        try {
+            return \Carbon\Carbon::parse($value)->format('Y-m-d H:i');
+        } catch (\Throwable) {
+            return (string) $value;
+        }
+    }
+
     protected static function isProfileForm(string $formId): bool
     {
         return \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
@@ -900,6 +998,24 @@ class CustomFormEntriesTable
                     ! self::currentPanelIsAdmin()
                     && in_array(self::entryStatus($record), ['pending', 'rejected', 'failed'], true)
                     && filled(self::reviewMessage($record))
+                ),
+
+            Action::make('view_application_stage')
+                ->label(__('candidate_entrance_statistics.actions.view_workflow'))
+                ->icon('heroicon-o-map')
+                ->color('info')
+                ->modalHeading(__('candidate_entrance_statistics.workflow_process'))
+                ->modalWidth('2xl')
+                ->modalSubmitAction(false)
+                ->modalCancelActionLabel(__('app.close'))
+                ->modalContent(fn ($record): \Illuminate\Contracts\View\View => view(
+                    'filament.custom-form-entry.application-stage',
+                    self::applicationStageViewData($record),
+                ))
+                ->visible(fn ($record): bool =>
+                    ! self::currentPanelIsAdmin()
+                    && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'view_application_stage')
+                    && self::entryStatus($record) !== 'draft'
                 ),
 
             Action::make('view_submitted_form')
