@@ -186,6 +186,12 @@ function registerCustomShapes() {
                                         return { value: variable, text: variable };
                                     })
                                 },
+                                {
+                                    type: 'input',
+                                    name: 'additionalVariables',
+                                    label: 'Additional variables (separate with |)',
+                                    placeholder: 'data.last_name|data.phone|data.email'
+                                },
                                 { type: 'selectbox', name: 'type', label: 'Barcode Type', items: barcodeTypes },
                                 { type: 'input', name: 'width', label: 'Width factor (px per bar)', inputMode: 'numeric', placeholder: '2' },
                                 { type: 'input', name: 'height', label: 'Height (px)', inputMode: 'numeric', placeholder: '30' }
@@ -195,14 +201,24 @@ function registerCustomShapes() {
                             { type: 'cancel', name: 'cancel', text: 'Cancel' },
                             { type: 'submit', name: 'submit', text: 'Insert', primary: true }
                         ],
-                        initialData: { variable: vars[0], type: 'C128', width: '2', height: '30' },
+                        initialData: { variable: vars[0], additionalVariables: '', type: 'C128', width: '2', height: '30' },
                         onSubmit: function (api) {
                             var data = api.getData();
                             var width = Math.max(1, Math.min(10, parseInt(data.width, 10) || 2));
                             var height = Math.max(10, Math.min(200, parseInt(data.height, 10) || 30));
                             var type = data.type || 'C128';
+                            var variable = data.variable || vars[0];
+                            var additionalVariables = String(data.additionalVariables || '')
+                                .split('|')
+                                .map(function (value) { return value.trim(); })
+                                .filter(function (value) {
+                                    return value !== '' && /^[a-zA-Z0-9_.]+$/.test(value);
+                                });
+                            var barcodeVariables = [variable].concat(additionalVariables.filter(function (value) {
+                                return value !== variable;
+                            }));
 
-                            editor.insertContent('{{#barcode ' + data.variable + ' type=' + type + ' width=' + width + ' height=' + height + '}}');
+                            editor.insertContent('{{#barcode ' + barcodeVariables.join('|') + ' type=' + type + ' width=' + width + ' height=' + height + '}}');
                             api.close();
                         }
                     });
