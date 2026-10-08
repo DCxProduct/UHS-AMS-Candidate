@@ -9,8 +9,10 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
+use Throwable;
 
 class PasswordResetController extends Controller
 {
@@ -42,9 +44,26 @@ class PasswordResetController extends Controller
                 ]);
         }
 
-        $status = Password::sendResetLink([
-            'email' => $email,
-        ]);
+        try {
+            $status = Password::sendResetLink([
+                'email' => $email,
+            ], function (User $user, string $token): void {
+                // Local testing only: the link is also written to storage/logs/laravel.log,
+                // in case the email is slow or mail is not set up. Never in production.
+                if (! app()->isProduction()) {
+                    Log::info('Password reset link for '.$user->email.': '.route('student.password.reset', [
+                        'token' => $token,
+                        'email' => $user->getEmailForPasswordReset(),
+                    ]));
+                }
+
+                $user->sendPasswordResetNotification($token);
+            });
+        } catch (Throwable $exception) {
+            // For example a wrong Gmail App Password: show a message instead of an error page.
+            report($exception);
+            $status = null;
+        }
 
         if ($status === Password::RESET_LINK_SENT) {
             return back()->with('status', __('app.password_reset_link_sent'));

@@ -66,6 +66,34 @@ class PhonePasswordResetTest extends TestCase
         Notification::assertSentTo($this->user, ResetPassword::class);
     }
 
+    public function test_a_mail_failure_shows_a_message_instead_of_an_error_page(): void
+    {
+        Notification::shouldReceive('send')->andThrow(new \RuntimeException('Gmail rejected the login'));
+        Log::spy();
+
+        $this->from(route('student.password.request'))
+            ->post(route('student.password.email'), ['email' => 'candidate@example.test'])
+            ->assertRedirect(route('student.password.request'))
+            ->assertSessionHasErrors(['email' => __('app.password_reset_failed')]);
+
+        // The link is still in the log for local testing.
+        Log::shouldHaveReceived('info')->withArgs(fn (string $message): bool => str_contains($message, 'Password reset link for candidate@example.test'))->once();
+    }
+
+    public function test_the_email_link_is_never_logged_in_production(): void
+    {
+        Notification::fake();
+        $this->app['env'] = 'production';
+        $this->withSession(['_token' => 'csrf-test-token']);
+        Log::spy();
+
+        $this->post(route('student.password.email'), ['_token' => 'csrf-test-token', 'email' => 'candidate@example.test'])
+            ->assertSessionHas('status', __('app.password_reset_link_sent'));
+
+        Notification::assertSentTo($this->user, ResetPassword::class);
+        Log::shouldNotHaveReceived('info', [Mockery::on(fn ($message): bool => str_contains((string) $message, 'Password reset link'))]);
+    }
+
     public function test_a_code_is_sent_by_sms_and_resets_the_password_once(): void
     {
         Http::fake(['cloudapi.plasgate.com/*' => Http::response(['queue_id' => 'abc'])]);
@@ -201,10 +229,13 @@ class PhonePasswordResetTest extends TestCase
     {
         Http::fake(['cloudapi.plasgate.com/*' => Http::response(['batchId' => 1])]);
         $this->app['env'] = 'production';
+        $this->withSession(['_token' => 'csrf-test-token']);
         Log::spy();
 
-        $this->post(route('student.password.phone'), ['phone' => '012345678']);
+        $this->post(route('student.password.phone'), ['_token' => 'csrf-test-token', 'phone' => '012345678'])
+            ->assertRedirect(route('student.password.phone.verify', ['phone' => '012345678']));
 
+        Http::assertSentCount(1);
         Log::shouldNotHaveReceived('info', [Mockery::on(fn ($message): bool => str_contains((string) $message, 'Password reset code'))]);
     }
 
