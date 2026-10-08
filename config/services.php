@@ -35,4 +35,17 @@ return [
         ],
     ],
 
+    /*
+    | PlasGate SMS (https://cloudapi.plasgate.com). The private key and secret
+    | come from one API key pair; the sender ID must be approved by PlasGate.
+    | When test_phone is set, every SMS goes to it instead (ignored in production).
+    */
+    'plasgate' => [
+        'base_url' => env('PLASGATE_BASE_URL', 'https://cloudapi.plasgate.com/rest'),
+        'private_key' => env('PLASGATE_PRIVATE_KEY'),
+        'secret' => env('PLASGATE_SECRET'),
+        'sender' => env('PLASGATE_SENDER', 'SMS Info'),
+        'test_phone' => env('PLASGATE_TEST_PHONE'),
+    ],
+
 ];
