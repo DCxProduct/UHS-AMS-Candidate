@@ -903,7 +903,7 @@ class CustomFormEntriesTable
                 ),
 
             Action::make('view_submitted_form')
-                ->label(__('filament-actions::view.single.label'))
+                ->label(__('candidate_entrance_statistics.actions.view_data'))
                 ->icon('heroicon-o-eye')
                 ->color('info')
                 ->url(fn ($record): string => CustomFormEntryResource::getUrl('view', [
