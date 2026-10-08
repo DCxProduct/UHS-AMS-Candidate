@@ -7,7 +7,7 @@ return [
 
     'custom_form_column' => 'លំហូរការជូនដំណឹង',
     'custom_form_helper' => 'ស្រេចចិត្ត។ ដំណើរការដែលទម្រង់បែបបទនេះអនុវត្តតាម។',
-    'candidate_notification_title' => ':form៖ :stage',
+    'candidate_notification_title' => ':stage',
     'candidate_action_notification_title' => ':form៖ :action',
     'staff_notification_title' => 'សកម្មភាពលំហូរការងារ៖ :form៖ :stage',
     'staff_notification_body' => ':student បានមកដល់ដំណាក់កាល :stage នៃ :form។',
