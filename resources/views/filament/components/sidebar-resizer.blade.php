@@ -27,6 +27,23 @@
         background: rgb(59 130 246 / 55%);
     }
 
+    .uhs-sidebar-hover-tooltip {
+        position: fixed;
+        z-index: 100;
+        max-width: min(28rem, calc(100vw - 1rem));
+        padding: 0.35rem 0.6rem;
+        border: 1px solid rgb(148 163 184 / 35%);
+        border-radius: 0.375rem;
+        background: rgb(15 23 42 / 96%);
+        color: white;
+        font-size: 0.75rem;
+        line-height: 1.25rem;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        pointer-events: none;
+        box-shadow: 0 6px 18px rgb(15 23 42 / 18%);
+    }
+
     @media (min-width: 1024px) {
         .fi-main-sidebar.fi-sidebar-open .uhs-sidebar-resizer {
             display: block;
@@ -69,10 +86,82 @@
             }
         };
 
+        const attachSidebarLabelTooltips = (sidebar) => {
+            let tooltip = document.querySelector('.uhs-sidebar-hover-tooltip');
+
+            if (!tooltip) {
+                tooltip = document.createElement('div');
+                tooltip.className = 'uhs-sidebar-hover-tooltip';
+                tooltip.hidden = true;
+                document.body.appendChild(tooltip);
+            }
+
+            sidebar.querySelectorAll('.fi-sidebar-item-btn').forEach((anchor) => {
+                if (anchor.dataset.uhsTooltipAttached === 'true') {
+                    return;
+                }
+
+                const label = anchor.querySelector('.fi-sidebar-item-label');
+                const text = label?.textContent.trim();
+
+                if (!text) {
+                    return;
+                }
+
+                anchor.dataset.uhsTooltipAttached = 'true';
+                anchor.removeAttribute('title');
+
+                let showTimer;
+                const showTooltip = () => {
+                    window.clearTimeout(showTimer);
+
+                    if (window.innerWidth < 1024 || !sidebar.classList.contains('fi-sidebar-open')) {
+                        return;
+                    }
+
+                    if (label.scrollWidth <= label.clientWidth) {
+                        return;
+                    }
+
+                    showTimer = window.setTimeout(() => {
+                        tooltip.textContent = text;
+                        tooltip.hidden = false;
+
+                        const anchorRect = anchor.getBoundingClientRect();
+                        const tooltipRect = tooltip.getBoundingClientRect();
+                        const top = anchorRect.top - tooltipRect.height - 6;
+                        const left = Math.min(
+                            Math.max(8, anchorRect.left),
+                            window.innerWidth - tooltipRect.width - 8,
+                        );
+
+                        tooltip.style.top = `${Math.max(8, top)}px`;
+                        tooltip.style.left = `${left}px`;
+                    }, 80);
+                };
+
+                const hideTooltip = () => {
+                    window.clearTimeout(showTimer);
+                    tooltip.hidden = true;
+                };
+
+                anchor.addEventListener('mouseenter', showTooltip);
+                anchor.addEventListener('mouseleave', hideTooltip);
+                anchor.addEventListener('focus', showTooltip);
+                anchor.addEventListener('blur', hideTooltip);
+            });
+        };
+
         const attachResizer = () => {
             const sidebar = document.getElementById('fi-main-sidebar');
 
-            if (!sidebar || sidebar.dataset.uhsResizable === 'true') {
+            if (!sidebar) {
+                return;
+            }
+
+            attachSidebarLabelTooltips(sidebar);
+
+            if (sidebar.dataset.uhsResizable === 'true') {
                 return;
             }
 
