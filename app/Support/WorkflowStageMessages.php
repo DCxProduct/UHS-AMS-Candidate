@@ -3,12 +3,14 @@
 namespace App\Support;
 
 use App\Enums\WorkflowStageType;
+use App\Mail\WorkflowStageMail;
 use App\Models\Payment;
 use App\Models\User;
 use App\Models\WorkflowNotification;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Traits\Localizable;
 use Throwable;
@@ -24,6 +26,9 @@ use Throwable;
 final class WorkflowStageMessages
 {
     use Localizable;
+
+    /** Ways a stage message can reach the candidate, chosen per stage. */
+    public const CHANNELS = ['system', 'sms', 'email'];
 
     /**
      * The stage type the submission is at, read from its current statuses.
@@ -378,7 +383,8 @@ final class WorkflowStageMessages
             ->where('notifiable_id', $student->getKey())
             ->where('data->viewData->workflow_entry_id', (string) $entry->getKey())
             ->where('data->viewData->workflow_stage_type', $stageType->value)
-            ->exists();
+            ->exists()
+            || self::hasDelivery($entry, $student, 'stage_type', $stageType->value);
     }
 
     private static function deleteStageNotification(
@@ -396,6 +402,14 @@ final class WorkflowStageMessages
             ->where('data->viewData->workflow_entry_id', (string) $entry->getKey())
             ->where('data->viewData->workflow_stage_type', $stageType->value)
             ->delete();
+
+        if (Schema::hasTable('workflow_notification_deliveries')) {
+            DB::table('workflow_notification_deliveries')
+                ->where('custom_form_entry_id', $entry->getKey())
+                ->where('user_id', $student->getKey())
+                ->where('stage_type', $stageType->value)
+                ->delete();
+        }
     }
 
     private static function configuredStage(CustomFormEntry $entry, WorkflowStageType $type): ?array
@@ -435,7 +449,10 @@ final class WorkflowStageMessages
         ?string $reviewNote = null,
     ): bool
     {
-        (new self)->withLocale(NotificationLanguage::localeForUser($student), function () use ($entry, $stage, $stageType, $student, $workflowEvent, $reviewNote): void {
+        $channels = self::channels($stage);
+        $delivered = [];
+
+        (new self)->withLocale(NotificationLanguage::localeForUser($student), function () use ($entry, $stage, $stageType, $student, $workflowEvent, $reviewNote, $channels, &$delivered): void {
             $viewData = [
                 'workflow_entry_id' => (string) $entry->getKey(),
                 'workflow_stage_type' => $stageType->value,
@@ -464,14 +481,31 @@ final class WorkflowStageMessages
                     : $body."\n\n".$reviewNoteText.': '.$reviewNote;
             }
 
+            $title = __('workflow_notifications.candidate_notification_title', [
+                'form' => $entry->customForm?->display_name ?? '',
+                'stage' => WorkflowNotificationStageSummary::localizedName(
+                    $stage['stage_name'] ?? null,
+                    $stageType,
+                ),
+            ]);
+
+            // Each channel is independent: a failed SMS or email never stops the others.
+            if (in_array('sms', $channels, true) && self::sendSms($student, $title, $body)) {
+                $delivered[] = 'sms';
+            }
+
+            if (in_array('email', $channels, true) && self::sendEmail($student, $title, $body)) {
+                $delivered[] = 'email';
+            }
+
+            if (! in_array('system', $channels, true)) {
+                return;
+            }
+
+            $delivered[] = 'system';
+
             Notification::make()
-                ->title(__('workflow_notifications.candidate_notification_title', [
-                    'form' => $entry->customForm?->display_name ?? '',
-                    'stage' => WorkflowNotificationStageSummary::localizedName(
-                        $stage['stage_name'] ?? null,
-                        $stageType,
-                    ),
-                ]))
+                ->title($title)
                 ->body($body)
                 ->icon($actionIcon)
                 ->iconColor(match ($action) {
@@ -484,7 +518,103 @@ final class WorkflowStageMessages
                 ->sendToDatabase($student);
         });
 
+        if ($delivered === []) {
+            return false;
+        }
+
+        self::recordDelivery($entry, $student, $stageType, $workflowEvent, $delivered);
+
         return true;
+    }
+
+    /**
+     * Channels ticked on the stage. Stages saved before the channel boxes
+     * existed keep sending the system notification only, as before.
+     */
+    public static function channels(array $stage): array
+    {
+        if (! is_array($stage['notification_channels'] ?? null)) {
+            return ['system'];
+        }
+
+        return array_values(array_intersect(self::CHANNELS, $stage['notification_channels']));
+    }
+
+    private static function sendSms(User $student, string $title, string $body): bool
+    {
+        try {
+            return PlasGateSms::send($student->phone, trim($title."\n".self::plainText($body)));
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return false;
+        }
+    }
+
+    private static function sendEmail(User $student, string $title, string $body): bool
+    {
+        if (! filter_var($student->email, FILTER_VALIDATE_EMAIL)) {
+            return false;
+        }
+
+        try {
+            Mail::to($student->email)->send(new WorkflowStageMail(
+                heading: $title,
+                text: self::plainText($body),
+                name: (string) ($student->name ?: $student->username),
+            ));
+
+            return true;
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return false;
+        }
+    }
+
+    private static function plainText(string $value): string
+    {
+        $text = preg_replace('/<br\s*\/?>|<\/p>/i', "\n", $value);
+
+        return trim(html_entity_decode(strip_tags((string) $text), ENT_QUOTES | ENT_HTML5));
+    }
+
+    private static function recordDelivery(
+        CustomFormEntry $entry,
+        User $student,
+        WorkflowStageType $stageType,
+        ?string $workflowEvent,
+        array $channels,
+    ): void {
+        try {
+            if (Schema::hasTable('workflow_notification_deliveries')) {
+                DB::table('workflow_notification_deliveries')->insert([
+                    'custom_form_entry_id' => $entry->getKey(),
+                    'user_id' => $student->getKey(),
+                    'stage_type' => $stageType->value,
+                    'workflow_event' => $workflowEvent,
+                    'channels' => json_encode($channels),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        } catch (Throwable $exception) {
+            report($exception);
+        }
+    }
+
+    /**
+     * Whether a stage message was already delivered by a channel other than the
+     * system bell (the bell is found in the notifications table).
+     */
+    private static function hasDelivery(CustomFormEntry $entry, User $student, string $column, string $value): bool
+    {
+        return Schema::hasTable('workflow_notification_deliveries')
+            && DB::table('workflow_notification_deliveries')
+                ->where('custom_form_entry_id', $entry->getKey())
+                ->where('user_id', $student->getKey())
+                ->where($column, $value)
+                ->exists();
     }
 
     public static function requiresPayment(CustomFormEntry $entry): bool
@@ -576,7 +706,8 @@ final class WorkflowStageMessages
             ->where('notifiable_id', $student->getKey())
             ->where('data->viewData->workflow_entry_id', (string) $entry->getKey())
             ->where('data->viewData->workflow_event', 'review_action:'.$action)
-            ->exists();
+            ->exists()
+            || self::hasDelivery($entry, $student, 'workflow_event', 'review_action:'.$action);
     }
 
     private static function isPassedResult(CustomFormEntry $entry): bool

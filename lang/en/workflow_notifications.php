@@ -20,7 +20,14 @@ return [
         'stages_description' => 'Add the stages in order. Drag stages to rearrange them.',
     ],
 
+    'channels' => [
+        'system' => 'System (bell)',
+        'sms' => 'SMS',
+        'email' => 'Email',
+    ],
+
     'fields' => [
+        'notification_channels' => 'Send notification by',
         'name' => 'Template Name',
         'assigned_forms' => 'Assigned Forms',
         'steps' => 'Steps',
@@ -59,6 +66,7 @@ return [
     ],
 
     'helpers' => [
+        'notification_channels' => 'Where the candidate receives this stage\'s notification message. SMS goes to the candidate\'s phone through PlasGate; Email to their email address.',
         'assigned_forms' => 'Forms that follow this workflow. A form can belong to only one template.',
     ],
 

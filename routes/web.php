@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\PasswordResetController;
+use App\Http\Controllers\Auth\PhonePasswordResetController;
 use App\Http\Controllers\DbSyncController;
 use BezhanSalleh\LanguageSwitch\Events\LocaleChanged;
 use BezhanSalleh\LanguageSwitch\LanguageSwitch;
@@ -91,4 +92,14 @@ Route::middleware('guest')
 
         Route::post('/reset-password', [PasswordResetController::class, 'resetPassword'])
             ->name('password.update');
+
+        // Forgot password by phone: 6-digit code sent by PlasGate SMS.
+        Route::post('/forgot-password/phone', [PhonePasswordResetController::class, 'sendCode'])
+            ->name('password.phone');
+
+        Route::get('/forgot-password/phone/verify', [PhonePasswordResetController::class, 'showVerifyForm'])
+            ->name('password.phone.verify');
+
+        Route::post('/forgot-password/phone/verify', [PhonePasswordResetController::class, 'resetPassword'])
+            ->name('password.phone.update');
     });

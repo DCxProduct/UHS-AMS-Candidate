@@ -5,8 +5,10 @@ namespace App\Filament\Admin\Resources\WorkflowNotifications\Schemas;
 use App\Enums\WorkflowStageType;
 use App\Models\Role;
 use App\Support\WorkflowNotificationStageSummary;
+use App\Support\WorkflowStageMessages;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Builder;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Builder\Block;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
@@ -113,6 +115,19 @@ class WorkflowNotificationForm
 
         return [
             Grid::make(2)->schema([
+                CheckboxList::make('notification_channels')
+                    ->label(fn (): HtmlString => new HtmlString('<span style="font-size: 1.05rem; font-weight: 700;">'.e(__('workflow_notifications.fields.notification_channels')).'</span>'))
+                    ->helperText(__('workflow_notifications.helpers.notification_channels'))
+                    ->options(fn (): array => collect(WorkflowStageMessages::CHANNELS)
+                        ->mapWithKeys(fn (string $channel): array => [$channel => '<span style="font-size: 1.05rem; font-weight: 700;">'.e(__('workflow_notifications.channels.'.$channel)).'</span>'])
+                        ->all())
+                    ->allowHtml()
+                    ->default(['system'])
+                    ->columns(3)
+                    ->gridDirection('row')
+                    ->visible($handledByStaff)
+                    ->columnSpanFull(),
+
                 TextInput::make('stage_name')
                     ->label(__('workflow_notifications.fields.stage_name'))
                     ->placeholder(__('workflow_notifications.placeholders.stage_name'))
@@ -270,6 +285,7 @@ class WorkflowNotificationForm
             'status_message' => null,
             'notification_message' => null,
             'review_actions' => [],
+            'notification_channels' => ['system'],
         ];
     }
 
