@@ -44,7 +44,10 @@ class SmsCandidateNotification
         }
 
         try {
-            PlasGateSms::send($event->notifiable->phone, 'UHS-AMS: '.Str::limit($text, self::MAX_LENGTH));
+            PlasGateSms::send($event->notifiable->phone, 'UHS-AMS: '.Str::limit($text, self::MAX_LENGTH), [
+                'source' => 'notification',
+                'user_id' => $event->notifiable->getKey(),
+            ]);
         } catch (Throwable $exception) {
             report($exception);
         }
