@@ -6,7 +6,6 @@ use App\Filament\Admin\Resources\EmailTemplates\EmailTemplateResource;
 use App\Models\EmailTemplate;
 use App\Support\ResetPasswordEmail;
 use Filament\Actions\Action;
-use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
@@ -40,9 +39,7 @@ class EditEmailTemplate extends EditRecord
                 ->modalSubmitAction(false)
                 ->modalCancelActionLabel(__('email_templates.actions.close'))
                 ->modalContent(fn () => view('filament.admin.email-templates.preview', [
-                    'previews' => collect(EmailTemplate::LOCALES)->mapWithKeys(fn (string $locale): array => [
-                        __('email_templates.tabs.'.$locale) => (string) $this->sample($locale)->render(),
-                    ])->all(),
+                    'previews' => [$this->record->label() => (string) $this->sample()->render()],
                 ])),
 
             Action::make('sendTest')
@@ -57,16 +54,10 @@ class EditEmailTemplate extends EditRecord
                         ->email()
                         ->required()
                         ->default(fn (): ?string => auth()->user()?->email),
-                    Select::make('locale')
-                        ->label(__('email_templates.send_test.language'))
-                        ->options(collect(EmailTemplate::LOCALES)->mapWithKeys(fn (string $locale): array => [$locale => __('email_templates.tabs.'.$locale)])->all())
-                        ->default(app()->getLocale() === 'km' ? 'km' : 'en')
-                        ->required()
-                        ->native(false),
                 ])
                 ->action(function (array $data): void {
                     try {
-                        $message = $this->sample($data['locale']);
+                        $message = $this->sample();
                         // Sent like the real email, so the logo is embedded the same way.
                         Mail::send($message->view, $message->viewData, fn ($mail) => $mail->to($data['to'])->subject((string) $message->subject));
                     } catch (Throwable $exception) {
@@ -97,14 +88,13 @@ class EditEmailTemplate extends EditRecord
     /**
      * The saved template, filled with sample data for the signed-in user.
      */
-    private function sample(string $locale): MailMessage
+    private function sample(): MailMessage
     {
         $user = auth()->user();
 
         return ResetPasswordEmail::build(
             $user,
             route('student.password.reset', ['token' => 'sample-token', 'email' => $user?->email]),
-            $locale,
         );
     }
 }

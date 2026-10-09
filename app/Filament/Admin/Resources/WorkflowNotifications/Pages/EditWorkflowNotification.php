@@ -13,6 +13,25 @@ class EditWorkflowNotification extends EditRecord
 {
     protected static string $resource = WorkflowNotificationResource::class;
 
+    /**
+     * Stages saved before the channel tick boxes existed send the system
+     * notification only, so they open with just "System" ticked.
+     */
+    protected function mutateFormDataBeforeFill(array $data): array
+    {
+        $data['stages'] = collect($data['stages'] ?? [])
+            ->map(function (array $item): array {
+                if (is_array($item['data'] ?? null) && ! array_key_exists('notification_channels', $item['data'])) {
+                    $item['data']['notification_channels'] = ['system'];
+                }
+
+                return $item;
+            })
+            ->all();
+
+        return $data;
+    }
+
     protected function getHeaderActions(): array
     {
         return [

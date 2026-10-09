@@ -15,12 +15,7 @@ return [
         'header' => 'Email header',
         'header_description' => 'Shown at the top and bottom of the email.',
         'content' => 'Email content',
-        'content_description' => 'Design the email like a document. Use "Insert Variable" to add {{ name }}, {{ email }}, {{ minutes }} (how long the link works), {{ app }} (the header title), {{ reset_url }} (the link) or {{ reset_button }} (the button).',
-    ],
-
-    'tabs' => [
-        'en' => 'English',
-        'km' => 'Khmer',
+        'content_description' => 'Design the email like a document. Use "Insert Variable" to add {{ name }}, {{ email }}, {{ minutes }} (how long the link works), {{ app }} (the header title), {{ reset_url }} (the link) or {{ reset_button }} (the button). Write in Khmer or English; everyone receives this text as written.',
     ],
 
     'built_in' => [
@@ -51,8 +46,7 @@ return [
     'fields' => [
         'logo' => 'Logo',
         'variable_name' => 'Variable name',
-        'value_en' => 'Value (English)',
-        'value_km' => 'Value (Khmer)',
+        'value' => 'Value',
         'name' => 'Email',
         'header_title' => 'Header title',
         'subject' => 'Subject',
@@ -63,7 +57,6 @@ return [
 
     'helpers' => [
         'logo' => 'PNG, JPG or GIF, up to 1 MB. Shown at the top of the email, above the header title.',
-        'value_km' => 'Leave empty to use the English value.',
         'button' => 'Shown on the {{ reset_button }} button.',
     ],
 
@@ -84,7 +77,6 @@ return [
 
     'send_test' => [
         'email' => 'Send to',
-        'language' => 'Language',
         'sent' => 'Test email sent to :email.',
         'failed' => 'The test email could not be sent. Check the mail settings.',
         'save_first' => 'Uses the saved text. Save your changes first.',

@@ -7,7 +7,6 @@ use App\Models\SmsTemplate;
 use App\Support\PasswordResetOtpSms;
 use App\Support\PlasGateSms;
 use Filament\Actions\Action;
-use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
@@ -39,9 +38,7 @@ class EditSmsTemplate extends EditRecord
                 ->modalSubmitAction(false)
                 ->modalCancelActionLabel(__('sms_templates.actions.close'))
                 ->modalContent(fn () => view('filament.admin.sms-templates.preview', [
-                    'previews' => collect(SmsTemplate::LOCALES)->mapWithKeys(fn (string $locale): array => [
-                        __('sms_templates.tabs.'.$locale) => $this->sample($locale),
-                    ])->all(),
+                    'previews' => [$this->record->label() => $this->sample()],
                 ])),
 
             Action::make('sendTest')
@@ -56,16 +53,10 @@ class EditSmsTemplate extends EditRecord
                         ->tel()
                         ->required()
                         ->default(fn (): ?string => auth()->user()?->phone),
-                    Select::make('locale')
-                        ->label(__('sms_templates.send_test.language'))
-                        ->options(collect(SmsTemplate::LOCALES)->mapWithKeys(fn (string $locale): array => [$locale => __('sms_templates.tabs.'.$locale)])->all())
-                        ->default(app()->getLocale() === 'km' ? 'km' : 'en')
-                        ->required()
-                        ->native(false),
                 ])
                 ->action(function (array $data): void {
                     try {
-                        $sent = PlasGateSms::send($data['to'], $this->sample($data['locale']));
+                        $sent = PlasGateSms::send($data['to'], $this->sample());
                     } catch (Throwable $exception) {
                         report($exception);
                         $sent = false;
@@ -98,8 +89,8 @@ class EditSmsTemplate extends EditRecord
     /**
      * The saved text with sample code 123456 for the signed-in user.
      */
-    private function sample(string $locale): string
+    private function sample(): string
     {
-        return PasswordResetOtpSms::text(auth()->user(), '123456', $locale);
+        return PasswordResetOtpSms::text(auth()->user(), '123456');
     }
 }

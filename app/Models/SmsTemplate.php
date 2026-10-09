@@ -6,7 +6,8 @@ use App\Models\Concerns\HasTemplateText;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Admin-editable system SMS, in English and Khmer: plain text with {{ variables }}.
+ * Admin-editable system SMS: plain text with {{ variables }}, written in Khmer
+ * or English and sent to everyone as written.
  * Empty fields fall back to the defaults below.
  */
 class SmsTemplate extends Model
@@ -26,7 +27,7 @@ class SmsTemplate extends Model
         'key',
         'app_name',
         'custom_variables',
-        'body_en', 'body_km',
+        'body',
     ];
 
     /**
@@ -37,8 +38,7 @@ class SmsTemplate extends Model
         return match ($key) {
             self::RESET_PASSWORD_OTP => [
                 'app_name' => 'UHS-AMS',
-                'body_en' => '{{ app }}: Your password reset code is {{ code }}. It expires in {{ minutes }} minutes. Do not share this code.',
-                'body_km' => '{{ app }}: លេខកូដកំណត់ពាក្យសម្ងាត់ថ្មីរបស់អ្នកគឺ {{ code }} ។ ផុតកំណត់ក្នុង {{ minutes }} នាទី។ សូមកុំចែករំលែកលេខកូដនេះ។',
+                'body' => '{{ app }}: Your password reset code is {{ code }}. It expires in {{ minutes }} minutes. Do not share this code.',
             ],
             default => [],
         };

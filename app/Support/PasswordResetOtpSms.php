@@ -10,13 +10,12 @@ use App\Models\User;
  */
 final class PasswordResetOtpSms
 {
-    public static function text(User $user, string $code, ?string $locale = null): string
+    public static function text(User $user, string $code): string
     {
         $template = SmsTemplate::for(SmsTemplate::RESET_PASSWORD_OTP);
-        $locale ??= NotificationLanguage::localeForUser($user);
 
-        return trim($template->text('body', $locale, [
-            ...$template->customVariables($locale),
+        return trim($template->text('body', [
+            ...$template->customVariables(),
             'name' => (string) ($user->name ?: $user->username),
             'phone' => (string) $user->phone,
             'code' => $code,

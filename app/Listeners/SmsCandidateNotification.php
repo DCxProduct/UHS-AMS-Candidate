@@ -25,7 +25,9 @@ class SmsCandidateNotification
             || ! $event->notification instanceof DatabaseNotification
             || ! $event->notifiable instanceof User
             || $event->notifiable->registration_type !== 'student'
-            || ! PlasGateSms::isConfigured()) {
+            || ! PlasGateSms::isConfigured()
+            // Workflow stage messages are texted only when the stage's SMS box is ticked.
+            || filled($event->notification->data['viewData']['workflow_entry_id'] ?? null)) {
             return;
         }
 

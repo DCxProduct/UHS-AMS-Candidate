@@ -25,7 +25,7 @@ class EmailTemplatesTable
 
                 TextColumn::make('subject')
                     ->label(__('email_templates.fields.subject'))
-                    ->state(fn (EmailTemplate $record): string => $record->text('subject', app()->getLocale() === 'km' ? 'km' : 'en'))
+                    ->state(fn (EmailTemplate $record): string => $record->text('subject'))
                     ->limit(70),
 
                 TextColumn::make('updated_at')

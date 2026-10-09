@@ -14,12 +14,7 @@ return [
         'custom_variables' => 'Custom variables',
         'custom_variables_description' => 'Create your own {{ variables }} with a fixed value, for example a hotline or website.',
         'content' => 'SMS text',
-        'content_description' => 'Plain text sent by SMS. Use {{ code }} for the 6-digit code, and {{ name }}, {{ phone }}, {{ minutes }}, {{ app }} or your custom variables.',
-    ],
-
-    'tabs' => [
-        'en' => 'English',
-        'km' => 'Khmer',
+        'content_description' => 'Plain text sent by SMS. Use {{ code }} for the 6-digit code, and {{ name }}, {{ phone }}, {{ minutes }}, {{ app }} or your custom variables. Write in Khmer or English; everyone receives this text as written.',
     ],
 
     'built_in' => [
@@ -50,15 +45,13 @@ return [
         'app_name' => 'App name',
         'body' => 'SMS text',
         'variable_name' => 'Variable name',
-        'value_en' => 'Value (English)',
-        'value_km' => 'Value (Khmer)',
+        'value' => 'Value',
         'updated_at' => 'Updated At',
     ],
 
     'helpers' => [
         'app_name' => 'Used for {{ app }}.',
         'body' => 'One SMS holds about 160 English or 70 Khmer characters; longer texts are sent as several parts.',
-        'value_km' => 'Leave empty to use the English value.',
     ],
 
     'actions' => [
@@ -83,7 +76,6 @@ return [
 
     'send_test' => [
         'phone' => 'Send to phone',
-        'language' => 'Language',
         'sent' => 'Test SMS sent to :phone.',
         'failed' => 'The test SMS could not be sent. Check the PlasGate settings.',
         'save_first' => 'Uses the saved text with sample code 123456. Save your changes first.',

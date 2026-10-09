@@ -47,13 +47,15 @@ class SmsTemplateResourceTest extends TestCase
         );
 
         SmsTemplate::for(SmsTemplate::RESET_PASSWORD_OTP)->update([
-            'custom_variables' => [['name' => 'hotline', 'value_en' => '023 123 456']],
-            'body_en' => 'Hi {{ name }}, code {{ code }} ({{ minutes }} min). Help: {{ hotline }}',
-            'body_km' => 'លេខកូដ {{ code }}',
+            'custom_variables' => [['name' => 'hotline', 'value' => '023 123 456']],
+            'body' => 'Hi {{ name }}, code {{ code }} ({{ minutes }} min). Help: {{ hotline }}',
         ]);
 
         $this->assertSame('Hi dara, code 654321 (10 min). Help: 023 123 456', PasswordResetOtpSms::text($user, '654321'));
-        $this->assertSame('លេខកូដ 654321', PasswordResetOtpSms::text($user, '654321', 'km'));
+
+        // The same text goes to a Khmer-language candidate.
+        $user->forceFill(['locale' => 'km'])->save();
+        $this->assertSame('Hi dara, code 654321 (10 min). Help: 023 123 456', PasswordResetOtpSms::text($user, '654321'));
     }
 
     public function test_the_phone_reset_sends_the_template_text(): void
@@ -62,7 +64,7 @@ class SmsTemplateResourceTest extends TestCase
         Http::fake(['cloudapi.plasgate.com/*' => Http::response(['batchId' => 1])]);
         $user = $this->user('dara', 'student', locale: 'en');
         $user->forceFill(['phone' => '012345678'])->save();
-        SmsTemplate::for(SmsTemplate::RESET_PASSWORD_OTP)->update(['body_en' => 'Your UHS code: {{ code }}']);
+        SmsTemplate::for(SmsTemplate::RESET_PASSWORD_OTP)->update(['body' => 'Your UHS code: {{ code }}']);
 
         $this->post(route('student.password.phone'), ['phone' => '012345678']);
 
@@ -84,14 +86,14 @@ class SmsTemplateResourceTest extends TestCase
             ->assertDontSee('insert_variable', false);
 
         Livewire::test(EditSmsTemplate::class, ['record' => $template->getRouteKey()])
-            ->assertSchemaStateSet(['body_en' => SmsTemplate::defaults(SmsTemplate::RESET_PASSWORD_OTP)['body_en']])
-            ->fillForm(['body_en' => 'Code {{ code }}', 'body_km' => 'លេខកូដ {{ code }}'])
+            ->assertSchemaStateSet(['body' => SmsTemplate::defaults(SmsTemplate::RESET_PASSWORD_OTP)['body']])
+            ->fillForm(['body' => 'Code {{ code }}'])
             ->call('save')
             ->assertHasNoFormErrors()
-            ->callAction('sendTest', ['to' => '015 916 217', 'locale' => 'en'])
+            ->callAction('sendTest', ['to' => '015 916 217'])
             ->assertNotified(__('sms_templates.send_test.sent', ['phone' => '015 916 217']));
 
-        $this->assertSame('Code {{ code }}', $template->refresh()->body_en);
+        $this->assertSame('Code {{ code }}', $template->refresh()->body);
         Http::assertSent(fn (HttpRequest $request): bool => $request['messages'][0]['to'][0] === '85515916217'
             && $request['messages'][0]['content'] === 'Code 123456');
     }
@@ -103,7 +105,7 @@ class SmsTemplateResourceTest extends TestCase
 
         foreach (['Hot Line', '1phone', 'code'] as $badName) {
             Livewire::test(EditSmsTemplate::class, ['record' => $template->getRouteKey()])
-                ->set('data.custom_variables', ['a' => ['name' => $badName, 'value_en' => 'x']])
+                ->set('data.custom_variables', ['a' => ['name' => $badName, 'value' => 'x']])
                 ->call('save')
                 ->assertHasFormErrors(['custom_variables.a.name']);
         }
@@ -134,7 +136,7 @@ class SmsTemplateResourceTest extends TestCase
     {
         $this->actingAs($this->admin);
         $template = SmsTemplate::for(SmsTemplate::RESET_PASSWORD_OTP);
-        $template->update(['body_en' => 'Changed {{ code }}']);
+        $template->update(['body' => 'Changed {{ code }}']);
 
         Livewire::test(EditSmsTemplate::class, ['record' => $template->getRouteKey()])
             ->mountAction('preview')
@@ -142,7 +144,7 @@ class SmsTemplateResourceTest extends TestCase
 
         Livewire::test(EditSmsTemplate::class, ['record' => $template->getRouteKey()])
             ->callAction('resetDefaults')
-            ->assertSchemaStateSet(['body_en' => SmsTemplate::defaults(SmsTemplate::RESET_PASSWORD_OTP)['body_en']]);
+            ->assertSchemaStateSet(['body' => SmsTemplate::defaults(SmsTemplate::RESET_PASSWORD_OTP)['body']]);
     }
 
     public function test_the_custom_variables_section_lists_the_built_in_variables_with_samples(): void
@@ -164,15 +166,13 @@ class SmsTemplateResourceTest extends TestCase
     {
         $this->actingAs($this->admin);
         $template = SmsTemplate::for(SmsTemplate::RESET_PASSWORD_OTP);
-        $template->update(['custom_variables' => [['name' => 'hotline', 'value_en' => '023 123 456']]]);
+        $template->update(['custom_variables' => [['name' => 'hotline', 'value' => '023 123 456']]]);
 
         $response = $this->get(SmsTemplateResource::getUrl('edit', ['record' => $template]))->assertOk();
 
-        foreach (['en', 'km'] as $locale) {
-            // The dropdown targets the textarea with this id.
-            $response->assertSee('id="sms-body-'.$locale.'"', false)
-                ->assertSee('data-insert-variable="sms-body-'.$locale.'"', false);
-        }
+        // The dropdown targets the textarea with this id.
+        $response->assertSee('id="sms-body"', false)
+            ->assertSee('data-insert-variable="sms-body"', false);
 
         foreach ([...SmsTemplate::VARIABLES[SmsTemplate::RESET_PASSWORD_OTP], 'hotline'] as $name) {
             $response->assertSee('insert(\'{{ '.$name.' }}\')', false);
@@ -180,7 +180,7 @@ class SmsTemplateResourceTest extends TestCase
 
         // A new custom variable shows in the dropdown before saving.
         Livewire::test(EditSmsTemplate::class, ['record' => $template->getRouteKey()])
-            ->set('data.custom_variables', ['a' => ['name' => 'website', 'value_en' => 'uhs.edu.kh']])
+            ->set('data.custom_variables', ['a' => ['name' => 'website', 'value' => 'uhs.edu.kh']])
             ->assertSee('insert(\'{{ website }}\')', false);
     }
 

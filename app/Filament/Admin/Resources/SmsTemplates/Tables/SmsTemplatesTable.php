@@ -25,7 +25,7 @@ class SmsTemplatesTable
 
                 TextColumn::make('body')
                     ->label(__('sms_templates.fields.body'))
-                    ->state(fn (SmsTemplate $record): string => $record->text('body', app()->getLocale() === 'km' ? 'km' : 'en'))
+                    ->state(fn (SmsTemplate $record): string => $record->text('body'))
                     ->limit(70),
 
                 TextColumn::make('updated_at')

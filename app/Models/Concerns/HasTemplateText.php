@@ -6,14 +6,13 @@ use Illuminate\Support\Facades\Schema;
 use Throwable;
 
 /**
- * Shared by the email and SMS templates: one row per fixed key, texts in
- * English and Khmer with {{ variables }}, admin-made custom variables, and
- * built-in defaults for any field left empty.
+ * Shared by the email and SMS templates: one row per fixed key, one text
+ * (written in Khmer or English, sent to everyone as written) with
+ * {{ variables }}, admin-made custom variables, and built-in defaults for
+ * any field left empty.
  */
 trait HasTemplateText
 {
-    public const LOCALES = ['en', 'km'];
-
     abstract public static function defaults(string $key): array;
 
     public function initializeHasTemplateText(): void
@@ -45,19 +44,19 @@ trait HasTemplateText
     {
         return array_values(array_unique([
             ...(static::VARIABLES[$this->key] ?? []),
-            ...array_keys($this->customVariables('en')),
+            ...array_keys($this->customVariables()),
         ]));
     }
 
     /**
-     * Custom variables for one language: name => value (English when the Khmer value is empty).
+     * Custom variables: name => value.
      */
-    public function customVariables(string $locale): array
+    public function customVariables(): array
     {
         return collect($this->custom_variables ?? [])
             ->filter(fn ($item): bool => is_array($item) && filled($item['name'] ?? null))
             ->mapWithKeys(fn (array $item): array => [
-                (string) $item['name'] => (string) (filled($item["value_{$locale}"] ?? null) ? $item["value_{$locale}"] : ($item['value_en'] ?? '')),
+                (string) $item['name'] => (string) ($item['value'] ?? ''),
             ])
             ->all();
     }
@@ -65,18 +64,16 @@ trait HasTemplateText
     /**
      * A plain-text field with {{ variables }} filled in.
      */
-    public function text(string $field, string $locale, array $variables = []): string
+    public function text(string $field, array $variables = []): string
     {
-        return self::fillVariables($this->raw($field, $locale), array_map(fn ($value): string => strip_tags((string) $value), $variables));
+        return self::fillVariables($this->raw($field), array_map(fn ($value): string => strip_tags((string) $value), $variables));
     }
 
-    protected function raw(string $field, string $locale): string
+    protected function raw(string $field): string
     {
-        $column = $field.'_'.(in_array($locale, self::LOCALES, true) ? $locale : 'en');
-
-        return filled($this->{$column})
-            ? (string) $this->{$column}
-            : (string) (static::defaults($this->key)[$column] ?? '');
+        return filled($this->{$field})
+            ? (string) $this->{$field}
+            : (string) (static::defaults($this->key)[$field] ?? '');
     }
 
     /**

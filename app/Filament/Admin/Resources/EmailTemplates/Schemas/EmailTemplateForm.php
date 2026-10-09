@@ -9,8 +9,6 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Tabs;
-use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
@@ -77,16 +75,12 @@ class EmailTemplateForm
                                         'distinct' => __('email_templates.validation.variable_distinct'),
                                     ])
                                     ->live(onBlur: true),
-                                TextInput::make('value_en')
-                                    ->label(__('email_templates.fields.value_en'))
+                                TextInput::make('value')
+                                    ->label(__('email_templates.fields.value'))
                                     ->required()
                                     ->maxLength(500),
-                                TextInput::make('value_km')
-                                    ->label(__('email_templates.fields.value_km'))
-                                    ->helperText(__('email_templates.helpers.value_km'))
-                                    ->maxLength(500),
                             ])
-                            ->columns(3)
+                            ->columns(2)
                             ->defaultItems(0)
                             ->addActionLabel(__('email_templates.actions.add_variable'))
                             ->itemLabel(fn (array $state): ?string => filled($state['name'] ?? null) ? '{{ '.$state['name'].' }}' : null)
@@ -95,26 +89,20 @@ class EmailTemplateForm
 
                 Section::make(__('email_templates.sections.content'))
                     ->description(__('email_templates.sections.content_description'))
-                    ->schema([
-                        Tabs::make('languages')
-                            ->tabs(collect(EmailTemplate::LOCALES)
-                                ->map(fn (string $locale): Tab => Tab::make(__('email_templates.tabs.'.$locale))
-                                    ->schema(self::fields($locale)))
-                                ->all()),
-                    ]),
+                    ->schema(self::contentFields()),
             ]);
     }
 
-    private static function fields(string $locale): array
+    private static function contentFields(): array
     {
         return [
             Grid::make(['default' => 1, 'lg' => 2])->schema([
-                TextInput::make("subject_{$locale}")
+                TextInput::make('subject')
                     ->label(__('email_templates.fields.subject'))
                     ->required()
                     ->maxLength(255),
 
-                TextInput::make("button_{$locale}")
+                TextInput::make('button')
                     ->label(__('email_templates.fields.button'))
                     ->helperText(__('email_templates.helpers.button'))
                     ->required()
@@ -122,7 +110,7 @@ class EmailTemplateForm
             ]),
 
             // Same editor and "Insert Variable" button as the Document Designer.
-            TinyEditor::make("body_{$locale}")
+            TinyEditor::make('body')
                 ->label(__('email_templates.fields.body'))
                 ->required()
                 ->columnSpanFull()
@@ -130,7 +118,7 @@ class EmailTemplateForm
                 ->fileAttachmentsDirectory('email-templates')
                 ->profile('full')
                 // A new key reloads the editor, so new custom variables show up in "Insert Variable".
-                ->key(fn (Get $get): string => "email-body-{$locale}-".md5(json_encode(array_column($get('custom_variables') ?? [], 'name'))))
+                ->key(fn (Get $get): string => 'email-body-'.md5(json_encode(array_column($get('custom_variables') ?? [], 'name'))))
                 ->setCustomConfigs(fn (?EmailTemplate $record, Get $get): array => self::editorConfig(
                     $record?->key ?? EmailTemplate::RESET_PASSWORD,
                     array_filter(array_column($get('custom_variables') ?? [], 'name')),

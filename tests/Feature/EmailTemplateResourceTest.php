@@ -49,47 +49,44 @@ class EmailTemplateResourceTest extends TestCase
         $this->assertStringNotContainsString('laravel.com/img', $html);
     }
 
-    public function test_the_designed_body_and_variables_are_used_in_the_candidates_language(): void
+    public function test_the_designed_text_is_sent_as_written_to_every_candidate(): void
     {
         EmailTemplate::for(EmailTemplate::RESET_PASSWORD)->update([
             'header_title' => 'UHS Admission',
-            'subject_en' => 'Password help for {{ name }}',
-            'button_en' => 'Choose a new password',
-            'body_en' => '<h1 style="color: red;">Hi {{ name }}</h1><p>{{ reset_button }}</p><p>Valid for {{ minutes }} minutes. {{ unknown }}</p>',
-            'subject_km' => 'ពាក្យសម្ងាត់ {{ name }}',
+            'subject' => 'ពាក្យសម្ងាត់ {{ name }}',
+            'button' => 'Choose a new password',
+            'body' => '<h1 style="color: red;">Hi {{ name }}</h1><p>{{ reset_button }}</p><p>Valid for {{ minutes }} minutes. {{ unknown }}</p>',
         ]);
 
         $english = (new ResetPassword('t'))->toMail($this->user('dara', 'student', locale: 'en'));
         $html = (string) $english->render();
-        $this->assertSame('Password help for dara', $english->subject);
+        $this->assertSame('ពាក្យសម្ងាត់ dara', $english->subject);
         $this->assertStringContainsString('<h1 style="color: red;">Hi dara</h1>', $html);
         $this->assertStringContainsString('Choose a new password</a>', $html);
         $this->assertStringContainsString('reset-password/t', $html);
         $this->assertStringContainsString('Valid for 60 minutes. {{ unknown }}', $html);
         $this->assertStringContainsString('UHS Admission', $html);
 
+        // A Khmer-language candidate gets the same text.
         $khmer = (new ResetPassword('t'))->toMail($this->user('sokha', 'student', locale: 'km'));
         $this->assertSame('ពាក្យសម្ងាត់ sokha', $khmer->subject);
+        $this->assertStringContainsString('Hi sokha', (string) $khmer->render());
     }
 
-    public function test_custom_variables_are_filled_in_each_language(): void
+    public function test_custom_variables_are_filled_in(): void
     {
         EmailTemplate::for(EmailTemplate::RESET_PASSWORD)->update([
             'custom_variables' => [
-                ['name' => 'hotline', 'value_en' => '023 123 456', 'value_km' => '០២៣ ១២៣ ៤៥៦'],
-                ['name' => 'website', 'value_en' => 'uhs.edu.kh', 'value_km' => null],
+                ['name' => 'hotline', 'value' => '023 123 456'],
+                ['name' => 'website', 'value' => 'uhs.edu.kh'],
             ],
-            'subject_en' => 'Call {{ hotline }}',
-            'body_en' => '<p>Call {{ hotline }} or visit {{ website }}.</p>',
-            'body_km' => '<p>ទូរស័ព្ទ {{ hotline }} ឬ {{ website }}</p>',
+            'subject' => 'Call {{ hotline }}',
+            'body' => '<p>Call {{ hotline }} or visit {{ website }}.</p>',
         ]);
 
-        $english = (new ResetPassword('t'))->toMail($this->user('dara', 'student', locale: 'en'));
-        $this->assertSame('Call 023 123 456', $english->subject);
-        $this->assertStringContainsString('Call 023 123 456 or visit uhs.edu.kh.', (string) $english->render());
-
-        $khmer = (string) (new ResetPassword('t'))->toMail($this->user('sokha', 'student', locale: 'km'))->render();
-        $this->assertStringContainsString('ទូរស័ព្ទ ០២៣ ១២៣ ៤៥៦ ឬ uhs.edu.kh', $khmer);
+        $message = (new ResetPassword('t'))->toMail($this->user('dara', 'student', locale: 'km'));
+        $this->assertSame('Call 023 123 456', $message->subject);
+        $this->assertStringContainsString('Call 023 123 456 or visit uhs.edu.kh.', (string) $message->render());
     }
 
     public function test_admin_can_create_custom_variables_and_they_appear_in_insert_variable(): void
@@ -98,11 +95,11 @@ class EmailTemplateResourceTest extends TestCase
         $template = EmailTemplate::for(EmailTemplate::RESET_PASSWORD);
 
         Livewire::test(EditEmailTemplate::class, ['record' => $template->getRouteKey()])
-            ->set('data.custom_variables', ['a' => ['name' => 'hotline', 'value_en' => '023 123 456', 'value_km' => '']])
+            ->set('data.custom_variables', ['a' => ['name' => 'hotline', 'value' => '023 123 456']])
             ->call('save')
             ->assertHasNoFormErrors();
 
-        $this->assertSame('023 123 456', $template->refresh()->customVariables('km')['hotline']);
+        $this->assertSame('023 123 456', $template->refresh()->customVariables()['hotline']);
         $this->assertContains('hotline', $template->variableNames());
 
         $this->get(EmailTemplateResource::getUrl('edit', ['record' => $template]))
@@ -117,15 +114,15 @@ class EmailTemplateResourceTest extends TestCase
 
         foreach (['Hot Line', '1phone', 'name'] as $badName) {
             Livewire::test(EditEmailTemplate::class, ['record' => $template->getRouteKey()])
-                ->set('data.custom_variables', ['a' => ['name' => $badName, 'value_en' => 'x']])
+                ->set('data.custom_variables', ['a' => ['name' => $badName, 'value' => 'x']])
                 ->call('save')
                 ->assertHasFormErrors(['custom_variables.a.name']);
         }
 
         Livewire::test(EditEmailTemplate::class, ['record' => $template->getRouteKey()])
             ->set('data.custom_variables', [
-                'a' => ['name' => 'hotline', 'value_en' => 'x'],
-                'b' => ['name' => 'hotline', 'value_en' => 'y'],
+                'a' => ['name' => 'hotline', 'value' => 'x'],
+                'b' => ['name' => 'hotline', 'value' => 'y'],
             ])
             ->call('save')
             ->assertHasFormErrors(['custom_variables.a.name']);
@@ -173,7 +170,7 @@ class EmailTemplateResourceTest extends TestCase
 
     public function test_variable_values_are_escaped_in_the_body(): void
     {
-        EmailTemplate::for(EmailTemplate::RESET_PASSWORD)->update(['body_en' => '<p>Hi {{ name }}</p>']);
+        EmailTemplate::for(EmailTemplate::RESET_PASSWORD)->update(['body' => '<p>Hi {{ name }}</p>']);
         $user = $this->user('candidate', 'student', locale: 'en');
         $user->forceFill(['name' => '<script>alert(1)</script>'])->save();
 
@@ -185,7 +182,7 @@ class EmailTemplateResourceTest extends TestCase
 
     public function test_an_empty_field_falls_back_to_the_default(): void
     {
-        EmailTemplate::for(EmailTemplate::RESET_PASSWORD)->update(['body_en' => null, 'button_en' => null]);
+        EmailTemplate::for(EmailTemplate::RESET_PASSWORD)->update(['body' => null, 'button' => null]);
 
         $html = (string) (new ResetPassword('t'))->toMail($this->user('candidate', 'student', locale: 'en'))->render();
 
@@ -206,13 +203,13 @@ class EmailTemplateResourceTest extends TestCase
             ->assertSee('reset_button', false);
 
         Livewire::test(EditEmailTemplate::class, ['record' => $template->getRouteKey()])
-            ->assertSchemaStateSet(['subject_en' => 'Reset your password', 'header_title' => 'UHS-AMS'])
-            ->fillForm(['subject_en' => 'New subject', 'body_km' => '<p>ជម្រាបសួរ {{ name }}</p>'])
+            ->assertSchemaStateSet(['subject' => 'Reset your password', 'header_title' => 'UHS-AMS'])
+            ->fillForm(['subject' => 'New subject', 'body' => '<p>ជម្រាបសួរ {{ name }}</p>'])
             ->call('save')
             ->assertHasNoFormErrors();
 
-        $this->assertSame('New subject', $template->refresh()->subject_en);
-        $this->assertSame('<p>ជម្រាបសួរ {{ name }}</p>', $template->body_km);
+        $this->assertSame('New subject', $template->refresh()->subject);
+        $this->assertSame('<p>ជម្រាបសួរ {{ name }}</p>', $template->body);
         $this->assertFalse(EmailTemplateResource::hasPage('create'));
     }
 
@@ -222,9 +219,9 @@ class EmailTemplateResourceTest extends TestCase
         $template = EmailTemplate::for(EmailTemplate::RESET_PASSWORD);
 
         Livewire::test(EditEmailTemplate::class, ['record' => $template->getRouteKey()])
-            ->fillForm(['subject_en' => '', 'button_km' => ''])
+            ->fillForm(['subject' => '', 'button' => ''])
             ->call('save')
-            ->assertHasFormErrors(['subject_en' => 'required', 'button_km' => 'required']);
+            ->assertHasFormErrors(['subject' => 'required', 'button' => 'required']);
     }
 
     public function test_access_follows_role_permissions(): void
@@ -251,10 +248,10 @@ class EmailTemplateResourceTest extends TestCase
     {
         $this->actingAs($this->admin);
         $template = EmailTemplate::for(EmailTemplate::RESET_PASSWORD);
-        $template->update(['subject_en' => 'Test subject']);
+        $template->update(['subject' => 'Test subject']);
 
         Livewire::test(EditEmailTemplate::class, ['record' => $template->getRouteKey()])
-            ->callAction('sendTest', ['to' => 'developer@example.test', 'locale' => 'en'])
+            ->callAction('sendTest', ['to' => 'developer@example.test'])
             ->assertHasNoActionErrors()
             ->assertNotified(__('email_templates.send_test.sent', ['email' => 'developer@example.test']));
 
@@ -267,7 +264,7 @@ class EmailTemplateResourceTest extends TestCase
     {
         $this->actingAs($this->admin);
         $template = EmailTemplate::for(EmailTemplate::RESET_PASSWORD);
-        $template->update(['subject_en' => 'Changed']);
+        $template->update(['subject' => 'Changed']);
 
         Livewire::test(EditEmailTemplate::class, ['record' => $template->getRouteKey()])
             ->mountAction('preview')
@@ -275,9 +272,9 @@ class EmailTemplateResourceTest extends TestCase
 
         Livewire::test(EditEmailTemplate::class, ['record' => $template->getRouteKey()])
             ->callAction('resetDefaults')
-            ->assertSchemaStateSet(['subject_en' => 'Reset your password']);
+            ->assertSchemaStateSet(['subject' => 'Reset your password']);
 
-        $this->assertSame('Reset your password', $template->refresh()->subject_en);
+        $this->assertSame('Reset your password', $template->refresh()->subject);
     }
 
     public function test_the_custom_variables_section_lists_the_built_in_variables_with_samples(): void
