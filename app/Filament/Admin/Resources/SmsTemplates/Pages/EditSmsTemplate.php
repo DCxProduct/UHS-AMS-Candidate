@@ -56,7 +56,7 @@ class EditSmsTemplate extends EditRecord
                 ])
                 ->action(function (array $data): void {
                     try {
-                        $sent = PlasGateSms::send($data['to'], $this->sample());
+                        $sent = PlasGateSms::send($data['to'], $this->sample(), ['source' => 'test', 'user_id' => auth()->id()]);
                     } catch (Throwable $exception) {
                         report($exception);
                         $sent = false;

@@ -55,7 +55,11 @@ class PhonePasswordResetController extends Controller
         }
 
         try {
-            $sent = PlasGateSms::send($user->phone, PasswordResetOtpSms::text($user, $code));
+            $sent = PlasGateSms::send($user->phone, PasswordResetOtpSms::text($user, $code), [
+                'source' => 'password_reset',
+                'user_id' => $user->getKey(),
+                'mask' => $code,
+            ]);
         } catch (Throwable $exception) {
             report($exception);
             $sent = false;
