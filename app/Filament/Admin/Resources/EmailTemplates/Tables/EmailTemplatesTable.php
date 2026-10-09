@@ -24,6 +24,13 @@ class EmailTemplatesTable
                     ->formatStateUsing(fn (EmailTemplate $record): string => $record->label())
                     ->weight(FontWeight::SemiBold),
 
+                TextColumn::make('action')
+                    ->label(__('email_templates.fields.action'))
+                    ->formatStateUsing(fn (?string $state): string => filled($state) ? __('email_templates.actions_for.'.$state) : '—')
+                    ->placeholder('—')
+                    ->badge()
+                    ->color('info'),
+
                 TextColumn::make('subject')
                     ->label(__('email_templates.fields.subject'))
                     ->state(fn (EmailTemplate $record): string => $record->text('subject'))

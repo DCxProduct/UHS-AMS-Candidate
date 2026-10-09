@@ -16,6 +16,28 @@ trait HasTemplateText
 {
     abstract public static function defaults(string $key): array;
 
+    /** Workflow actions a template can be used for automatically. */
+    public const ACTIONS = ['accept', 'send_back', 'reject', 'payment', 'awaiting_results', 'completed'];
+
+    public static function actionOptions(): array
+    {
+        return collect(self::ACTIONS)
+            ->mapWithKeys(fn (string $action): array => [$action => __(static::LANG_FILE.'.actions_for.'.$action)])
+            ->all();
+    }
+
+    /**
+     * The template an admin set for a workflow action, if any.
+     */
+    public static function forAction(?string $action): ?static
+    {
+        if (blank($action)) {
+            return null;
+        }
+
+        return static::query()->where('action', $action)->whereNotIn('key', static::TEMPLATES)->first();
+    }
+
     public function initializeHasTemplateText(): void
     {
         $this->mergeCasts(['custom_variables' => 'array']);

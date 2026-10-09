@@ -4,8 +4,10 @@ namespace App\Filament\Admin\Resources\SmsTemplates\Schemas;
 
 use App\Models\SmsTemplate;
 use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\View;
@@ -24,11 +26,25 @@ class SmsTemplateForm
                 Section::make(__('sms_templates.sections.name'))
                     ->visible(fn (?SmsTemplate $record): bool => ! $record?->isBuiltIn())
                     ->schema([
-                        TextInput::make('name')
-                            ->label(__('sms_templates.fields.template_name'))
-                            ->placeholder(__('sms_templates.placeholders.template_name'))
-                            ->required()
-                            ->maxLength(255),
+                        Grid::make(['default' => 1, 'lg' => 2])->schema([
+                            TextInput::make('name')
+                                ->label(__('sms_templates.fields.template_name'))
+                                ->placeholder(__('sms_templates.placeholders.template_name'))
+                                ->required()
+                                ->maxLength(255),
+
+                            // Used automatically when a workflow sends this action's SMS.
+                            Select::make('action')
+                                ->label(__('sms_templates.fields.action'))
+                                ->placeholder(__('sms_templates.placeholders.action'))
+                                ->helperText(__('sms_templates.helpers.action'))
+                                ->options(fn (): array => SmsTemplate::actionOptions())
+                                ->unique(ignoreRecord: true)
+                                ->validationMessages([
+                                    'unique' => __('sms_templates.validation.action_taken'),
+                                ])
+                                ->native(false),
+                        ]),
                     ]),
 
                 Section::make(__('sms_templates.sections.general'))

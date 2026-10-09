@@ -3,7 +3,9 @@
 namespace App\Filament\Admin\Resources\WorkflowNotifications\Schemas;
 
 use App\Enums\WorkflowStageType;
+use App\Models\EmailTemplate;
 use App\Models\Role;
+use App\Models\SmsTemplate;
 use App\Support\WorkflowNotificationStageSummary;
 use App\Support\WorkflowStageMessages;
 use Filament\Actions\Action;
@@ -125,8 +127,39 @@ class WorkflowNotificationForm
                     ->default(['system'])
                     ->columns(3)
                     ->gridDirection('row')
+                    ->live()
                     ->visible($handledByStaff)
                     ->columnSpanFull(),
+
+                // Optional designed templates from the Email / SMS Templates menus.
+                // Without one, the stage sends its plain notification message.
+                Select::make('email_template_key')
+                    ->label(__('workflow_notifications.fields.email_template'))
+                    ->placeholder(__('workflow_notifications.placeholders.plain_email'))
+                    ->helperText(__('workflow_notifications.helpers.message_template'))
+                    ->options(fn (): array => EmailTemplate::query()
+                        ->whereNotIn('key', EmailTemplate::TEMPLATES)
+                        ->orderBy('name')
+                        ->get()
+                        ->mapWithKeys(fn (EmailTemplate $template): array => [$template->key => $template->label()])
+                        ->all())
+                    ->searchable()
+                    ->native(false)
+                    ->visible(fn (Get $get): bool => $handledByStaff($get) && in_array('email', (array) $get('notification_channels'), true)),
+
+                Select::make('sms_template_key')
+                    ->label(__('workflow_notifications.fields.sms_template'))
+                    ->placeholder(__('workflow_notifications.placeholders.plain_sms'))
+                    ->helperText(__('workflow_notifications.helpers.message_template'))
+                    ->options(fn (): array => SmsTemplate::query()
+                        ->whereNotIn('key', SmsTemplate::TEMPLATES)
+                        ->orderBy('name')
+                        ->get()
+                        ->mapWithKeys(fn (SmsTemplate $template): array => [$template->key => $template->label()])
+                        ->all())
+                    ->searchable()
+                    ->native(false)
+                    ->visible(fn (Get $get): bool => $handledByStaff($get) && in_array('sms', (array) $get('notification_channels'), true)),
 
                 TextInput::make('stage_name')
                     ->label(__('workflow_notifications.fields.stage_name'))

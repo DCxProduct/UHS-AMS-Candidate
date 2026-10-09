@@ -6,6 +6,7 @@ use AmidEsfahani\FilamentTinyEditor\TinyEditor;
 use App\Models\EmailTemplate;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -24,11 +25,25 @@ class EmailTemplateForm
                 Section::make(__('email_templates.sections.name'))
                     ->visible(fn (?EmailTemplate $record): bool => ! $record?->isBuiltIn())
                     ->schema([
-                        TextInput::make('name')
-                            ->label(__('email_templates.fields.template_name'))
-                            ->placeholder(__('email_templates.placeholders.template_name'))
-                            ->required()
-                            ->maxLength(255),
+                        Grid::make(['default' => 1, 'lg' => 2])->schema([
+                            TextInput::make('name')
+                                ->label(__('email_templates.fields.template_name'))
+                                ->placeholder(__('email_templates.placeholders.template_name'))
+                                ->required()
+                                ->maxLength(255),
+
+                            // Used automatically when a workflow sends this action's email.
+                            Select::make('action')
+                                ->label(__('email_templates.fields.action'))
+                                ->placeholder(__('email_templates.placeholders.action'))
+                                ->helperText(__('email_templates.helpers.action'))
+                                ->options(fn (): array => EmailTemplate::actionOptions())
+                                ->unique(ignoreRecord: true)
+                                ->validationMessages([
+                                    'unique' => __('email_templates.validation.action_taken'),
+                                ])
+                                ->native(false),
+                        ]),
                     ]),
 
                 Section::make(__('email_templates.sections.header'))

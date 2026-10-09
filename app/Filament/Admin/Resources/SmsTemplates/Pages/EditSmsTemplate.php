@@ -97,14 +97,9 @@ class EditSmsTemplate extends EditRecord
     private function sample(): string
     {
         if ($this->record->key !== SmsTemplate::RESET_PASSWORD_OTP) {
-            $user = auth()->user();
-
-            return trim($this->record->text('body', [
-                ...$this->record->customVariables(),
-                'name' => (string) ($user?->name ?? ''),
-                'phone' => (string) ($user?->phone ?? ''),
-                'app' => $this->record->appName(),
-            ]));
+            return $this->record->renderFor(auth()->user(), collect(['form', 'stage', 'message', 'status'])
+                ->mapWithKeys(fn (string $name): array => [$name => __('sms_templates.built_in.samples.'.$name)])
+                ->all());
         }
 
         return PasswordResetOtpSms::text(auth()->user(), '123456');

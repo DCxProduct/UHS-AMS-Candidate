@@ -99,7 +99,9 @@ class EditEmailTemplate extends EditRecord
         $user = auth()->user();
 
         if ($this->record->key !== EmailTemplate::RESET_PASSWORD) {
-            return TemplateEmail::build($this->record, $user);
+            return TemplateEmail::build($this->record, $user, collect(['form', 'stage', 'message', 'status'])
+                ->mapWithKeys(fn (string $name): array => [$name => __('email_templates.built_in.samples.'.$name)])
+                ->all());
         }
 
         return ResetPasswordEmail::build(

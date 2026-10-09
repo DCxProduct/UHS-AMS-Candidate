@@ -5,8 +5,10 @@ namespace Tests\Feature;
 use App\Enums\WorkflowStageType;
 use App\Filament\Admin\Resources\WorkflowNotifications\Pages\EditWorkflowNotification;
 use App\Mail\WorkflowStageMail;
+use App\Models\EmailTemplate;
 use App\Models\Payment;
 use App\Models\Role;
+use App\Models\SmsTemplate;
 use App\Models\User;
 use App\Models\WorkflowNotification;
 use App\Support\WorkflowStageMessages;
@@ -16,6 +18,7 @@ use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request as HttpRequest;
+use Illuminate\Mail\MailManager;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
@@ -192,6 +195,136 @@ class WorkflowNotificationChannelsTest extends TestCase
             ->assertHasNoFormErrors();
 
         $this->assertSame(['system', 'email'], $this->workflow->refresh()->stages[1]['data']['notification_channels']);
+    }
+
+    public function test_a_stage_can_send_with_its_chosen_email_and_sms_templates(): void
+    {
+        EmailTemplate::query()->create([
+            'key' => 'review_result',
+            'name' => 'Review result',
+            'header_title' => 'UHS-AMS',
+            'subject' => '{{ form }}: {{ stage }}',
+            'button' => 'Open',
+            'body' => '<p>Dear {{ name }}, {{ message }} ({{ status }})</p>',
+        ]);
+        SmsTemplate::query()->create([
+            'key' => 'review_sms',
+            'name' => 'Review SMS',
+            'app_name' => 'UHS-AMS',
+            'body' => '{{ app }}: {{ name }}, {{ message }}',
+        ]);
+
+        $stages = $this->workflow->stages;
+        $stages[1]['data']['notification_channels'] = ['sms', 'email'];
+        $stages[1]['data']['status_message'] = 'Under review';
+        $stages[1]['data']['email_template_key'] = 'review_result';
+        $stages[1]['data']['sms_template_key'] = 'review_sms';
+        $this->workflow->update(['stages' => $stages]);
+
+        Mail::swap(new MailManager(app()));
+        config(['mail.default' => 'array']);
+
+        $this->assertTrue(WorkflowStageMessages::notify($this->entry('pending'), WorkflowStageType::Review));
+
+        Http::assertSent(fn (HttpRequest $request): bool => $request['messages'][0]['content'] === 'UHS-AMS: Dara, We are checking your documents.');
+
+        $sent = app('mailer')->getSymfonyTransport()->messages()->last()->getOriginalMessage();
+        $this->assertSame('dara@example.test', $sent->getTo()[0]->getAddress());
+        $this->assertSame('Admission Form: Review', $sent->getSubject());
+        $this->assertStringContainsString('Dear Dara, We are checking your documents. (Under review)', $sent->getHtmlBody());
+    }
+
+    public function test_a_deleted_template_falls_back_to_the_plain_message(): void
+    {
+        $stages = $this->workflow->stages;
+        $stages[1]['data']['notification_channels'] = ['sms', 'email'];
+        $stages[1]['data']['email_template_key'] = 'deleted_template';
+        $stages[1]['data']['sms_template_key'] = 'deleted_template';
+        $this->workflow->update(['stages' => $stages]);
+
+        $this->assertTrue(WorkflowStageMessages::notify($this->entry('pending'), WorkflowStageType::Review));
+
+        Http::assertSent(fn (HttpRequest $request): bool => str_contains($request['messages'][0]['content'], 'We are checking your documents.'));
+        Mail::assertSent(WorkflowStageMail::class);
+    }
+
+    public function test_a_template_is_kept_only_for_a_ticked_channel(): void
+    {
+        Filament::setCurrentPanel(Filament::getPanel('app'));
+        Role::query()->create(['name' => 'admin', 'guard_name' => 'web']);
+        $admin = User::query()->forceCreate([
+            'registration_type' => 'admin',
+            'name' => 'admin_user',
+            'username' => 'admin_user',
+            'email' => 'admin_user@example.test',
+            'date_of_birth' => '2000-01-01',
+            'password' => Hash::make('password'),
+            'is_active' => true,
+        ]);
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+        SmsTemplate::query()->create(['key' => 'review_sms', 'name' => 'Review SMS', 'app_name' => 'UHS-AMS', 'body' => 'Hi']);
+
+        $component = Livewire::test(EditWorkflowNotification::class, ['record' => $this->workflow->getRouteKey()]);
+        $reviewKey = array_keys($component->get('data.stages'))[1];
+        $path = "stages.{$reviewKey}.data";
+
+        // SMS ticked: the chosen SMS template is saved; Email not ticked: no email template is kept.
+        $component->set("data.{$path}.notification_channels", ['system', 'sms'])
+            ->set("data.{$path}.sms_template_key", 'review_sms')
+            ->set("data.{$path}.email_template_key", 'anything')
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertArrayNotHasKey('email_template_key', $this->workflow->refresh()->stages[1]['data']);
+        $this->assertSame('review_sms', $this->workflow->refresh()->stages[1]['data']['sms_template_key']);
+    }
+
+    public function test_the_email_template_set_for_an_action_is_used_automatically(): void
+    {
+        EmailTemplate::query()->create(['key' => 'accepted', 'name' => 'Accepted', 'action' => 'accept', 'header_title' => 'UHS-AMS', 'subject' => 'Accepted: {{ form }}', 'button' => 'Open', 'body' => '<p>{{ message }}</p>']);
+        EmailTemplate::query()->create(['key' => 'chosen', 'name' => 'Chosen', 'header_title' => 'UHS-AMS', 'subject' => 'Chosen on the stage', 'button' => 'Open', 'body' => '<p>{{ message }}</p>']);
+
+        $stages = $this->workflow->stages;
+        $stages[1]['data']['notification_channels'] = ['email'];
+        $stages[1]['data']['review_actions'] = ['accept' => ['notification_message' => 'You are accepted.']];
+        $this->workflow->update(['stages' => $stages]);
+
+        Mail::swap(new MailManager(app()));
+        config(['mail.default' => 'array']);
+
+        // No template chosen on the stage: the "Review – Accept" template is used.
+        $this->assertTrue(WorkflowStageMessages::notifyReviewAction($this->entry('pending'), 'accept'));
+        $sent = app('mailer')->getSymfonyTransport()->messages()->last()->getOriginalMessage();
+        $this->assertSame('Accepted: Admission Form', $sent->getSubject());
+        $this->assertStringContainsString('You are accepted.', $sent->getHtmlBody());
+
+        // A template chosen on the stage wins over the action template.
+        $stages[1]['data']['email_template_key'] = 'chosen';
+        $this->workflow->update(['stages' => $stages]);
+        $this->assertTrue(WorkflowStageMessages::notifyReviewAction($this->entry('pending'), 'accept'));
+        $this->assertSame('Chosen on the stage', app('mailer')->getSymfonyTransport()->messages()->last()->getOriginalMessage()->getSubject());
+    }
+
+    public function test_the_sms_template_set_for_an_action_is_used_automatically(): void
+    {
+        SmsTemplate::query()->create(['key' => 'accepted_sms', 'name' => 'Accepted SMS', 'action' => 'accept', 'app_name' => 'UHS-AMS', 'body' => 'ACCEPT: {{ message }}']);
+        SmsTemplate::query()->create(['key' => 'chosen_sms', 'name' => 'Chosen SMS', 'app_name' => 'UHS-AMS', 'body' => 'CHOSEN: {{ message }}']);
+
+        $stages = $this->workflow->stages;
+        $stages[1]['data']['notification_channels'] = ['sms'];
+        $stages[1]['data']['review_actions'] = ['accept' => ['notification_message' => 'You are accepted.']];
+        $this->workflow->update(['stages' => $stages]);
+
+        // No template chosen on the stage: the "Review – Accept" SMS template is used.
+        $this->assertTrue(WorkflowStageMessages::notifyReviewAction($this->entry('pending'), 'accept'));
+        Http::assertSent(fn (HttpRequest $request): bool => $request['messages'][0]['content'] === 'ACCEPT: You are accepted.');
+
+        // A template chosen on the stage wins over the action template.
+        $stages[1]['data']['sms_template_key'] = 'chosen_sms';
+        $this->workflow->update(['stages' => $stages]);
+        $this->assertTrue(WorkflowStageMessages::notifyReviewAction($this->entry('pending'), 'accept'));
+        Http::assertSent(fn (HttpRequest $request): bool => $request['messages'][0]['content'] === 'CHOSEN: You are accepted.');
     }
 
     private function setChannels(int $stageIndex, array $channels): void

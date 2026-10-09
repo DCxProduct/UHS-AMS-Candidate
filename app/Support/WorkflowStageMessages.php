@@ -4,6 +4,8 @@ namespace App\Support;
 
 use App\Enums\WorkflowStageType;
 use App\Mail\WorkflowStageMail;
+use App\Models\EmailTemplate;
+use App\Models\SmsTemplate;
 use App\Models\Payment;
 use App\Models\User;
 use App\Models\WorkflowNotification;
@@ -489,12 +491,20 @@ final class WorkflowStageMessages
                 ),
             ]);
 
+            // Values for an Email/SMS template chosen on the stage.
+            $templateVariables = [
+                'form' => (string) ($entry->customForm?->display_name ?? ''),
+                'stage' => WorkflowNotificationStageSummary::localizedName($stage['stage_name'] ?? null, $stageType),
+                'message' => self::plainText($body),
+                'status' => (string) ($stage['status_message'] ?? ''),
+            ];
+
             // Each channel is independent: a failed SMS or email never stops the others.
-            if (in_array('sms', $channels, true) && self::sendSms($student, $title, $body)) {
+            if (in_array('sms', $channels, true) && self::sendSms($student, $title, $body, $stage['sms_template_key'] ?? null, $templateVariables, $action ?? $stageType->value)) {
                 $delivered[] = 'sms';
             }
 
-            if (in_array('email', $channels, true) && self::sendEmail($student, $title, $body)) {
+            if (in_array('email', $channels, true) && self::sendEmail($student, $title, $body, $stage['email_template_key'] ?? null, $templateVariables, $action ?? $stageType->value)) {
                 $delivered[] = 'email';
             }
 
@@ -540,10 +550,19 @@ final class WorkflowStageMessages
         return array_values(array_intersect(self::CHANNELS, $stage['notification_channels']));
     }
 
-    private static function sendSms(User $student, string $title, string $body): bool
+    /**
+     * Uses the SMS template chosen on the stage, else the template set for this
+     * action (SMS Templates → Used for), else the plain stage message.
+     */
+    private static function sendSms(User $student, string $title, string $body, ?string $templateKey = null, array $templateVariables = [], ?string $actionKey = null): bool
     {
+        $template = (filled($templateKey) ? SmsTemplate::query()->where('key', $templateKey)->first() : null)
+            ?? SmsTemplate::forAction($actionKey);
+
         try {
-            return PlasGateSms::send($student->phone, trim($title."\n".self::plainText($body)));
+            return PlasGateSms::send($student->phone, $template
+                ? $template->renderFor($student, $templateVariables)
+                : trim($title."\n".self::plainText($body)));
         } catch (Throwable $exception) {
             report($exception);
 
@@ -551,13 +570,27 @@ final class WorkflowStageMessages
         }
     }
 
-    private static function sendEmail(User $student, string $title, string $body): bool
+    /**
+     * Uses the Email template chosen on the stage, else the template set for this
+     * action (Email Templates → Used for), else the plain stage email.
+     */
+    private static function sendEmail(User $student, string $title, string $body, ?string $templateKey = null, array $templateVariables = [], ?string $actionKey = null): bool
     {
         if (! filter_var($student->email, FILTER_VALIDATE_EMAIL)) {
             return false;
         }
 
+        $template = (filled($templateKey) ? EmailTemplate::query()->where('key', $templateKey)->first() : null)
+            ?? EmailTemplate::forAction($actionKey);
+
         try {
+            if ($template) {
+                $message = TemplateEmail::build($template, $student, $templateVariables);
+                Mail::send($message->view, $message->viewData, fn ($mail) => $mail->to($student->email)->subject((string) $message->subject));
+
+                return true;
+            }
+
             Mail::to($student->email)->send(new WorkflowStageMail(
                 heading: $title,
                 text: self::plainText($body),

@@ -24,6 +24,13 @@ class SmsTemplatesTable
                     ->formatStateUsing(fn (SmsTemplate $record): string => $record->label())
                     ->weight(FontWeight::SemiBold),
 
+                TextColumn::make('action')
+                    ->label(__('sms_templates.fields.action'))
+                    ->formatStateUsing(fn (?string $state): string => filled($state) ? __('sms_templates.actions_for.'.$state) : '—')
+                    ->placeholder('—')
+                    ->badge()
+                    ->color('info'),
+
                 TextColumn::make('body')
                     ->label(__('sms_templates.fields.body'))
                     ->state(fn (SmsTemplate $record): string => $record->text('body'))

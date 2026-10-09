@@ -60,7 +60,7 @@ class MessageTemplateCrudTest extends TestCase
         $template = EmailTemplate::query()->where('key', 'interview_invitation')->sole();
         $this->assertSame('Interview invitation', $template->label());
         $this->assertFalse($template->isBuiltIn());
-        $this->assertSame(['name', 'email', 'app'], EmailTemplate::builtInVariablesFor($template));
+        $this->assertSame(['name', 'email', 'app', 'form', 'stage', 'message', 'status'], EmailTemplate::builtInVariablesFor($template));
 
         Livewire::test(EditEmailTemplate::class, ['record' => $template->getRouteKey()])
             ->callAction('sendTest', ['to' => 'developer@example.test'])
@@ -110,6 +110,47 @@ class MessageTemplateCrudTest extends TestCase
         }
 
         $this->assertSame(['exam_reminder', 'exam_reminder_1'], SmsTemplate::query()->orderBy('id')->pluck('key')->all());
+    }
+
+    public function test_an_email_template_can_be_set_for_one_action_only(): void
+    {
+        $form = [
+            'header_title' => 'UHS-AMS',
+            'subject' => 'Hi',
+            'button' => 'Open',
+            'body' => '<p>{{ message }}</p>',
+        ];
+
+        Livewire::test(CreateEmailTemplate::class)
+            ->fillForm([...$form, 'name' => 'Accepted', 'action' => 'accept'])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $this->assertSame('accept', EmailTemplate::forAction('accept')?->action);
+        Livewire::test(ListEmailTemplates::class)
+            ->assertTableColumnStateSet('action', 'accept', EmailTemplate::forAction('accept'));
+
+        Livewire::test(CreateEmailTemplate::class)
+            ->fillForm([...$form, 'name' => 'Accepted again', 'action' => 'accept'])
+            ->call('create')
+            ->assertHasFormErrors(['action' => 'unique']);
+    }
+
+    public function test_an_sms_template_can_be_set_for_one_action_only(): void
+    {
+        Livewire::test(CreateSmsTemplate::class)
+            ->fillForm(['name' => 'Accepted SMS', 'action' => 'accept', 'app_name' => 'UHS-AMS', 'body' => '{{ message }}'])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $this->assertSame('accept', SmsTemplate::forAction('accept')?->action);
+        Livewire::test(ListSmsTemplates::class)
+            ->assertTableColumnStateSet('action', 'accept', SmsTemplate::forAction('accept'));
+
+        Livewire::test(CreateSmsTemplate::class)
+            ->fillForm(['name' => 'Accepted again', 'action' => 'accept', 'app_name' => 'UHS-AMS', 'body' => 'Hi'])
+            ->call('create')
+            ->assertHasFormErrors(['action' => 'unique']);
     }
 
     public function test_built_in_templates_cannot_be_deleted(): void
