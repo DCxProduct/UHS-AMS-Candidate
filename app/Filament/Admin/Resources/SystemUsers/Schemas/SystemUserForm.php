@@ -12,7 +12,6 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 
 class SystemUserForm
 {
@@ -28,27 +27,6 @@ class SystemUserForm
                             'md' => 2,
                         ])
                             ->schema([
-                                TextInput::make('username')
-                                    ->label(__('system_users.fields.username'))
-                                    ->required()
-                                    ->maxLength(100)
-                                    ->unique(SystemUser::class, 'username', ignoreRecord: true)
-                                    ->placeholder(__('system_users.placeholders.username'))
-                                    ->rules([
-                                        'required',
-                                        'regex:/^[a-z0-9_]+$/',
-                                    ])
-                                    ->validationMessages([
-                                        'required' => __('system_users.validation.username_required'),
-                                        'regex' => __('system_users.validation.username_regex'),
-                                    ])
-                                    ->extraInputAttributes([
-                                        'autocapitalize' => 'none',
-                                        'autocomplete' => 'off',
-                                        'oninput' => "this.value = this.value.toLowerCase().replace(/[^a-z0-9_]/g, '')",
-                                    ])
-                                    ->dehydrateStateUsing(fn ($state): ?string => blank($state) ? null : Str::lower(trim((string) $state))),
-
                                 TextInput::make('email')
                                     ->label(__('system_users.fields.email'))
                                     ->email()

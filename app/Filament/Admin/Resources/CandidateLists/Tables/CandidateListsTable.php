@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Resources\CandidateLists\Tables;
 use App\Filament\Admin\Resources\CandidateLists\CandidateListResource;
 use App\Models\SystemUser;
 use App\Models\User;
+use App\Support\CandidateLatinName;
 use App\Support\FilamentActionPermissions;
 use App\Support\LocalizedDate;
 use App\Support\NotificationLanguage;
@@ -20,6 +21,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
 class CandidateListsTable
@@ -48,11 +50,18 @@ class CandidateListsTable
                     ->searchable()
                     ->sortable(),
 
-                TextColumn::make('username')
-                    ->label(__('candidate_lists.fields.username'))
+                TextColumn::make('first_name_latin')
+                    ->label(__('app.first_name_latin'))
+                    ->state(fn (SystemUser $record): string => CandidateLatinName::split($record->name)[0])
                     ->placeholder('-')
-                    ->searchable()
-                    ->sortable(),
+                    ->searchable(query: fn (Builder $query, string $search): Builder => static::searchName($query, $search))
+                    ->sortable(query: fn (Builder $query, string $direction): Builder => $query->orderBy('name', $direction)),
+
+                TextColumn::make('last_name_latin')
+                    ->label(__('app.last_name_latin'))
+                    ->state(fn (SystemUser $record): string => CandidateLatinName::split($record->name)[1])
+                    ->placeholder('-')
+                    ->searchable(query: fn (Builder $query, string $search): Builder => static::searchName($query, $search)),
 
                 TextColumn::make('candidate_type')
                     ->label(__('candidate_lists.fields.candidate_type'))
@@ -238,5 +247,13 @@ class CandidateListsTable
     protected static function findLinkedLoginUser(SystemUser $record): ?User
     {
         return $record->findLinkedLoginUser();
+    }
+
+    /**
+     * First and last Latin names are stored together in "name".
+     */
+    protected static function searchName(Builder $query, string $search): Builder
+    {
+        return $query->whereRaw('LOWER(name) LIKE ?', ['%'.mb_strtolower(trim($search)).'%']);
     }
 }

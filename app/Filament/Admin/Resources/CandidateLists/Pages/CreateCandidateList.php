@@ -3,10 +3,11 @@
 namespace App\Filament\Admin\Resources\CandidateLists\Pages;
 
 use App\Filament\Admin\Resources\CandidateLists\CandidateListResource;
+use App\Models\User;
+use App\Support\CandidateLatinName;
 use App\Support\UserTypeOptions;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Support\Enums\Width;
-use Illuminate\Support\Str;
 
 class CreateCandidateList extends CreateRecord
 {
@@ -34,13 +35,8 @@ class CreateCandidateList extends CreateRecord
         unset($data['role_ids']);
         unset($data['candidate_type']);
 
-        $data['name'] = blank($data['name'] ?? null)
-            ? trim((string) ($data['username'] ?? 'Candidate'))
-            : trim((string) $data['name']);
-
-        $data['username'] = blank($data['username'] ?? null)
-            ? null
-            : Str::lower(trim((string) $data['username']));
+        $data['name'] = CandidateLatinName::join($data['first_name_en'] ?? null, $data['last_name_en'] ?? null) ?: 'Candidate';
+        unset($data['first_name_en'], $data['last_name_en']);
 
         $data['email'] = blank($data['email'] ?? null)
             ? null
@@ -49,6 +45,9 @@ class CreateCandidateList extends CreateRecord
         $data['phone'] = blank($data['phone'] ?? null)
             ? null
             : preg_replace('/[^0-9]/', '', (string) $data['phone']);
+
+        // Made automatically from the phone number, like registration.
+        $data['username'] = CandidateLatinName::generateUsername($data['phone']);
 
         $data['permissions'] = null;
         $data['is_active'] = (bool) ($data['is_active'] ?? true);
@@ -68,5 +67,16 @@ class CreateCandidateList extends CreateRecord
         }
 
         $this->record->syncLoginUser();
+        $this->saveLatinNameOnLoginUser();
+    }
+
+    /**
+     * The login account keeps the Latin name too, like registration.
+     */
+    protected function saveLatinNameOnLoginUser(): void
+    {
+        if (filled($this->record->username)) {
+            User::query()->where('username', $this->record->username)->update(['name_latin' => $this->record->name]);
+        }
     }
 }

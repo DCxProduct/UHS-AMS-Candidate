@@ -3,10 +3,10 @@
 namespace App\Filament\Admin\Resources\SystemUsers\Pages;
 
 use App\Filament\Admin\Resources\SystemUsers\SystemUserResource;
+use App\Support\SystemUsername;
 use App\Support\UserTypeOptions;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Support\Enums\Width;
-use Illuminate\Support\Str;
 
 class CreateSystemUser extends CreateRecord
 {
@@ -31,14 +31,6 @@ class CreateSystemUser extends CreateRecord
         unset($data['role_ids']);
         unset($data['candidate_type']);
 
-        $data['name'] = blank($data['name'] ?? null)
-            ? trim((string) ($data['username'] ?? 'System User'))
-            : trim((string) $data['name']);
-
-        $data['username'] = blank($data['username'] ?? null)
-            ? null
-            : Str::lower(trim((string) $data['username']));
-
         $data['email'] = blank($data['email'] ?? null)
             ? null
             : trim((string) $data['email']);
@@ -46,6 +38,12 @@ class CreateSystemUser extends CreateRecord
         $data['phone'] = blank($data['phone'] ?? null)
             ? null
             : preg_replace('/[^0-9]/', '', (string) $data['phone']);
+
+        // Made automatically (from the email, or the phone); the name follows it as before.
+        $data['username'] = SystemUsername::generate($data['email'], $data['phone']);
+        $data['name'] = blank($data['name'] ?? null)
+            ? $data['username']
+            : trim((string) $data['name']);
 
         $data['permissions'] = null;
         $data['is_active'] = (bool) ($data['is_active'] ?? true);
