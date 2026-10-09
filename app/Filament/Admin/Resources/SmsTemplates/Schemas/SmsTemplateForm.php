@@ -10,7 +10,6 @@ use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
-use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\HtmlString;
@@ -22,106 +21,95 @@ class SmsTemplateForm
         return $schema
             ->columns(1)
             ->components([
-                // Built-in templates keep their system name; new templates need one.
-                Section::make(__('sms_templates.sections.name'))
-                    ->visible(fn (?SmsTemplate $record): bool => ! $record?->isBuiltIn())
+                // One card holding the template's parts, like the Custom Forms field editor.
+                Section::make()
                     ->schema([
-                        Grid::make(['default' => 1, 'lg' => 2])->schema([
-                            TextInput::make('name')
-                                ->label(__('sms_templates.fields.template_name'))
-                                ->placeholder(__('sms_templates.placeholders.template_name'))
-                                ->required()
-                                ->maxLength(255),
-
-                            // Used automatically when a workflow sends this action's SMS.
-                            Select::make('action')
-                                ->label(__('sms_templates.fields.action'))
-                                ->placeholder(__('sms_templates.placeholders.action'))
-                                ->helperText(__('sms_templates.helpers.action'))
-                                ->options(fn (): array => SmsTemplate::actionOptions())
-                                ->unique(ignoreRecord: true)
-                                ->validationMessages([
-                                    'unique' => __('sms_templates.validation.action_taken'),
-                                ])
-                                ->native(false),
-                        ]),
-                    ]),
-
-                Section::make(__('sms_templates.sections.general'))
-                    ->schema([
-                        TextInput::make('app_name')
-                            ->label(__('sms_templates.fields.app_name'))
-                            ->helperText(__('sms_templates.helpers.app_name'))
-                            ->required()
-                            ->maxLength(50),
-                    ]),
-
-                Section::make(__('sms_templates.sections.custom_variables'))
-                    ->description(__('sms_templates.sections.custom_variables_description'))
-                    ->collapsible()
-                    ->schema([
-                        View::make('filament.admin.partials.template-variables')
-                            ->viewData(fn (?SmsTemplate $record): array => [
-                                'heading' => __('sms_templates.built_in.heading'),
-                                'labels' => __('sms_templates.built_in.columns'),
-                                'variables' => collect(SmsTemplate::builtInVariablesFor($record))
-                                    ->map(fn (string $name): array => [
-                                        'name' => $name,
-                                        'meaning' => __('sms_templates.built_in.meanings.'.$name),
-                                        'sample' => __('sms_templates.built_in.samples.'.$name),
-                                    ])
-                                    ->all(),
-                            ]),
-
-                        Repeater::make('custom_variables')
-                            ->hiddenLabel()
+                        // Built-in templates keep their system name; new templates need one.
+                        Grid::make(['default' => 1, 'lg' => 2])
+                            ->visible(fn (?SmsTemplate $record): bool => ! $record?->isBuiltIn())
                             ->schema([
                                 TextInput::make('name')
-                                    ->label(__('sms_templates.fields.variable_name'))
-                                    ->prefix('{{')
-                                    ->suffix('}}')
-                                    ->placeholder('hotline')
+                                    ->label(__('sms_templates.fields.template_name'))
+                                    ->placeholder(__('sms_templates.placeholders.template_name'))
                                     ->required()
-                                    ->maxLength(40)
-                                    ->regex('/^[a-z][a-z0-9_]*$/')
-                                    ->notIn(fn (?SmsTemplate $record): array => SmsTemplate::builtInVariablesFor($record))
-                                    ->distinct()
-                                    ->validationMessages([
-                                        'regex' => __('sms_templates.validation.variable_name'),
-                                        'not_in' => __('sms_templates.validation.variable_reserved'),
-                                        'distinct' => __('sms_templates.validation.variable_distinct'),
-                                    ])
-                                    ->live(onBlur: true),
-                                TextInput::make('value')
-                                    ->label(__('sms_templates.fields.value'))
-                                    ->required()
-                                    ->maxLength(200),
-                            ])
-                            ->columns(2)
-                            ->defaultItems(0)
-                            ->addActionLabel(__('sms_templates.actions.add_variable'))
-                            ->itemLabel(fn (array $state): ?string => filled($state['name'] ?? null) ? '{{ '.$state['name'].' }}' : null),
-                    ]),
+                                    ->maxLength(255),
 
-                Section::make(__('sms_templates.sections.content'))
-                    ->description(__('sms_templates.sections.content_description'))
-                    ->schema([
-                        Textarea::make('body')
-                            ->id('sms-body')
-                            ->label(__('sms_templates.fields.body'))
-                                // "Insert Variable" dropdown on the label row; it adds at the cursor.
-                            ->hint(fn (?SmsTemplate $record, Get $get): Htmlable => new HtmlString(view('filament.admin.sms-templates.insert-variable', [
-                                'target' => 'sms-body',
-                                'label' => __('sms_templates.actions.insert_variable'),
-                                'variables' => collect([
-                                    ...SmsTemplate::builtInVariablesFor($record),
-                                    ...array_filter(array_column($get('custom_variables') ?? [], 'name')),
-                                ])->unique()->map(fn (string $name): string => '{{ '.$name.' }}')->values()->all(),
-                            ])->render()))
-                            ->helperText(__('sms_templates.helpers.body'))
-                            ->required()
-                            ->rows(4)
-                            ->maxLength(1000),
+                                // Used automatically when a workflow sends this action's SMS.
+                                Select::make('action')
+                                    ->label(__('sms_templates.fields.action'))
+                                    ->placeholder(__('sms_templates.placeholders.action'))
+                                    ->helperText(__('sms_templates.helpers.action'))
+                                    ->options(fn (): array => SmsTemplate::actionOptions())
+                                    ->unique(ignoreRecord: true)
+                                    ->validationMessages([
+                                        'unique' => __('sms_templates.validation.action_taken'),
+                                    ])
+                                    ->native(false),
+                            ]),
+
+                        Section::make(__('sms_templates.sections.general'))
+                            ->schema([
+                                TextInput::make('app_name')
+                                    ->label(__('sms_templates.fields.app_name'))
+                                    ->helperText(__('sms_templates.helpers.app_name'))
+                                    ->required()
+                                    ->maxLength(50),
+                            ]),
+
+                        Section::make(__('sms_templates.sections.custom_variables'))
+                            ->description(__('sms_templates.sections.custom_variables_description'))
+                            ->collapsible()
+                            ->schema([
+                                Repeater::make('custom_variables')
+                                    ->hiddenLabel()
+                                    ->schema([
+                                        TextInput::make('name')
+                                            ->label(__('sms_templates.fields.variable_name'))
+                                            ->prefix('{{')
+                                            ->suffix('}}')
+                                            ->placeholder('hotline')
+                                            ->required()
+                                            ->maxLength(40)
+                                            ->regex('/^[a-z][a-z0-9_]*$/')
+                                            ->notIn(fn (?SmsTemplate $record): array => SmsTemplate::builtInVariablesFor($record))
+                                            ->distinct()
+                                            ->validationMessages([
+                                                'regex' => __('sms_templates.validation.variable_name'),
+                                                'not_in' => __('sms_templates.validation.variable_reserved'),
+                                                'distinct' => __('sms_templates.validation.variable_distinct'),
+                                            ])
+                                            ->live(onBlur: true),
+                                        TextInput::make('value')
+                                            ->label(__('sms_templates.fields.value'))
+                                            ->required()
+                                            ->maxLength(200),
+                                    ])
+                                    ->columns(2)
+                                    ->defaultItems(0)
+                                    ->addActionLabel(__('sms_templates.actions.add_variable'))
+                                    ->itemLabel(fn (array $state): ?string => filled($state['name'] ?? null) ? '{{ '.$state['name'].' }}' : null),
+                            ]),
+
+                        Section::make(__('sms_templates.sections.content'))
+                            ->description(__('sms_templates.sections.content_description'))
+                            ->schema([
+                                Textarea::make('body')
+                                    ->id('sms-body')
+                                    ->label(__('sms_templates.fields.body'))
+                                    // "Insert Variable" dropdown on the label row; it adds at the cursor.
+                                    ->hint(fn (?SmsTemplate $record, Get $get): Htmlable => new HtmlString(view('filament.admin.sms-templates.insert-variable', [
+                                        'target' => 'sms-body',
+                                        'label' => __('sms_templates.actions.insert_variable'),
+                                        'variables' => collect([
+                                            ...SmsTemplate::builtInVariablesFor($record),
+                                            ...array_filter(array_column($get('custom_variables') ?? [], 'name')),
+                                        ])->unique()->map(fn (string $name): string => '{{ '.$name.' }}')->values()->all(),
+                                    ])->render()))
+                                    ->helperText(__('sms_templates.helpers.body'))
+                                    ->required()
+                                    ->rows(4)
+                                    ->maxLength(1000),
+                            ]),
                     ]),
             ]);
     }

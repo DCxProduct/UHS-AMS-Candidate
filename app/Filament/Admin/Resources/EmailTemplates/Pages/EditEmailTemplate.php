@@ -8,13 +8,9 @@ use App\Support\ResetPasswordEmail;
 use App\Support\TemplateEmail;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
-use Filament\Forms\Components\TextInput;
-use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Notifications\Messages\MailMessage;
-use Illuminate\Support\Facades\Mail;
-use Throwable;
 
 /**
  * @property EmailTemplate $record
@@ -44,50 +40,8 @@ class EditEmailTemplate extends EditRecord
                     'previews' => [$this->record->label() => (string) $this->sample()->render()],
                 ])),
 
-            Action::make('sendTest')
-                ->label(__('email_templates.actions.send_test'))
-                ->icon('heroicon-o-paper-airplane')
-                ->color('gray')
-                ->modalDescription(__('email_templates.send_test.save_first'))
-                ->modalSubmitActionLabel(__('email_templates.actions.send'))
-                ->schema([
-                    TextInput::make('to')
-                        ->label(__('email_templates.send_test.email'))
-                        ->email()
-                        ->required()
-                        ->default(fn (): ?string => auth()->user()?->email),
-                ])
-                ->action(function (array $data): void {
-                    try {
-                        $message = $this->sample();
-                        // Sent like the real email, so the logo is embedded the same way.
-                        Mail::send($message->view, $message->viewData, fn ($mail) => $mail->to($data['to'])->subject((string) $message->subject));
-                    } catch (Throwable $exception) {
-                        report($exception);
-                        Notification::make()->title(__('email_templates.send_test.failed'))->danger()->send();
-
-                        return;
-                    }
-
-                    Notification::make()->title(__('email_templates.send_test.sent', ['email' => $data['to']]))->success()->send();
-                }),
-
             DeleteAction::make()
                 ->visible(fn (): bool => ! $this->record->isBuiltIn()),
-
-            Action::make('resetDefaults')
-                ->label(__('email_templates.actions.reset_defaults'))
-                ->visible(fn (): bool => $this->record->isBuiltIn())
-                ->icon('heroicon-o-arrow-uturn-left')
-                ->color('danger')
-                ->requiresConfirmation()
-                ->modalDescription(__('email_templates.reset_defaults.description'))
-                ->action(function (): void {
-                    $this->record->update(EmailTemplate::defaults($this->record->key));
-                    $this->fillForm();
-
-                    Notification::make()->title(__('email_templates.reset_defaults.done'))->success()->send();
-                }),
         ];
     }
 

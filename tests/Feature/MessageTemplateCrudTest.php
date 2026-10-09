@@ -12,6 +12,7 @@ use App\Models\EmailTemplate;
 use App\Models\Role;
 use App\Models\SmsTemplate;
 use App\Models\User;
+use App\Support\TemplateEmail;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -62,15 +63,15 @@ class MessageTemplateCrudTest extends TestCase
         $this->assertFalse($template->isBuiltIn());
         $this->assertSame(['name', 'email', 'app', 'form', 'stage', 'message', 'status'], EmailTemplate::builtInVariablesFor($template));
 
+        $message = TemplateEmail::build($template, auth()->user());
+        $this->assertSame('Interview for admin_user', $message->subject);
+        $this->assertStringContainsString('Hello admin_user, please come to UHS-AMS.', (string) $message->render());
+
         Livewire::test(EditEmailTemplate::class, ['record' => $template->getRouteKey()])
-            ->callAction('sendTest', ['to' => 'developer@example.test'])
-            ->assertHasNoActionErrors()
-            ->assertActionHidden('resetDefaults')
+            ->assertActionDoesNotExist('sendTest')
+            ->assertActionDoesNotExist('resetDefaults')
             ->callAction('delete');
 
-        $sent = app('mailer')->getSymfonyTransport()->messages()->last()->getOriginalMessage();
-        $this->assertSame('Interview for admin_user', $sent->getSubject());
-        $this->assertStringContainsString('Hello admin_user, please come to UHS-AMS.', $sent->getHtmlBody());
         $this->assertModelMissing($template);
     }
 
@@ -162,7 +163,7 @@ class MessageTemplateCrudTest extends TestCase
         Livewire::test(ListSmsTemplates::class)->assertTableActionHidden('delete', $sms);
         Livewire::test(EditEmailTemplate::class, ['record' => $email->getRouteKey()])
             ->assertActionHidden('delete')
-            ->assertActionVisible('resetDefaults')
+            ->assertActionDoesNotExist('resetDefaults')
             ->assertDontSee(__('email_templates.fields.template_name'));
         Livewire::test(EditSmsTemplate::class, ['record' => $sms->getRouteKey()])->assertActionHidden('delete');
 

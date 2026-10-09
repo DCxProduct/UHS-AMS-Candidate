@@ -244,52 +244,25 @@ class EmailTemplateResourceTest extends TestCase
         $this->get(EmailTemplateResource::getUrl('edit', ['record' => $template]))->assertForbidden();
     }
 
-    public function test_send_test_email_uses_the_saved_text(): void
+    public function test_preview_works_and_there_is_no_send_test_or_restore_button(): void
     {
         $this->actingAs($this->admin);
         $template = EmailTemplate::for(EmailTemplate::RESET_PASSWORD);
-        $template->update(['subject' => 'Test subject']);
 
         Livewire::test(EditEmailTemplate::class, ['record' => $template->getRouteKey()])
-            ->callAction('sendTest', ['to' => 'developer@example.test'])
-            ->assertHasNoActionErrors()
-            ->assertNotified(__('email_templates.send_test.sent', ['email' => 'developer@example.test']));
-
-        $sent = app('mailer')->getSymfonyTransport()->messages()->last()->getOriginalMessage();
-        $this->assertSame('developer@example.test', $sent->getTo()[0]->getAddress());
-        $this->assertSame('Test subject', $sent->getSubject());
-    }
-
-    public function test_preview_and_restore_defaults(): void
-    {
-        $this->actingAs($this->admin);
-        $template = EmailTemplate::for(EmailTemplate::RESET_PASSWORD);
-        $template->update(['subject' => 'Changed']);
-
-        Livewire::test(EditEmailTemplate::class, ['record' => $template->getRouteKey()])
+            ->assertActionDoesNotExist('sendTest')
+            ->assertActionDoesNotExist('resetDefaults')
             ->mountAction('preview')
             ->assertActionMounted('preview');
-
-        Livewire::test(EditEmailTemplate::class, ['record' => $template->getRouteKey()])
-            ->callAction('resetDefaults')
-            ->assertSchemaStateSet(['subject' => 'Reset your password']);
-
-        $this->assertSame('Reset your password', $template->refresh()->subject);
     }
 
-    public function test_the_custom_variables_section_lists_the_built_in_variables_with_samples(): void
+    public function test_the_built_in_variables_table_is_not_shown(): void
     {
         $this->actingAs($this->admin);
         $template = EmailTemplate::for(EmailTemplate::TEMPLATES[0]);
 
-        $response = $this->get(EmailTemplateResource::getUrl('edit', ['record' => $template]))->assertOk()
-            ->assertSee(__('email_templates.built_in.heading'));
-
-        foreach (EmailTemplate::VARIABLES[$template->key] as $name) {
-            $response->assertSee('&#123;&#123; '.$name.' &#125;&#125;', false)
-                ->assertSee(__('email_templates.built_in.meanings.'.$name))
-                ->assertSee(__('email_templates.built_in.samples.'.$name));
-        }
+        $this->get(EmailTemplateResource::getUrl('edit', ['record' => $template]))->assertOk()
+            ->assertDontSee(__('email_templates.built_in.heading'));
     }
 
     private function user(string $username, string $registrationType, array $roles = [], string $locale = 'en'): User

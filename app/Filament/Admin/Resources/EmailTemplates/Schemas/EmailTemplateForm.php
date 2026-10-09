@@ -11,7 +11,6 @@ use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
-use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 
 class EmailTemplateForm
@@ -21,101 +20,90 @@ class EmailTemplateForm
         return $schema
             ->columns(1)
             ->components([
-                // Built-in templates keep their system name; new templates need one.
-                Section::make(__('email_templates.sections.name'))
-                    ->visible(fn (?EmailTemplate $record): bool => ! $record?->isBuiltIn())
+                // One card holding the template's parts, like the Custom Forms field editor.
+                Section::make()
                     ->schema([
-                        Grid::make(['default' => 1, 'lg' => 2])->schema([
-                            TextInput::make('name')
-                                ->label(__('email_templates.fields.template_name'))
-                                ->placeholder(__('email_templates.placeholders.template_name'))
-                                ->required()
-                                ->maxLength(255),
-
-                            // Used automatically when a workflow sends this action's email.
-                            Select::make('action')
-                                ->label(__('email_templates.fields.action'))
-                                ->placeholder(__('email_templates.placeholders.action'))
-                                ->helperText(__('email_templates.helpers.action'))
-                                ->options(fn (): array => EmailTemplate::actionOptions())
-                                ->unique(ignoreRecord: true)
-                                ->validationMessages([
-                                    'unique' => __('email_templates.validation.action_taken'),
-                                ])
-                                ->native(false),
-                        ]),
-                    ]),
-
-                Section::make(__('email_templates.sections.header'))
-                    ->description(__('email_templates.sections.header_description'))
-                    ->schema([
-                        FileUpload::make('logo_path')
-                            ->label(__('email_templates.fields.logo'))
-                            ->helperText(__('email_templates.helpers.logo'))
-                            ->image()
-                            ->acceptedFileTypes(['image/png', 'image/jpeg', 'image/gif'])
-                            ->maxSize(1024)
-                            ->disk('public')
-                            ->directory('email-templates')
-                            ->visibility('public'),
-
-                        TextInput::make('header_title')
-                            ->label(__('email_templates.fields.header_title'))
-                            ->required()
-                            ->maxLength(255),
-                    ]),
-
-                Section::make(__('email_templates.sections.custom_variables'))
-                    ->description(__('email_templates.sections.custom_variables_description'))
-                    ->collapsible()
-                    ->schema([
-                        View::make('filament.admin.partials.template-variables')
-                            ->viewData(fn (?EmailTemplate $record): array => [
-                                'heading' => __('email_templates.built_in.heading'),
-                                'labels' => __('email_templates.built_in.columns'),
-                                'variables' => collect(EmailTemplate::builtInVariablesFor($record))
-                                    ->map(fn (string $name): array => [
-                                        'name' => $name,
-                                        'meaning' => __('email_templates.built_in.meanings.'.$name),
-                                        'sample' => __('email_templates.built_in.samples.'.$name),
-                                    ])
-                                    ->all(),
-                            ]),
-
-                        Repeater::make('custom_variables')
-                            ->hiddenLabel()
+                        // Built-in templates keep their system name; new templates need one.
+                        Grid::make(['default' => 1, 'lg' => 2])
+                            ->visible(fn (?EmailTemplate $record): bool => ! $record?->isBuiltIn())
                             ->schema([
                                 TextInput::make('name')
-                                    ->label(__('email_templates.fields.variable_name'))
-                                    ->prefix('{{')
-                                    ->suffix('}}')
-                                    ->placeholder('hotline')
+                                    ->label(__('email_templates.fields.template_name'))
+                                    ->placeholder(__('email_templates.placeholders.template_name'))
                                     ->required()
-                                    ->maxLength(40)
-                                    ->regex('/^[a-z][a-z0-9_]*$/')
-                                    ->notIn(fn (?EmailTemplate $record): array => EmailTemplate::builtInVariablesFor($record))
-                                    ->distinct()
-                                    ->validationMessages([
-                                        'regex' => __('email_templates.validation.variable_name'),
-                                        'not_in' => __('email_templates.validation.variable_reserved'),
-                                        'distinct' => __('email_templates.validation.variable_distinct'),
-                                    ])
-                                    ->live(onBlur: true),
-                                TextInput::make('value')
-                                    ->label(__('email_templates.fields.value'))
-                                    ->required()
-                                    ->maxLength(500),
-                            ])
-                            ->columns(2)
-                            ->defaultItems(0)
-                            ->addActionLabel(__('email_templates.actions.add_variable'))
-                            ->itemLabel(fn (array $state): ?string => filled($state['name'] ?? null) ? '{{ '.$state['name'].' }}' : null)
-                            ->live(),
-                    ]),
+                                    ->maxLength(255),
 
-                Section::make(__('email_templates.sections.content'))
-                    ->description(__('email_templates.sections.content_description'))
-                    ->schema(self::contentFields()),
+                                // Used automatically when a workflow sends this action's email.
+                                Select::make('action')
+                                    ->label(__('email_templates.fields.action'))
+                                    ->placeholder(__('email_templates.placeholders.action'))
+                                    ->helperText(__('email_templates.helpers.action'))
+                                    ->options(fn (): array => EmailTemplate::actionOptions())
+                                    ->unique(ignoreRecord: true)
+                                    ->validationMessages([
+                                        'unique' => __('email_templates.validation.action_taken'),
+                                    ])
+                                    ->native(false),
+                            ]),
+
+                        Section::make(__('email_templates.sections.header'))
+                            ->description(__('email_templates.sections.header_description'))
+                            ->schema([
+                                FileUpload::make('logo_path')
+                                    ->label(__('email_templates.fields.logo'))
+                                    ->helperText(__('email_templates.helpers.logo'))
+                                    ->image()
+                                    ->acceptedFileTypes(['image/png', 'image/jpeg', 'image/gif'])
+                                    ->maxSize(1024)
+                                    ->disk('public')
+                                    ->directory('email-templates')
+                                    ->visibility('public'),
+
+                                TextInput::make('header_title')
+                                    ->label(__('email_templates.fields.header_title'))
+                                    ->required()
+                                    ->maxLength(255),
+                            ]),
+
+                        Section::make(__('email_templates.sections.custom_variables'))
+                            ->description(__('email_templates.sections.custom_variables_description'))
+                            ->collapsible()
+                            ->schema([
+                                Repeater::make('custom_variables')
+                                    ->hiddenLabel()
+                                    ->schema([
+                                        TextInput::make('name')
+                                            ->label(__('email_templates.fields.variable_name'))
+                                            ->prefix('{{')
+                                            ->suffix('}}')
+                                            ->placeholder('hotline')
+                                            ->required()
+                                            ->maxLength(40)
+                                            ->regex('/^[a-z][a-z0-9_]*$/')
+                                            ->notIn(fn (?EmailTemplate $record): array => EmailTemplate::builtInVariablesFor($record))
+                                            ->distinct()
+                                            ->validationMessages([
+                                                'regex' => __('email_templates.validation.variable_name'),
+                                                'not_in' => __('email_templates.validation.variable_reserved'),
+                                                'distinct' => __('email_templates.validation.variable_distinct'),
+                                            ])
+                                            ->live(onBlur: true),
+                                        TextInput::make('value')
+                                            ->label(__('email_templates.fields.value'))
+                                            ->required()
+                                            ->maxLength(500),
+                                    ])
+                                    ->columns(2)
+                                    ->defaultItems(0)
+                                    ->addActionLabel(__('email_templates.actions.add_variable'))
+                                    ->itemLabel(fn (array $state): ?string => filled($state['name'] ?? null) ? '{{ '.$state['name'].' }}' : null)
+                                    ->live(),
+                            ]),
+
+                        Section::make(__('email_templates.sections.content'))
+                            ->description(__('email_templates.sections.content_description'))
+                            ->schema(self::contentFields()),
+                    ]),
             ]);
     }
 
