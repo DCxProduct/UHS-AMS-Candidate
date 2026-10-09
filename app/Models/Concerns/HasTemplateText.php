@@ -3,6 +3,7 @@
 namespace App\Models\Concerns;
 
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Throwable;
 
 /**
@@ -38,12 +39,54 @@ trait HasTemplateText
     }
 
     /**
+     * Built-in templates are used by the system (for example password reset):
+     * they can be edited but not deleted.
+     */
+    public function isBuiltIn(): bool
+    {
+        return in_array($this->key, static::TEMPLATES, true);
+    }
+
+    public function label(): string
+    {
+        return $this->isBuiltIn() || blank($this->name)
+            ? __(static::LANG_FILE.'.templates.'.$this->key)
+            : (string) $this->name;
+    }
+
+    /**
+     * Variables a template offers: its own for built-in templates, the general ones otherwise.
+     */
+    public static function builtInVariablesFor(?self $record): array
+    {
+        return $record !== null && array_key_exists((string) $record->key, static::VARIABLES)
+            ? static::VARIABLES[$record->key]
+            : static::GENERAL_VARIABLES;
+    }
+
+    /**
+     * A unique key for a new template, made from its name.
+     */
+    public static function keyFromName(string $name): string
+    {
+        $base = Str::slug($name, '_') ?: 'template';
+        $key = $base;
+        $suffix = 1;
+
+        while (static::query()->where('key', $key)->exists() || in_array($key, static::TEMPLATES, true)) {
+            $key = $base.'_'.$suffix++;
+        }
+
+        return $key;
+    }
+
+    /**
      * Built-in variables plus the custom ones, as offered to the editor.
      */
     public function variableNames(): array
     {
         return array_values(array_unique([
-            ...(static::VARIABLES[$this->key] ?? []),
+            ...static::builtInVariablesFor($this),
             ...array_keys($this->customVariables()),
         ]));
     }

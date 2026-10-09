@@ -9,8 +9,7 @@ use Illuminate\Auth\Access\HandlesAuthorization;
 use Illuminate\Foundation\Auth\User as AuthUser;
 
 /**
- * SMS templates are fixed by the system: they can be viewed and edited,
- * never created or deleted.
+ * Built-in templates (used by the system) can be edited but not deleted.
  */
 class SmsTemplatePolicy
 {
@@ -28,7 +27,7 @@ class SmsTemplatePolicy
 
     public function create(AuthUser $authUser): bool
     {
-        return false;
+        return $authUser->can('Create:SmsTemplate');
     }
 
     public function update(AuthUser $authUser, SmsTemplate $smsTemplate): bool
@@ -38,7 +37,7 @@ class SmsTemplatePolicy
 
     public function delete(AuthUser $authUser, SmsTemplate $smsTemplate): bool
     {
-        return false;
+        return ! $smsTemplate->isBuiltIn() && $authUser->can('Delete:SmsTemplate');
     }
 
     public function deleteAny(AuthUser $authUser): bool

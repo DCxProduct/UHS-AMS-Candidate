@@ -10,6 +10,7 @@ return [
     ],
 
     'sections' => [
+        'name' => 'Template name',
         'custom_variables' => 'Custom variables',
         'custom_variables_description' => 'Create your own {{ variables }} with a fixed value, for example a hotline or website. After adding one, it appears in "Insert Variable".',
         'header' => 'Email header',
@@ -44,6 +45,7 @@ return [
     ],
 
     'fields' => [
+        'template_name' => 'Template name',
         'logo' => 'Logo',
         'variable_name' => 'Variable name',
         'value' => 'Value',
@@ -53,6 +55,10 @@ return [
         'button' => 'Button text',
         'body' => 'Email body',
         'updated_at' => 'Updated At',
+    ],
+
+    'placeholders' => [
+        'template_name' => 'Example: Interview invitation',
     ],
 
     'helpers' => [

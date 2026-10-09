@@ -10,6 +10,7 @@ return [
     ],
 
     'sections' => [
+        'name' => 'ឈ្មោះគំរូ',
         'custom_variables' => 'អថេរផ្ទាល់ខ្លួន',
         'custom_variables_description' => 'បង្កើត {{ អថេរ }} ផ្ទាល់ខ្លួនដែលមានតម្លៃថេរ ឧទាហរណ៍ លេខទូរស័ព្ទទំនាក់ទំនង ឬគេហទំព័រ។ បន្ទាប់ពីបន្ថែម វានឹងបង្ហាញក្នុង "Insert Variable"។',
         'header' => 'ក្បាលអ៊ីមែល',
@@ -44,6 +45,7 @@ return [
     ],
 
     'fields' => [
+        'template_name' => 'ឈ្មោះគំរូ',
         'logo' => 'ឡូហ្គោ',
         'variable_name' => 'ឈ្មោះអថេរ',
         'value' => 'តម្លៃ',
@@ -53,6 +55,10 @@ return [
         'button' => 'អត្ថបទប៊ូតុង',
         'body' => 'ខ្លឹមសារអ៊ីមែល',
         'updated_at' => 'កែប្រែចុងក្រោយ',
+    ],
+
+    'placeholders' => [
+        'template_name' => 'ឧទាហរណ៍៖ លិខិតអញ្ជើញសម្ភាសន៍',
     ],
 
     'helpers' => [

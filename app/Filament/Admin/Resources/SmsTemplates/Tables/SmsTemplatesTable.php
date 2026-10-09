@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Resources\SmsTemplates\Tables;
 use App\Filament\Admin\Resources\SmsTemplates\SmsTemplateResource;
 use App\Models\SmsTemplate;
 use App\Support\LocalizedDate;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables\Columns\TextColumn;
@@ -34,6 +35,8 @@ class SmsTemplatesTable
             ])
             ->recordActions([
                 EditAction::make(),
+                DeleteAction::make()
+                    ->visible(fn (SmsTemplate $record): bool => ! $record->isBuiltIn()),
             ]);
     }
 }

@@ -10,6 +10,7 @@ return [
     ],
 
     'sections' => [
+        'name' => 'Template name',
         'general' => 'General',
         'custom_variables' => 'Custom variables',
         'custom_variables_description' => 'Create your own {{ variables }} with a fixed value, for example a hotline or website.',
@@ -41,12 +42,17 @@ return [
     ],
 
     'fields' => [
+        'template_name' => 'Template name',
         'name' => 'SMS',
         'app_name' => 'App name',
         'body' => 'SMS text',
         'variable_name' => 'Variable name',
         'value' => 'Value',
         'updated_at' => 'Updated At',
+    ],
+
+    'placeholders' => [
+        'template_name' => 'Example: Exam reminder',
     ],
 
     'helpers' => [

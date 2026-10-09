@@ -10,6 +10,7 @@ return [
     ],
 
     'sections' => [
+        'name' => 'ឈ្មោះគំរូ',
         'general' => 'ទូទៅ',
         'custom_variables' => 'អថេរផ្ទាល់ខ្លួន',
         'custom_variables_description' => 'បង្កើត {{ អថេរ }} ផ្ទាល់ខ្លួនដែលមានតម្លៃថេរ ឧទាហរណ៍ លេខទូរស័ព្ទទំនាក់ទំនង ឬគេហទំព័រ។',
@@ -41,12 +42,17 @@ return [
     ],
 
     'fields' => [
+        'template_name' => 'ឈ្មោះគំរូ',
         'name' => 'SMS',
         'app_name' => 'ឈ្មោះកម្មវិធី',
         'body' => 'អត្ថបទ SMS',
         'variable_name' => 'ឈ្មោះអថេរ',
         'value' => 'តម្លៃ',
         'updated_at' => 'កែប្រែចុងក្រោយ',
+    ],
+
+    'placeholders' => [
+        'template_name' => 'ឧទាហរណ៍៖ ការរំលឹកការប្រឡង',
     ],
 
     'helpers' => [

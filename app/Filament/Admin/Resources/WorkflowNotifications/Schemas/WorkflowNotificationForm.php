@@ -119,7 +119,7 @@ class WorkflowNotificationForm
                     ->label(fn (): HtmlString => new HtmlString('<span style="font-size: 1.05rem; font-weight: 700;">'.e(__('workflow_notifications.fields.notification_channels')).'</span>'))
                     ->helperText(__('workflow_notifications.helpers.notification_channels'))
                     ->options(fn (): array => collect(WorkflowStageMessages::CHANNELS)
-                        ->mapWithKeys(fn (string $channel): array => [$channel => '<span style="font-size: 1.05rem; font-weight: 700;">'.e(__('workflow_notifications.channels.'.$channel)).'</span>'])
+                        ->mapWithKeys(fn (string $channel): array => [$channel => '<span style="font-size: 1.05rem;">'.e(__('workflow_notifications.channels.'.$channel)).'</span>'])
                         ->all())
                     ->allowHtml()
                     ->default(['system'])

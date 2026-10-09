@@ -20,6 +20,17 @@ class EmailTemplateForm
         return $schema
             ->columns(1)
             ->components([
+                // Built-in templates keep their system name; new templates need one.
+                Section::make(__('email_templates.sections.name'))
+                    ->visible(fn (?EmailTemplate $record): bool => ! $record?->isBuiltIn())
+                    ->schema([
+                        TextInput::make('name')
+                            ->label(__('email_templates.fields.template_name'))
+                            ->placeholder(__('email_templates.placeholders.template_name'))
+                            ->required()
+                            ->maxLength(255),
+                    ]),
+
                 Section::make(__('email_templates.sections.header'))
                     ->description(__('email_templates.sections.header_description'))
                     ->schema([
@@ -47,7 +58,7 @@ class EmailTemplateForm
                             ->viewData(fn (?EmailTemplate $record): array => [
                                 'heading' => __('email_templates.built_in.heading'),
                                 'labels' => __('email_templates.built_in.columns'),
-                                'variables' => collect(EmailTemplate::VARIABLES[$record?->key ?? EmailTemplate::RESET_PASSWORD] ?? [])
+                                'variables' => collect(EmailTemplate::builtInVariablesFor($record))
                                     ->map(fn (string $name): array => [
                                         'name' => $name,
                                         'meaning' => __('email_templates.built_in.meanings.'.$name),
@@ -67,7 +78,7 @@ class EmailTemplateForm
                                     ->required()
                                     ->maxLength(40)
                                     ->regex('/^[a-z][a-z0-9_]*$/')
-                                    ->notIn(fn (?EmailTemplate $record): array => EmailTemplate::VARIABLES[$record?->key ?? EmailTemplate::RESET_PASSWORD] ?? [])
+                                    ->notIn(fn (?EmailTemplate $record): array => EmailTemplate::builtInVariablesFor($record))
                                     ->distinct()
                                     ->validationMessages([
                                         'regex' => __('email_templates.validation.variable_name'),
@@ -120,16 +131,16 @@ class EmailTemplateForm
                 // A new key reloads the editor, so new custom variables show up in "Insert Variable".
                 ->key(fn (Get $get): string => 'email-body-'.md5(json_encode(array_column($get('custom_variables') ?? [], 'name'))))
                 ->setCustomConfigs(fn (?EmailTemplate $record, Get $get): array => self::editorConfig(
-                    $record?->key ?? EmailTemplate::RESET_PASSWORD,
+                    EmailTemplate::builtInVariablesFor($record),
                     array_filter(array_column($get('custom_variables') ?? [], 'name')),
                 )),
         ];
     }
 
-    private static function editorConfig(string $key, array $customNames = []): array
+    private static function editorConfig(array $builtInNames, array $customNames = []): array
     {
         return [
-            'document_variables' => array_values(array_unique([...EmailTemplate::VARIABLES[$key] ?? [], ...$customNames])),
+            'document_variables' => array_values(array_unique([...$builtInNames, ...$customNames])),
             'menubar' => 'file edit view insert format tools table help',
             'height' => 560,
             // Images need full URLs to show in email inboxes.

@@ -190,7 +190,7 @@ class EmailTemplateResourceTest extends TestCase
         $this->assertStringContainsString('Reset Password</a>', $html);
     }
 
-    public function test_admin_can_list_and_edit_templates_but_not_create_them(): void
+    public function test_admin_can_list_and_edit_templates(): void
     {
         $this->actingAs($this->admin);
 
@@ -210,7 +210,7 @@ class EmailTemplateResourceTest extends TestCase
 
         $this->assertSame('New subject', $template->refresh()->subject);
         $this->assertSame('<p>ជម្រាបសួរ {{ name }}</p>', $template->body);
-        $this->assertFalse(EmailTemplateResource::hasPage('create'));
+        $this->assertTrue(EmailTemplateResource::hasPage('create'));
     }
 
     public function test_subject_and_button_are_required(): void

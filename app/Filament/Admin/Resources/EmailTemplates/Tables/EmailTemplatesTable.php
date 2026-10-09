@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Resources\EmailTemplates\Tables;
 use App\Filament\Admin\Resources\EmailTemplates\EmailTemplateResource;
 use App\Models\EmailTemplate;
 use App\Support\LocalizedDate;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables\Columns\TextColumn;
@@ -34,6 +35,8 @@ class EmailTemplatesTable
             ])
             ->recordActions([
                 EditAction::make(),
+                DeleteAction::make()
+                    ->visible(fn (EmailTemplate $record): bool => ! $record->isBuiltIn()),
             ]);
     }
 }

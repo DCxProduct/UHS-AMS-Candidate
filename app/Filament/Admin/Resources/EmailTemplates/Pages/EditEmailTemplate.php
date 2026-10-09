@@ -5,7 +5,9 @@ namespace App\Filament\Admin\Resources\EmailTemplates\Pages;
 use App\Filament\Admin\Resources\EmailTemplates\EmailTemplateResource;
 use App\Models\EmailTemplate;
 use App\Support\ResetPasswordEmail;
+use App\Support\TemplateEmail;
 use Filament\Actions\Action;
+use Filament\Actions\DeleteAction;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
@@ -70,8 +72,12 @@ class EditEmailTemplate extends EditRecord
                     Notification::make()->title(__('email_templates.send_test.sent', ['email' => $data['to']]))->success()->send();
                 }),
 
+            DeleteAction::make()
+                ->visible(fn (): bool => ! $this->record->isBuiltIn()),
+
             Action::make('resetDefaults')
                 ->label(__('email_templates.actions.reset_defaults'))
+                ->visible(fn (): bool => $this->record->isBuiltIn())
                 ->icon('heroicon-o-arrow-uturn-left')
                 ->color('danger')
                 ->requiresConfirmation()
@@ -91,6 +97,10 @@ class EditEmailTemplate extends EditRecord
     private function sample(): MailMessage
     {
         $user = auth()->user();
+
+        if ($this->record->key !== EmailTemplate::RESET_PASSWORD) {
+            return TemplateEmail::build($this->record, $user);
+        }
 
         return ResetPasswordEmail::build(
             $user,

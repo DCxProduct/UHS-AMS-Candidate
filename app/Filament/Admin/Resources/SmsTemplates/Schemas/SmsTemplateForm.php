@@ -20,6 +20,17 @@ class SmsTemplateForm
         return $schema
             ->columns(1)
             ->components([
+                // Built-in templates keep their system name; new templates need one.
+                Section::make(__('sms_templates.sections.name'))
+                    ->visible(fn (?SmsTemplate $record): bool => ! $record?->isBuiltIn())
+                    ->schema([
+                        TextInput::make('name')
+                            ->label(__('sms_templates.fields.template_name'))
+                            ->placeholder(__('sms_templates.placeholders.template_name'))
+                            ->required()
+                            ->maxLength(255),
+                    ]),
+
                 Section::make(__('sms_templates.sections.general'))
                     ->schema([
                         TextInput::make('app_name')
@@ -37,7 +48,7 @@ class SmsTemplateForm
                             ->viewData(fn (?SmsTemplate $record): array => [
                                 'heading' => __('sms_templates.built_in.heading'),
                                 'labels' => __('sms_templates.built_in.columns'),
-                                'variables' => collect(SmsTemplate::VARIABLES[$record?->key ?? SmsTemplate::RESET_PASSWORD_OTP] ?? [])
+                                'variables' => collect(SmsTemplate::builtInVariablesFor($record))
                                     ->map(fn (string $name): array => [
                                         'name' => $name,
                                         'meaning' => __('sms_templates.built_in.meanings.'.$name),
@@ -57,7 +68,7 @@ class SmsTemplateForm
                                     ->required()
                                     ->maxLength(40)
                                     ->regex('/^[a-z][a-z0-9_]*$/')
-                                    ->notIn(fn (?SmsTemplate $record): array => SmsTemplate::VARIABLES[$record?->key ?? SmsTemplate::RESET_PASSWORD_OTP] ?? [])
+                                    ->notIn(fn (?SmsTemplate $record): array => SmsTemplate::builtInVariablesFor($record))
                                     ->distinct()
                                     ->validationMessages([
                                         'regex' => __('sms_templates.validation.variable_name'),
@@ -87,7 +98,7 @@ class SmsTemplateForm
                                 'target' => 'sms-body',
                                 'label' => __('sms_templates.actions.insert_variable'),
                                 'variables' => collect([
-                                    ...SmsTemplate::VARIABLES[$record?->key ?? SmsTemplate::RESET_PASSWORD_OTP] ?? [],
+                                    ...SmsTemplate::builtInVariablesFor($record),
                                     ...array_filter(array_column($get('custom_variables') ?? [], 'name')),
                                 ])->unique()->map(fn (string $name): string => '{{ '.$name.' }}')->values()->all(),
                             ])->render()))

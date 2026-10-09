@@ -23,8 +23,14 @@ class SmsTemplate extends Model
         self::RESET_PASSWORD_OTP => ['name', 'phone', 'code', 'minutes', 'app'],
     ];
 
+    /** Variables offered by templates an admin creates. */
+    public const GENERAL_VARIABLES = ['name', 'phone', 'app'];
+
+    public const LANG_FILE = 'sms_templates';
+
     protected $fillable = [
         'key',
+        'name',
         'app_name',
         'custom_variables',
         'body',
@@ -42,11 +48,6 @@ class SmsTemplate extends Model
             ],
             default => [],
         };
-    }
-
-    public function label(): string
-    {
-        return __('sms_templates.templates.'.$this->key);
     }
 
     public function appName(): string
