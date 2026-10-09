@@ -543,7 +543,7 @@ final class WorkflowStageMessages
     private static function sendSms(User $student, string $title, string $body): bool
     {
         try {
-            return PlasGateSms::send($student->phone, trim($title."\n".self::plainText($body)), ['source' => 'workflow', 'user_id' => $student->getKey()]);
+            return PlasGateSms::send($student->phone, trim($title."\n".self::plainText($body)));
         } catch (Throwable $exception) {
             report($exception);
 

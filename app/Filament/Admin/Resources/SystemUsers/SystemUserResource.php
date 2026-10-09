@@ -28,7 +28,7 @@ class SystemUserResource extends Resource
 
     protected static ?int $navigationSort = 71;
 
-    protected static ?string $recordTitleAttribute = 'username';
+    protected static ?string $recordTitleAttribute = 'email';
 
     protected static ?string $slug = 'system-users';
 

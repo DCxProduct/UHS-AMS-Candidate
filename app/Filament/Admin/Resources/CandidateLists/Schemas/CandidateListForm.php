@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\CandidateLists\Schemas;
 
 use App\Models\SystemUser;
+use App\Support\CandidateLatinName;
 use App\Support\UserTypeOptions;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
@@ -12,7 +13,6 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 
 class CandidateListForm
 {
@@ -28,26 +28,46 @@ class CandidateListForm
                             'md' => 2,
                         ])
                             ->schema([
-                                TextInput::make('username')
-                                    ->label(__('candidate_lists.fields.username'))
+                                // The login username is made automatically from the phone number, like registration.
+                                TextInput::make('first_name_en')
+                                    ->label(__('app.first_name_latin'))
+                                    ->placeholder(__('app.enter_first_name_latin'))
                                     ->required()
                                     ->maxLength(100)
-                                    ->unique(SystemUser::class, 'username', ignoreRecord: true)
-                                    ->placeholder(__('candidate_lists.placeholders.username'))
                                     ->rules([
                                         'required',
-                                        'regex:/^[a-z0-9_]+$/',
+                                        'string',
+                                        'max:100',
+                                        "regex:/^[A-Za-z][A-Za-z .'-]*$/",
                                     ])
                                     ->validationMessages([
-                                        'required' => __('candidate_lists.validation.username_required'),
-                                        'regex' => __('candidate_lists.validation.username_regex'),
+                                        'required' => __('app.first_name_latin_required'),
+                                        'regex' => __('app.latin_name_regex'),
                                     ])
-                                    ->extraInputAttributes([
-                                        'autocapitalize' => 'none',
-                                        'autocomplete' => 'off',
-                                        'oninput' => "this.value = this.value.toLowerCase().replace(/[^a-z0-9_]/g, '')",
+                                    ->afterStateHydrated(fn (TextInput $component, $record) => $component->state(
+                                        $record ? CandidateLatinName::split($record->name)[0] : null
+                                    ))
+                                    ->dehydrateStateUsing(fn (?string $state): string => CandidateLatinName::normalize($state)),
+
+                                TextInput::make('last_name_en')
+                                    ->label(__('app.last_name_latin'))
+                                    ->placeholder(__('app.enter_last_name_latin'))
+                                    ->required()
+                                    ->maxLength(100)
+                                    ->rules([
+                                        'required',
+                                        'string',
+                                        'max:100',
+                                        "regex:/^[A-Za-z][A-Za-z .'-]*$/",
                                     ])
-                                    ->dehydrateStateUsing(fn ($state): ?string => blank($state) ? null : Str::lower(trim((string) $state))),
+                                    ->validationMessages([
+                                        'required' => __('app.last_name_latin_required'),
+                                        'regex' => __('app.latin_name_regex'),
+                                    ])
+                                    ->afterStateHydrated(fn (TextInput $component, $record) => $component->state(
+                                        $record ? CandidateLatinName::split($record->name)[1] : null
+                                    ))
+                                    ->dehydrateStateUsing(fn (?string $state): string => CandidateLatinName::normalize($state)),
 
                                 TextInput::make('email')
                                     ->label(__('candidate_lists.fields.email'))

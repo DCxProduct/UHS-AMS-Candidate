@@ -3,11 +3,12 @@
 namespace App\Filament\Admin\Resources\CandidateLists\Pages;
 
 use App\Filament\Admin\Resources\CandidateLists\CandidateListResource;
+use App\Models\User;
+use App\Support\CandidateLatinName;
 use App\Support\UserTypeOptions;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Enums\Width;
-use Illuminate\Support\Str;
 
 class EditCandidateList extends EditRecord
 {
@@ -63,13 +64,9 @@ class EditCandidateList extends EditRecord
         unset($data['role_ids']);
         unset($data['candidate_type']);
 
-        $data['name'] = blank($data['name'] ?? null)
-            ? trim((string) ($data['username'] ?? 'Candidate'))
-            : trim((string) $data['name']);
-
-        $data['username'] = blank($data['username'] ?? null)
-            ? null
-            : Str::lower(trim((string) $data['username']));
+        // The username is not edited here: it links this candidate to their login account.
+        $data['name'] = CandidateLatinName::join($data['first_name_en'] ?? null, $data['last_name_en'] ?? null) ?: 'Candidate';
+        unset($data['first_name_en'], $data['last_name_en'], $data['username']);
 
         $data['email'] = blank($data['email'] ?? null)
             ? null
@@ -96,5 +93,10 @@ class EditCandidateList extends EditRecord
         }
 
         $this->record->syncLoginUser();
+
+        // The login account keeps the Latin name too, like registration.
+        if (filled($this->record->username)) {
+            User::query()->where('username', $this->record->username)->update(['name_latin' => $this->record->name]);
+        }
     }
 }

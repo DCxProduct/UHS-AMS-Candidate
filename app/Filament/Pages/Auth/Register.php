@@ -92,6 +92,10 @@ class Register extends BaseRegister
                         'required' => __('app.first_name_latin_required'),
                         'regex' => __('app.latin_name_regex'),
                     ])
+                    ->extraInputAttributes([
+                        'style' => 'text-transform: uppercase;',
+                        'autocapitalize' => 'characters',
+                    ])
                     ->dehydrateStateUsing(fn (?string $state): string => self::normalizeLatinNamePart($state)),
 
                 TextInput::make('last_name_en')
@@ -108,6 +112,10 @@ class Register extends BaseRegister
                     ->validationMessages([
                         'required' => __('app.last_name_latin_required'),
                         'regex' => __('app.latin_name_regex'),
+                    ])
+                    ->extraInputAttributes([
+                        'style' => 'text-transform: uppercase;',
+                        'autocapitalize' => 'characters',
                     ])
                     ->dehydrateStateUsing(fn (?string $state): string => self::normalizeLatinNamePart($state)),
 
@@ -452,9 +460,12 @@ class Register extends BaseRegister
         return $username;
     }
 
+    /**
+     * Latin names are saved in capital letters, for example "sithan" becomes "SITHAN".
+     */
     private static function normalizeLatinNamePart(?string $value): string
     {
-        return trim((string) preg_replace('/\s+/', ' ', (string) $value));
+        return mb_strtoupper(trim((string) preg_replace('/\s+/', ' ', (string) $value)));
     }
 
     protected function ensureCaptchaChallenge(): void

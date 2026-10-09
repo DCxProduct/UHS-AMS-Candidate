@@ -62,12 +62,6 @@ class SystemUsersTable
                     ->searchable()
                     ->sortable(),
 
-                TextColumn::make('username')
-                    ->label(__('system_users.fields.username'))
-                    ->placeholder('-')
-                    ->searchable()
-                    ->sortable(),
-
                 TextColumn::make('candidate_type')
                     ->label(__('system_users.fields.candidate_type'))
                     ->getStateUsing(function (SystemUser $record): string {

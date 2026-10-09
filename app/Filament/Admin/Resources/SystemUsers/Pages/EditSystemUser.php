@@ -8,7 +8,6 @@ use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Enums\Width;
 use Illuminate\Contracts\Support\Htmlable;
-use Illuminate\Support\Str;
 
 class EditSystemUser extends EditRecord
 {
@@ -29,8 +28,7 @@ class EditSystemUser extends EditRecord
     public function getRecordTitle(): string
     {
         return (string) (
-            $this->record->username
-            ?: $this->record->email
+            $this->record->email
             ?: $this->record->phone
             ?: $this->record->name
             ?: __('system_users.resource_label')
@@ -87,13 +85,9 @@ class EditSystemUser extends EditRecord
         unset($data['role_ids']);
         unset($data['candidate_type']);
 
-        $data['name'] = blank($data['name'] ?? null)
-            ? trim((string) ($data['username'] ?? 'System User'))
-            : trim((string) $data['name']);
-
-        $data['username'] = blank($data['username'] ?? null)
-            ? null
-            : Str::lower(trim((string) $data['username']));
+        // The username and name are not edited here: the username links this
+        // account to its login, so both keep their saved values.
+        unset($data['name'], $data['username']);
 
         $data['email'] = blank($data['email'] ?? null)
             ? null

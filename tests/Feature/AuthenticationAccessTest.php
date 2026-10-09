@@ -179,11 +179,12 @@ class AuthenticationAccessTest extends TestCase
             'password' => 'password',
         ]);
 
-        $this->assertSame('Dara Sok', $user->name);
-        $this->assertSame('Dara Sok', $user->name_latin);
+        // Latin names are saved in capital letters.
+        $this->assertSame('DARA SOK', $user->name);
+        $this->assertSame('DARA SOK', $user->name_latin);
         $this->assertSame('student_010123456', $user->username);
-        $this->assertSame('Dara Sok', CandidateDisplayName::for($user->fresh()));
-        $this->assertSame('Dara Sok', $user->linkedSystemUser()?->name);
+        $this->assertSame('DARA SOK', CandidateDisplayName::for($user->fresh()));
+        $this->assertSame('DARA SOK', $user->linkedSystemUser()?->name);
     }
 
     private function resetUserTypeOptionsCaches(): void
