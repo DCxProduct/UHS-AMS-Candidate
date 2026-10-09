@@ -7,6 +7,7 @@ use App\Models\SmsTemplate;
 use App\Support\PasswordResetOtpSms;
 use App\Support\PlasGateSms;
 use Filament\Actions\Action;
+use Filament\Actions\DeleteAction;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
@@ -71,8 +72,12 @@ class EditSmsTemplate extends EditRecord
                     Notification::make()->title(__('sms_templates.send_test.sent', ['phone' => $data['to']]))->success()->send();
                 }),
 
+            DeleteAction::make()
+                ->visible(fn (): bool => ! $this->record->isBuiltIn()),
+
             Action::make('resetDefaults')
                 ->label(__('sms_templates.actions.reset_defaults'))
+                ->visible(fn (): bool => $this->record->isBuiltIn())
                 ->icon('heroicon-o-arrow-uturn-left')
                 ->color('danger')
                 ->requiresConfirmation()
@@ -91,6 +96,17 @@ class EditSmsTemplate extends EditRecord
      */
     private function sample(): string
     {
+        if ($this->record->key !== SmsTemplate::RESET_PASSWORD_OTP) {
+            $user = auth()->user();
+
+            return trim($this->record->text('body', [
+                ...$this->record->customVariables(),
+                'name' => (string) ($user?->name ?? ''),
+                'phone' => (string) ($user?->phone ?? ''),
+                'app' => $this->record->appName(),
+            ]));
+        }
+
         return PasswordResetOtpSms::text(auth()->user(), '123456');
     }
 }

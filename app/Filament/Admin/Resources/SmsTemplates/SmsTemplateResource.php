@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources\SmsTemplates;
 
+use App\Filament\Admin\Resources\SmsTemplates\Pages\CreateSmsTemplate;
 use App\Filament\Admin\Resources\SmsTemplates\Pages\EditSmsTemplate;
 use App\Filament\Admin\Resources\SmsTemplates\Pages\ListSmsTemplates;
 use App\Filament\Admin\Resources\SmsTemplates\Schemas\SmsTemplateForm;
@@ -54,13 +55,11 @@ class SmsTemplateResource extends Resource
         return SmsTemplatesTable::configure($table);
     }
 
-    /**
-     * Templates are fixed by the system, so there is no create page.
-     */
     public static function getPages(): array
     {
         return [
             'index' => ListSmsTemplates::route('/'),
+            'create' => CreateSmsTemplate::route('/create'),
             'edit' => EditSmsTemplate::route('/{record}/edit'),
         ];
     }

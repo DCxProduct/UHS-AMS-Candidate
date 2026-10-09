@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources\EmailTemplates;
 
+use App\Filament\Admin\Resources\EmailTemplates\Pages\CreateEmailTemplate;
 use App\Filament\Admin\Resources\EmailTemplates\Pages\EditEmailTemplate;
 use App\Filament\Admin\Resources\EmailTemplates\Pages\ListEmailTemplates;
 use App\Filament\Admin\Resources\EmailTemplates\Schemas\EmailTemplateForm;
@@ -54,13 +55,11 @@ class EmailTemplateResource extends Resource
         return EmailTemplatesTable::configure($table);
     }
 
-    /**
-     * Templates are fixed by the system, so there is no create page.
-     */
     public static function getPages(): array
     {
         return [
             'index' => ListEmailTemplates::route('/'),
+            'create' => CreateEmailTemplate::route('/create'),
             'edit' => EditEmailTemplate::route('/{record}/edit'),
         ];
     }

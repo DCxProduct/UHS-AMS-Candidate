@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Resources\EmailTemplates\Pages;
 
 use App\Filament\Admin\Resources\EmailTemplates\EmailTemplateResource;
 use App\Models\EmailTemplate;
+use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 
 class ListEmailTemplates extends ListRecords
@@ -12,11 +13,18 @@ class ListEmailTemplates extends ListRecords
 
     public function mount(): void
     {
-        // Every system email has a row to edit, filled with its default text.
+        // Every built-in email has a row to edit, filled with its default text.
         foreach (EmailTemplate::TEMPLATES as $key) {
             EmailTemplate::for($key);
         }
 
         parent::mount();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make(),
+        ];
     }
 }

@@ -111,10 +111,10 @@ class SmsTemplateResourceTest extends TestCase
         }
     }
 
-    public function test_access_follows_role_permissions_and_templates_cannot_be_created(): void
+    public function test_access_follows_role_permissions(): void
     {
         $template = SmsTemplate::for(SmsTemplate::RESET_PASSWORD_OTP);
-        $this->assertFalse(SmsTemplateResource::hasPage('create'));
+        $this->assertTrue(SmsTemplateResource::hasPage('create'));
 
         $this->actingAs($this->user('no_access', 'admin'));
         $this->get(SmsTemplateResource::getUrl('index'))->assertForbidden();

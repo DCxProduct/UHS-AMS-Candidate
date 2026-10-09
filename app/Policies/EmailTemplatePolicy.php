@@ -9,8 +9,7 @@ use Illuminate\Auth\Access\HandlesAuthorization;
 use Illuminate\Foundation\Auth\User as AuthUser;
 
 /**
- * Email templates are fixed by the system: they can be viewed and edited,
- * never created or deleted.
+ * Built-in templates (used by the system) can be edited but not deleted.
  */
 class EmailTemplatePolicy
 {
@@ -28,7 +27,7 @@ class EmailTemplatePolicy
 
     public function create(AuthUser $authUser): bool
     {
-        return false;
+        return $authUser->can('Create:EmailTemplate');
     }
 
     public function update(AuthUser $authUser, EmailTemplate $emailTemplate): bool
@@ -38,7 +37,7 @@ class EmailTemplatePolicy
 
     public function delete(AuthUser $authUser, EmailTemplate $emailTemplate): bool
     {
-        return false;
+        return ! $emailTemplate->isBuiltIn() && $authUser->can('Delete:EmailTemplate');
     }
 
     public function deleteAny(AuthUser $authUser): bool

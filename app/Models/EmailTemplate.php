@@ -27,8 +27,14 @@ class EmailTemplate extends Model
         self::RESET_PASSWORD => ['name', 'email', 'minutes', 'app', 'reset_url', 'reset_button'],
     ];
 
+    /** Variables offered by templates an admin creates. */
+    public const GENERAL_VARIABLES = ['name', 'email', 'app'];
+
+    public const LANG_FILE = 'email_templates';
+
     protected $fillable = [
         'key',
+        'name',
         'header_title',
         'logo_path',
         'custom_variables',
@@ -56,11 +62,6 @@ class EmailTemplate extends Model
             ],
             default => [],
         };
-    }
-
-    public function label(): string
-    {
-        return __('email_templates.templates.'.$this->key);
     }
 
     public function headerTitle(): string
