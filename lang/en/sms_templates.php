@@ -13,9 +13,7 @@ return [
         'name' => 'Template name',
         'general' => 'General',
         'custom_variables' => 'Custom variables',
-        'custom_variables_description' => 'Create your own {{ variables }} with a fixed value, for example a hotline or website.',
         'content' => 'SMS text',
-        'content_description' => 'Plain text sent by SMS. Use {{ code }} for the 6-digit code, and {{ name }}, {{ phone }}, {{ minutes }}, {{ app }} or your custom variables. Write in Khmer or English; everyone receives this text as written.',
     ],
 
     'built_in' => [

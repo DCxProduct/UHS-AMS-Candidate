@@ -57,7 +57,6 @@ class SmsTemplateForm
                             ]),
 
                         Section::make(__('sms_templates.sections.custom_variables'))
-                            ->description(__('sms_templates.sections.custom_variables_description'))
                             ->collapsible()
                             ->schema([
                                 Repeater::make('custom_variables')
@@ -68,7 +67,8 @@ class SmsTemplateForm
                                             ->prefix('{{')
                                             ->suffix('}}')
                                             ->placeholder('hotline')
-                                            ->required()
+                                            // The empty row shown by default may stay empty; a half-filled row needs both parts.
+                                            ->required(fn (Get $get): bool => filled($get('value')))
                                             ->maxLength(40)
                                             ->regex('/^[a-z][a-z0-9_]*$/')
                                             ->notIn(fn (?SmsTemplate $record): array => SmsTemplate::builtInVariablesFor($record))
@@ -81,17 +81,16 @@ class SmsTemplateForm
                                             ->live(onBlur: true),
                                         TextInput::make('value')
                                             ->label(__('sms_templates.fields.value'))
-                                            ->required()
+                                            ->required(fn (Get $get): bool => filled($get('name')))
                                             ->maxLength(200),
                                     ])
                                     ->columns(2)
-                                    ->defaultItems(0)
+                                    ->defaultItems(1)
                                     ->addActionLabel(__('sms_templates.actions.add_variable'))
                                     ->itemLabel(fn (array $state): ?string => filled($state['name'] ?? null) ? '{{ '.$state['name'].' }}' : null),
                             ]),
 
                         Section::make(__('sms_templates.sections.content'))
-                            ->description(__('sms_templates.sections.content_description'))
                             ->schema([
                                 Textarea::make('body')
                                     ->id('sms-body')

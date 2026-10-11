@@ -154,6 +154,32 @@ class MessageTemplateCrudTest extends TestCase
             ->assertHasFormErrors(['action' => 'unique']);
     }
 
+    public function test_one_empty_custom_variable_row_is_shown_and_not_saved(): void
+    {
+        $email = EmailTemplate::for(EmailTemplate::RESET_PASSWORD);
+        $sms = SmsTemplate::for(SmsTemplate::RESET_PASSWORD_OTP);
+
+        $emailPage = Livewire::test(EditEmailTemplate::class, ['record' => $email->getRouteKey()]);
+        $this->assertCount(1, $emailPage->get('data.custom_variables'));
+        $emailPage->call('save')->assertHasNoFormErrors();
+
+        $smsPage = Livewire::test(EditSmsTemplate::class, ['record' => $sms->getRouteKey()]);
+        $this->assertCount(1, $smsPage->get('data.custom_variables'));
+        $smsPage->call('save')->assertHasNoFormErrors();
+
+        $this->assertSame([], $email->refresh()->custom_variables);
+        $this->assertSame([], $sms->refresh()->custom_variables);
+
+        // A row with only a name still needs its value.
+        Livewire::test(EditEmailTemplate::class, ['record' => $email->getRouteKey()])
+            ->set('data.custom_variables', ['a' => ['name' => 'hotline', 'value' => null]])
+            ->call('save')
+            ->assertHasFormErrors(['custom_variables.a.value' => 'required']);
+
+        Livewire::test(CreateSmsTemplate::class)
+            ->assertCount('data.custom_variables', 1);
+    }
+
     public function test_built_in_templates_cannot_be_deleted(): void
     {
         $email = EmailTemplate::for(EmailTemplate::RESET_PASSWORD);

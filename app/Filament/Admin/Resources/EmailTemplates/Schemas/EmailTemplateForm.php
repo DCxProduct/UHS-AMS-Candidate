@@ -47,7 +47,6 @@ class EmailTemplateForm
                             ]),
 
                         Section::make(__('email_templates.sections.header'))
-                            ->description(__('email_templates.sections.header_description'))
                             ->schema([
                                 FileUpload::make('logo_path')
                                     ->label(__('email_templates.fields.logo'))
@@ -66,7 +65,6 @@ class EmailTemplateForm
                             ]),
 
                         Section::make(__('email_templates.sections.custom_variables'))
-                            ->description(__('email_templates.sections.custom_variables_description'))
                             ->collapsible()
                             ->schema([
                                 Repeater::make('custom_variables')
@@ -77,7 +75,8 @@ class EmailTemplateForm
                                             ->prefix('{{')
                                             ->suffix('}}')
                                             ->placeholder('hotline')
-                                            ->required()
+                                            // The empty row shown by default may stay empty; a half-filled row needs both parts.
+                                            ->required(fn (Get $get): bool => filled($get('value')))
                                             ->maxLength(40)
                                             ->regex('/^[a-z][a-z0-9_]*$/')
                                             ->notIn(fn (?EmailTemplate $record): array => EmailTemplate::builtInVariablesFor($record))
@@ -90,18 +89,17 @@ class EmailTemplateForm
                                             ->live(onBlur: true),
                                         TextInput::make('value')
                                             ->label(__('email_templates.fields.value'))
-                                            ->required()
+                                            ->required(fn (Get $get): bool => filled($get('name')))
                                             ->maxLength(500),
                                     ])
                                     ->columns(2)
-                                    ->defaultItems(0)
+                                    ->defaultItems(1)
                                     ->addActionLabel(__('email_templates.actions.add_variable'))
                                     ->itemLabel(fn (array $state): ?string => filled($state['name'] ?? null) ? '{{ '.$state['name'].' }}' : null)
                                     ->live(),
                             ]),
 
                         Section::make(__('email_templates.sections.content'))
-                            ->description(__('email_templates.sections.content_description'))
                             ->schema(self::contentFields()),
                     ]),
             ]);
@@ -118,7 +116,6 @@ class EmailTemplateForm
 
                 TextInput::make('button')
                     ->label(__('email_templates.fields.button'))
-                    ->helperText(__('email_templates.helpers.button'))
                     ->required()
                     ->maxLength(255),
             ]),

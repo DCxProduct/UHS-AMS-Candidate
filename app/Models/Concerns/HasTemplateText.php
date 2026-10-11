@@ -114,6 +114,21 @@ trait HasTemplateText
     }
 
     /**
+     * Form data without empty custom variable rows (the form shows one empty row by default).
+     */
+    public static function withoutBlankVariables(array $data): array
+    {
+        if (array_key_exists('custom_variables', $data)) {
+            $data['custom_variables'] = array_values(array_filter(
+                $data['custom_variables'] ?? [],
+                fn ($item): bool => is_array($item) && (filled($item['name'] ?? null) || filled($item['value'] ?? null)),
+            ));
+        }
+
+        return $data;
+    }
+
+    /**
      * Custom variables: name => value.
      */
     public function customVariables(): array

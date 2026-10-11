@@ -12,11 +12,8 @@ return [
     'sections' => [
         'name' => 'Template name',
         'custom_variables' => 'Custom variables',
-        'custom_variables_description' => 'Create your own {{ variables }} with a fixed value, for example a hotline or website. After adding one, it appears in "Insert Variable".',
         'header' => 'Email header',
-        'header_description' => 'Shown at the top and bottom of the email.',
         'content' => 'Email content',
-        'content_description' => 'Design the email like a document. Use "Insert Variable" to add {{ name }}, {{ email }}, {{ minutes }} (how long the link works), {{ app }} (the header title), {{ reset_url }} (the link) or {{ reset_button }} (the button). Write in Khmer or English; everyone receives this text as written.',
     ],
 
     'built_in' => [
@@ -83,7 +80,6 @@ return [
     'helpers' => [
         'action' => 'The workflow uses this template automatically for this action\'s email (unless a stage chooses another template). One template per action.',
         'logo' => 'PNG, JPG or GIF, up to 1 MB. Shown at the top of the email, above the header title.',
-        'button' => 'Shown on the {{ reset_button }} button.',
     ],
 
     'actions' => [
