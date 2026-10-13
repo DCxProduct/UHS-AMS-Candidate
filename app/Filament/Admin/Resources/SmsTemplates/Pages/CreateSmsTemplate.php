@@ -14,7 +14,7 @@ class CreateSmsTemplate extends CreateRecord
     {
         $data['key'] = SmsTemplate::keyFromName((string) ($data['name'] ?? ''));
 
-        return $data;
+        return SmsTemplate::withoutBlankVariables($data);
     }
 
     protected function getRedirectUrl(): string

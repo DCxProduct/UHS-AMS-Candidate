@@ -14,7 +14,7 @@ class CreateEmailTemplate extends CreateRecord
     {
         $data['key'] = EmailTemplate::keyFromName((string) ($data['name'] ?? ''));
 
-        return $data;
+        return EmailTemplate::withoutBlankVariables($data);
     }
 
     protected function getRedirectUrl(): string

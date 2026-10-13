@@ -8,6 +8,7 @@ use App\Filament\Admin\Resources\Payments\Schemas\PaymentForm;
 use App\Filament\Admin\Resources\Payments\Tables\PaymentsTable;
 use App\Filament\Concerns\AdminOnly;
 use App\Models\Payment;
+use App\Models\User;
 use BackedEnum;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Resources\Resource;
@@ -74,9 +75,23 @@ class PaymentResource extends Resource
             }
 
             $query->where('users_id', $userId);
+        } elseif (static::showsOnlyOwnReceivedPayments()) {
+            $query->where('received_by', auth()->id());
         }
 
         return $query;
+    }
+
+    /**
+     * Cashier officers see only the payments they received; admins and cashier managers see all.
+     */
+    public static function showsOnlyOwnReceivedPayments(): bool
+    {
+        $user = auth()->user();
+
+        return $user instanceof User
+            && $user->hasEffectiveRole('cashier_officer')
+            && ! $user->hasEffectiveRole(['admin', 'cashier_manager']);
     }
 
     protected static function currentUserCanViewAllRecords(): bool

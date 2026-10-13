@@ -23,14 +23,15 @@ class SmsTemplate extends Model
         self::RESET_PASSWORD_OTP => ['name', 'phone', 'code', 'minutes', 'app'],
     ];
 
-    /** Variables offered by templates an admin creates. */
-    public const GENERAL_VARIABLES = ['name', 'phone', 'app'];
+    /** Variables offered by templates an admin creates (form, stage, message and status come from a workflow stage). */
+    public const GENERAL_VARIABLES = ['name', 'phone', 'app', 'form', 'stage', 'message', 'status'];
 
     public const LANG_FILE = 'sms_templates';
 
     protected $fillable = [
         'key',
         'name',
+        'action',
         'app_name',
         'custom_variables',
         'body',
@@ -55,5 +56,20 @@ class SmsTemplate extends Model
         return filled($this->app_name)
             ? (string) $this->app_name
             : (string) (self::defaults($this->key)['app_name'] ?? config('app.name'));
+    }
+
+    /**
+     * The text of a template an admin created, for one person, with extra
+     * variables such as those of a workflow stage.
+     */
+    public function renderFor(?User $user, array $variables = []): string
+    {
+        return trim($this->text('body', [
+            ...$this->customVariables(),
+            'name' => (string) ($user?->name ?? ''),
+            'phone' => (string) ($user?->phone ?? ''),
+            'app' => $this->appName(),
+            ...$variables,
+        ]));
     }
 }

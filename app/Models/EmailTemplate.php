@@ -27,14 +27,15 @@ class EmailTemplate extends Model
         self::RESET_PASSWORD => ['name', 'email', 'minutes', 'app', 'reset_url', 'reset_button'],
     ];
 
-    /** Variables offered by templates an admin creates. */
-    public const GENERAL_VARIABLES = ['name', 'email', 'app'];
+    /** Variables offered by templates an admin creates (form, stage, message and status come from a workflow stage). */
+    public const GENERAL_VARIABLES = ['name', 'email', 'app', 'form', 'stage', 'message', 'status'];
 
     public const LANG_FILE = 'email_templates';
 
     protected $fillable = [
         'key',
         'name',
+        'action',
         'header_title',
         'logo_path',
         'custom_variables',

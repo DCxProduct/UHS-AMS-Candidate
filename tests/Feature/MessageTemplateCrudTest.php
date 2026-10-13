@@ -12,6 +12,7 @@ use App\Models\EmailTemplate;
 use App\Models\Role;
 use App\Models\SmsTemplate;
 use App\Models\User;
+use App\Support\TemplateEmail;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -60,17 +61,17 @@ class MessageTemplateCrudTest extends TestCase
         $template = EmailTemplate::query()->where('key', 'interview_invitation')->sole();
         $this->assertSame('Interview invitation', $template->label());
         $this->assertFalse($template->isBuiltIn());
-        $this->assertSame(['name', 'email', 'app'], EmailTemplate::builtInVariablesFor($template));
+        $this->assertSame(['name', 'email', 'app', 'form', 'stage', 'message', 'status'], EmailTemplate::builtInVariablesFor($template));
+
+        $message = TemplateEmail::build($template, auth()->user());
+        $this->assertSame('Interview for admin_user', $message->subject);
+        $this->assertStringContainsString('Hello admin_user, please come to UHS-AMS.', (string) $message->render());
 
         Livewire::test(EditEmailTemplate::class, ['record' => $template->getRouteKey()])
-            ->callAction('sendTest', ['to' => 'developer@example.test'])
-            ->assertHasNoActionErrors()
-            ->assertActionHidden('resetDefaults')
+            ->assertActionDoesNotExist('sendTest')
+            ->assertActionDoesNotExist('resetDefaults')
             ->callAction('delete');
 
-        $sent = app('mailer')->getSymfonyTransport()->messages()->last()->getOriginalMessage();
-        $this->assertSame('Interview for admin_user', $sent->getSubject());
-        $this->assertStringContainsString('Hello admin_user, please come to UHS-AMS.', $sent->getHtmlBody());
         $this->assertModelMissing($template);
     }
 
@@ -112,6 +113,73 @@ class MessageTemplateCrudTest extends TestCase
         $this->assertSame(['exam_reminder', 'exam_reminder_1'], SmsTemplate::query()->orderBy('id')->pluck('key')->all());
     }
 
+    public function test_an_email_template_can_be_set_for_one_action_only(): void
+    {
+        $form = [
+            'header_title' => 'UHS-AMS',
+            'subject' => 'Hi',
+            'button' => 'Open',
+            'body' => '<p>{{ message }}</p>',
+        ];
+
+        Livewire::test(CreateEmailTemplate::class)
+            ->fillForm([...$form, 'name' => 'Accepted', 'action' => 'accept'])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $this->assertSame('accept', EmailTemplate::forAction('accept')?->action);
+        Livewire::test(ListEmailTemplates::class)
+            ->assertTableColumnStateSet('action', 'accept', EmailTemplate::forAction('accept'));
+
+        Livewire::test(CreateEmailTemplate::class)
+            ->fillForm([...$form, 'name' => 'Accepted again', 'action' => 'accept'])
+            ->call('create')
+            ->assertHasFormErrors(['action' => 'unique']);
+    }
+
+    public function test_an_sms_template_can_be_set_for_one_action_only(): void
+    {
+        Livewire::test(CreateSmsTemplate::class)
+            ->fillForm(['name' => 'Accepted SMS', 'action' => 'accept', 'app_name' => 'UHS-AMS', 'body' => '{{ message }}'])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $this->assertSame('accept', SmsTemplate::forAction('accept')?->action);
+        Livewire::test(ListSmsTemplates::class)
+            ->assertTableColumnStateSet('action', 'accept', SmsTemplate::forAction('accept'));
+
+        Livewire::test(CreateSmsTemplate::class)
+            ->fillForm(['name' => 'Accepted again', 'action' => 'accept', 'app_name' => 'UHS-AMS', 'body' => 'Hi'])
+            ->call('create')
+            ->assertHasFormErrors(['action' => 'unique']);
+    }
+
+    public function test_one_empty_custom_variable_row_is_shown_and_not_saved(): void
+    {
+        $email = EmailTemplate::for(EmailTemplate::RESET_PASSWORD);
+        $sms = SmsTemplate::for(SmsTemplate::RESET_PASSWORD_OTP);
+
+        $emailPage = Livewire::test(EditEmailTemplate::class, ['record' => $email->getRouteKey()]);
+        $this->assertCount(1, $emailPage->get('data.custom_variables'));
+        $emailPage->call('save')->assertHasNoFormErrors();
+
+        $smsPage = Livewire::test(EditSmsTemplate::class, ['record' => $sms->getRouteKey()]);
+        $this->assertCount(1, $smsPage->get('data.custom_variables'));
+        $smsPage->call('save')->assertHasNoFormErrors();
+
+        $this->assertSame([], $email->refresh()->custom_variables);
+        $this->assertSame([], $sms->refresh()->custom_variables);
+
+        // A row with only a name still needs its value.
+        Livewire::test(EditEmailTemplate::class, ['record' => $email->getRouteKey()])
+            ->set('data.custom_variables', ['a' => ['name' => 'hotline', 'value' => null]])
+            ->call('save')
+            ->assertHasFormErrors(['custom_variables.a.value' => 'required']);
+
+        Livewire::test(CreateSmsTemplate::class)
+            ->assertCount('data.custom_variables', 1);
+    }
+
     public function test_built_in_templates_cannot_be_deleted(): void
     {
         $email = EmailTemplate::for(EmailTemplate::RESET_PASSWORD);
@@ -121,7 +189,7 @@ class MessageTemplateCrudTest extends TestCase
         Livewire::test(ListSmsTemplates::class)->assertTableActionHidden('delete', $sms);
         Livewire::test(EditEmailTemplate::class, ['record' => $email->getRouteKey()])
             ->assertActionHidden('delete')
-            ->assertActionVisible('resetDefaults')
+            ->assertActionDoesNotExist('resetDefaults')
             ->assertDontSee(__('email_templates.fields.template_name'));
         Livewire::test(EditSmsTemplate::class, ['record' => $sms->getRouteKey()])->assertActionHidden('delete');
 

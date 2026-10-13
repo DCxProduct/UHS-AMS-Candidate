@@ -5,14 +5,10 @@ namespace App\Filament\Admin\Resources\SmsTemplates\Pages;
 use App\Filament\Admin\Resources\SmsTemplates\SmsTemplateResource;
 use App\Models\SmsTemplate;
 use App\Support\PasswordResetOtpSms;
-use App\Support\PlasGateSms;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
-use Filament\Forms\Components\TextInput;
-use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Contracts\Support\Htmlable;
-use Throwable;
 
 /**
  * @property SmsTemplate $record
@@ -24,6 +20,21 @@ class EditSmsTemplate extends EditRecord
     public function getTitle(): string|Htmlable
     {
         return $this->record->label();
+    }
+
+    protected function mutateFormDataBeforeFill(array $data): array
+    {
+        // Show one empty custom variable row, ready to fill in.
+        if (blank($data['custom_variables'] ?? null)) {
+            $data['custom_variables'] = [['name' => null, 'value' => null]];
+        }
+
+        return $data;
+    }
+
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        return SmsTemplate::withoutBlankVariables($data);
     }
 
     protected function getHeaderActions(): array
@@ -42,52 +53,8 @@ class EditSmsTemplate extends EditRecord
                     'previews' => [$this->record->label() => $this->sample()],
                 ])),
 
-            Action::make('sendTest')
-                ->label(__('sms_templates.actions.send_test'))
-                ->icon('heroicon-o-paper-airplane')
-                ->color('gray')
-                ->modalDescription(__('sms_templates.send_test.save_first'))
-                ->modalSubmitActionLabel(__('sms_templates.actions.send'))
-                ->schema([
-                    TextInput::make('to')
-                        ->label(__('sms_templates.send_test.phone'))
-                        ->tel()
-                        ->required()
-                        ->default(fn (): ?string => auth()->user()?->phone),
-                ])
-                ->action(function (array $data): void {
-                    try {
-                        $sent = PlasGateSms::send($data['to'], $this->sample());
-                    } catch (Throwable $exception) {
-                        report($exception);
-                        $sent = false;
-                    }
-
-                    if (! $sent) {
-                        Notification::make()->title(__('sms_templates.send_test.failed'))->danger()->send();
-
-                        return;
-                    }
-
-                    Notification::make()->title(__('sms_templates.send_test.sent', ['phone' => $data['to']]))->success()->send();
-                }),
-
             DeleteAction::make()
                 ->visible(fn (): bool => ! $this->record->isBuiltIn()),
-
-            Action::make('resetDefaults')
-                ->label(__('sms_templates.actions.reset_defaults'))
-                ->visible(fn (): bool => $this->record->isBuiltIn())
-                ->icon('heroicon-o-arrow-uturn-left')
-                ->color('danger')
-                ->requiresConfirmation()
-                ->modalDescription(__('sms_templates.reset_defaults.description'))
-                ->action(function (): void {
-                    $this->record->update(SmsTemplate::defaults($this->record->key));
-                    $this->fillForm();
-
-                    Notification::make()->title(__('sms_templates.reset_defaults.done'))->success()->send();
-                }),
         ];
     }
 
@@ -97,14 +64,9 @@ class EditSmsTemplate extends EditRecord
     private function sample(): string
     {
         if ($this->record->key !== SmsTemplate::RESET_PASSWORD_OTP) {
-            $user = auth()->user();
-
-            return trim($this->record->text('body', [
-                ...$this->record->customVariables(),
-                'name' => (string) ($user?->name ?? ''),
-                'phone' => (string) ($user?->phone ?? ''),
-                'app' => $this->record->appName(),
-            ]));
+            return $this->record->renderFor(auth()->user(), collect(['form', 'stage', 'message', 'status'])
+                ->mapWithKeys(fn (string $name): array => [$name => __('sms_templates.built_in.samples.'.$name)])
+                ->all());
         }
 
         return PasswordResetOtpSms::text(auth()->user(), '123456');

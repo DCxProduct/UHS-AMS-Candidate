@@ -7,7 +7,7 @@ return [
         'form_entry' => 'Candidate Applications',
         'candidates' => 'Candidates',
         'cashier' => 'Cashier',
-        'form_builder' => 'Form Builder',
+        'form_builder' => 'Notification & Form Builder',
         'settings' => 'Settings',
     ],
 

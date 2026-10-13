@@ -89,13 +89,9 @@ class SmsTemplateResourceTest extends TestCase
             ->assertSchemaStateSet(['body' => SmsTemplate::defaults(SmsTemplate::RESET_PASSWORD_OTP)['body']])
             ->fillForm(['body' => 'Code {{ code }}'])
             ->call('save')
-            ->assertHasNoFormErrors()
-            ->callAction('sendTest', ['to' => '015 916 217'])
-            ->assertNotified(__('sms_templates.send_test.sent', ['phone' => '015 916 217']));
+            ->assertHasNoFormErrors();
 
         $this->assertSame('Code {{ code }}', $template->refresh()->body);
-        Http::assertSent(fn (HttpRequest $request): bool => $request['messages'][0]['to'][0] === '85515916217'
-            && $request['messages'][0]['content'] === 'Code 123456');
     }
 
     public function test_custom_variable_names_are_checked(): void
@@ -132,34 +128,25 @@ class SmsTemplateResourceTest extends TestCase
         $this->get(SmsTemplateResource::getUrl('edit', ['record' => $template]))->assertForbidden();
     }
 
-    public function test_preview_and_restore_defaults(): void
+    public function test_preview_works_and_there_is_no_send_test_or_restore_button(): void
     {
         $this->actingAs($this->admin);
         $template = SmsTemplate::for(SmsTemplate::RESET_PASSWORD_OTP);
-        $template->update(['body' => 'Changed {{ code }}']);
 
         Livewire::test(EditSmsTemplate::class, ['record' => $template->getRouteKey()])
+            ->assertActionDoesNotExist('sendTest')
+            ->assertActionDoesNotExist('resetDefaults')
             ->mountAction('preview')
             ->assertActionMounted('preview');
-
-        Livewire::test(EditSmsTemplate::class, ['record' => $template->getRouteKey()])
-            ->callAction('resetDefaults')
-            ->assertSchemaStateSet(['body' => SmsTemplate::defaults(SmsTemplate::RESET_PASSWORD_OTP)['body']]);
     }
 
-    public function test_the_custom_variables_section_lists_the_built_in_variables_with_samples(): void
+    public function test_the_built_in_variables_table_is_not_shown(): void
     {
         $this->actingAs($this->admin);
         $template = SmsTemplate::for(SmsTemplate::TEMPLATES[0]);
 
-        $response = $this->get(SmsTemplateResource::getUrl('edit', ['record' => $template]))->assertOk()
-            ->assertSee(__('sms_templates.built_in.heading'));
-
-        foreach (SmsTemplate::VARIABLES[$template->key] as $name) {
-            $response->assertSee('&#123;&#123; '.$name.' &#125;&#125;', false)
-                ->assertSee(__('sms_templates.built_in.meanings.'.$name))
-                ->assertSee(__('sms_templates.built_in.samples.'.$name));
-        }
+        $this->get(SmsTemplateResource::getUrl('edit', ['record' => $template]))->assertOk()
+            ->assertDontSee(__('sms_templates.built_in.heading'));
     }
 
     public function test_sms_text_has_an_insert_variable_dropdown_with_custom_variables(): void

@@ -27,6 +27,8 @@ return [
     ],
 
     'fields' => [
+        'email_template' => 'Email template',
+        'sms_template' => 'SMS template',
         'notification_channels' => 'Send notification by',
         'name' => 'Template Name',
         'assigned_forms' => 'Assigned Forms',
@@ -40,6 +42,8 @@ return [
     ],
 
     'placeholders' => [
+        'plain_email' => 'Plain email (stage message only)',
+        'plain_sms' => 'Plain SMS (stage message only)',
         'name' => 'Example: Candidate Admission',
         'stage_name' => 'Example: Review application',
         'automatic_role' => 'Automatic',
@@ -49,7 +53,7 @@ return [
 
     'review_actions' => [
         'accept' => [
-            'title' => 'Please go to cashier counter',
+            'title' => 'Accept',
             'status_message' => 'Candidate Status Message (Optional)',
             'notification_message' => 'Candidate Notification Message (Optional)',
         ],
@@ -66,6 +70,7 @@ return [
     ],
 
     'helpers' => [
+        'message_template' => 'Optional. Design templates in Notification & Form Builder → Email Templates / SMS Templates; use {{ message }} there for this stage\'s notification text.',
         'notification_channels' => 'Where the candidate receives this stage\'s notification message. SMS goes to the candidate\'s phone through PlasGate; Email to their email address.',
         'assigned_forms' => 'Forms that follow this workflow. A form can belong to only one template.',
     ],
