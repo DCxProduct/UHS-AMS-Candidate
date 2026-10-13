@@ -3,7 +3,9 @@
 namespace App\Filament\Admin\Resources\Payments\Tables;
 
 use App\Models\PaymentType;
+use App\Filament\Admin\Resources\Payments\PaymentResource;
 use App\Models\Payment;
+use App\Models\User;
 use App\Support\FormEntryData;
 use App\Support\CaseInsensitiveSearch;
 use App\Support\LocalizedDate;
@@ -27,6 +29,7 @@ class PaymentsTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with('receivedBy'))
             ->selectable()
             ->recordAction(null)
             ->recordUrl(null)
@@ -149,6 +152,12 @@ class PaymentsTable
                     ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
                     ->toggleable(isToggledHiddenByDefault: false),
 
+                // The cashier who recorded the payment; older payments have none.
+                TextColumn::make('received_by')
+                    ->label(__('payments.table.received_by'))
+                    ->getStateUsing(fn (Payment $record): string => self::receiverName($record))
+                    ->toggleable(isToggledHiddenByDefault: false),
+
                 ])
             ->filters([
                 Filter::make('payment_filters')
@@ -178,6 +187,15 @@ class PaymentsTable
                             ->searchable()
                             ->live(),
 
+                        Select::make('received_by')
+                            ->label(__('payments.table.received_by'))
+                            ->placeholder(__('payments.placeholders.received_by'))
+                            ->options(fn (): array => self::dynamicReceiverOptions())
+                            ->visible(fn (): bool => ! PaymentResource::showsOnlyOwnReceivedPayments())
+                            ->native(false)
+                            ->searchable()
+                            ->live(),
+
                         DatePicker::make('datetime_pay')
                             ->label(__('payments.table.datetime_pay'))
                             ->placeholder(__('payments.placeholders.datetime_pay'))
@@ -187,7 +205,7 @@ class PaymentsTable
                             ->maxDate(now())
                             ->live(),
                     ])
-                    ->columns(4)
+                    ->columns(5)
                     ->columnSpanFull()
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
@@ -204,13 +222,17 @@ class PaymentsTable
                                 fn (Builder $query): Builder => $query->where('form_id', $data['form_id'])
                             )
                             ->when(
+                                filled($data['received_by'] ?? null),
+                                fn (Builder $query): Builder => $query->where('received_by', $data['received_by'])
+                            )
+                            ->when(
                                 filled($data['datetime_pay'] ?? null),
                                 fn (Builder $query): Builder => $query->whereDate('datetime_pay', $data['datetime_pay'])
                             );
                     }),
             ], layout: FiltersLayout::AboveContent)
             ->deferFilters(false)
-            ->filtersFormColumns(4)
+            ->filtersFormColumns(5)
             ->recordActions([
                 EditAction::make()
                     ->label(__('payments.actions.edit'))
@@ -329,9 +351,29 @@ class PaymentsTable
         };
     }
 
+    protected static function receiverName(Payment $record): string
+    {
+        $receiver = $record->receivedBy;
+
+        return (string) ($receiver?->name ?: $receiver?->username ?: '-');
+    }
+
+    /**
+     * Cashiers who have recorded at least one payment.
+     */
+    protected static function dynamicReceiverOptions(): array
+    {
+        return User::query()
+            ->whereIn('id', PaymentResource::getEloquentQuery()->whereNotNull('received_by')->select('received_by'))
+            ->orderBy('name')
+            ->get(['id', 'name', 'username'])
+            ->mapWithKeys(fn (User $user): array => [(string) $user->id => (string) ($user->name ?: $user->username)])
+            ->toArray();
+    }
+
     protected static function dynamicFormOptions(): array
     {
-        return Payment::query()
+        return PaymentResource::getEloquentQuery()
             ->with('form:id,name')
             ->get()
             ->filter(fn (Payment $record): bool => filled($record->form_id) && $record->form !== null)
@@ -343,7 +385,7 @@ class PaymentsTable
 
     protected static function dynamicReceiptOptions(): array
     {
-        return Payment::query()
+        return PaymentResource::getEloquentQuery()
             ->whereNotNull('receipt_number')
             ->pluck('receipt_number')
             ->map(fn (mixed $value): string => trim((string) $value))
@@ -356,7 +398,7 @@ class PaymentsTable
 
     protected static function dynamicMajorOptions(): array
     {
-        return Payment::query()
+        return PaymentResource::getEloquentQuery()
             ->get()
             ->map(fn (Payment $record): string => trim(self::majorKey($record)))
             ->filter(fn (string $value): bool => $value !== '' && $value !== '-')
@@ -368,7 +410,7 @@ class PaymentsTable
 
     protected static function paymentIdsForMajor(string $major): array
     {
-        return Payment::query()
+        return PaymentResource::getEloquentQuery()
             ->get()
             ->filter(fn (Payment $record): bool => self::majorKey($record) === $major)
             ->pluck('id')
@@ -704,6 +746,12 @@ class PaymentsTable
                 'field_key' => 'datetime_pay',
                 'value' => fn (Payment $record): string => LocalizedDate::dayMonthYear($record->datetime_pay),
                 'clean' => fn (Payment $record): string => blank($record->datetime_pay) ? '-' : (string) $record->datetime_pay,
+            ],
+            'received_by' => [
+                'label' => __('payments.table.received_by'),
+                'field_key' => 'received_by',
+                'value' => fn (Payment $record): string => self::receiverName($record),
+                'clean' => fn (Payment $record): string => blank($record->received_by) ? '-' : (string) $record->received_by,
             ],
         ];
     }

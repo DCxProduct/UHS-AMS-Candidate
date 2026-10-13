@@ -14,6 +14,7 @@ class Payment extends Model
 {
     protected $fillable = [
         'users_id',
+        'received_by',
         'form_id',
         'custom_form_entry_id',
         'receipt_number',
@@ -41,6 +42,13 @@ class Payment extends Model
 
     protected static function booted(): void
     {
+        // The signed-in cashier who records the payment.
+        static::creating(function (Payment $payment): void {
+            if (blank($payment->received_by) && auth()->check() && auth()->id() !== $payment->users_id) {
+                $payment->received_by = auth()->id();
+            }
+        });
+
         static::saving(function (Payment $payment): void {
             $payment->receipt_number = filled($payment->receipt_number)
                 ? trim((string) $payment->receipt_number)
@@ -65,6 +73,11 @@ class Payment extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'users_id');
+    }
+
+    public function receivedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'received_by');
     }
 
     public function form(): BelongsTo
