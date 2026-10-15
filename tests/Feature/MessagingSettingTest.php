@@ -86,7 +86,7 @@ class MessagingSettingTest extends TestCase
         $this->assertSame('new-secret', MessagingSetting::singleton()->plasgate_secret);
     }
 
-    public function test_admin_saves_the_settings_and_empty_secret_fields_keep_the_saved_ones(): void
+    public function test_admin_saves_the_settings_and_sees_them_again_on_the_page(): void
     {
         $this->actingAs($this->admin);
         $settings = MessagingSetting::singleton();
@@ -95,19 +95,23 @@ class MessagingSettingTest extends TestCase
         $this->get(MessagingSettingResource::getUrl('index'))->assertRedirect();
 
         Livewire::test(EditMessagingSetting::class, ['record' => $settings->getRouteKey()])
-            // Saved secrets are never sent back to the page.
-            ->assertSchemaStateSet(['plasgate_secret' => null])
+            // Saved keys are shown (as password fields) like the other values.
+            ->assertSchemaStateSet(['plasgate_secret' => 'saved-secret'])
             ->fillForm([
                 'mail_host' => 'smtp.gmail.com',
                 'mail_username' => 'office@example.test',
                 'mail_password' => 'typed-app-password',
                 'plasgate_private_key' => 'typed-private-key',
-                'plasgate_secret' => '',
                 'plasgate_sender' => 'UHS',
             ])
             ->call('save')
             ->assertHasNoFormErrors()
-            ->assertSchemaStateSet(['mail_password' => null, 'mail_host' => 'smtp.gmail.com']);
+            ->assertSchemaStateSet([
+                'mail_host' => 'smtp.gmail.com',
+                'mail_password' => 'typed-app-password',
+                'plasgate_private_key' => 'typed-private-key',
+                'plasgate_secret' => 'saved-secret',
+            ]);
 
         $settings->refresh();
         $this->assertSame('smtp.gmail.com', $settings->mail_host);
@@ -115,6 +119,20 @@ class MessagingSettingTest extends TestCase
         $this->assertSame('typed-private-key', $settings->plasgate_private_key);
         $this->assertSame('saved-secret', $settings->plasgate_secret);
         $this->assertSame('typed-app-password', config('mail.mailers.smtp.password'));
+    }
+
+    public function test_emptying_a_key_removes_it_so_env_is_used(): void
+    {
+        $this->actingAs($this->admin);
+        $settings = MessagingSetting::singleton();
+        $settings->update(['plasgate_secret' => 'saved-secret']);
+
+        Livewire::test(EditMessagingSetting::class, ['record' => $settings->getRouteKey()])
+            ->fillForm(['plasgate_secret' => ''])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertNull($settings->refresh()->getRawOriginal('plasgate_secret'));
     }
 
     public function test_sms_otp_is_sent_with_the_saved_plasgate_keys(): void

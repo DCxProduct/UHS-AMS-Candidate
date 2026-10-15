@@ -31,22 +31,12 @@ class EditMessagingSetting extends EditRecord
         return [];
     }
 
-    protected function mutateFormDataBeforeFill(array $data): array
-    {
-        // Saved passwords and keys are never sent back to the browser.
-        foreach (MessagingSetting::SECRETS as $column) {
-            $data[$column] = null;
-        }
-
-        return $data;
-    }
-
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        // An empty password or key field keeps the saved one.
+        // An emptied password or key is removed, so the .env value is used again.
         foreach (MessagingSetting::SECRETS as $column) {
             if (blank($data[$column] ?? null)) {
-                unset($data[$column]);
+                $data[$column] = null;
             }
         }
 

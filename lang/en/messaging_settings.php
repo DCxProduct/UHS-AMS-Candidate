@@ -34,8 +34,4 @@ return [
         'plasgate_sender' => 'Enter PlasGate sender',
         'plasgate_test_phone' => 'Enter PlasGate test phone',
     ],
-
-    'helpers' => [
-        'secret_saved' => 'Saved. Leave empty to keep it; type a new one to replace it.',
-    ],
 ];
