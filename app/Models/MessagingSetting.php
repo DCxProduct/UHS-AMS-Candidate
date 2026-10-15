@@ -29,7 +29,7 @@ class MessagingSetting extends Model
     ];
 
     /**
-     * Never shown back in the form; a new value replaces the saved one.
+     * Stored encrypted; shown in the form as password fields.
      */
     public const SECRETS = ['mail_password', 'plasgate_private_key', 'plasgate_secret'];
 
@@ -45,8 +45,6 @@ class MessagingSetting extends Model
         'plasgate_sender',
         'plasgate_test_phone',
     ];
-
-    protected $hidden = self::SECRETS;
 
     protected function casts(): array
     {
@@ -93,13 +91,5 @@ class MessagingSetting extends Model
                 config([$configKey => $value]);
             }
         }
-    }
-
-    /**
-     * Whether a value is saved here (true) or comes from .env (false).
-     */
-    public function hasSaved(string $column): bool
-    {
-        return filled($this->getRawOriginal($column));
     }
 }

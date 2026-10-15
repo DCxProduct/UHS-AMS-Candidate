@@ -34,8 +34,4 @@ return [
         'plasgate_sender' => 'បញ្ចូល PlasGate Sender',
         'plasgate_test_phone' => 'បញ្ចូល PlasGate Test Phone',
     ],
-
-    'helpers' => [
-        'secret_saved' => 'បានរក្សាទុក។ ទុកទទេ ដើម្បីរក្សាតម្លៃចាស់ ឬវាយតម្លៃថ្មី ដើម្បីប្តូរ។',
-    ],
 ];

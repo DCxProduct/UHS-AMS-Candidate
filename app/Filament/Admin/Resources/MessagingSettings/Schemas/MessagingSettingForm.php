@@ -2,7 +2,6 @@
 
 namespace App\Filament\Admin\Resources\MessagingSettings\Schemas;
 
-use App\Models\MessagingSetting;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -54,7 +53,7 @@ class MessagingSettingForm
     }
 
     /**
-     * A password or key: never shown again; empty keeps the saved one.
+     * A password or key: hidden until the eye button is clicked.
      */
     private static function secret(string $column): TextInput
     {
@@ -64,9 +63,6 @@ class MessagingSettingForm
             ->password()
             ->revealable()
             ->autocomplete('new-password')
-            ->maxLength(1000)
-            ->helperText(fn (?MessagingSetting $record): ?string => $record?->hasSaved($column)
-                ? __('messaging_settings.helpers.secret_saved')
-                : null);
+            ->maxLength(1000);
     }
 }
