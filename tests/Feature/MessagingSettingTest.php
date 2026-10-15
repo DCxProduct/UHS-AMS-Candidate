@@ -189,6 +189,97 @@ class MessagingSettingTest extends TestCase
         $this->assertSame('UHS', $settings->refresh()->plasgate_sender);
     }
 
+    public function test_forgot_password_by_sms_is_on_by_default(): void
+    {
+        $this->assertTrue(MessagingSetting::forgotPasswordBySms());
+
+        $this->get(route('student.password.request'))
+            ->assertOk()
+            ->assertSee(route('student.password.request', ['method' => 'phone']), false);
+
+        $this->get(route('student.password.request', ['method' => 'phone']))
+            ->assertOk()
+            ->assertSee(route('student.password.phone'), false);
+    }
+
+    public function test_turning_forgot_password_by_sms_off_leaves_only_email(): void
+    {
+        $this->actingAs($this->admin);
+        Livewire::test(EditMessagingSetting::class, ['record' => MessagingSetting::singleton()->getRouteKey()])
+            ->assertSchemaStateSet(['forgot_password_sms' => true])
+            ->fillForm(['forgot_password_sms' => false])
+            ->call('save')
+            ->assertHasNoFormErrors();
+        $this->assertFalse(MessagingSetting::forgotPasswordBySms());
+
+        auth()->logout();
+        $this->flushSession();
+
+        // The phone tab is gone; asking for it still shows the email form.
+        $this->get(route('student.password.request', ['method' => 'phone']))
+            ->assertOk()
+            ->assertSee('action="'.route('student.password.email').'"', false)
+            ->assertDontSee('action="'.route('student.password.phone').'"', false)
+            ->assertDontSee(route('student.password.request', ['method' => 'phone']), false);
+
+        // The phone routes are closed too.
+        $this->post(route('student.password.phone'), ['phone' => '015916217'])->assertNotFound();
+        $this->get(route('student.password.phone.verify', ['phone' => '015916217']))->assertNotFound();
+        $this->post(route('student.password.phone.update'), [
+            'phone' => '015916217',
+            'code' => '123456',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
+        ])->assertNotFound();
+    }
+
+    public function test_turning_forgot_password_by_email_off_leaves_only_phone(): void
+    {
+        $this->actingAs($this->admin);
+        Livewire::test(EditMessagingSetting::class, ['record' => MessagingSetting::singleton()->getRouteKey()])
+            ->assertSchemaStateSet(['forgot_password_email' => true])
+            ->fillForm(['forgot_password_email' => false])
+            ->call('save')
+            ->assertHasNoFormErrors();
+        $this->assertFalse(MessagingSetting::forgotPasswordByEmail());
+        $this->assertTrue(MessagingSetting::forgotPasswordBySms());
+
+        auth()->logout();
+        $this->flushSession();
+
+        $this->get(route('student.password.request'))
+            ->assertOk()
+            ->assertSee('action="'.route('student.password.phone').'"', false)
+            ->assertDontSee('action="'.route('student.password.email').'"', false)
+            ->assertDontSee(route('student.password.request', ['method' => 'phone']), false);
+
+        $this->post(route('student.password.email'), ['email' => 'someone@example.test'])->assertNotFound();
+        $this->get(route('student.password.reset', ['token' => 'abc', 'email' => 'someone@example.test']))->assertNotFound();
+        $this->post(route('student.password.update'), [
+            'token' => 'abc',
+            'email' => 'someone@example.test',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
+        ])->assertNotFound();
+    }
+
+    public function test_both_ways_cannot_be_turned_off(): void
+    {
+        $this->actingAs($this->admin);
+
+        Livewire::test(EditMessagingSetting::class, ['record' => MessagingSetting::singleton()->getRouteKey()])
+            ->fillForm(['forgot_password_email' => false, 'forgot_password_sms' => false])
+            ->call('save')
+            ->assertHasFormErrors(['forgot_password_email']);
+
+        $this->assertTrue(MessagingSetting::forgotPasswordByEmail());
+
+        // Even if both were off in the database, email stays available.
+        MessagingSetting::singleton()->update(['forgot_password_email' => false, 'forgot_password_sms' => false]);
+        $this->assertTrue(MessagingSetting::forgotPasswordByEmail());
+        $this->assertFalse(MessagingSetting::forgotPasswordBySms());
+    }
+
     private function user(string $username, string $role): User
     {
         $user = User::query()->forceCreate([

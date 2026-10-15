@@ -44,12 +44,16 @@ class MessagingSetting extends Model
         'plasgate_secret',
         'plasgate_sender',
         'plasgate_test_phone',
+        'forgot_password_email',
+        'forgot_password_sms',
     ];
 
     protected function casts(): array
     {
         return [
             'mail_port' => 'integer',
+            'forgot_password_email' => 'boolean',
+            'forgot_password_sms' => 'boolean',
             'mail_password' => 'encrypted',
             'plasgate_private_key' => 'encrypted',
             'plasgate_secret' => 'encrypted',
@@ -59,6 +63,32 @@ class MessagingSetting extends Model
     public static function singleton(): self
     {
         return static::query()->firstOrCreate(['id' => 1]);
+    }
+
+    /**
+     * Whether "Forgot password" offers the email (Gmail) way; on unless turned off here.
+     * Email stays on when the phone way is off too, so there is always one way.
+     */
+    public static function forgotPasswordByEmail(): bool
+    {
+        return static::forgotPasswordSwitch('forgot_password_email') || ! static::forgotPasswordBySms();
+    }
+
+    /**
+     * Whether "Forgot password" offers the phone (SMS OTP) way; on unless turned off here.
+     */
+    public static function forgotPasswordBySms(): bool
+    {
+        return static::forgotPasswordSwitch('forgot_password_sms');
+    }
+
+    private static function forgotPasswordSwitch(string $column): bool
+    {
+        try {
+            return (bool) (static::query()->whereKey(1)->value($column) ?? true);
+        } catch (Throwable) {
+            return true;
+        }
     }
 
     /**

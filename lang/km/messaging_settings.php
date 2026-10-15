@@ -7,6 +7,7 @@ return [
     'sections' => [
         'mail' => 'អ៊ីមែល (Gmail)',
         'sms' => 'SMS OTP (PlasGate)',
+        'forgot_password' => 'ភ្លេចពាក្យសម្ងាត់',
     ],
 
     'fields' => [
@@ -20,6 +21,8 @@ return [
         'plasgate_secret' => 'PlasGate Secret',
         'plasgate_sender' => 'PlasGate Sender',
         'plasgate_test_phone' => 'PlasGate Test Phone',
+        'forgot_password_email' => 'អនុញ្ញាតឱ្យកំណត់ពាក្យសម្ងាត់ថ្មីតាមអ៊ីមែល (Gmail)',
+        'forgot_password_sms' => 'អនុញ្ញាតឱ្យកំណត់ពាក្យសម្ងាត់ថ្មីតាមលេខទូរស័ព្ទ (SMS OTP)',
     ],
 
     'placeholders' => [
@@ -33,5 +36,9 @@ return [
         'plasgate_secret' => 'បញ្ចូល PlasGate Secret',
         'plasgate_sender' => 'បញ្ចូល PlasGate Sender',
         'plasgate_test_phone' => 'បញ្ចូល PlasGate Test Phone',
+    ],
+
+    'validation' => [
+        'forgot_password_one_way' => 'ត្រូវបើកយ៉ាងហោចណាស់មួយ សម្រាប់កំណត់ពាក្យសម្ងាត់ថ្មី។',
     ],
 ];

@@ -367,16 +367,20 @@
 
     <h1>{{ __('app.forgot_password') }}</h1>
 
-    @php($byPhone = request('method') === 'phone' || $errors->has('phone') || filled(old('phone')))
+    @php($emailEnabled = \App\Models\MessagingSetting::forgotPasswordByEmail())
+    @php($smsEnabled = \App\Models\MessagingSetting::forgotPasswordBySms())
+    @php($byPhone = $smsEnabled && (! $emailEnabled || request('method') === 'phone' || $errors->has('phone') || filled(old('phone'))))
 
     <p class="description">
         {{ $byPhone ? __('app.reset_otp_description') : __('app.forgot_password_description') }}
     </p>
 
+    @if ($emailEnabled && $smsEnabled)
     <nav class="reset-tabs">
         <a href="{{ route('student.password.request') }}" @class(['active' => ! $byPhone])>{{ __('app.reset_otp_tab_email') }}</a>
         <a href="{{ route('student.password.request', ['method' => 'phone']) }}" @class(['active' => $byPhone])>{{ __('app.reset_otp_tab_phone') }}</a>
     </nav>
+    @endif
 
     @if (session('status'))
         <div class="status">
