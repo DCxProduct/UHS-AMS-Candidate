@@ -2,9 +2,12 @@
 
 namespace App\Filament\Admin\Resources\MessagingSettings\Schemas;
 
+use Closure;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 
 class MessagingSettingForm
@@ -38,6 +41,23 @@ class MessagingSettingForm
                                 ]),
                             ]),
                     ]),
+
+                        Section::make(__('messaging_settings.sections.forgot_password'))
+                            ->schema([
+                                // At least one way stays on, so candidates can always reset their password.
+                                Toggle::make('forgot_password_email')
+                                    ->label(__('messaging_settings.fields.forgot_password_email'))
+                                    ->default(true)
+                                    ->rule(fn (Get $get): Closure => function (string $attribute, mixed $value, Closure $fail) use ($get): void {
+                                        if (! $value && ! $get('forgot_password_sms')) {
+                                            $fail(__('messaging_settings.validation.forgot_password_one_way'));
+                                        }
+                                    }),
+
+                                Toggle::make('forgot_password_sms')
+                                    ->label(__('messaging_settings.fields.forgot_password_sms'))
+                                    ->default(true),
+                            ]),
             ]);
     }
 

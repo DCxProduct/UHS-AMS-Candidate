@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\MessagingSetting;
 use App\Models\User;
 use App\Support\PasswordResetOtpSms;
 use App\Support\PhonePasswordResetOtp;
@@ -24,6 +25,8 @@ class PhonePasswordResetController extends Controller
 {
     public function sendCode(Request $request): RedirectResponse
     {
+        $this->ensureEnabled();
+
         $request->validate([
             'phone' => ['required', 'string', 'max:20'],
         ], [
@@ -74,6 +77,8 @@ class PhonePasswordResetController extends Controller
 
     public function showVerifyForm(Request $request): View
     {
+        $this->ensureEnabled();
+
         return view('auth.reset-password-phone', [
             'phone' => trim((string) $request->query('phone')),
         ]);
@@ -81,6 +86,8 @@ class PhonePasswordResetController extends Controller
 
     public function resetPassword(Request $request): RedirectResponse
     {
+        $this->ensureEnabled();
+
         $request->validate([
             'phone' => ['required', 'string', 'max:20'],
             'code' => ['required', 'digits:6'],
@@ -123,6 +130,14 @@ class PhonePasswordResetController extends Controller
     /**
      * The account for a phone number typed as 012 345 678, +855 12 345 678 or 85512345678.
      */
+    /**
+     * Turned off in Settings → Email & SMS Settings: only the email reset link is offered.
+     */
+    private function ensureEnabled(): void
+    {
+        abort_unless(MessagingSetting::forgotPasswordBySms(), 404);
+    }
+
     private static function findUser(string $phone): ?User
     {
         $international = PlasGateSms::normalizePhone($phone);

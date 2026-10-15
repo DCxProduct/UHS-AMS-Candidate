@@ -7,6 +7,7 @@ return [
     'sections' => [
         'mail' => 'Email (Gmail)',
         'sms' => 'SMS OTP (PlasGate)',
+        'forgot_password' => 'Forgot Password',
     ],
 
     'fields' => [
@@ -20,6 +21,8 @@ return [
         'plasgate_secret' => 'PlasGate Secret',
         'plasgate_sender' => 'PlasGate Sender',
         'plasgate_test_phone' => 'PlasGate Test Phone',
+        'forgot_password_email' => 'Allow reset password by email (Gmail)',
+        'forgot_password_sms' => 'Allow reset password by phone number (SMS OTP)',
     ],
 
     'placeholders' => [
@@ -33,5 +36,9 @@ return [
         'plasgate_secret' => 'Enter PlasGate secret',
         'plasgate_sender' => 'Enter PlasGate sender',
         'plasgate_test_phone' => 'Enter PlasGate test phone',
+    ],
+
+    'validation' => [
+        'forgot_password_one_way' => 'At least one way to reset the password must stay on.',
     ],
 ];

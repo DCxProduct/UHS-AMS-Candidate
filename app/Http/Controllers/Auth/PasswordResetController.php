@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\MessagingSetting;
 use App\Models\User;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Contracts\View\View;
@@ -23,6 +24,8 @@ class PasswordResetController extends Controller
 
     public function sendResetLink(Request $request): RedirectResponse
     {
+        $this->ensureEnabled();
+
         $request->validate([
             'email' => ['required', 'email', 'max:255'],
         ], [
@@ -78,6 +81,8 @@ class PasswordResetController extends Controller
 
     public function showResetPasswordForm(Request $request, string $token): View
     {
+        $this->ensureEnabled();
+
         return view('auth.reset-password', [
             'token' => $token,
             'email' => Str::lower(trim((string) $request->query('email'))),
@@ -86,6 +91,8 @@ class PasswordResetController extends Controller
 
     public function resetPassword(Request $request): RedirectResponse
     {
+        $this->ensureEnabled();
+
         $request->merge([
             'email' => Str::lower(trim((string) $request->input('email'))),
         ]);
@@ -132,5 +139,13 @@ class PasswordResetController extends Controller
             ->withErrors([
                 'email' => __('app.password_reset_token_invalid'),
             ]);
+    }
+
+    /**
+     * Turned off in Settings → Email & SMS Settings: only the phone (SMS OTP) way is offered.
+     */
+    private function ensureEnabled(): void
+    {
+        abort_unless(MessagingSetting::forgotPasswordByEmail(), 404);
     }
 }
