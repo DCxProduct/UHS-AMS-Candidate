@@ -13,6 +13,7 @@ use App\Models\ExamResult;
 use App\Models\ExchangeRate;
 use App\Models\ExitExamResult;
 use App\Models\GeoLocation;
+use App\Models\MessagingSetting;
 use App\Models\Payment;
 use App\Models\PaymentType;
 use App\Models\Role;
@@ -50,6 +51,9 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Gmail and PlasGate values saved in Settings → Email & SMS Settings override .env.
+        MessagingSetting::applyToConfig();
+
         TextColumn::configureUsing(static function (TextColumn $column): void {
             $column->forceSearchCaseInsensitive();
         });

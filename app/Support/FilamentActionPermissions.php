@@ -11,6 +11,7 @@ use App\Filament\Admin\Resources\CandidateSubmitPopupSettings\CandidateSubmitPop
 use App\Filament\Admin\Resources\ExamResults\ExamResultResource;
 use App\Filament\Admin\Resources\ExchangeRates\ExchangeRateResource;
 use App\Filament\Admin\Resources\ExitExamResults\ExitExamResultResource;
+use App\Filament\Admin\Resources\MessagingSettings\MessagingSettingResource;
 use App\Filament\Admin\Resources\Payments\PaymentResource;
 use App\Filament\Admin\Resources\SystemUsers\SystemUserResource;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
@@ -264,6 +265,10 @@ class FilamentActionPermissions
                 'update',
             ],
             CandidateSubmitPopupSettingResource::class => [
+                'viewAny',
+                'update',
+            ],
+            MessagingSettingResource::class => [
                 'viewAny',
                 'update',
             ],

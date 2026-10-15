@@ -87,6 +87,7 @@ trait HasShieldFormComponents
             'PaymentType' => 18,
             'ExchangeRate' => 19,
             'CandidateSubmitPopupSetting' => 20,
+            'MessagingSetting' => 20,
             'RoleType' => 21,
             'Role' => 22,
             'AuditLog' => 23,
