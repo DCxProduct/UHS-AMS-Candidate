@@ -86,7 +86,7 @@ services:
   # =========================================================
   postgres:
     image: postgres:18
-    container_name: ams-postgres
+    container_name: candidate-postgres
     restart: unless-stopped
 
     environment:
