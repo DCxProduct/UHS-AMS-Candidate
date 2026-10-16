@@ -92,8 +92,8 @@ return [
         /*
          * Change this if you want to name the related pivots other than defaults
          */
-        'role_pivot_key' => null, // default 'role_id',
-        'permission_pivot_key' => null, // default 'permission_id',
+        'role_pivot_key' => null,
+        'permission_pivot_key' => null,
 
         /*
          * Change this if you want to name the related model primary key other than
@@ -189,7 +189,7 @@ return [
      * The class to use for interpreting wildcard permissions.
      * If you need to modify delimiters, override the class and specify its name here.
      */
-    // 'wildcard_permission' => Spatie\Permission\WildcardPermission::class,
+
 
     /* Cache-specific settings */
 

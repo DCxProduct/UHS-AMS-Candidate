@@ -8,8 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // One row per system email; the texts start empty and fall back to the
-        // built-in defaults in App\Models\EmailTemplate until an admin edits them.
+
+
         Schema::create('email_templates', function (Blueprint $table): void {
             $table->id();
             $table->string('key')->unique();

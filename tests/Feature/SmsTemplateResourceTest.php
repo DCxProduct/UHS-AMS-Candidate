@@ -53,7 +53,7 @@ class SmsTemplateResourceTest extends TestCase
 
         $this->assertSame('Hi dara, code 654321 (10 min). Help: 023 123 456', PasswordResetOtpSms::text($user, '654321'));
 
-        // The same text goes to a Khmer-language candidate.
+
         $user->forceFill(['locale' => 'km'])->save();
         $this->assertSame('Hi dara, code 654321 (10 min). Help: 023 123 456', PasswordResetOtpSms::text($user, '654321'));
     }
@@ -121,7 +121,7 @@ class SmsTemplateResourceTest extends TestCase
         Role::findByName('registrar_officer')->givePermissionTo('ViewAny:SmsTemplate');
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-        // AuthenticateSession ties the session to one user; start a new one.
+
         $this->flushSession();
         $this->actingAs($this->user('read_only', 'admin', ['registrar_officer']));
         $this->get(SmsTemplateResource::getUrl('index'))->assertOk();
@@ -157,7 +157,7 @@ class SmsTemplateResourceTest extends TestCase
 
         $response = $this->get(SmsTemplateResource::getUrl('edit', ['record' => $template]))->assertOk();
 
-        // The dropdown targets the textarea with this id.
+
         $response->assertSee('id="sms-body"', false)
             ->assertSee('data-insert-variable="sms-body"', false);
 
@@ -165,7 +165,7 @@ class SmsTemplateResourceTest extends TestCase
             $response->assertSee('insert(\'{{ '.$name.' }}\')', false);
         }
 
-        // A new custom variable shows in the dropdown before saving.
+
         Livewire::test(EditSmsTemplate::class, ['record' => $template->getRouteKey()])
             ->set('data.custom_variables', ['a' => ['name' => 'website', 'value' => 'uhs.edu.kh']])
             ->assertSee('insert(\'{{ website }}\')', false);

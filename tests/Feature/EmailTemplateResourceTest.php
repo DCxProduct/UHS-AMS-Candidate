@@ -68,7 +68,7 @@ class EmailTemplateResourceTest extends TestCase
         $this->assertStringContainsString('Valid for 60 minutes. {{ unknown }}', $html);
         $this->assertStringContainsString('UHS Admission', $html);
 
-        // A Khmer-language candidate gets the same text.
+
         $khmer = (new ResetPassword('t'))->toMail($this->user('sokha', 'student', locale: 'km'));
         $this->assertSame('ពាក្យសម្ងាត់ sokha', $khmer->subject);
         $this->assertStringContainsString('Hi sokha', (string) $khmer->render());
@@ -152,10 +152,10 @@ class EmailTemplateResourceTest extends TestCase
         EmailTemplate::for(EmailTemplate::RESET_PASSWORD)->update(['logo_path' => 'email-templates/logo.png']);
         $user = $this->user('candidate', 'student', locale: 'en');
 
-        // Preview: the embedded image is shown inline.
+
         $this->assertStringContainsString('src="data:image/png;base64,', (string) (new ResetPassword('t'))->toMail($user)->render());
 
-        // Real email: the image travels inside the email, not as a link to this server.
+
         $user->notify(new ResetPassword('t'));
         $sent = app('mailer')->getSymfonyTransport()->messages()->last()->getOriginalMessage();
         $this->assertStringContainsString('src="cid:', $sent->getHtmlBody());
@@ -170,7 +170,7 @@ class EmailTemplateResourceTest extends TestCase
         $html = (string) (new ResetPassword('t'))->toMail($this->user('candidate', 'student', locale: 'en'))->render();
         $this->assertStringContainsString('<img', $html);
 
-        // Templates an admin creates have no logo unless one is uploaded.
+
         $custom = EmailTemplate::query()->create(['key' => 'custom', 'name' => 'Custom', 'header_title' => 'UHS', 'subject' => 'S', 'button' => 'B', 'body' => '<p>Hi</p>']);
         $this->assertNull($custom->logoFullPath());
     }
@@ -244,7 +244,7 @@ class EmailTemplateResourceTest extends TestCase
         Role::findByName('registrar_officer')->givePermissionTo('ViewAny:EmailTemplate');
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-        // AuthenticateSession ties the session to one user; start a new one.
+
         $this->flushSession();
         $this->actingAs($this->user('read_only', 'admin', ['registrar_officer']));
         $this->get(EmailTemplateResource::getUrl('index'))->assertOk();

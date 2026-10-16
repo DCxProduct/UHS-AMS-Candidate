@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // One row per system SMS; empty texts fall back to the defaults in App\Models\SmsTemplate.
+
         Schema::create('sms_templates', function (Blueprint $table): void {
             $table->id();
             $table->string('key')->unique();

@@ -99,7 +99,7 @@ class MessagingSetting extends Model
         try {
             $settings = static::query()->find(1);
         } catch (Throwable) {
-            // Table not migrated yet (fresh install, tests): keep .env.
+
             return;
         }
 
@@ -111,7 +111,7 @@ class MessagingSetting extends Model
             try {
                 $value = $settings->getAttribute($column);
             } catch (Throwable $exception) {
-                // An encrypted value saved with another APP_KEY cannot be read; keep .env.
+
                 report($exception);
 
                 continue;

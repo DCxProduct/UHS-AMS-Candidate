@@ -179,7 +179,7 @@ class AuthenticationAccessTest extends TestCase
             'password' => 'password',
         ]);
 
-        // Latin names are saved in capital letters.
+
         $this->assertSame('DARA SOK', $user->name);
         $this->assertSame('DARA SOK', $user->name_latin);
         $this->assertSame('student_010123456', $user->username);

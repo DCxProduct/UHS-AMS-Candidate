@@ -51,7 +51,7 @@ class PaymentReceivedByTest extends TestCase
         $this->assertSame($this->officerA->id, $payment->received_by);
         $this->assertTrue($payment->receivedBy->is($this->officerA));
 
-        // A cashier set on purpose is kept.
+
         $this->assertSame($this->officerB->id, Payment::query()->create([
             'receipt_number' => 'RB-002',
             'amount_usd' => 5,

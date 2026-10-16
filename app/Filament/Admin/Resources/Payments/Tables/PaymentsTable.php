@@ -152,7 +152,7 @@ class PaymentsTable
                     ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
                     ->toggleable(isToggledHiddenByDefault: false),
 
-                // The cashier who recorded the payment; older payments have none.
+
                 TextColumn::make('received_by')
                     ->label(__('payments.table.received_by'))
                     ->getStateUsing(fn (Payment $record): string => self::receiverName($record))

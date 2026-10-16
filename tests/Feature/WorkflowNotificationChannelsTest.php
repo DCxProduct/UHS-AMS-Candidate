@@ -188,7 +188,7 @@ class WorkflowNotificationChannelsTest extends TestCase
         $component = Livewire::test(EditWorkflowNotification::class, ['record' => $this->workflow->getRouteKey()]);
         $reviewKey = array_keys($component->get('data.stages'))[1];
 
-        // Existing stages open with only "System" ticked.
+
         $component->assertSet("data.stages.{$reviewKey}.data.notification_channels", ['system'])
             ->set("data.stages.{$reviewKey}.data.notification_channels", ['system', 'email'])
             ->call('save')
@@ -269,7 +269,7 @@ class WorkflowNotificationChannelsTest extends TestCase
         $reviewKey = array_keys($component->get('data.stages'))[1];
         $path = "stages.{$reviewKey}.data";
 
-        // SMS ticked: the chosen SMS template is saved; Email not ticked: no email template is kept.
+
         $component->set("data.{$path}.notification_channels", ['system', 'sms'])
             ->set("data.{$path}.sms_template_key", 'review_sms')
             ->set("data.{$path}.email_template_key", 'anything')
@@ -293,13 +293,13 @@ class WorkflowNotificationChannelsTest extends TestCase
         Mail::swap(new MailManager(app()));
         config(['mail.default' => 'array']);
 
-        // No template chosen on the stage: the "Review – Accept" template is used.
+
         $this->assertTrue(WorkflowStageMessages::notifyReviewAction($this->entry('pending'), 'accept'));
         $sent = app('mailer')->getSymfonyTransport()->messages()->last()->getOriginalMessage();
         $this->assertSame('Accepted: Admission Form', $sent->getSubject());
         $this->assertStringContainsString('You are accepted.', $sent->getHtmlBody());
 
-        // A template chosen on the stage wins over the action template.
+
         $stages[1]['data']['email_template_key'] = 'chosen';
         $this->workflow->update(['stages' => $stages]);
         $this->assertTrue(WorkflowStageMessages::notifyReviewAction($this->entry('pending'), 'accept'));
@@ -316,11 +316,11 @@ class WorkflowNotificationChannelsTest extends TestCase
         $stages[1]['data']['review_actions'] = ['accept' => ['notification_message' => 'You are accepted.']];
         $this->workflow->update(['stages' => $stages]);
 
-        // No template chosen on the stage: the "Review – Accept" SMS template is used.
+
         $this->assertTrue(WorkflowStageMessages::notifyReviewAction($this->entry('pending'), 'accept'));
         Http::assertSent(fn (HttpRequest $request): bool => $request['messages'][0]['content'] === 'ACCEPT: You are accepted.');
 
-        // A template chosen on the stage wins over the action template.
+
         $stages[1]['data']['sms_template_key'] = 'chosen_sms';
         $this->workflow->update(['stages' => $stages]);
         $this->assertTrue(WorkflowStageMessages::notifyReviewAction($this->entry('pending'), 'accept'));

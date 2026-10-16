@@ -499,7 +499,7 @@ class StudentProfileSeeder extends Seeder
         return (int) DB::table('custom_form_fields')->insertGetId($data);
     }
 
-    // 1. ADDED 'kh' FALLBACK TO FIX FILAMENT LANGUAGE SWITCHING
+
     private function t(string $en, string $km): array
     {
         return [
@@ -614,7 +614,7 @@ class StudentProfileSeeder extends Seeder
             'updated_at' => $now,
         ];
 
-        // 2. UPDATED TO BE PROPERLY TRANSLATABLE JSON ARRAYS
+
         if (Schema::hasColumn('document_templates', 'name')) {
             $data['name'] = json_encode([
                 'en' => 'Profile Template',

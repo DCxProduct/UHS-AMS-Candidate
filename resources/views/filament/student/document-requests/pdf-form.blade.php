@@ -1579,7 +1579,6 @@
                                 return;
                             }
                         } catch (error) {
-                            // Keep normal boolean handling below.
                         }
                     }
 
@@ -1597,4 +1596,3 @@
         document.addEventListener('DOMContentLoaded', fillUhsDocumentRequestForm);
     </script>
 @endif
-

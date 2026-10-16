@@ -15,7 +15,7 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        // Link table, so custom_forms is not altered. A form follows one template.
+
         Schema::create('workflow_notification_forms', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('workflow_notification_id')->constrained('workflow_notifications')->cascadeOnDelete();

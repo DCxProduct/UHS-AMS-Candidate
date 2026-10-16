@@ -34,7 +34,7 @@ return [
     'accept_confirm_description' => 'Are you sure you want to accept this enrollment application?',
     'reject_title' => 'Reject Application',
 
-    // Added keys for Passed/Failed modals
+
     'passed_confirm_title' => 'Information',
     'passed_confirm_description' => 'Did this candidate pass?',
     'passed_confirm_yes' => 'Yes',
@@ -66,7 +66,7 @@ return [
         'accept' => 'Accept',
         'reject' => 'Reject',
         'close' => 'Close',
-        // Added actions for the modal buttons
+
         'passed' => 'Pass',
         'failed' => 'Fail',
         'edit_result' => 'Edit',
@@ -91,7 +91,7 @@ return [
         'admin_resubmitted_title' => 'Application resubmitted',
         'admin_resubmitted_body' => ':student resubmitted :form after correction. Please review again.',
 
-        // Added notifications for Passed/Failed
+
         'admin_passed_success_title' => 'Application Passed',
         'admin_passed_success_body' => 'The application has been marked as passed.',
         'bulk_passed_success_title' => ':count candidates passed.',

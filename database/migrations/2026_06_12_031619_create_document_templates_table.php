@@ -11,17 +11,17 @@ return new class extends Migration
         Schema::create('document_templates', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->string('type')->nullable(); // e.g. invoice, certificate
+            $table->string('type')->nullable();
 
             $table->foreignId('custom_form_id')
                 ->nullable()
                 ->constrained('custom_forms')
                 ->nullOnDelete();
 
-            $table->string('model_class')->nullable(); // Database model reference
-            $table->longText('content')->nullable(); // Stores the HTML
-            $table->json('page_settings')->nullable(); // Paper size, orientation, margins
-            $table->json('extra_data_sources')->nullable(); // Additional data models
+            $table->string('model_class')->nullable();
+            $table->longText('content')->nullable();
+            $table->json('page_settings')->nullable();
+            $table->json('extra_data_sources')->nullable();
             $table->timestamps();
         });
     }

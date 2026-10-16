@@ -24,7 +24,7 @@ class EditSmsTemplate extends EditRecord
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
-        // Show one empty custom variable row, ready to fill in.
+
         if (blank($data['custom_variables'] ?? null)) {
             $data['custom_variables'] = [['name' => null, 'value' => null]];
         }

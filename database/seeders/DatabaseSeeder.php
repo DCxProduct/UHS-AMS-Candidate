@@ -22,7 +22,7 @@ class DatabaseSeeder extends Seeder
             StaffRoleAccountsSeeder::class,
             DegreeLevelSeeder::class,
             CandidateTypeSeeder::class,
-//            StudentUsersSeeder::class,
+
         ]);
     }
 }

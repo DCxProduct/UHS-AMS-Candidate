@@ -51,8 +51,8 @@ class PasswordResetController extends Controller
             $status = Password::sendResetLink([
                 'email' => $email,
             ], function (User $user, string $token): void {
-                // Local testing only: the link is also written to storage/logs/laravel.log,
-                // in case the email is slow or mail is not set up. Never in production.
+
+
                 if (! app()->isProduction()) {
                     Log::info('Password reset link for '.$user->email.': '.route('student.password.reset', [
                         'token' => $token,
@@ -63,7 +63,7 @@ class PasswordResetController extends Controller
                 $user->sendPasswordResetNotification($token);
             });
         } catch (Throwable $exception) {
-            // For example a wrong Gmail App Password: show a message instead of an error page.
+
             report($exception);
             $status = null;
         }

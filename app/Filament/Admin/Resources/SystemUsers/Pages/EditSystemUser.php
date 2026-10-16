@@ -85,8 +85,8 @@ class EditSystemUser extends EditRecord
         unset($data['role_ids']);
         unset($data['candidate_type']);
 
-        // The username and name are not edited here: the username links this
-        // account to its login, so both keep their saved values.
+
+
         unset($data['name'], $data['username']);
 
         $data['email'] = blank($data['email'] ?? null)

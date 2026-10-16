@@ -37,7 +37,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        // The UHS texts are kept; they can be edited in the template menus.
+
     }
 
     private function refresh(string $table, string $key, array $old, array $new): void

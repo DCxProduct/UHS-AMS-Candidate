@@ -13,7 +13,7 @@ class ListSmsTemplates extends ListRecords
 
     public function mount(): void
     {
-        // Every built-in SMS has a row to edit, filled with its default text.
+
         foreach (SmsTemplate::TEMPLATES as $key) {
             SmsTemplate::for($key);
         }

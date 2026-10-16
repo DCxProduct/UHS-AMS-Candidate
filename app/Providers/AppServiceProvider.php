@@ -46,12 +46,12 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+
     }
 
     public function boot(): void
     {
-        // Gmail and PlasGate values saved in Settings → Email & SMS Settings override .env.
+
         MessagingSetting::applyToConfig();
 
         TextColumn::configureUsing(static function (TextColumn $column): void {
@@ -62,7 +62,7 @@ class AppServiceProvider extends ServiceProvider
 
         $this->registerAuditLogging();
 
-        // roles permission admin automatic
+
         Gate::before(function ($user, string $ability): ?bool {
             if (! $user instanceof User) {
                 return null;
@@ -82,7 +82,7 @@ class AppServiceProvider extends ServiceProvider
             ]);
         });
 
-        // The reset email text comes from Settings > Email Templates.
+
         ResetPassword::toMailUsing(fn (User $user, string $token) => ResetPasswordEmail::build(
             $user,
             call_user_func(ResetPassword::$createUrlCallback, $user, $token),

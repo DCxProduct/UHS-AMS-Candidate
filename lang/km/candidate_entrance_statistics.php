@@ -34,7 +34,7 @@ return [
     'accept_confirm_description' => 'តើអ្នកប្រាកដថាចង់ទទួលយកពាក្យស្នើសុំចុះឈ្មោះនេះមែនទេ?',
     'reject_title' => 'បដិសេធពាក្យស្នើសុំ',
 
-    // Added for Passed Action Modal
+
     'passed_confirm_title' => 'ព័ត៌មាន',
     'passed_confirm_description' => 'តើលទ្ធផលរបស់បេក្ខជនជាប់ឬ?',
     'passed_confirm_yes' => 'បាទ/ចា៎',
@@ -67,7 +67,7 @@ return [
         'reject' => 'បដិសេធ',
         'close' => 'បិទ',
 
-        // Added for Passed/Failed Action Buttons
+
         'passed' => 'ជាប់',
         'failed' => 'ធ្លាក់',
         'edit_result' => 'កែប្រែ',
@@ -92,7 +92,7 @@ return [
         'admin_resubmitted_title' => 'មានការដាក់ស្នើឡើងវិញ',
         'admin_resubmitted_body' => ':student បានដាក់ស្នើ :form ឡើងវិញបន្ទាប់ពីកែតម្រូវ។ សូមពិនិត្យម្តងទៀត។',
 
-        // Added for Passed/Failed Notifications
+
         'admin_passed_success_title' => 'ពាក្យស្នើសុំបានជាប់',
         'admin_passed_success_body' => 'ពាក្យស្នើសុំត្រូវបានកត់សម្គាល់ថាបានជាប់។',
         'bulk_passed_success_title' => 'បេក្ខជន :count នាក់បានជាប់។',

@@ -63,7 +63,7 @@ class MessagingSettingTest extends TestCase
         $this->assertSame('new-private-key', config('services.plasgate.private_key'));
         $this->assertSame('UHS', config('services.plasgate.sender'));
 
-        // Not saved in the menu: still from .env.
+
         $this->assertSame('env@example.test', config('mail.from.address'));
         $this->assertSame('env-secret', config('services.plasgate.secret'));
     }
@@ -95,7 +95,7 @@ class MessagingSettingTest extends TestCase
         $this->get(MessagingSettingResource::getUrl('index'))->assertRedirect();
 
         Livewire::test(EditMessagingSetting::class, ['record' => $settings->getRouteKey()])
-            // Saved keys are shown (as password fields) like the other values.
+
             ->assertSchemaStateSet(['plasgate_secret' => 'saved-secret'])
             ->fillForm([
                 'mail_host' => 'smtp.gmail.com',
@@ -215,14 +215,14 @@ class MessagingSettingTest extends TestCase
         auth()->logout();
         $this->flushSession();
 
-        // The phone tab is gone; asking for it still shows the email form.
+
         $this->get(route('student.password.request', ['method' => 'phone']))
             ->assertOk()
             ->assertSee('action="'.route('student.password.email').'"', false)
             ->assertDontSee('action="'.route('student.password.phone').'"', false)
             ->assertDontSee(route('student.password.request', ['method' => 'phone']), false);
 
-        // The phone routes are closed too.
+
         $this->post(route('student.password.phone'), ['phone' => '015916217'])->assertNotFound();
         $this->get(route('student.password.phone.verify', ['phone' => '015916217']))->assertNotFound();
         $this->post(route('student.password.phone.update'), [
@@ -274,7 +274,7 @@ class MessagingSettingTest extends TestCase
 
         $this->assertTrue(MessagingSetting::forgotPasswordByEmail());
 
-        // Even if both were off in the database, email stays available.
+
         MessagingSetting::singleton()->update(['forgot_password_email' => false, 'forgot_password_sms' => false]);
         $this->assertTrue(MessagingSetting::forgotPasswordByEmail());
         $this->assertFalse(MessagingSetting::forgotPasswordBySms());

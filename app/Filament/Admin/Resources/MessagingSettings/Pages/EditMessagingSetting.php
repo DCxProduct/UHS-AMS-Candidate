@@ -33,7 +33,7 @@ class EditMessagingSetting extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        // An emptied password or key is removed, so the .env value is used again.
+
         foreach (MessagingSetting::SECRETS as $column) {
             if (blank($data[$column] ?? null)) {
                 $data[$column] = null;
@@ -47,7 +47,7 @@ class EditMessagingSetting extends EditRecord
     {
         MessagingSetting::applyToConfig();
 
-        // Queue workers read the settings when they start; restart them to use the new ones.
+
         try {
             Artisan::call('queue:restart');
         } catch (Throwable $exception) {

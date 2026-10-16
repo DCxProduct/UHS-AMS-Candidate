@@ -17,7 +17,7 @@ class RolesAndPermissionsSeeder extends Seeder
     {
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
-        // Generate permissions using Filament Shield automatically
+
         Artisan::call('shield:generate', [
             '--all' => true,
             '--ignore-existing-policies' => true,

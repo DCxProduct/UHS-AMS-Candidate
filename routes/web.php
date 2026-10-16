@@ -93,7 +93,7 @@ Route::middleware('guest')
         Route::post('/reset-password', [PasswordResetController::class, 'resetPassword'])
             ->name('password.update');
 
-        // Forgot password by phone: 6-digit code sent by PlasGate SMS.
+
         Route::post('/forgot-password/phone', [PhonePasswordResetController::class, 'sendCode'])
             ->name('password.phone');
 

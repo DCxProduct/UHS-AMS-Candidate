@@ -8,8 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Log of workflow stage messages sent to candidates, with the channels used.
-        // It keeps "send once" working when a stage does not use the system bell.
+
+
         Schema::create('workflow_notification_deliveries', function (Blueprint $table): void {
             $table->id();
             $table->unsignedBigInteger('custom_form_entry_id')->index();

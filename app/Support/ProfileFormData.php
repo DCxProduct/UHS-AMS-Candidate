@@ -95,12 +95,12 @@ class ProfileFormData
             return $state;
         }
 
-        // Prefill from authenticated user model
+
         $user = Auth::user();
         if ($user) {
             foreach ($targetFields as $targetField) {
                 $targetName = trim((string) ($targetField->name ?? ''));
-                
+
                 if ($targetName === '') {
                     continue;
                 }

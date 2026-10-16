@@ -42,7 +42,7 @@ class Payment extends Model
 
     protected static function booted(): void
     {
-        // The signed-in cashier who records the payment.
+
         static::creating(function (Payment $payment): void {
             if (blank($payment->received_by) && auth()->check() && auth()->id() !== $payment->users_id) {
                 $payment->received_by = auth()->id();

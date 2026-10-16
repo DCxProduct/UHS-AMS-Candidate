@@ -181,7 +181,7 @@ class FilamentActionPermissions
 
             app(PermissionRegistrar::class)->forgetCachedPermissions();
         } catch (Throwable) {
-            // Allow the panel to boot even if the database is temporarily unavailable.
+
         }
     }
 

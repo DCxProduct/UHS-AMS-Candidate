@@ -126,9 +126,9 @@ final class WorkflowStageMessages
 
             $stage = self::currentStage($entry) ?? [];
 
-            // A pending entry is still at Review. When the action-specific
-            // fields exist, its visible status comes from the Accept status
-            // field instead of a legacy generic Review value.
+
+
+
             if ($stageType === WorkflowStageType::Review) {
                 $acceptStatus = data_get($stage, 'review_actions.accept.status_message');
 
@@ -137,8 +137,8 @@ final class WorkflowStageMessages
                 }
             }
 
-            // A passed exam keeps its Awaiting Results notification, while
-            // the candidate status uses the configured success text.
+
+
             if ($stageType === WorkflowStageType::AwaitingResults && self::isPassedResult($entry)) {
                 $completedStage = self::configuredStage($entry, WorkflowStageType::Completed);
 
@@ -190,8 +190,8 @@ final class WorkflowStageMessages
 
             $student = self::owner($entry);
 
-            // Accept is a one-time transition, while Send Back and Reject are
-            // repeatable review events and must remain in the notification history.
+
+
             if ($student === null || ($action === 'accept' && self::hasSentReviewAction($entry, $action))) {
                 return false;
             }
@@ -226,9 +226,9 @@ final class WorkflowStageMessages
         CustomFormEntry $entry,
         ?WorkflowStageType $stageType = null,
     ): int {
-        // Responsible roles still control who may perform the workflow action,
-        // but configured workflows do not create generic staff notifications.
-        // Candidate-facing notifications are sent by the stage/action methods.
+
+
+
         return 0;
     }
 
@@ -426,7 +426,7 @@ final class WorkflowStageMessages
             return null;
         }
 
-        // Older templates may still name the review stage "Approval".
+
         $types = $type === WorkflowStageType::Review
             ? [WorkflowStageType::Review->value, WorkflowStageType::Approval->value]
             : [$type->value];
@@ -491,7 +491,7 @@ final class WorkflowStageMessages
                 ),
             ]);
 
-            // Values for an Email/SMS template chosen on the stage.
+
             $templateVariables = [
                 'form' => (string) ($entry->customForm?->display_name ?? ''),
                 'stage' => WorkflowNotificationStageSummary::localizedName($stage['stage_name'] ?? null, $stageType),
@@ -499,7 +499,7 @@ final class WorkflowStageMessages
                 'status' => (string) ($stage['status_message'] ?? ''),
             ];
 
-            // Each channel is independent: a failed SMS or email never stops the others.
+
             if (in_array('sms', $channels, true) && self::sendSms($student, $title, $body, $stage['sms_template_key'] ?? null, $templateVariables, $action ?? $stageType->value)) {
                 $delivered[] = 'sms';
             }
@@ -658,8 +658,8 @@ final class WorkflowStageMessages
 
         $workflow = WorkflowNotification::forForm($entry->custom_form_id);
 
-        // An unassigned form keeps the original payment toggle. Once a
-        // workflow is assigned, its Payment stage becomes authoritative.
+
+
         return $workflow === null
             ? (bool) $entry->customForm?->requires_payment
             : $workflow->hasStageType(WorkflowStageType::Payment);

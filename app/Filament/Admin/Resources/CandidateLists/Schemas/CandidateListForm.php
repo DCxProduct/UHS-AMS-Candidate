@@ -28,7 +28,7 @@ class CandidateListForm
                             'md' => 2,
                         ])
                             ->schema([
-                                // The login username is made automatically from the phone number, like registration.
+
                                 TextInput::make('first_name_en')
                                     ->label(__('app.first_name_latin'))
                                     ->placeholder(__('app.enter_first_name_latin'))

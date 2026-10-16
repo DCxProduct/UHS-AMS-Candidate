@@ -44,7 +44,7 @@ class MessagingSettingForm
 
                         Section::make(__('messaging_settings.sections.forgot_password'))
                             ->schema([
-                                // At least one way stays on, so candidates can always reset their password.
+
                                 Toggle::make('forgot_password_email')
                                     ->label(__('messaging_settings.fields.forgot_password_email'))
                                     ->default(true)

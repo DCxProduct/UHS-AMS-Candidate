@@ -49,7 +49,7 @@ final class PlasGateSms
             return false;
         }
 
-        // Developer test phone: every SMS goes there, with the real number in front.
+
         $testPhone = self::normalizePhone(config('services.plasgate.test_phone'));
 
         if ($testPhone !== null && ! app()->isProduction()) {
@@ -61,7 +61,7 @@ final class PlasGateSms
             ->acceptJson()
             ->withHeaders(['X-Secret' => (string) config('services.plasgate.secret')])
             ->withQueryParameters(['private_key' => (string) config('services.plasgate.private_key')])
-            // The batch endpoint is used even for one message: /send returns HTTP 500 for this account.
+
             ->post(rtrim((string) config('services.plasgate.base_url'), '/').'/batch-send', [
                 'globals' => ['sender' => (string) config('services.plasgate.sender')],
                 'messages' => [['to' => [$to], 'content' => $content]],

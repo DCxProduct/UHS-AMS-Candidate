@@ -324,7 +324,7 @@ class WorkflowStageMessagesTest extends TestCase
 
     public function test_nothing_is_sent_when_the_stage_is_not_the_expected_one(): void
     {
-        // Payment recorded while the submission is still waiting for review.
+
         WorkflowStageMessages::notify($this->entry('pending'), WorkflowStageType::AwaitingResults);
 
         $this->assertSame(0, $this->student->notifications()->count());

@@ -79,7 +79,7 @@ class WorkflowNotificationForm
                     ->footerActionsAlignment(Alignment::Center)
                     ->hidden(fn (string $operation): bool => $operation === 'view'),
 
-                // The view page uses a dedicated read-only stage summary.
+
                 Section::make(__('workflow_notifications.sections.stages'))
                     ->schema([
                         View::make('filament.admin.workflow-notifications.stage-summary')
@@ -131,8 +131,8 @@ class WorkflowNotificationForm
                     ->visible($handledByStaff)
                     ->columnSpanFull(),
 
-                // Optional designed templates from the Email / SMS Templates menus.
-                // Without one, the stage sends its plain notification message.
+
+
                 Select::make('email_template_key')
                     ->label(__('workflow_notifications.fields.email_template'))
                     ->placeholder(__('workflow_notifications.placeholders.plain_email'))
@@ -178,7 +178,7 @@ class WorkflowNotificationForm
                             $set('stage_name', $type->label());
                         }
 
-                        // The role list depends on the stage type, so pick the role again.
+
                         $set('responsible_role', null);
 
                         if ($type === WorkflowStageType::FormSubmission) {
