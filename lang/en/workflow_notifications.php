@@ -70,7 +70,6 @@ return [
     ],
 
     'helpers' => [
-        'message_template' => 'Optional. Design templates in Notification & Form Builder → Email Templates / SMS Templates; use {{ message }} there for this stage\'s notification text.',
         'notification_channels' => 'Where the candidate receives this stage\'s notification message. SMS goes to the candidate\'s phone through PlasGate; Email to their email address.',
         'assigned_forms' => 'Forms that follow this workflow. A form can belong to only one template.',
     ],
