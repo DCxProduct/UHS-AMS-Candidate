@@ -20,10 +20,10 @@ class EmailTemplateForm
         return $schema
             ->columns(1)
             ->components([
-                // One card holding the template's parts, like the Custom Forms field editor.
+
                 Section::make()
                     ->schema([
-                        // Built-in templates keep their system name; new templates need one.
+
                         Grid::make(['default' => 1, 'lg' => 2])
                             ->visible(fn (?EmailTemplate $record): bool => ! $record?->isBuiltIn())
                             ->schema([
@@ -33,7 +33,7 @@ class EmailTemplateForm
                                     ->required()
                                     ->maxLength(255),
 
-                                // Used automatically when a workflow sends this action's email.
+
                                 Select::make('action')
                                     ->label(__('email_templates.fields.action'))
                                     ->placeholder(__('email_templates.placeholders.action'))
@@ -75,7 +75,7 @@ class EmailTemplateForm
                                             ->prefix('{{')
                                             ->suffix('}}')
                                             ->placeholder('hotline')
-                                            // The empty row shown by default may stay empty; a half-filled row needs both parts.
+
                                             ->required(fn (Get $get): bool => filled($get('value')))
                                             ->maxLength(40)
                                             ->regex('/^[a-z][a-z0-9_]*$/')
@@ -86,7 +86,7 @@ class EmailTemplateForm
                                                 'not_in' => __('email_templates.validation.variable_reserved'),
                                                 'distinct' => __('email_templates.validation.variable_distinct'),
                                             ])
-                                            ->live(onBlur: true),
+                                            ->live(debounce: 600),
                                         TextInput::make('value')
                                             ->label(__('email_templates.fields.value'))
                                             ->required(fn (Get $get): bool => filled($get('name')))
@@ -120,7 +120,7 @@ class EmailTemplateForm
                     ->maxLength(255),
             ]),
 
-            // Same editor and "Insert Variable" button as the Document Designer.
+
             TinyEditor::make('body')
                 ->label(__('email_templates.fields.body'))
                 ->required()
@@ -128,7 +128,7 @@ class EmailTemplateForm
                 ->fileAttachmentsDisk('public')
                 ->fileAttachmentsDirectory('email-templates')
                 ->profile('full')
-                // A new key reloads the editor, so new custom variables show up in "Insert Variable".
+
                 ->key(fn (Get $get): string => 'email-body-'.md5(json_encode(array_column($get('custom_variables') ?? [], 'name'))))
                 ->setCustomConfigs(fn (?EmailTemplate $record, Get $get): array => self::editorConfig(
                     EmailTemplate::builtInVariablesFor($record),
@@ -143,7 +143,7 @@ class EmailTemplateForm
             'document_variables' => array_values(array_unique([...$builtInNames, ...$customNames])),
             'menubar' => 'file edit view insert format tools table help',
             'height' => 560,
-            // Images need full URLs to show in email inboxes.
+
             'relative_urls' => false,
             'remove_script_host' => false,
             'font_family_formats' => 'Arial=arial,helvetica,sans-serif; Khmer Battambang=Battambang,sans-serif; Khmer Siemreap=Siemreap,sans-serif; Times New Roman="times new roman",times,serif;',

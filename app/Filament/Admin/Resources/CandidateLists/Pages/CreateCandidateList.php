@@ -46,7 +46,7 @@ class CreateCandidateList extends CreateRecord
             ? null
             : preg_replace('/[^0-9]/', '', (string) $data['phone']);
 
-        // Made automatically from the phone number, like registration.
+
         $data['username'] = CandidateLatinName::generateUsername($data['phone']);
 
         $data['permissions'] = null;

@@ -41,11 +41,12 @@ class EmailTemplateResourceTest extends TestCase
         $message = (new ResetPassword('token-123'))->toMail($this->user('candidate', 'student', locale: 'en'));
         $html = (string) $message->render();
 
-        $this->assertSame('Reset your password', $message->subject);
-        $this->assertStringContainsString('You are receiving this email because we received a password reset request for your account.', $html);
+        $this->assertSame('កំណត់ពាក្យសម្ងាត់ថ្មី | Reset your password', $message->subject);
+        $this->assertStringContainsString('We received a request to reset the password for your account', $html);
+        $this->assertStringContainsString('យើងបានទទួលសំណើកំណត់ពាក្យសម្ងាត់ថ្មី', $html);
         $this->assertStringContainsString('reset-password/token-123', $html);
-        $this->assertStringContainsString('expire in 60 minutes', $html);
-        $this->assertStringContainsString('UHS-AMS', $html);
+        $this->assertStringContainsString('This link expires in 60 minutes.', $html);
+        $this->assertStringContainsString('University of Health Sciences', $html);
         $this->assertStringNotContainsString('laravel.com/img', $html);
     }
 
@@ -67,7 +68,7 @@ class EmailTemplateResourceTest extends TestCase
         $this->assertStringContainsString('Valid for 60 minutes. {{ unknown }}', $html);
         $this->assertStringContainsString('UHS Admission', $html);
 
-        // A Khmer-language candidate gets the same text.
+
         $khmer = (new ResetPassword('t'))->toMail($this->user('sokha', 'student', locale: 'km'));
         $this->assertSame('ពាក្យសម្ងាត់ sokha', $khmer->subject);
         $this->assertStringContainsString('Hi sokha', (string) $khmer->render());
@@ -151,21 +152,27 @@ class EmailTemplateResourceTest extends TestCase
         EmailTemplate::for(EmailTemplate::RESET_PASSWORD)->update(['logo_path' => 'email-templates/logo.png']);
         $user = $this->user('candidate', 'student', locale: 'en');
 
-        // Preview: the embedded image is shown inline.
+
         $this->assertStringContainsString('src="data:image/png;base64,', (string) (new ResetPassword('t'))->toMail($user)->render());
 
-        // Real email: the image travels inside the email, not as a link to this server.
+
         $user->notify(new ResetPassword('t'));
         $sent = app('mailer')->getSymfonyTransport()->messages()->last()->getOriginalMessage();
         $this->assertStringContainsString('src="cid:', $sent->getHtmlBody());
         $this->assertCount(1, $sent->getAttachments());
     }
 
-    public function test_no_logo_means_no_image(): void
+    public function test_the_uhs_logo_is_used_until_another_logo_is_uploaded(): void
     {
-        $html = (string) (new ResetPassword('t'))->toMail($this->user('candidate', 'student', locale: 'en'))->render();
+        $template = EmailTemplate::for(EmailTemplate::RESET_PASSWORD);
+        $this->assertSame(public_path(EmailTemplate::DEFAULT_LOGO), $template->logoFullPath());
 
-        $this->assertStringNotContainsString('<img', $html);
+        $html = (string) (new ResetPassword('t'))->toMail($this->user('candidate', 'student', locale: 'en'))->render();
+        $this->assertStringContainsString('<img', $html);
+
+
+        $custom = EmailTemplate::query()->create(['key' => 'custom', 'name' => 'Custom', 'header_title' => 'UHS', 'subject' => 'S', 'button' => 'B', 'body' => '<p>Hi</p>']);
+        $this->assertNull($custom->logoFullPath());
     }
 
     public function test_variable_values_are_escaped_in_the_body(): void
@@ -186,8 +193,8 @@ class EmailTemplateResourceTest extends TestCase
 
         $html = (string) (new ResetPassword('t'))->toMail($this->user('candidate', 'student', locale: 'en'))->render();
 
-        $this->assertStringContainsString('You are receiving this email because we received a password reset request for your account.', $html);
-        $this->assertStringContainsString('Reset Password</a>', $html);
+        $this->assertStringContainsString('We received a request to reset the password for your account', $html);
+        $this->assertStringContainsString('កំណត់ពាក្យសម្ងាត់ថ្មី | Reset Password</a>', $html);
     }
 
     public function test_admin_can_list_and_edit_templates(): void
@@ -203,7 +210,7 @@ class EmailTemplateResourceTest extends TestCase
             ->assertSee('reset_button', false);
 
         Livewire::test(EditEmailTemplate::class, ['record' => $template->getRouteKey()])
-            ->assertSchemaStateSet(['subject' => 'Reset your password', 'header_title' => 'UHS-AMS'])
+            ->assertSchemaStateSet(['subject' => 'កំណត់ពាក្យសម្ងាត់ថ្មី | Reset your password', 'header_title' => 'University of Health Sciences'])
             ->fillForm(['subject' => 'New subject', 'body' => '<p>ជម្រាបសួរ {{ name }}</p>'])
             ->call('save')
             ->assertHasNoFormErrors();
@@ -237,7 +244,7 @@ class EmailTemplateResourceTest extends TestCase
         Role::findByName('registrar_officer')->givePermissionTo('ViewAny:EmailTemplate');
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-        // AuthenticateSession ties the session to one user; start a new one.
+
         $this->flushSession();
         $this->actingAs($this->user('read_only', 'admin', ['registrar_officer']));
         $this->get(EmailTemplateResource::getUrl('index'))->assertOk();

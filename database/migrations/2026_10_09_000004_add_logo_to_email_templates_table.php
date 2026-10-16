@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Uploaded logo shown at the top of the email (stored on the public disk).
+
         Schema::table('email_templates', function (Blueprint $table): void {
             $table->string('logo_path')->nullable()->after('header_title');
         });

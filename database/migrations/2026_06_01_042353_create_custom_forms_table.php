@@ -14,7 +14,7 @@ return new class extends Migration {
             $table->id();
             $table->string('name');
             $table->string('slug')->unique();
-            $table->json('schema')->nullable(); // The component definition
+            $table->json('schema')->nullable();
             $table->boolean('is_active')->default(true);
             $table->json('allowed_roles')->nullable();
 

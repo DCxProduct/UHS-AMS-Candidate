@@ -41,6 +41,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        // Status messages are retained when rolling back this compatibility migration.
+
     }
 };

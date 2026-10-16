@@ -302,14 +302,14 @@ class WorkflowNotificationResourceTest extends TestCase
         $this->actingAs($this->user('no_access'));
         $this->get(WorkflowNotificationResource::getUrl('index'))->assertForbidden();
 
-        // The four permissions Shield generates for a resource in this project.
+
         foreach (['ViewAny', 'Create', 'Update', 'Delete'] as $action) {
             Permission::findOrCreate("{$action}:WorkflowNotification", 'web');
         }
         Role::findByName('registrar_officer')->givePermissionTo('ViewAny:WorkflowNotification');
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-        // AuthenticateSession ties the session to one user; start a new one.
+
         $this->flushSession();
         $this->actingAs($this->user('read_only', ['registrar_officer']));
         $this->get(WorkflowNotificationResource::getUrl('index'))->assertOk();
@@ -322,7 +322,7 @@ class WorkflowNotificationResourceTest extends TestCase
     {
         $this->actingAs($this->admin);
 
-        // The create page starts with one blank stage; replace it.
+
         Livewire::test(CreateWorkflowNotification::class)
             ->set('data.stages', [])
             ->fillForm([
@@ -658,7 +658,7 @@ class WorkflowNotificationResourceTest extends TestCase
     private function user(string $username, array $roles = []): User
     {
         $user = User::query()->forceCreate([
-            // Staff accounts use registration_type admin, as in the existing test suite.
+
             'registration_type' => 'admin',
             'name' => $username,
             'username' => $username,

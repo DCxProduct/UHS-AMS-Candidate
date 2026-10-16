@@ -384,8 +384,8 @@ class CandidatePaymentListsTable
                             throw $exception;
                         }
                         if (WorkflowStageMessages::hasConfiguredWorkflow($record)) {
-                            // The entry itself has already moved on to Awaiting Results,
-                            // but the payment event owns this configured message.
+
+
                             WorkflowStageMessages::notifyConfiguredStage($record, WorkflowStageType::Payment);
                             WorkflowStageMessages::notifyResponsibleRole($record);
                         } else {

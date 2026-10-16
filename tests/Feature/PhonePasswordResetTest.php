@@ -76,7 +76,7 @@ class PhonePasswordResetTest extends TestCase
             ->assertRedirect(route('student.password.request'))
             ->assertSessionHasErrors(['email' => __('app.password_reset_failed')]);
 
-        // The link is still in the log for local testing.
+
         Log::shouldHaveReceived('info')->withArgs(fn (string $message): bool => str_contains($message, 'Password reset link for candidate@example.test'))->once();
     }
 
@@ -115,7 +115,7 @@ class PhonePasswordResetTest extends TestCase
 
         $this->assertTrue(Hash::check('NewPassword1!', $this->user->refresh()->password));
 
-        // The code is used up.
+
         $this->from(route('student.password.phone.verify'))
             ->post(route('student.password.phone.update'), $this->resetData($code, 'Another123!'))
             ->assertSessionHasErrors('code');

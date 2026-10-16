@@ -21,10 +21,10 @@ class SmsTemplateForm
         return $schema
             ->columns(1)
             ->components([
-                // One card holding the template's parts, like the Custom Forms field editor.
+
                 Section::make()
                     ->schema([
-                        // Built-in templates keep their system name; new templates need one.
+
                         Grid::make(['default' => 1, 'lg' => 2])
                             ->visible(fn (?SmsTemplate $record): bool => ! $record?->isBuiltIn())
                             ->schema([
@@ -34,7 +34,7 @@ class SmsTemplateForm
                                     ->required()
                                     ->maxLength(255),
 
-                                // Used automatically when a workflow sends this action's SMS.
+
                                 Select::make('action')
                                     ->label(__('sms_templates.fields.action'))
                                     ->placeholder(__('sms_templates.placeholders.action'))
@@ -67,7 +67,7 @@ class SmsTemplateForm
                                             ->prefix('{{')
                                             ->suffix('}}')
                                             ->placeholder('hotline')
-                                            // The empty row shown by default may stay empty; a half-filled row needs both parts.
+
                                             ->required(fn (Get $get): bool => filled($get('value')))
                                             ->maxLength(40)
                                             ->regex('/^[a-z][a-z0-9_]*$/')
@@ -78,7 +78,7 @@ class SmsTemplateForm
                                                 'not_in' => __('sms_templates.validation.variable_reserved'),
                                                 'distinct' => __('sms_templates.validation.variable_distinct'),
                                             ])
-                                            ->live(onBlur: true),
+                                            ->live(debounce: 600),
                                         TextInput::make('value')
                                             ->label(__('sms_templates.fields.value'))
                                             ->required(fn (Get $get): bool => filled($get('name')))
@@ -87,7 +87,8 @@ class SmsTemplateForm
                                     ->columns(2)
                                     ->defaultItems(1)
                                     ->addActionLabel(__('sms_templates.actions.add_variable'))
-                                    ->itemLabel(fn (array $state): ?string => filled($state['name'] ?? null) ? '{{ '.$state['name'].' }}' : null),
+                                    ->itemLabel(fn (array $state): ?string => filled($state['name'] ?? null) ? '{{ '.$state['name'].' }}' : null)
+                                    ->live(),
                             ]),
 
                         Section::make(__('sms_templates.sections.content'))
@@ -95,7 +96,7 @@ class SmsTemplateForm
                                 Textarea::make('body')
                                     ->id('sms-body')
                                     ->label(__('sms_templates.fields.body'))
-                                    // "Insert Variable" dropdown on the label row; it adds at the cursor.
+
                                     ->hint(fn (?SmsTemplate $record, Get $get): Htmlable => new HtmlString(view('filament.admin.sms-templates.insert-variable', [
                                         'target' => 'sms-body',
                                         'label' => __('sms_templates.actions.insert_variable'),

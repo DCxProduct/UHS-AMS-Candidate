@@ -64,7 +64,7 @@ class EditCandidateList extends EditRecord
         unset($data['role_ids']);
         unset($data['candidate_type']);
 
-        // The username is not edited here: it links this candidate to their login account.
+
         $data['name'] = CandidateLatinName::join($data['first_name_en'] ?? null, $data['last_name_en'] ?? null) ?: 'Candidate';
         unset($data['first_name_en'], $data['last_name_en'], $data['username']);
 
@@ -94,7 +94,7 @@ class EditCandidateList extends EditRecord
 
         $this->record->syncLoginUser();
 
-        // The login account keeps the Latin name too, like registration.
+
         if (filled($this->record->username)) {
             User::query()->where('username', $this->record->username)->update(['name_latin' => $this->record->name]);
         }

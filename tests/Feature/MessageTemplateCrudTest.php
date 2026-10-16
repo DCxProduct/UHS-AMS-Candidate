@@ -170,7 +170,7 @@ class MessageTemplateCrudTest extends TestCase
         $this->assertSame([], $email->refresh()->custom_variables);
         $this->assertSame([], $sms->refresh()->custom_variables);
 
-        // A row with only a name still needs its value.
+
         Livewire::test(EditEmailTemplate::class, ['record' => $email->getRouteKey()])
             ->set('data.custom_variables', ['a' => ['name' => 'hotline', 'value' => null]])
             ->call('save')

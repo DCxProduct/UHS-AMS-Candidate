@@ -198,20 +198,18 @@
         const forgotPasswordUrl = "{{ route('student.password.request') }}";
         const forgotPasswordTextKm = "ភ្លេចពាក្យសម្ងាត់របស់អ្នក?";
         const forgotPasswordTextEn = "Forgot your password?";
-        
+
         const registerUrl = "{{ $registerUrl }}";
-        
+
         const injectForgotPasswordLink = () => {
             const passwordInput = document.getElementById('data.password') || document.querySelector('input[type="password"]');
             if (passwordInput) {
-                // Hide Filament's default label to prevent duplicates
-                const originalLabel = document.querySelector(`label[for="${passwordInput.id}"]`) || 
+                const originalLabel = document.querySelector(`label[for="${passwordInput.id}"]`) ||
                                       (passwordInput.closest('.fi-fo-field-wrp') && passwordInput.closest('.fi-fo-field-wrp').querySelector('label'));
                 if (originalLabel) {
                     originalLabel.style.setProperty('display', 'none', 'important');
                 }
-                
-                // Get the input wrapper (the styled container)
+
                 const inputWrapper = passwordInput.closest('.fi-input-wrp') || passwordInput;
                 const parent = inputWrapper.parentElement;
                 if (parent) {
@@ -224,8 +222,7 @@
                         customRow.style.alignItems = 'center';
                         customRow.style.width = '100%';
                         customRow.style.marginBottom = '0.5rem';
-                        
-                        // 1. Create custom label for Left side
+
                         const customLabel = document.createElement('label');
                         customLabel.style.fontSize = '0.875rem';
                         customLabel.style.fontWeight = '700';
@@ -233,7 +230,7 @@
                         if (document.documentElement.classList.contains('dark')) {
                             customLabel.style.color = '#ffffff';
                         }
-                        
+
                         const isKhmer = document.documentElement.lang === 'km' || document.querySelector('html').getAttribute('lang') === 'km';
                         if (isKhmer) {
                             customLabel.innerHTML = 'ពាក្យសម្ងាត់<span style="color: #f87171; margin-left: 2px;">*</span>';
@@ -241,18 +238,15 @@
                             customLabel.innerHTML = 'Password<span style="color: #f87171; margin-left: 2px;">*</span>';
                         }
                         customRow.appendChild(customLabel);
-                        
-                        // 2. Create forgot password link for Right side
+
                         const injectedLink = document.createElement('a');
                         injectedLink.href = forgotPasswordUrl;
                         injectedLink.className = 'uhs-forgot-link-injected uhs-forgot-link';
                         injectedLink.textContent = isKhmer ? forgotPasswordTextKm : forgotPasswordTextEn;
                         customRow.appendChild(injectedLink);
-                        
-                        // Insert the row above the password input wrapper
+
                         parent.insertBefore(customRow, inputWrapper);
                     } else {
-                        // Keep text and styles updated on language switcher changes
                         const injectedLink = customRow.querySelector('.uhs-forgot-link-injected');
                         if (injectedLink) {
                             const isKhmer = document.documentElement.lang === 'km' || document.querySelector('html').getAttribute('lang') === 'km';
@@ -270,27 +264,24 @@
                 if (label) {
                     const labelParent = label.parentElement;
                     if (labelParent) {
-                        // Style parent of the checkbox label as a flex row
                         labelParent.style.display = 'flex';
                         labelParent.style.justifyContent = 'space-between';
                         labelParent.style.alignItems = 'center';
                         labelParent.style.width = '100%';
                         labelParent.style.marginTop = '0.5rem';
                         labelParent.style.marginBottom = '0.5rem';
-                        
-                        // Check if already injected
+
                         let injectedRegister = labelParent.querySelector('.uhs-register-link-injected');
                         if (!injectedRegister) {
                             injectedRegister = document.createElement('a');
                             injectedRegister.href = registerUrl;
                             injectedRegister.className = 'uhs-register-link-injected uhs-forgot-link';
-                            
+
                             const isKhmer = document.documentElement.lang === 'km' || document.querySelector('html').getAttribute('lang') === 'km';
                             injectedRegister.textContent = isKhmer ? 'បង្កើតគណនីថ្មី' : 'Create new account';
-                            
+
                             labelParent.appendChild(injectedRegister);
                         } else {
-                            // Keep text updated on language switcher changes
                             const isKhmer = document.documentElement.lang === 'km' || document.querySelector('html').getAttribute('lang') === 'km';
                             injectedRegister.textContent = isKhmer ? 'បង្កើតគណនីថ្មី' : 'Create new account';
                         }
@@ -306,12 +297,11 @@
 
         runInjections();
 
-        // In case of dynamic DOM redraws by Livewire
         if (window.Livewire) {
             window.Livewire.on('navigated', runInjections);
             window.Livewire.on('element.updated', runInjections);
         }
-        
+
         setInterval(runInjections, 500);
     });
 </script>

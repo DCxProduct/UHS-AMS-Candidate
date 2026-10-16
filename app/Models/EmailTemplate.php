@@ -44,22 +44,26 @@ class EmailTemplate extends Model
         'body',
     ];
 
+    /** The UHS logo, used by the built-in emails until another logo is uploaded. */
+    public const DEFAULT_LOGO = 'images/UHS_logo.png';
+
     /**
-     * Built-in texts. They match the email that was sent before templates existed.
+     * Built-in texts for UHS, in Khmer and English.
      */
     public static function defaults(string $key): array
     {
         return match ($key) {
             self::RESET_PASSWORD => [
-                'header_title' => 'UHS-AMS',
-                'subject' => 'Reset your password',
-                'button' => 'Reset Password',
-                'body' => '<h2>Hello!</h2>'
-                    .'<p>You are receiving this email because we received a password reset request for your account.</p>'
+                'header_title' => 'University of Health Sciences',
+                'subject' => 'កំណត់ពាក្យសម្ងាត់ថ្មី | Reset your password',
+                'button' => 'កំណត់ពាក្យសម្ងាត់ថ្មី | Reset Password',
+                'body' => '<h2>សួស្តី {{ name }}!</h2>'
+                    .'<p>យើងបានទទួលសំណើកំណត់ពាក្យសម្ងាត់ថ្មី សម្រាប់គណនីរបស់អ្នកនៅលើប្រព័ន្ធចុះឈ្មោះបេក្ខជន នៃសាកលវិទ្យាល័យវិទ្យាសាស្ត្រសុខាភិបាល។</p>'
+                    .'<p>We received a request to reset the password for your account on the University of Health Sciences candidate system.</p>'
                     .'<p style="text-align: center;">{{ reset_button }}</p>'
-                    .'<p>This password reset link will expire in {{ minutes }} minutes.</p>'
-                    .'<p>If you did not request a password reset, no further action is required.</p>'
-                    .'<p>Regards,<br>{{ app }}</p>',
+                    .'<p>តំណនេះមានសុពលភាពរយៈពេល {{ minutes }} នាទី។<br>This link expires in {{ minutes }} minutes.</p>'
+                    .'<p>ប្រសិនបើអ្នកមិនបានស្នើសុំទេ សូមកុំអើពើនឹងអ៊ីមែលនេះ។<br>If you did not request a password reset, please ignore this email.</p>'
+                    .'<p>ដោយក្តីគោរព | Regards,<br><strong>សាកលវិទ្យាល័យវិទ្យាសាស្ត្រសុខាភិបាល</strong><br>{{ app }}</p>',
             ],
             default => [],
         };
@@ -73,15 +77,17 @@ class EmailTemplate extends Model
     }
 
     /**
-     * Full path of the uploaded logo, when it exists on the public disk.
+     * Full path of the uploaded logo; built-in emails use the UHS logo until one is uploaded.
      */
     public function logoFullPath(): ?string
     {
-        if (blank($this->logo_path) || ! Storage::disk('public')->exists($this->logo_path)) {
-            return null;
+        if (filled($this->logo_path) && Storage::disk('public')->exists($this->logo_path)) {
+            return Storage::disk('public')->path($this->logo_path);
         }
 
-        return Storage::disk('public')->path($this->logo_path);
+        $default = public_path(self::DEFAULT_LOGO);
+
+        return $this->isBuiltIn() && is_file($default) ? $default : null;
     }
 
     /**

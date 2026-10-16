@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // The workflow action an email template is used for automatically (one template per action).
+
         Schema::table('email_templates', function (Blueprint $table): void {
             $table->string('action')->nullable()->unique()->after('name');
         });

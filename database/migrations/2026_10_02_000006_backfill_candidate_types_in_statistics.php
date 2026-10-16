@@ -37,6 +37,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        // Existing candidate type values are retained when rolling back.
+
     }
 };

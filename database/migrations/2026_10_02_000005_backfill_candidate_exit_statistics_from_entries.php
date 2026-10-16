@@ -22,6 +22,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        // Linked records are retained so rolling back does not delete statistics data.
+
     }
 };

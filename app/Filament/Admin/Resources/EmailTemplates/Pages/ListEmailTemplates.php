@@ -13,7 +13,7 @@ class ListEmailTemplates extends ListRecords
 
     public function mount(): void
     {
-        // Every built-in email has a row to edit, filled with its default text.
+
         foreach (EmailTemplate::TEMPLATES as $key) {
             EmailTemplate::for($key);
         }

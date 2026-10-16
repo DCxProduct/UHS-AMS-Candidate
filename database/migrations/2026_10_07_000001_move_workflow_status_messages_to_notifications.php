@@ -20,6 +20,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        // The migration only normalizes legacy data and does not remove fields.
+
     }
 };

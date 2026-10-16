@@ -39,7 +39,7 @@ class CreateSystemUser extends CreateRecord
             ? null
             : preg_replace('/[^0-9]/', '', (string) $data['phone']);
 
-        // Made automatically (from the email, or the phone); the name follows it as before.
+
         $data['username'] = SystemUsername::generate($data['email'], $data['phone']);
         $data['name'] = blank($data['name'] ?? null)
             ? $data['username']

@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Admin-defined {{ variables }} with a fixed value per language.
+
         Schema::table('email_templates', function (Blueprint $table): void {
             $table->json('custom_variables')->nullable()->after('header_title');
         });

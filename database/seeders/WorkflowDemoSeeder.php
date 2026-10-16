@@ -38,7 +38,7 @@ class WorkflowDemoSeeder extends Seeder
             return;
         }
 
-        // Keep this seeder runnable on its own, not only through DatabaseSeeder.
+
         $this->call(StudentProfileSeeder::class);
 
         DB::transaction(function (): void {

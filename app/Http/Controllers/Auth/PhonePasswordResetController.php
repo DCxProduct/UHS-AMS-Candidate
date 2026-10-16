@@ -51,8 +51,8 @@ class PhonePasswordResetController extends Controller
 
         $code = PhonePasswordResetOtp::issue($user);
 
-        // Local testing only: the code is also written to storage/logs/laravel.log,
-        // in case the SMS is slow or not delivered. Never in production.
+
+
         if (! app()->isProduction()) {
             Log::info('Password reset code for phone '.$user->phone.': '.$code);
         }
@@ -146,7 +146,7 @@ class PhonePasswordResetController extends Controller
             return null;
         }
 
-        // Phones are stored in local form, e.g. 012345678.
+
         return User::query()
             ->whereIn('phone', ['0'.substr($international, 3), $international])
             ->first();
