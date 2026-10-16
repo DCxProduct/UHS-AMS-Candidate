@@ -108,6 +108,7 @@ return [
     'reset_otp_unavailable' => 'Reset by phone is not available right now. Please use your email.',
     'reset_otp_account_not_found' => 'No account uses this phone number. Please check it again.',
     'reset_otp_wait' => 'Please wait :seconds seconds before requesting a new code.',
+    'reset_otp_too_many' => 'Too many codes requested. Please try again in :minutes minutes.',
     'reset_otp_code' => 'Verification code',
     'reset_otp_enter_code' => 'Enter the 6-digit code',
     'reset_otp_code_required' => 'Please enter the verification code.',

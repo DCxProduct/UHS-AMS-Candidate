@@ -35,9 +35,12 @@ use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 use Throwable;
@@ -74,6 +77,9 @@ class AppServiceProvider extends ServiceProvider
 
             return null;
         });
+
+        // Forgot-password requests per IP address (email link, SMS code, new password).
+        RateLimiter::for('password-reset', fn (Request $request): Limit => Limit::perMinute(20)->by((string) $request->ip()));
 
         ResetPassword::createUrlUsing(function (User $user, string $token): string {
             return route('student.password.reset', [

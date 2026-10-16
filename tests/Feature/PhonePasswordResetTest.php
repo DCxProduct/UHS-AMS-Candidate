@@ -166,6 +166,37 @@ class PhonePasswordResetTest extends TestCase
         Http::assertSentCount(1);
     }
 
+    public function test_at_most_three_codes_per_fifteen_minutes(): void
+    {
+        Http::fake(['cloudapi.plasgate.com/*' => Http::response(['queue_id' => 'abc'])]);
+
+        for ($i = 0; $i < 3; $i++) {
+            $this->post(route('student.password.phone'), ['phone' => '012345678'])->assertSessionHasNoErrors();
+            $this->travel(61)->seconds();
+        }
+
+        // The 4th code within 15 minutes is refused, even after the 60-second wait.
+        $this->from(route('student.password.request', ['method' => 'phone']))
+            ->post(route('student.password.phone'), ['phone' => '012345678'])
+            ->assertSessionHasErrors('phone');
+        Http::assertSentCount(3);
+
+        // After 15 minutes a new code can be sent again.
+        $this->travel(15)->minutes();
+        $this->post(route('student.password.phone'), ['phone' => '012345678'])->assertSessionHasNoErrors();
+        Http::assertSentCount(4);
+    }
+
+    public function test_forgot_password_requests_are_limited_per_ip_address(): void
+    {
+        for ($i = 0; $i < 20; $i++) {
+            $this->post(route('student.password.email'), ['email' => 'nobody'.$i.'@example.test'])->assertStatus(302);
+        }
+
+        $this->post(route('student.password.email'), ['email' => 'nobody@example.test'])->assertStatus(429);
+        $this->post(route('student.password.phone'), ['phone' => '012345678'])->assertStatus(429);
+    }
+
     public function test_unknown_phone_gets_an_error(): void
     {
         Http::fake();
