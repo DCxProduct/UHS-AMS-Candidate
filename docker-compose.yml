@@ -1,0 +1,62 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      secrets:
+        - composer_auth
+    image: uhs-candidate:latest
+    container_name: candidate-app
+    restart: unless-stopped
+    environment:
+      RUN_LARAVEL_INIT: "true"
+    env_file:
+      - .env
+    ports:
+      - "7001:80"
+    volumes:
+      # Mount Laravel source code from host
+      - .:/var/www/html
+      - candidate_vendor:/var/www/html/vendor
+      - candidate_node_modules:/var/www/html/node_modules
+    networks:
+      - candidate_network
+
+  worker:
+    image: uhs-candidate:latest
+    container_name: candidate-worker
+    restart: unless-stopped
+    environment:
+      RUN_LARAVEL_INIT: "false"
+    env_file:
+      - .env
+    volumes:
+      # Same Laravel source code
+      - .:/var/www/html
+      - candidate_vendor:/var/www/html/vendor
+      - candidate_node_modules:/var/www/html/node_modules
+    command:
+      - php
+      - artisan
+      - queue:work
+      - --queue=default
+      - --sleep=1
+      - --tries=5
+      - --timeout=120
+      - --max-time=3600
+      - --memory=256
+    networks:
+      - candidate_network
+
+secrets:
+  composer_auth:
+    file: ./composer-auth.json
+
+volumes:
+  candidate_vendor:
+  candidate_node_modules:
+
+networks:
+  candidate_network:
+    driver: bridge
+
