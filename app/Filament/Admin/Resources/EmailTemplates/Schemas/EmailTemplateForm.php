@@ -86,7 +86,7 @@ class EmailTemplateForm
                                                 'not_in' => __('email_templates.validation.variable_reserved'),
                                                 'distinct' => __('email_templates.validation.variable_distinct'),
                                             ])
-                                            ->live(onBlur: true),
+                                            ->live(debounce: 600),
                                         TextInput::make('value')
                                             ->label(__('email_templates.fields.value'))
                                             ->required(fn (Get $get): bool => filled($get('name')))

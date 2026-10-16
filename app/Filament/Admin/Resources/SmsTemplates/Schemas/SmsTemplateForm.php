@@ -78,7 +78,7 @@ class SmsTemplateForm
                                                 'not_in' => __('sms_templates.validation.variable_reserved'),
                                                 'distinct' => __('sms_templates.validation.variable_distinct'),
                                             ])
-                                            ->live(onBlur: true),
+                                            ->live(debounce: 600),
                                         TextInput::make('value')
                                             ->label(__('sms_templates.fields.value'))
                                             ->required(fn (Get $get): bool => filled($get('name')))
@@ -87,7 +87,8 @@ class SmsTemplateForm
                                     ->columns(2)
                                     ->defaultItems(1)
                                     ->addActionLabel(__('sms_templates.actions.add_variable'))
-                                    ->itemLabel(fn (array $state): ?string => filled($state['name'] ?? null) ? '{{ '.$state['name'].' }}' : null),
+                                    ->itemLabel(fn (array $state): ?string => filled($state['name'] ?? null) ? '{{ '.$state['name'].' }}' : null)
+                                    ->live(),
                             ]),
 
                         Section::make(__('sms_templates.sections.content'))

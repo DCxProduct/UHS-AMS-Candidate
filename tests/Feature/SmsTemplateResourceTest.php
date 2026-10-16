@@ -42,7 +42,7 @@ class SmsTemplateResourceTest extends TestCase
         $user->forceFill(['phone' => '012345678'])->save();
 
         $this->assertSame(
-            'UHS-AMS: Your password reset code is 123456. It expires in 10 minutes. Do not share this code.',
+            'UHS: លេខកូដកំណត់ពាក្យសម្ងាត់ថ្មីរបស់អ្នកគឺ 123456 មានសុពលភាព 10 នាទី។ Your password reset code is 123456, valid for 10 minutes. Do not share this code.',
             PasswordResetOtpSms::text($user, '123456'),
         );
 

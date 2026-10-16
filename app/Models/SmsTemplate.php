@@ -38,14 +38,15 @@ class SmsTemplate extends Model
     ];
 
     /**
-     * Built-in texts. They match the SMS that was sent before templates existed.
+     * Built-in texts for UHS, in Khmer and English.
      */
     public static function defaults(string $key): array
     {
         return match ($key) {
             self::RESET_PASSWORD_OTP => [
-                'app_name' => 'UHS-AMS',
-                'body' => '{{ app }}: Your password reset code is {{ code }}. It expires in {{ minutes }} minutes. Do not share this code.',
+                'app_name' => 'UHS',
+                'body' => '{{ app }}: លេខកូដកំណត់ពាក្យសម្ងាត់ថ្មីរបស់អ្នកគឺ {{ code }} មានសុពលភាព {{ minutes }} នាទី។ '
+                    .'Your password reset code is {{ code }}, valid for {{ minutes }} minutes. Do not share this code.',
             ],
             default => [],
         };
