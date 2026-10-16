@@ -99,9 +99,13 @@ if [ "$RUN_LARAVEL_INIT" = "true" ]; then
     # Database seed
     # -----------------------------------------------------
 
-    echo "Running database seed..."
-
-    php artisan db:seed --force
+    # Seed database only when explicitly enabled
+    if [ "${RUN_DB_SEED:-false}" = "true" ]; then
+        echo "Running database seeders..."
+        php artisan db:seed --force
+    else
+        echo "Database seeding skipped."
+    fi
 
     # -----------------------------------------------------
     # Permissions

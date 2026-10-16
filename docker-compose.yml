@@ -16,6 +16,7 @@ services:
 
     environment:
       RUN_LARAVEL_INIT: "true"
+      RUN_DB_SEED: "false"
       DB_CONNECTION: pgsql
       DB_HOST: postgres
       DB_PORT: "5432"
