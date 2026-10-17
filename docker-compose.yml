@@ -100,6 +100,8 @@ services:
 
     volumes:
       - postgres_data:/var/lib/postgresql
+      # Automatically execute SQL scripts on first initialization
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
 
     healthcheck:
       test:

@@ -29,6 +29,17 @@ if [ "$RUN_LARAVEL_INIT" = "true" ]; then
     echo "========================================"
 
     # -----------------------------------------------------
+    # Ensure required Laravel directories exist
+    # -----------------------------------------------------
+
+    mkdir -p \
+        storage/framework/cache/data \
+        storage/framework/sessions \
+        storage/framework/views \
+        storage/logs \
+        bootstrap/cache
+
+    # -----------------------------------------------------
     # Check .env
     # -----------------------------------------------------
 
@@ -85,6 +96,29 @@ if [ "$RUN_LARAVEL_INIT" = "true" ]; then
 
     php artisan optimize:clear
 
+    # -----------------------------------------------------
+    # Wait for PostgreSQL
+    # -----------------------------------------------------
+
+    echo "Waiting for PostgreSQL..."
+
+    DB_READY=false
+    ATTEMPT=1
+    MAX_ATTEMPTS=30
+
+    until php artisan db:show --counts >/dev/null 2>&1; do
+        if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
+            echo "ERROR: Database did not become ready."
+            exit 1
+        fi
+
+        echo "Database not ready (attempt $ATTEMPT/$MAX_ATTEMPTS)."
+        ATTEMPT=$((ATTEMPT + 1))
+        sleep 2
+    done
+
+    DB_READY=true
+    echo "Database connection established."
 
     # -----------------------------------------------------
     # Database migrations
@@ -92,14 +126,13 @@ if [ "$RUN_LARAVEL_INIT" = "true" ]; then
 
     echo "Running database migrations..."
 
-    php artisan migrate --force
+    php artisan migrate
 
 
     # -----------------------------------------------------
-    # Database seed
+    # Optional database seeding
     # -----------------------------------------------------
 
-    # Seed database only when explicitly enabled
     if [ "${RUN_DB_SEED:-false}" = "true" ]; then
         echo "Running database seeders..."
         php artisan db:seed --force
@@ -111,16 +144,10 @@ if [ "$RUN_LARAVEL_INIT" = "true" ]; then
     # Permissions
     # -----------------------------------------------------
 
-    echo "🔐 Fixing permissions..."
-
-    mkdir -p storage/framework/cache/data
-    mkdir -p storage/framework/sessions
-    mkdir -p storage/framework/views
-    mkdir -p storage/logs
-    mkdir -p bootstrap/cache
+    echo "Setting Laravel storage permissions..."
 
     chown -R www-data:www-data storage bootstrap/cache
-    chmod -R 775 storage bootstrap/cache
+    chmod -R ug+rwX storage bootstrap/cache
 
 
     echo ""
