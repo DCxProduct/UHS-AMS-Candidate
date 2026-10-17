@@ -96,7 +96,7 @@ services:
       POSTGRES_DB: ${DB_DATABASE:?DB_DATABASE is required}
 
     ports:
-      - "5433:5432"
+      - "5432:5432"
 
     volumes:
       - postgres_data:/var/lib/postgresql
