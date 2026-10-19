@@ -66,7 +66,7 @@ class TablePdfExporter
         array $options = [],
     ): string
     {
-        if (($options['layout'] ?? null) === 'payment-records') {
+        if (in_array($options['layout'] ?? null, ['payment-records', 'official-report'], true)) {
             return self::paymentRecordsHtml($headings, $rows, $title, $options);
         }
 
@@ -144,6 +144,14 @@ class TablePdfExporter
             'usd' => '0.00',
             'khr' => '0.00',
         ];
+        $summaryCells = $options['summary_cells'] ?? [
+            [__('payments.export.total_records'), (string) $summary['count']],
+            [__('payments.export.total_usd'), $summary['usd'] . ' $'],
+            [__('payments.export.total_khr'), $summary['khr'] . ' KHR'],
+        ];
+        $summaryHeadHtml = collect($summaryCells)->map(fn (array $cell): string => '<th>' . e((string) $cell[0]) . '</th>')->implode('');
+        $summaryBodyHtml = collect($summaryCells)->map(fn (array $cell): string => '<td>' . e((string) $cell[1]) . '</td>')->implode('');
+        $summaryWidth = min(58, 20 * max(1, count($summaryCells)));
         $documentTitle = e(filled($title) ? (string) $title : 'Payment Records');
         $subtitle = e((string) ($options['subtitle'] ?? ''));
         $logo = self::logoDataUri();
@@ -176,7 +184,7 @@ class TablePdfExporter
         .data-table td { text-align: center; }
         .data-table th:nth-child(2), .data-table td:nth-child(2), .data-table th:nth-child(3), .data-table td:nth-child(3) { text-align: left; }
         .report-footer { margin-top: 12px; width: 100%; }
-        .summary-table { border-collapse: collapse; width: 58%; }
+        .summary-table { border-collapse: collapse; width: ' . $summaryWidth . '%; }
         .summary-table th, .summary-table td { border: 0.5pt solid #7f8ea3; padding: 4px 6px; }
         .summary-table th { background-color: #003b95; color: #ffffff; font-weight: bold; text-align: center; }
         .summary-table td { background-color: #f2f5fa; font-weight: bold; text-align: center; }
@@ -213,16 +221,8 @@ class TablePdfExporter
     </table>
     <div class="report-footer">
         <table class="summary-table">
-            <thead><tr>
-                <th>' . e(__('payments.export.total_records')) . '</th>
-                <th>' . e(__('payments.export.total_usd')) . '</th>
-                <th>' . e(__('payments.export.total_khr')) . '</th>
-            </tr></thead>
-            <tbody><tr>
-                <td>' . e((string) $summary['count']) . '</td>
-                <td>' . e((string) $summary['usd']) . ' $</td>
-                <td>' . e((string) $summary['khr']) . ' KHR</td>
-            </tr></tbody>
+            <thead><tr>' . $summaryHeadHtml . '</tr></thead>
+            <tbody><tr>' . $summaryBodyHtml . '</tr></tbody>
         </table>
     </div>
 </body>
