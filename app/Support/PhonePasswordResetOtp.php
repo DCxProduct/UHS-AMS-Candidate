@@ -23,6 +23,11 @@ final class PhonePasswordResetOtp
 
     public const MAX_ATTEMPTS = 5;
 
+    /** At most this many codes per account within CODES_WINDOW_MINUTES. */
+    public const MAX_CODES = 3;
+
+    public const CODES_WINDOW_MINUTES = 15;
+
     /**
      * Seconds left before another code may be sent to this account, or 0.
      */
@@ -37,8 +42,24 @@ final class PhonePasswordResetOtp
         return max(0, self::RESEND_SECONDS - (int) Carbon::parse($createdAt)->diffInSeconds(now(), absolute: true));
     }
 
+    /**
+     * Minutes left before this account may get another code, or 0 (3 codes per 15 minutes).
+     */
+    public static function minutesUntilMoreCodes(User $user): int
+    {
+        $key = self::codesKey($user);
+
+        if (! RateLimiter::tooManyAttempts($key, self::MAX_CODES)) {
+            return 0;
+        }
+
+        return max(1, (int) ceil(RateLimiter::availableIn($key) / 60));
+    }
+
     public static function issue(User $user): string
     {
+        RateLimiter::hit(self::codesKey($user), self::CODES_WINDOW_MINUTES * 60);
+
         $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
         DB::table('password_reset_tokens')->updateOrInsert(
@@ -90,6 +111,11 @@ final class PhonePasswordResetOtp
     private static function key(User $user): string
     {
         return 'phone:'.$user->getKey();
+    }
+
+    private static function codesKey(User $user): string
+    {
+        return 'password-reset-phone-codes:'.$user->getKey();
     }
 
     private static function attemptsKey(User $user): string

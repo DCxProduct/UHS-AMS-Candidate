@@ -49,9 +49,13 @@ class PhonePasswordResetController extends Controller
             return $this->backWithError($request, 'phone', __('app.reset_otp_wait', ['seconds' => $waitSeconds]));
         }
 
+        $waitMinutes = PhonePasswordResetOtp::minutesUntilMoreCodes($user);
+
+        if ($waitMinutes > 0) {
+            return $this->backWithError($request, 'phone', __('app.reset_otp_too_many', ['minutes' => $waitMinutes]));
+        }
+
         $code = PhonePasswordResetOtp::issue($user);
-
-
 
         if (! app()->isProduction()) {
             Log::info('Password reset code for phone '.$user->phone.': '.$code);

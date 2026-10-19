@@ -10,6 +10,7 @@ use App\Support\FormEntryData;
 use App\Support\CaseInsensitiveSearch;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
+use App\Support\OfficialReport;
 use App\Support\TablePdfExporter;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Actions\EditAction;
@@ -470,48 +471,180 @@ class PaymentsTable
             ->toArray();
     }
 
+    protected static function reportColumnDefinitions(): array
+    {
+        return [
+            'row_number' => [
+                'label' => __('payments.export.columns.no'),
+                'value' => fn (Payment $record, int $rowNumber): string => LocalizedNumber::digits($rowNumber),
+            ],
+            'name_khmer' => [
+                'label' => __('payments.export.columns.name_khmer'),
+                'value' => fn (Payment $record): string => self::khmerName($record),
+            ],
+            'name_latin' => [
+                'label' => __('payments.table.name_latin'),
+                'value' => fn (Payment $record): string => self::latinName($record),
+            ],
+            'gender' => [
+                'label' => __('payments.export.columns.gender'),
+                'value' => fn (Payment $record): string => self::genderLabel(self::entryValue($record, 'gender')),
+            ],
+            'date_of_birth' => [
+                'label' => __('payments.export.columns.date_of_birth'),
+                'value' => fn (Payment $record): string => self::dateOfBirth($record),
+            ],
+            'academic_year' => [
+                'label' => __('payments.export.columns.academic_year'),
+                'value' => fn (Payment $record): string => self::academicYear($record),
+            ],
+            'datetime_pay' => [
+                'label' => __('payments.export.columns.datetime_pay'),
+                'value' => fn (Payment $record): string => LocalizedDate::dayMonthYear($record->datetime_pay),
+            ],
+            'receipt_number' => [
+                'label' => __('payments.export.columns.receipt_number'),
+                'value' => fn (Payment $record): string => blank($record->receipt_number) ? '-' : (string) $record->receipt_number,
+            ],
+            'type_payment' => [
+                'label' => __('payments.export.columns.type_payment'),
+                'value' => fn (Payment $record): string => PaymentType::localizedLabelFor($record->type_payment),
+            ],
+            'amount_usd' => [
+                'label' => __('payments.export.columns.amount_usd'),
+                'value' => fn (Payment $record): string => blank($record->amount_usd) ? '-' : number_format((float) $record->amount_usd, 2) . ' $',
+            ],
+            'amount_kh' => [
+                'label' => __('payments.export.columns.amount_kh'),
+                'value' => fn (Payment $record): string => blank($record->amount_kh) ? '-' : number_format((float) $record->amount_kh, 2) . ' KHR',
+            ],
+        ];
+    }
+
+    protected static function academicYear(Payment $record): string
+    {
+        $entry = self::matchedEntry($record);
+
+        return FormEntryData::academicYearLabel(
+            $entry?->data,
+            $record->user?->academic_year ?: '-',
+        );
+    }
+
+    protected static function reportHeadings(): array
+    {
+        return collect(self::reportColumnDefinitions())
+            ->map(fn (array $definition): string => $definition['label'])
+            ->values()
+            ->all();
+    }
+
+    protected static function reportRows(iterable $records): array
+    {
+        $definitions = self::reportColumnDefinitions();
+        $rows = [];
+        $rowNumber = 1;
+
+        foreach ($records as $record) {
+            if (! $record instanceof Payment) {
+                continue;
+            }
+
+            $rows[] = collect($definitions)
+                ->map(fn (array $definition): string => $definition['value']($record, $rowNumber))
+                ->values()
+                ->all();
+            $rowNumber++;
+        }
+
+        return $rows;
+    }
+
+    protected static function reportSummary(iterable $records): array
+    {
+        $records = collect($records)
+            ->filter(fn (mixed $record): bool => $record instanceof Payment);
+
+        return [
+            'count' => (string) $records->count(),
+            'usd' => number_format((float) $records->sum(fn (Payment $record): float => (float) $record->amount_usd), 2),
+            'khr' => number_format((float) $records->sum(fn (Payment $record): float => (float) $record->amount_kh), 2),
+        ];
+    }
+
+    protected static function reportSubtitle(): string
+    {
+        return OfficialReport::subtitle();
+    }
+
+    protected static function reportSheet(iterable $records): array
+    {
+        $records = collect($records);
+        $summary = self::reportSummary($records);
+
+        return OfficialReport::sheet(
+            'Payment Records',
+            __('payments.export.title'),
+            self::reportHeadings(),
+            self::reportRows($records),
+            [
+                [__('payments.export.total_records'), $summary['count']],
+                [__('payments.export.total_usd'), $summary['usd'] . ' $'],
+                [__('payments.export.total_khr'), $summary['khr'] . ' KHR'],
+            ],
+            [1 => 16, 2 => 25, 3 => 25, 4 => 10, 5 => 24, 6 => 16, 7 => 16, 8 => 16, 9 => 16, 10 => 14, 11 => 16],
+        );
+    }
+
     public static function downloadExcel(iterable $records, ?array $columnKeys = null)
     {
-        $filename = 'payment-records-' . now()->format('Y-m-d-His') . '.xlsx';
-        $path = storage_path('app/' . uniqid('payment-records-', true) . '.xlsx');
+        return OfficialReport::inKhmer(fn () => self::buildExcelDownload($records, $columnKeys));
+    }
 
+    public static function downloadPdf(iterable $records, ?array $columnKeys = null)
+    {
+        return OfficialReport::inKhmer(fn () => self::buildPdfDownload($records));
+    }
+
+
+    protected static function buildExcelDownload(iterable $records, ?array $columnKeys = null)
+    {
+        $path = storage_path('app/' . uniqid('payment-records-', true) . '.xlsx');
         $records = collect($records);
         $columnKeys ??= array_keys(self::exportColumnDefinitions());
-        $cleanDataRows = self::excelRows($records, $columnKeys);
-        $cleanDataRows[] = self::summaryRow($records, $columnKeys);
 
         self::writeXlsx($path, [
-            [
-                'name' => 'Clean Data',
-                'rows' => $cleanDataRows,
-                'styledRows' => [count($cleanDataRows)],
-            ],
+            self::reportSheet($records),
             [
                 'name' => 'Database Export',
                 'rows' => self::cleanDataRows($records, $columnKeys),
             ],
         ]);
 
-        return response()->download($path, $filename, [
-            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        ])->deleteFileAfterSend(true);
+        return OfficialReport::excelDownload($path, __('payments.export.title'), 'payment-records');
     }
 
-    public static function downloadPdf(iterable $records, ?array $columnKeys = null)
+    protected static function buildPdfDownload(iterable $records)
     {
         $records = collect($records);
-        $columnKeys ??= array_keys(self::exportColumnDefinitions());
-        $rows = self::excelRows($records, $columnKeys);
-        $headings = array_shift($rows) ?? [];
+        $rows = self::reportRows($records);
 
         return TablePdfExporter::download(
             'payment-records-',
-            $headings,
+            self::reportHeadings(),
             $rows,
-            __('payments.resource_plural_label'),
-            [self::summaryRow($records, $columnKeys)],
+            __('payments.export.title'),
+            [],
+            [
+                'layout' => 'payment-records',
+                'subtitle' => self::reportSubtitle(),
+                'summary' => self::reportSummary($records),
+                'filename' => OfficialReport::filename(__('payments.export.title'), 'pdf'),
+                'filename_fallback' => OfficialReport::filename(__('payments.export.title'), 'pdf', 'payment-records'),
+            ],
         );
     }
+
 
     protected static function excelRows(iterable $records, ?array $columnKeys = null): array
     {
@@ -546,51 +679,7 @@ class PaymentsTable
         return $rows;
     }
 
-    protected static function writeXlsx(string $path, array $sheets): void
-    {
-        $zip = new \ZipArchive();
-        $zip->open($path, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
 
-        $zip->addFromString('[Content_Types].xml', self::contentTypesXml($sheets));
-        $zip->addFromString('_rels/.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-            . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
-            . '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
-            . '</Relationships>');
-        $zip->addFromString('xl/workbook.xml', self::workbookXml($sheets));
-        $zip->addFromString('xl/_rels/workbook.xml.rels', self::workbookRelsXml($sheets));
-        $zip->addFromString('xl/styles.xml', self::stylesXml());
-
-        foreach (array_values($sheets) as $index => $sheet) {
-            $zip->addFromString(
-                'xl/worksheets/sheet' . ($index + 1) . '.xml',
-                self::worksheetXml($sheet['rows'], $sheet['styledRows'] ?? [])
-            );
-        }
-
-        $zip->close();
-    }
-
-    protected static function worksheetXml(array $rows, array $styledRows = []): string
-    {
-        $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-            . '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
-            . '<sheetData>';
-
-        foreach ($rows as $rowIndex => $row) {
-            $excelRow = $rowIndex + 1;
-            $xml .= '<row r="' . $excelRow . '">';
-
-            foreach (array_values($row) as $columnIndex => $value) {
-                $cell = self::columnName($columnIndex + 1) . $excelRow;
-                $style = in_array($excelRow, $styledRows, true) ? ' s="1"' : '';
-                $xml .= '<c r="' . $cell . '"' . $style . ' t="inlineStr"><is><t>' . self::xmlValue($value) . '</t></is></c>';
-            }
-
-            $xml .= '</row>';
-        }
-
-        return $xml . '</sheetData></worksheet>';
-    }
 
     protected static function excelHeadings(array $columnKeys): array
     {
@@ -756,99 +845,23 @@ class PaymentsTable
         ];
     }
 
-    protected static function contentTypesXml(array $sheets): string
+    protected static function writeXlsx(string $path, array $sheets): void
     {
-        $overrides = collect(array_keys($sheets))
-            ->map(fn (int $index): string => '<Override PartName="/xl/worksheets/sheet' . ($index + 1) . '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>')
-            ->implode('');
-
-        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-            . '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
-            . '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
-            . '<Default Extension="xml" ContentType="application/xml"/>'
-            . '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
-            . '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
-            . $overrides
-            . '</Types>';
+        OfficialReport::writeXlsx($path, $sheets);
     }
 
-    protected static function workbookXml(array $sheets): string
+    protected static function worksheetXml(array $rows, array $styledRows = [], array $options = []): string
     {
-        $sheetXml = collect(array_values($sheets))
-            ->map(fn (array $sheet, int $index): string => '<sheet name="' . self::xmlValue(self::sheetName($sheet['name'])) . '" sheetId="' . ($index + 1) . '" r:id="rId' . ($index + 1) . '"/>')
-            ->implode('');
-
-        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-            . '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
-            . '<sheets>' . $sheetXml . '</sheets>'
-            . '</workbook>';
-    }
-
-    protected static function workbookRelsXml(array $sheets): string
-    {
-        $relationships = collect(array_keys($sheets))
-            ->map(fn (int $index): string => '<Relationship Id="rId' . ($index + 1) . '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' . ($index + 1) . '.xml"/>')
-            ->implode('');
-
-        $styleRelationId = count($sheets) + 1;
-
-        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-            . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
-            . $relationships
-            . '<Relationship Id="rId' . $styleRelationId . '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'
-            . '</Relationships>';
+        return OfficialReport::worksheetXml($rows, $styledRows, $options);
     }
 
     protected static function stylesXml(): string
     {
-        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-            . '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
-            . '<fonts count="2">'
-            . '<font><sz val="11"/><name val="Calibri"/><family val="2"/></font>'
-            . '<font><b/><color rgb="FF1F2937"/><sz val="11"/><name val="Calibri"/><family val="2"/></font>'
-            . '</fonts>'
-            . '<fills count="3">'
-            . '<fill><patternFill patternType="none"/></fill>'
-            . '<fill><patternFill patternType="gray125"/></fill>'
-            . '<fill><patternFill patternType="solid"><fgColor rgb="FFE8EEF5"/><bgColor indexed="64"/></patternFill></fill>'
-            . '</fills>'
-            . '<borders count="2">'
-            . '<border><left/><right/><top/><bottom/><diagonal/></border>'
-            . '<border><left/><right/><top style="thin"><color rgb="FF94A3B8"/></top><bottom/><diagonal/></border>'
-            . '</borders>'
-            . '<cellStyleXfs count="1">'
-            . '<xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>'
-            . '</cellStyleXfs>'
-            . '<cellXfs count="2">'
-            . '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
-            . '<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>'
-            . '</cellXfs>'
-            . '<cellStyles count="1">'
-            . '<cellStyle name="Normal" xfId="0" builtinId="0"/>'
-            . '</cellStyles>'
-            . '</styleSheet>';
-    }
-
-    protected static function sheetName(string $name): string
-    {
-        return substr($name, 0, 31);
+        return OfficialReport::stylesXml();
     }
 
     protected static function columnName(int $index): string
     {
-        $column = '';
-
-        while ($index > 0) {
-            $index--;
-            $column = chr(65 + ($index % 26)) . $column;
-            $index = intdiv($index, 26);
-        }
-
-        return $column;
-    }
-
-    protected static function xmlValue(mixed $value): string
-    {
-        return htmlspecialchars((string) $value, ENT_XML1 | ENT_COMPAT, 'UTF-8');
+        return OfficialReport::columnName($index);
     }
 }

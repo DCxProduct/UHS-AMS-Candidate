@@ -85,21 +85,25 @@ Route::middleware('guest')
             ->name('password.request');
 
         Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLink'])
-            ->name('password.email');
+            ->name('password.email')
+            ->middleware('throttle:password-reset');
 
         Route::get('/reset-password/{token}', [PasswordResetController::class, 'showResetPasswordForm'])
             ->name('password.reset');
 
         Route::post('/reset-password', [PasswordResetController::class, 'resetPassword'])
-            ->name('password.update');
+            ->name('password.update')
+            ->middleware('throttle:password-reset');
 
 
         Route::post('/forgot-password/phone', [PhonePasswordResetController::class, 'sendCode'])
-            ->name('password.phone');
+            ->name('password.phone')
+            ->middleware('throttle:password-reset');
 
         Route::get('/forgot-password/phone/verify', [PhonePasswordResetController::class, 'showVerifyForm'])
             ->name('password.phone.verify');
 
         Route::post('/forgot-password/phone/verify', [PhonePasswordResetController::class, 'resetPassword'])
-            ->name('password.phone.update');
+            ->name('password.phone.update')
+            ->middleware('throttle:password-reset');
     });
