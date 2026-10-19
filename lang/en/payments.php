@@ -74,6 +74,30 @@ return [
         'total_khr' => 'Total KHR',
     ],
 
+    'export' => [
+        'kingdom' => 'ព្រះរាជាណាចក្រកម្ពុជា',
+        'motto' => 'ជាតិ សាសនា ព្រះមហាក្សត្រ',
+        'university' => 'សាកលវិទ្យាល័យវិទ្យាសាស្ត្រសុខាភិបាល',
+        'title' => 'Payment Records',
+        'generated_at' => 'Date: :date',
+        'total_records' => 'Total Records',
+        'total_usd' => 'USD',
+        'total_khr' => 'KHR',
+        'columns' => [
+            'no' => 'No',
+            'name_khmer' => 'Name',
+            'gender' => 'Gender',
+            'date_of_birth' => 'Date of Birth',
+            'academic_year' => 'Academic Year',
+            'datetime_pay' => 'Payment Date',
+            'receipt_number' => 'Receipt',
+            'type_payment' => 'Payment Type',
+            'amount_usd' => 'USD',
+            'amount_kh' => 'KHR',
+            'description' => 'Description',
+        ],
+    ],
+
     'actions' => [
         'new' => 'Create New',
         'create_payment' => 'Create Record Payment',

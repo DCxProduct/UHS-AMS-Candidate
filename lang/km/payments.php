@@ -74,6 +74,30 @@ return [
         'total_khr' => 'សរុបរៀល',
     ],
 
+    'export' => [
+        'kingdom' => 'ព្រះរាជាណាចក្រកម្ពុជា',
+        'motto' => 'ជាតិ សាសនា ព្រះមហាក្សត្រ',
+        'university' => 'សាកលវិទ្យាល័យវិទ្យាសាស្ត្រសុខាភិបាល',
+        'title' => 'បញ្ជីឈ្មោះបេក្ខជនបង់លុយ',
+        'generated_at' => 'កាលបរិច្ឆេទ៖ :date',
+        'total_records' => 'ចំនួនសរុប',
+        'total_usd' => 'ដុល្លារ',
+        'total_khr' => 'រៀល',
+        'columns' => [
+            'no' => 'ល.រ',
+            'name_khmer' => 'ឈ្មោះ',
+            'gender' => 'ភេទ',
+            'date_of_birth' => 'ថ្ងៃខែឆ្នាំកំណើត',
+            'academic_year' => 'ឆ្នាំសិក្សា',
+            'datetime_pay' => 'ថ្ងៃបង់ប្រាក់',
+            'receipt_number' => 'លេខបង្កាន់ដៃ',
+            'type_payment' => 'ប្រភេទទូទាត់',
+            'amount_usd' => 'ដុល្លារ',
+            'amount_kh' => 'រៀល',
+            'description' => 'សម្គាល់',
+        ],
+    ],
+
     'actions' => [
         'new' => 'បង្កើតថ្មី',
         'create_payment' => 'បង្កើត ការទូទាត់ប្រាក់',

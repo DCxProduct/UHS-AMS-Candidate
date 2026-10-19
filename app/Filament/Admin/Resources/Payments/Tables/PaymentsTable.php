@@ -23,6 +23,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\HtmlString;
+use Symfony\Component\HttpFoundation\HeaderUtils;
 
 class PaymentsTable
 {
@@ -470,47 +471,298 @@ class PaymentsTable
             ->toArray();
     }
 
+    protected static function reportColumnDefinitions(): array
+    {
+        return [
+            'row_number' => [
+                'label' => __('payments.export.columns.no'),
+                'value' => fn (Payment $record, int $rowNumber): string => LocalizedNumber::digits($rowNumber),
+            ],
+            'name_khmer' => [
+                'label' => __('payments.export.columns.name_khmer'),
+                'value' => fn (Payment $record): string => self::khmerName($record),
+            ],
+            'name_latin' => [
+                'label' => __('payments.table.name_latin'),
+                'value' => fn (Payment $record): string => self::latinName($record),
+            ],
+            'gender' => [
+                'label' => __('payments.export.columns.gender'),
+                'value' => fn (Payment $record): string => self::genderLabel(self::entryValue($record, 'gender')),
+            ],
+            'date_of_birth' => [
+                'label' => __('payments.export.columns.date_of_birth'),
+                'value' => fn (Payment $record): string => self::dateOfBirth($record),
+            ],
+            'academic_year' => [
+                'label' => __('payments.export.columns.academic_year'),
+                'value' => fn (Payment $record): string => self::academicYear($record),
+            ],
+            'datetime_pay' => [
+                'label' => __('payments.export.columns.datetime_pay'),
+                'value' => fn (Payment $record): string => LocalizedDate::dayMonthYear($record->datetime_pay),
+            ],
+            'receipt_number' => [
+                'label' => __('payments.export.columns.receipt_number'),
+                'value' => fn (Payment $record): string => blank($record->receipt_number) ? '-' : (string) $record->receipt_number,
+            ],
+            'type_payment' => [
+                'label' => __('payments.export.columns.type_payment'),
+                'value' => fn (Payment $record): string => PaymentType::localizedLabelFor($record->type_payment),
+            ],
+            'amount_usd' => [
+                'label' => __('payments.export.columns.amount_usd'),
+                'value' => fn (Payment $record): string => blank($record->amount_usd) ? '-' : number_format((float) $record->amount_usd, 2) . ' $',
+            ],
+            'amount_kh' => [
+                'label' => __('payments.export.columns.amount_kh'),
+                'value' => fn (Payment $record): string => blank($record->amount_kh) ? '-' : number_format((float) $record->amount_kh, 2) . ' KHR',
+            ],
+        ];
+    }
+
+    protected static function academicYear(Payment $record): string
+    {
+        $entry = self::matchedEntry($record);
+
+        return FormEntryData::academicYearLabel(
+            $entry?->data,
+            $record->user?->academic_year ?: '-',
+        );
+    }
+
+    protected static function reportHeadings(): array
+    {
+        return collect(self::reportColumnDefinitions())
+            ->map(fn (array $definition): string => $definition['label'])
+            ->values()
+            ->all();
+    }
+
+    protected static function reportRows(iterable $records): array
+    {
+        $definitions = self::reportColumnDefinitions();
+        $rows = [];
+        $rowNumber = 1;
+
+        foreach ($records as $record) {
+            if (! $record instanceof Payment) {
+                continue;
+            }
+
+            $rows[] = collect($definitions)
+                ->map(fn (array $definition): string => $definition['value']($record, $rowNumber))
+                ->values()
+                ->all();
+            $rowNumber++;
+        }
+
+        return $rows;
+    }
+
+    protected static function reportSummary(iterable $records): array
+    {
+        $records = collect($records)
+            ->filter(fn (mixed $record): bool => $record instanceof Payment);
+
+        return [
+            'count' => (string) $records->count(),
+            'usd' => number_format((float) $records->sum(fn (Payment $record): float => (float) $record->amount_usd), 2),
+            'khr' => number_format((float) $records->sum(fn (Payment $record): float => (float) $record->amount_kh), 2),
+        ];
+    }
+
+    protected static function reportSubtitle(): string
+    {
+        return __('payments.export.generated_at', [
+            'date' => LocalizedDate::dayMonthYear(now()),
+        ]);
+    }
+
+    protected static function reportSheet(iterable $records): array
+    {
+        $records = collect($records);
+        $dataRows = self::reportRows($records);
+        $summary = self::reportSummary($records);
+        $headings = self::reportHeadings();
+        $lastColumn = self::columnName(count($headings));
+        $headingRow = 11;
+        $summaryTitleRow = $headingRow + count($dataRows) + 2;
+        $summaryRow = $summaryTitleRow + 1;
+        $leftAlignedColumns = [2, 3];
+        $dataCellStyles = [];
+        $dataRowHeights = [];
+
+        foreach (array_keys($dataRows) as $index) {
+            $excelRow = $headingRow + 1 + $index;
+            $dataRowHeights[$excelRow] = 20;
+
+            foreach (array_keys($headings) as $columnIndex) {
+                $column = $columnIndex + 1;
+                $dataCellStyles[self::columnName($column) . $excelRow] = in_array($column, $leftAlignedColumns, true) ? 12 : 11;
+            }
+        }
+
+        $rows = [
+            [__('payments.export.kingdom')],
+            [__('payments.export.motto')],
+            [],
+            [],
+            [],
+            [],
+            [__('payments.export.university')],
+            [__('payments.export.title')],
+            [self::reportSubtitle()],
+            [],
+            $headings,
+            ...$dataRows,
+            [],
+            [
+                __('payments.export.total_records'),
+                __('payments.export.total_usd'),
+                __('payments.export.total_khr'),
+            ],
+            [
+                $summary['count'],
+                $summary['usd'] . ' $',
+                $summary['khr'] . ' KHR',
+            ],
+        ];
+
+        return [
+            'name' => 'Payment Records',
+            'rows' => $rows,
+            'options' => [
+                'logo' => true,
+                'ignoreNumbersAsText' => true,
+                'printLandscape' => true,
+                'mergedCells' => [
+                    'A1:' . $lastColumn . '1',
+                    'A2:' . $lastColumn . '2',
+                    'A7:B7',
+                    'A8:' . $lastColumn . '8',
+                    'A9:' . $lastColumn . '9',
+                ],
+                'rowStyles' => [
+                    1 => 9,
+                    2 => 9,
+                    7 => 10,
+                    8 => 2,
+                    9 => 3,
+                    $headingRow => 4,
+                ],
+                'cellStyles' => [
+                    ...$dataCellStyles,
+                    'A' . $summaryTitleRow => 7,
+                    'B' . $summaryTitleRow => 7,
+                    'C' . $summaryTitleRow => 7,
+                    'A' . $summaryRow => 13,
+                    'B' . $summaryRow => 13,
+                    'C' . $summaryRow => 13,
+                ],
+                'rowHeights' => [
+                    1 => 26,
+                    2 => 26,
+                    3 => 16,
+                    4 => 16,
+                    5 => 16,
+                    6 => 16,
+                    7 => 20,
+                    8 => 24,
+                    9 => 20,
+                    10 => 12,
+                    $headingRow => 24,
+                    ...$dataRowHeights,
+                    $summaryTitleRow => 22,
+                    $summaryRow => 22,
+                ],
+                'columnWidths' => [
+                    1 => 16,
+                    2 => 25,
+                    3 => 25,
+                    4 => 10,
+                    5 => 24,
+                    6 => 16,
+                    7 => 16,
+                    8 => 16,
+                    9 => 16,
+                    10 => 14,
+                    11 => 16,
+                ],
+            ],
+        ];
+    }
+
     public static function downloadExcel(iterable $records, ?array $columnKeys = null)
     {
-        $filename = 'payment-records-' . now()->format('Y-m-d-His') . '.xlsx';
+        return self::inKhmer(fn () => self::buildExcelDownload($records, $columnKeys));
+    }
+
+    public static function downloadPdf(iterable $records, ?array $columnKeys = null)
+    {
+        return self::inKhmer(fn () => self::buildPdfDownload($records));
+    }
+
+    protected static function inKhmer(\Closure $callback): mixed
+    {
+        $locale = app()->getLocale();
+        app()->setLocale('km');
+
+        try {
+            return $callback();
+        } finally {
+            app()->setLocale($locale);
+        }
+    }
+
+    protected static function buildExcelDownload(iterable $records, ?array $columnKeys = null)
+    {
+        $filename = self::downloadFilename('xlsx');
         $path = storage_path('app/' . uniqid('payment-records-', true) . '.xlsx');
 
         $records = collect($records);
         $columnKeys ??= array_keys(self::exportColumnDefinitions());
-        $cleanDataRows = self::excelRows($records, $columnKeys);
-        $cleanDataRows[] = self::summaryRow($records, $columnKeys);
 
         self::writeXlsx($path, [
-            [
-                'name' => 'Clean Data',
-                'rows' => $cleanDataRows,
-                'styledRows' => [count($cleanDataRows)],
-            ],
+            self::reportSheet($records),
             [
                 'name' => 'Database Export',
                 'rows' => self::cleanDataRows($records, $columnKeys),
             ],
         ]);
 
-        return response()->download($path, $filename, [
+        $response = response()->download($path, $filename, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ])->deleteFileAfterSend(true);
+        $response->headers->set('Content-Disposition', HeaderUtils::makeDisposition('attachment', $filename, self::downloadFilename('xlsx', ascii: true)));
+
+        return $response;
     }
 
-    public static function downloadPdf(iterable $records, ?array $columnKeys = null)
+    protected static function buildPdfDownload(iterable $records)
     {
         $records = collect($records);
-        $columnKeys ??= array_keys(self::exportColumnDefinitions());
-        $rows = self::excelRows($records, $columnKeys);
-        $headings = array_shift($rows) ?? [];
+        $rows = self::reportRows($records);
 
         return TablePdfExporter::download(
             'payment-records-',
-            $headings,
+            self::reportHeadings(),
             $rows,
-            __('payments.resource_plural_label'),
-            [self::summaryRow($records, $columnKeys)],
+            __('payments.export.title'),
+            [],
+            [
+                'layout' => 'payment-records',
+                'subtitle' => self::reportSubtitle(),
+                'summary' => self::reportSummary($records),
+                'filename' => self::downloadFilename('pdf'),
+                'filename_fallback' => self::downloadFilename('pdf', ascii: true),
+            ],
         );
+    }
+
+    protected static function downloadFilename(string $extension, bool $ascii = false): string
+    {
+        return ($ascii ? 'payment-records' : __('payments.export.title')) . ' ' . now()->format('d-m-Y') . '.' . $extension;
     }
 
     protected static function excelRows(iterable $records, ?array $columnKeys = null): array
@@ -550,8 +802,9 @@ class PaymentsTable
     {
         $zip = new \ZipArchive();
         $zip->open($path, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
+        $hasLogo = collect($sheets)->contains(fn (array $sheet): bool => (bool) ($sheet['options']['logo'] ?? false));
 
-        $zip->addFromString('[Content_Types].xml', self::contentTypesXml($sheets));
+        $zip->addFromString('[Content_Types].xml', self::contentTypesXml($sheets, $hasLogo));
         $zip->addFromString('_rels/.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
             . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
             . '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
@@ -560,36 +813,88 @@ class PaymentsTable
         $zip->addFromString('xl/_rels/workbook.xml.rels', self::workbookRelsXml($sheets));
         $zip->addFromString('xl/styles.xml', self::stylesXml());
 
+        if ($hasLogo) {
+            $logoPath = public_path('images/UHS_logo.png');
+
+            if (! is_file($logoPath)) {
+                throw new \RuntimeException('The UHS logo could not be found.');
+            }
+
+            $zip->addFile($logoPath, 'xl/media/image1.png');
+            $zip->addFromString('xl/drawings/drawing1.xml', self::drawingXml());
+            $zip->addFromString('xl/drawings/_rels/drawing1.xml.rels', self::drawingRelationshipsXml());
+        }
+
         foreach (array_values($sheets) as $index => $sheet) {
             $zip->addFromString(
                 'xl/worksheets/sheet' . ($index + 1) . '.xml',
-                self::worksheetXml($sheet['rows'], $sheet['styledRows'] ?? [])
+                self::worksheetXml($sheet['rows'], $sheet['styledRows'] ?? [], $sheet['options'] ?? [])
             );
+
+            if (($sheet['options']['logo'] ?? false) === true) {
+                $zip->addFromString(
+                    'xl/worksheets/_rels/sheet' . ($index + 1) . '.xml.rels',
+                    self::worksheetRelationshipsXml(),
+                );
+            }
         }
 
         $zip->close();
     }
 
-    protected static function worksheetXml(array $rows, array $styledRows = []): string
+    protected static function worksheetXml(array $rows, array $styledRows = [], array $options = []): string
     {
+        $rowStyles = $options['rowStyles'] ?? [];
+        $cellStyles = $options['cellStyles'] ?? [];
+        $mergedCells = $options['mergedCells'] ?? [];
+        $columnWidths = $options['columnWidths'] ?? [];
+        $rowHeights = $options['rowHeights'] ?? [];
+        $hasLogo = ($options['logo'] ?? false) === true;
+        $printLandscape = ($options['printLandscape'] ?? false) === true;
         $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-            . '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+            . '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"' . ($hasLogo ? ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"' : '') . '>'
+            . ($printLandscape ? '<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>' : '')
+            . (filled($columnWidths) ? '<cols>' . collect($columnWidths)->map(fn (float|int $width, int $column): string => '<col min="' . $column . '" max="' . $column . '" width="' . $width . '" customWidth="1"/>')->implode('') . '</cols>' : '')
             . '<sheetData>';
 
         foreach ($rows as $rowIndex => $row) {
             $excelRow = $rowIndex + 1;
-            $xml .= '<row r="' . $excelRow . '">';
+            $height = $rowHeights[$excelRow] ?? null;
+            $rowAttributes = filled($height) ? ' ht="' . $height . '" customHeight="1"' : '';
+            $xml .= '<row r="' . $excelRow . '"' . $rowAttributes . '>';
 
             foreach (array_values($row) as $columnIndex => $value) {
                 $cell = self::columnName($columnIndex + 1) . $excelRow;
-                $style = in_array($excelRow, $styledRows, true) ? ' s="1"' : '';
+                $styleId = $cellStyles[$cell] ?? $rowStyles[$excelRow] ?? (in_array($excelRow, $styledRows, true) ? 1 : 0);
+                $style = $styleId > 0 ? ' s="' . $styleId . '"' : '';
                 $xml .= '<c r="' . $cell . '"' . $style . ' t="inlineStr"><is><t>' . self::xmlValue($value) . '</t></is></c>';
             }
 
             $xml .= '</row>';
         }
 
-        return $xml . '</sheetData></worksheet>';
+        $xml .= '</sheetData>';
+
+        if (filled($mergedCells)) {
+            $xml .= '<mergeCells count="' . count($mergedCells) . '">' . collect($mergedCells)->map(fn (string $range): string => '<mergeCell ref="' . $range . '"/>')->implode('') . '</mergeCells>';
+        }
+
+        if ($printLandscape) {
+            $xml .= '<printOptions horizontalCentered="1"/>'
+                . '<pageMargins left="0.3" right="0.3" top="0.4" bottom="0.4" header="0.2" footer="0.2"/>'
+                . '<pageSetup paperSize="9" orientation="landscape" fitToWidth="1" fitToHeight="0"/>';
+        }
+
+        if (($options['ignoreNumbersAsText'] ?? false) === true && $rows !== []) {
+            $lastColumn = self::columnName(max(1, ...array_map(fn (array $row): int => count($row), $rows)));
+            $xml .= '<ignoredErrors><ignoredError sqref="A1:' . $lastColumn . count($rows) . '" numberStoredAsText="1"/></ignoredErrors>';
+        }
+
+        if ($hasLogo) {
+            $xml .= '<drawing r:id="rId1"/>';
+        }
+
+        return $xml . '</worksheet>';
     }
 
     protected static function excelHeadings(array $columnKeys): array
@@ -756,7 +1061,7 @@ class PaymentsTable
         ];
     }
 
-    protected static function contentTypesXml(array $sheets): string
+    protected static function contentTypesXml(array $sheets, bool $hasLogo = false): string
     {
         $overrides = collect(array_keys($sheets))
             ->map(fn (int $index): string => '<Override PartName="/xl/worksheets/sheet' . ($index + 1) . '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>')
@@ -766,10 +1071,47 @@ class PaymentsTable
             . '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
             . '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
             . '<Default Extension="xml" ContentType="application/xml"/>'
+            . ($hasLogo ? '<Default Extension="png" ContentType="image/png"/>' : '')
             . '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
             . '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
+            . ($hasLogo ? '<Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>' : '')
             . $overrides
             . '</Types>';
+    }
+
+    protected static function drawingXml(): string
+    {
+        $extent = 760000;
+
+        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+            . '<xdr:oneCellAnchor>'
+            . '<xdr:from><xdr:col>0</xdr:col><xdr:colOff>990000</xdr:colOff><xdr:row>2</xdr:row><xdr:rowOff>30000</xdr:rowOff></xdr:from>'
+            . '<xdr:ext cx="' . $extent . '" cy="' . $extent . '"/>'
+            . '<xdr:pic>'
+            . '<xdr:nvPicPr><xdr:cNvPr id="1" name="UHS Logo"/><xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr>'
+            . '<xdr:blipFill><a:blip r:embed="rId1"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill>'
+            . '<xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="' . $extent . '" cy="' . $extent . '"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr>'
+            . '</xdr:pic>'
+            . '<xdr:clientData/>'
+            . '</xdr:oneCellAnchor>'
+            . '</xdr:wsDr>';
+    }
+
+    protected static function drawingRelationshipsXml(): string
+    {
+        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            . '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/image1.png"/>'
+            . '</Relationships>';
+    }
+
+    protected static function worksheetRelationshipsXml(): string
+    {
+        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            . '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/>'
+            . '</Relationships>';
     }
 
     protected static function workbookXml(array $sheets): string
@@ -803,25 +1145,46 @@ class PaymentsTable
     {
         return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
             . '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
-            . '<fonts count="2">'
-            . '<font><sz val="11"/><name val="Calibri"/><family val="2"/></font>'
-            . '<font><b/><color rgb="FF1F2937"/><sz val="11"/><name val="Calibri"/><family val="2"/></font>'
+            . '<fonts count="8">'
+            . '<font><sz val="11"/><name val="Khmer OS Battambang"/><family val="2"/></font>'
+            . '<font><b/><color rgb="FF1F2937"/><sz val="11"/><name val="Khmer OS Battambang"/><family val="2"/></font>'
+            . '<font><b/><color rgb="FF003B95"/><sz val="11"/><name val="Khmer OS Muol Light"/><family val="2"/></font>'
+            . '<font><color rgb="FF1F2937"/><sz val="10"/><name val="Khmer OS Battambang"/><family val="2"/></font>'
+            . '<font><b/><color rgb="FFFFFFFF"/><sz val="10"/><name val="Khmer OS Battambang"/><family val="2"/></font>'
+            . '<font><color rgb="FF111827"/><sz val="10"/><name val="Khmer OS Muol Light"/><family val="2"/></font>'
+            . '<font><color rgb="FF111827"/><sz val="9"/><name val="Khmer OS Muol Light"/><family val="2"/></font>'
+            . '<font><color rgb="FF374151"/><sz val="11"/><name val="Khmer OS Battambang"/><family val="2"/></font>'
             . '</fonts>'
-            . '<fills count="3">'
+            . '<fills count="5">'
             . '<fill><patternFill patternType="none"/></fill>'
             . '<fill><patternFill patternType="gray125"/></fill>'
             . '<fill><patternFill patternType="solid"><fgColor rgb="FFE8EEF5"/><bgColor indexed="64"/></patternFill></fill>'
+            . '<fill><patternFill patternType="solid"><fgColor rgb="FF003B95"/><bgColor indexed="64"/></patternFill></fill>'
+            . '<fill><patternFill patternType="solid"><fgColor rgb="FFF2F5FA"/><bgColor indexed="64"/></patternFill></fill>'
             . '</fills>'
-            . '<borders count="2">'
+            . '<borders count="3">'
             . '<border><left/><right/><top/><bottom/><diagonal/></border>'
             . '<border><left/><right/><top style="thin"><color rgb="FF94A3B8"/></top><bottom/><diagonal/></border>'
+            . '<border><left style="thin"><color rgb="FF7F8EA3"/></left><right style="thin"><color rgb="FF7F8EA3"/></right><top style="thin"><color rgb="FF7F8EA3"/></top><bottom style="thin"><color rgb="FF7F8EA3"/></bottom><diagonal/></border>'
             . '</borders>'
             . '<cellStyleXfs count="1">'
             . '<xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>'
             . '</cellStyleXfs>'
-            . '<cellXfs count="2">'
+            . '<cellXfs count="14">'
             . '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
             . '<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>'
+            . '<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>'
+            . '<xf numFmtId="0" fontId="7" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>'
+            . '<xf numFmtId="0" fontId="4" fillId="3" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>'
+            . '<xf numFmtId="0" fontId="1" fillId="4" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>'
+            . '<xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>'
+            . '<xf numFmtId="0" fontId="4" fillId="3" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>'
+            . '<xf numFmtId="0" fontId="1" fillId="4" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>'
+            . '<xf numFmtId="0" fontId="5" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>'
+            . '<xf numFmtId="0" fontId="6" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>'
+            . '<xf numFmtId="0" fontId="3" fillId="0" borderId="2" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>'
+            . '<xf numFmtId="0" fontId="3" fillId="0" borderId="2" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>'
+            . '<xf numFmtId="0" fontId="1" fillId="4" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>'
             . '</cellXfs>'
             . '<cellStyles count="1">'
             . '<cellStyle name="Normal" xfId="0" builtinId="0"/>'
