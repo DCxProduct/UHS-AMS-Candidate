@@ -15,6 +15,12 @@ class CreateClosingDate extends CreateRecord
 
     protected int $createdRecordsCount = 1;
 
+    /** @var array<int, int|string> */
+    protected array $selectedMajorIds = [];
+
+    /** @var array<int, int|string> */
+    protected array $createdRecordIds = [];
+
     protected function getRedirectUrl(): string
     {
         return ClosingDateResource::getUrl('index');
@@ -32,6 +38,13 @@ class CreateClosingDate extends CreateRecord
     */
     protected function mutateFormDataBeforeCreate(array $data): array
     {
+        $this->selectedMajorIds = collect(Arr::wrap($data['major_ids'] ?? []))
+            ->filter(fn ($id): bool => filled($id))
+            ->unique()
+            ->values()
+            ->all();
+        unset($data['major_ids']);
+
         if (
             ! empty($data['end_date'])
             && now()->startOfDay()->gt(
@@ -55,8 +68,10 @@ class CreateClosingDate extends CreateRecord
 
         if ($types->count() <= 1) {
             $data['type'] = $types->first();
+            $record = parent::handleRecordCreation($data);
+            $this->createdRecordIds = [$record->getKey()];
 
-            return parent::handleRecordCreation($data);
+            return $record;
         }
 
         $firstRecord = null;
@@ -65,11 +80,23 @@ class CreateClosingDate extends CreateRecord
             $record = parent::handleRecordCreation(
                 array_merge($data, ['type' => $type])
             );
+            $this->createdRecordIds[] = $record->getKey();
 
             $firstRecord ??= $record;
         }
 
         return $firstRecord;
+    }
+
+    protected function afterCreate(): void
+    {
+        if ($this->selectedMajorIds === []) {
+            return;
+        }
+
+        foreach ($this->createdRecordIds as $recordId) {
+            ClosingDate::query()->find($recordId)?->majors()->sync($this->selectedMajorIds);
+        }
     }
 
     protected function getCreatedNotificationTitle(): ?string

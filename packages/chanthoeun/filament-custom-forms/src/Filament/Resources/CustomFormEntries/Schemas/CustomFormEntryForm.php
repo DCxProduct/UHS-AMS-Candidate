@@ -3,6 +3,7 @@
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Schemas;
 
 use App\Models\GeoLocation;
+use App\Models\Major;
 use App\Support\CustomFormEntryFiles;
 use App\Support\DatePickerKeyboardInput;
 use App\Support\UserTypeOptions;
@@ -467,7 +468,8 @@ class CustomFormEntryForm
                         } else {
                             $component = Select::make("data.{$name}")
                                 ->options(self::transOptions(
-                                    self::profileSelectChoices($fieldModel, $options, $isProfileForm)
+                                    self::dataSourceChoices($options, $fieldModel)
+                                        ?? self::profileSelectChoices($fieldModel, $options, $isProfileForm)
                                 ))
                                 ->native(false)
                                 ->dehydrated(true);
@@ -583,6 +585,15 @@ class CustomFormEntryForm
                 return (string) $value === 'high_school_diploma';
             })
             ->all();
+    }
+
+    protected static function dataSourceChoices(array $options, object $fieldModel): ?array
+    {
+        if (strtolower(trim((string) ($options['data_source_table'] ?? ''))) !== 'majors') {
+            return null;
+        }
+
+        return Major::optionsForCustomFormId($fieldModel->custom_form_id ?? null);
     }
 
     protected static function isFieldInputEnabled(array $options): bool

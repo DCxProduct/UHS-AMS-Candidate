@@ -1,0 +1,88 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Filament\Admin\Resources\Majors\MajorResource;
+use App\Models\ClosingDate;
+use App\Models\Major;
+use App\Support\StudentDynamicFormSchema;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class MajorConfigurationTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_majors_can_be_associated_with_a_closing_date(): void
+    {
+        $major = Major::query()->create([
+            'key' => 'Medicine Major',
+            'abbreviation' => 'med',
+            'name_en' => 'Medicine',
+            'name_kh' => 'វេជ្ជសាស្ត្រ',
+            'is_active' => true,
+        ]);
+        $secondMajor = Major::query()->create([
+            'key' => 'biomedical_engineering',
+            'abbreviation' => 'ABE',
+            'name_en' => 'Biomedical Engineering',
+            'name_kh' => 'វិស្វកម្មវេជ្ជជីវសាស្រ្ត',
+            'is_active' => true,
+        ]);
+        Major::query()->create([
+            'key' => 'not_selected',
+            'abbreviation' => 'NS',
+            'name_en' => 'Not Selected',
+            'is_active' => true,
+        ]);
+
+        $closingDate = ClosingDate::query()->create([
+            'name' => 'Application deadline',
+            'type' => 'custom_form:1',
+            'status' => ClosingDate::STATUS_OPEN,
+            'start_date' => now()->toDateString(),
+            'end_date' => now()->addWeek()->toDateString(),
+        ]);
+
+        $closingDate->majors()->sync([$major->getKey(), $secondMajor->getKey()]);
+
+        $this->assertSame(
+            [$major->getKey(), $secondMajor->getKey()],
+            $closingDate->fresh()->majors->modelKeys()
+        );
+        $this->assertSame('medicine_major', $major->key);
+        $this->assertSame('MED', $major->abbreviation);
+        app()->setLocale('en');
+        $this->assertSame('Medicine', $major->localized_name);
+        $this->assertSame('Medicine', Major::options()[$major->getKey()]);
+        $this->assertSame([
+            $secondMajor->getKey() => 'Biomedical Engineering',
+            $major->getKey() => 'Medicine',
+        ], Major::optionsForCustomFormId(1));
+        $selectOptionsMethod = new \ReflectionMethod(StudentDynamicFormSchema::class, 'getSelectOptions');
+        $selectOptionsMethod->setAccessible(true);
+        $this->assertSame(
+            Major::optionsForCustomFormId(1),
+            $selectOptionsMethod->invoke(
+                app(StudentDynamicFormSchema::class),
+                (object) ['custom_form_id' => 1],
+                ['data_source_table' => 'majors'],
+                null
+            )
+        );
+
+        app()->setLocale('km');
+        $this->assertSame('វេជ្ជសាស្ត្រ', $major->fresh()->localized_name);
+        $this->assertSame('វេជ្ជសាស្ត្រ', Major::options()[$major->getKey()]);
+        $this->assertSame([
+            $secondMajor->getKey() => 'វិស្វកម្មវេជ្ជជីវសាស្រ្ត',
+            $major->getKey() => 'វេជ្ជសាស្ត្រ',
+        ], Major::optionsForCustomFormId(1));
+    }
+
+    public function test_majors_resource_is_admin_only(): void
+    {
+        $this->assertSame(Major::class, MajorResource::getModel());
+        $this->assertSame('majors', MajorResource::getSlug());
+    }
+}

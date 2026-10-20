@@ -71,6 +71,7 @@
              'faculties' => 'Faculties',
              'fiscal_years' => 'Fiscal Years',
              'programs' => 'Programs',
+             'majors' => 'Majors',
          ],
          'text_format_options' => [
              'normal' => 'Normal',

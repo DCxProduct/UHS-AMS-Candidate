@@ -12,6 +12,9 @@ class EditClosingDate extends EditRecord
 {
     protected static string $resource = ClosingDateResource::class;
 
+    /** @var array<int, int|string> */
+    protected array $selectedMajorIds = [];
+
     protected function getRedirectUrl(): string
     {
         return ClosingDateResource::getUrl('index');
@@ -31,6 +34,8 @@ class EditClosingDate extends EditRecord
     */
     protected function mutateFormDataBeforeFill(array $data): array
     {
+        $data['major_ids'] = $this->record->majors()->pluck('majors.id')->all();
+
         if (
             ! empty($data['end_date'])
             && now()->startOfDay()->gt(
@@ -50,6 +55,13 @@ class EditClosingDate extends EditRecord
     */
     protected function mutateFormDataBeforeSave(array $data): array
     {
+        $this->selectedMajorIds = collect($data['major_ids'] ?? [])
+            ->filter(fn ($id): bool => filled($id))
+            ->unique()
+            ->values()
+            ->all();
+        unset($data['major_ids']);
+
         if (
             ! empty($data['end_date'])
             && now()->startOfDay()->gt(
@@ -60,6 +72,11 @@ class EditClosingDate extends EditRecord
         }
 
         return $data;
+    }
+
+    protected function afterSave(): void
+    {
+        $this->record->majors()->sync($this->selectedMajorIds);
     }
 
     protected function getHeaderActions(): array

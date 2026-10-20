@@ -49,6 +49,8 @@ class RolesAndPermissionsSeederTest extends TestCase
             'Delete:ClosingDate',
             'ViewAny:DegreeLevel',
             'Delete:DegreeLevel',
+            'ViewAny:Major',
+            'Delete:Major',
             'ViewAny:UserType',
             'Delete:UserType',
             'ViewAny:CandidateList',
@@ -82,6 +84,7 @@ class RolesAndPermissionsSeederTest extends TestCase
             'PreviewPdf:DocumentTemplate',
             'ViewAny:ClosingDate',
             'ViewAny:DegreeLevel',
+            'ViewAny:Major',
             'ViewAny:UserType',
             'ViewAny:CandidateList',
             'ViewAny:CandidateExitStatistic',
@@ -133,6 +136,9 @@ class RolesAndPermissionsSeederTest extends TestCase
             'ViewAny:DegreeLevel',
             'Create:DegreeLevel',
             'Update:DegreeLevel',
+            'ViewAny:Major',
+            'Create:Major',
+            'Update:Major',
             'ViewAny:UserType',
             'Create:UserType',
             'Update:UserType',
@@ -221,6 +227,10 @@ class RolesAndPermissionsSeederTest extends TestCase
             'Create:DegreeLevel',
             'Update:DegreeLevel',
             'Delete:DegreeLevel',
+            'ViewAny:Major',
+            'Create:Major',
+            'Update:Major',
+            'Delete:Major',
             'ViewAny:UserType',
             'Create:UserType',
             'Update:UserType',
@@ -347,6 +357,10 @@ class RolesAndPermissionsSeederTest extends TestCase
             'Create:DegreeLevel',
             'Update:DegreeLevel',
             'Delete:DegreeLevel',
+            'ViewAny:Major',
+            'Create:Major',
+            'Update:Major',
+            'Delete:Major',
             'ViewAny:UserType',
             'Create:UserType',
             'Update:UserType',
@@ -401,6 +415,10 @@ class RolesAndPermissionsSeederTest extends TestCase
             'Create:ClosingDate',
             'Update:ClosingDate',
             'Delete:ClosingDate',
+            'ViewAny:Major',
+            'Create:Major',
+            'Update:Major',
+            'Delete:Major',
         ];
 
         foreach (array_unique([
@@ -413,7 +431,7 @@ class RolesAndPermissionsSeederTest extends TestCase
             ...$registrarManagerPermissions,
             ...$registrarOfficerPermissions,
         ]) as $permission) {
-            Permission::create([
+            Permission::query()->firstOrCreate([
                 'name' => $permission,
                 'guard_name' => 'web',
             ]);

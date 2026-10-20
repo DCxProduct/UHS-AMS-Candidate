@@ -95,7 +95,6 @@ return [
         'name_kh_placeholder' => 'Enter label in Khmer',
         'help_user' => 'Use this for candidate or student-facing roles.',
         'help_staff' => 'Use this for admin, cashier, finance, registrar, developer, and other staff roles.',
-        'key_help_user' => 'Examples: candidate, master, associate.',
         'key_help_staff' => 'Examples: admin, cashier, finance, registrar.',
         'label_en_help_user' => 'Examples: Candidate, Master, Associate.',
         'label_en_help_staff' => 'Examples: Admin, Cashier, Finance, Registrar.',

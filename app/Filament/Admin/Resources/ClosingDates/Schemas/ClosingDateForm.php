@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\ClosingDates\Schemas;
 
 use App\Models\ClosingDate;
+use App\Models\Major;
 use App\Support\DatePickerKeyboardInput;
 use Carbon\Carbon;
 use Closure;
@@ -59,6 +60,15 @@ class ClosingDateForm
                             ])
                             ->columnSpan(1),
 
+                        Select::make('major_ids')
+                            ->label(__('majors.closing_date_field'))
+                            ->placeholder(__('majors.search'))
+                            ->options(fn (): array => Major::options())
+                            ->multiple()
+                            ->searchable()
+                            ->preload()
+                            ->columnSpan(1),
+
                         Select::make('status')
                             ->label(__('closing_dates.status'))
                             ->placeholder(__('closing_dates.status_placeholder'))
@@ -72,7 +82,7 @@ class ClosingDateForm
                             ->validationMessages([
                                 'required' => __('closing_dates.status_required'),
                             ])
-                            ->columnSpan(1),
+                            ->columnSpanFull(),
 
                         DatePickerKeyboardInput::applyMonthName(
                             DatePicker::make('start_date')

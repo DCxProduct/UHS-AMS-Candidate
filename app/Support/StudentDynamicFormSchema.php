@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\Major;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\CheckboxList;
@@ -374,12 +375,17 @@ class StudentDynamicFormSchema
             return $this->geoLocationOptions($field, $config);
         }
 
-        $dataSource = $field->data_source
+        $dataSource = $config['data_source_table']
+            ?? $field->data_source
             ?? $config['data_source']
             ?? $config['source']
             ?? null;
 
         if (filled($dataSource)) {
+            if (in_array(Str::of((string) $dataSource)->lower()->replace('-', '_')->snake()->toString(), ['major', 'majors'], true)) {
+                return Major::optionsForCustomFormId($field->custom_form_id ?? null);
+            }
+
             $options = $this->dataSourceOptions($field, (string) $dataSource);
 
             if (filled($options)) {
