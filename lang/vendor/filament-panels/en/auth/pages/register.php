@@ -2,9 +2,9 @@
 
 return [
 
-    'title' => 'Register',
+    'title' => 'Create Account',
 
-    'heading' => 'Sign up',
+    'heading' => 'Create Account',
 
     'actions' => [
 
@@ -37,7 +37,7 @@ return [
         'actions' => [
 
             'register' => [
-                'label' => 'Sign up',
+                'label' => 'Create Account',
             ],
 
         ],
