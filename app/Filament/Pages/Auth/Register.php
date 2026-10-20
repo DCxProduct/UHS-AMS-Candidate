@@ -2,9 +2,9 @@
 
 namespace App\Filament\Pages\Auth;
 
-use Illuminate\Support\Facades\Auth;
 use App\Models\SystemUser;
 use App\Models\User;
+use App\Support\UserTypeOptions;
 use Filament\Auth\Events\Registered;
 use Filament\Auth\Http\Responses\Contracts\RegistrationResponse;
 use Filament\Auth\Pages\Register as BaseRegister;
@@ -17,14 +17,14 @@ use Filament\Schemas\Schema;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\HtmlString;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Features\SupportRedirects\Redirector;
-use App\Support\UserTypeOptions;
 
 class Register extends BaseRegister
 {
@@ -35,17 +35,17 @@ class Register extends BaseRegister
         parent::mount();
     }
 
-    public function getTitle(): string | Htmlable
+    public function getTitle(): string|Htmlable
     {
         return __('app.sign_up');
     }
 
-    public function getHeading(): string | Htmlable
+    public function getHeading(): string|Htmlable
     {
         return __('app.sign_up');
     }
 
-    public function getSubheading(): string | Htmlable | null
+    public function getSubheading(): string|Htmlable|null
     {
         return null;
     }
@@ -317,7 +317,7 @@ class Register extends BaseRegister
 
         return new class implements RegistrationResponse
         {
-            public function toResponse($request): RedirectResponse | Redirector
+            public function toResponse($request): RedirectResponse|Redirector
             {
                 return redirect()->to('/dashboard');
             }
@@ -372,7 +372,7 @@ class Register extends BaseRegister
                 'seat_number' => null,
                 'avatar' => null,
                 'password' => $hashedPassword,
-                'email_verified_at' => now(),
+                'email_verified_at' => null,
                 'is_active' => true,
             ]);
 
@@ -403,42 +403,12 @@ class Register extends BaseRegister
                 'roles' => UserTypeOptions::assignableUserRoles($studentRole),
                 'permissions' => null,
                 'is_active' => true,
-                'email_verified_at' => now(),
+                'email_verified_at' => null,
                 'last_login_at' => null,
             ]);
 
-            /*
-            |--------------------------------------------------------------------------
-            | Link existing applications by phone number
-            |--------------------------------------------------------------------------
-            */
-            if (filled($phone) && \Illuminate\Support\Facades\Schema::hasTable('custom_form_entries')) {
-                $columns = \Illuminate\Support\Facades\Schema::getColumnListing('custom_form_entries');
-                
-                $updateData = [];
-                if (in_array('user_id', $columns)) $updateData['user_id'] = $user->id;
-                if (in_array('created_by', $columns)) $updateData['created_by'] = $user->id;
-                if (in_array('created_by_id', $columns)) $updateData['created_by_id'] = $user->id;
-                
-                if (!empty($updateData)) {
-                    \Illuminate\Support\Facades\DB::table('custom_form_entries')
-                        ->where(function ($query) use ($phone) {
-                            $query->where('data->phone_number', $phone)
-                                  ->orWhere('data->phone', $phone)
-                                  ->orWhere('data', 'like', '%"phone_number":"' . $phone . '"%')
-                                  ->orWhere('data', 'like', '%"phone":"' . $phone . '"%');
-                        })
-                        ->where(function ($query) use ($columns) {
-                            if (in_array('user_id', $columns)) {
-                                $query->orWhereNull('user_id')->orWhere('user_id', 0);
-                            }
-                            if (in_array('created_by', $columns)) {
-                                $query->orWhereNull('created_by');
-                            }
-                        })
-                        ->update($updateData);
-                }
-            }
+            // Ownership recovery requires separately verified proof. Registration
+            // must never acquire existing applications from a supplied phone number.
 
             return $user;
         });
@@ -446,7 +416,7 @@ class Register extends BaseRegister
 
     protected function generateInternalUsername(?string $phone): string
     {
-        $baseUsername = 'student_' . ($phone ?: Str::lower(Str::random(12)));
+        $baseUsername = 'student_'.($phone ?: Str::lower(Str::random(12)));
         $username = $baseUsername;
         $suffix = 1;
 
@@ -454,7 +424,7 @@ class Register extends BaseRegister
             User::withTrashed()->where('username', $username)->exists()
             || SystemUser::withTrashed()->where('username', $username)->exists()
         ) {
-            $username = $baseUsername . '_' . $suffix++;
+            $username = $baseUsername.'_'.$suffix++;
         }
 
         return $username;

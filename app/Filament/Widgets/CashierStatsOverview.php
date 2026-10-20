@@ -4,6 +4,7 @@ namespace App\Filament\Widgets;
 
 use App\Filament\Admin\Resources\CandidatePaymentLists\CandidatePaymentListResource;
 use App\Filament\Admin\Resources\Payments\PaymentResource;
+use App\Support\StaffRoles;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -17,7 +18,7 @@ class CashierStatsOverview extends StatsOverviewWidget
 
     public static function canView(): bool
     {
-        return auth()->user()?->hasEffectiveRole(['admin', 'cashier']) ?? false;
+        return auth()->user()?->hasEffectiveRole(['admin', ...StaffRoles::CASHIERS]) ?? false;
     }
 
     protected function getStats(): array

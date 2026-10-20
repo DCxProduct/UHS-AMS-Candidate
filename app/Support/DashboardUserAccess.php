@@ -6,16 +6,6 @@ use App\Models\User;
 
 class DashboardUserAccess
 {
-    private const STAFF_ROLE_EXCLUSIONS = [
-        'admin',
-        'cashier',
-        'finance',
-        'developer',
-        'registrar',
-        'processing',
-        'team uhs',
-    ];
-
     public static function isAdmin(?User $user): bool
     {
         return $user?->hasEffectiveRole('admin') ?? false;
@@ -23,12 +13,12 @@ class DashboardUserAccess
 
     public static function isCashier(?User $user): bool
     {
-        return $user?->hasEffectiveRole('cashier') ?? false;
+        return $user?->hasEffectiveRole(StaffRoles::CASHIERS) ?? false;
     }
 
     public static function isRegistrar(?User $user): bool
     {
-        return $user?->hasEffectiveRole('registrar') ?? false;
+        return $user?->hasEffectiveRole(StaffRoles::REGISTRARS) ?? false;
     }
 
     public static function isCandidate(?User $user): bool
@@ -37,7 +27,7 @@ class DashboardUserAccess
             return false;
         }
 
-        if ($user->hasEffectiveRole(self::STAFF_ROLE_EXCLUSIONS)) {
+        if ($user->hasEffectiveRole(StaffRoles::STAFF)) {
             return false;
         }
 

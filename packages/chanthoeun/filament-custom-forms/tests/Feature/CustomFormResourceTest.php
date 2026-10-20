@@ -2,12 +2,10 @@
 
 namespace Chanthoeun\FilamentCustomForms\Tests\Feature;
 
-use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomForms\CustomFormResource;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomForms\Pages;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Tests\TestCase;
 use Filament\Actions\DeleteAction;
-use Filament\Forms\Components\TextInput;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 
@@ -15,28 +13,13 @@ class CustomFormResourceTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        
-        $user = \Chanthoeun\FilamentCustomForms\Tests\Models\User::create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-            'password' => bcrypt('password'),
-        ]);
-        
-        $this->actingAs($user);
-    }
-
-    /** @test */
-    public function it_can_render_page()
+    public function test_can_render_page()
     {
         Livewire::test(Pages\ListCustomForms::class)
             ->assertSuccessful();
     }
 
-    /** @test */
-    public function it_can_list_forms()
+    public function test_can_list_forms()
     {
         $forms = CustomForm::factory()->count(10)->create();
 
@@ -44,27 +27,24 @@ class CustomFormResourceTest extends TestCase
             ->assertCanSeeTableRecords($forms);
     }
 
-    /** @test */
-    public function it_can_create_forms()
+    public function test_can_create_forms()
     {
         $newData = CustomForm::factory()->make();
 
         Livewire::test(Pages\CreateCustomForm::class)
             ->fillForm([
-                'name' => $newData->name,
+                'name_en' => $newData->name,
+                'name_km' => $newData->name,
                 'slug' => $newData->slug,
             ])
             ->call('create')
             ->assertHasNoFormErrors();
 
-        $this->assertDatabaseHas('custom_forms', [
-            'name' => $newData->name,
-            'slug' => $newData->slug,
-        ]);
+        $stored = CustomForm::where('slug', $newData->slug)->sole();
+        $this->assertSame($newData->name, json_decode($stored->name, true)['en']);
     }
 
-    /** @test */
-    public function it_can_edit_forms()
+    public function test_can_edit_forms()
     {
         $form = CustomForm::factory()->create();
         $newName = 'Updated Name';
@@ -73,16 +53,16 @@ class CustomFormResourceTest extends TestCase
             'record' => $form->getRouteKey(),
         ])
             ->fillForm([
-                'name' => $newName,
+                'name_en' => $newName,
+                'name_km' => $newName,
             ])
             ->call('save')
             ->assertHasNoFormErrors();
 
-        $this->assertEquals($newName, $form->refresh()->name);
+        $this->assertEquals($newName, json_decode($form->refresh()->name, true)['en']);
     }
 
-    /** @test */
-    public function it_can_delete_forms()
+    public function test_can_delete_forms()
     {
         $form = CustomForm::factory()->create();
 

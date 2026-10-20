@@ -2,21 +2,24 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Livewire\DatabaseNotifications;
 use App\Filament\Pages\Auth\Login;
-use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use App\Filament\Pages\Auth\Register;
 use App\Filament\Pages\Dashboard as AppDashboard;
 use App\Filament\Pages\Sync as SyncPage;
-use App\Filament\Livewire\DatabaseNotifications;
 use App\Filament\Student\Pages\ContactUs;
 use App\Filament\Student\Pages\MyProfile;
 use App\Http\Middleware\CheckUserActive;
+use App\Http\Middleware\SecurityHeaders;
+use App\Models\ClosingDate;
+use App\Models\SystemUser;
 use App\Support\ClosingDateWorkflow;
 use App\Support\UserTypeOptions;
+use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use BezhanSalleh\LanguageSwitch\Http\Middleware\SwitchLanguageLocale;
 use Chanthoeun\FilamentCustomForms\CustomFormPlugin;
-use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource as PackageCustomFormEntryResource;
+use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentDocumentBuilder\DocumentBuilderPlugin;
 use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
@@ -67,8 +70,6 @@ class AppPanelProvider extends PanelProvider
 
             ->sidebarCollapsibleOnDesktop()
             ->globalSearch(false)
-
-
 
             ->plugins([
                 FilamentShieldPlugin::make()
@@ -180,9 +181,9 @@ class AppPanelProvider extends PanelProvider
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
                 StartSession::class,
+                SecurityHeaders::class,
                 SwitchLanguageLocale::class,
                 AuthenticateSession::class,
-                CheckUserActive::class,
                 ShareErrorsFromSession::class,
                 PreventRequestForgery::class,
                 SubstituteBindings::class,
@@ -191,8 +192,9 @@ class AppPanelProvider extends PanelProvider
             ])
 
             ->authMiddleware([
+                CheckUserActive::class,
                 Authenticate::class,
-            ]);
+            ], isPersistent: true);
     }
 
     protected function getDynamicStudentFormNavigationItems(): array
@@ -234,16 +236,16 @@ class AppPanelProvider extends PanelProvider
                 $driver = DB::connection()->getDriverName();
                 $candidateManagedRoles = UserTypeOptions::candidateManagedRoleKeys();
 
-                $query->where(function ($query) use ($driver, $currentRoles, $candidateManagedRoles): void {
+                $query->where(function ($query) use ($driver, $currentRoles): void {
                     $query->orWhere('slug', 'profile');
 
                     if ($driver === 'pgsql') {
                         foreach ($currentRoles as $role) {
-                            $query->orWhereRaw('COALESCE(allowed_roles::text, \'\') ILIKE ?', ['%"' . $role . '"%']);
+                            $query->orWhereRaw('COALESCE(allowed_roles::text, \'\') ILIKE ?', ['%"'.$role.'"%']);
                         }
                     } else {
                         foreach ($currentRoles as $role) {
-                            $query->orWhereRaw('COALESCE(CAST(allowed_roles AS CHAR), \'\') LIKE ?', ['%"' . $role . '"%']);
+                            $query->orWhereRaw('COALESCE(CAST(allowed_roles AS CHAR), \'\') LIKE ?', ['%"'.$role.'"%']);
                         }
                     }
                 });
@@ -310,9 +312,9 @@ class AppPanelProvider extends PanelProvider
                             && $this->canShowDynamicForm($slug))
                         ->isActiveWhen(
                             fn (): bool => (
-                                    request()->is('custom-form-entries*')
-                                    && (int) data_get(request()->query('tableFilters'), 'custom_form_id.value') === $formId
-                                )
+                                request()->is('custom-form-entries*')
+                                && (int) data_get(request()->query('tableFilters'), 'custom_form_id.value') === $formId
+                            )
                                 || (
                                     request()->is('contact-us*')
                                     && (int) request()->query('form_id') === $formId
@@ -535,7 +537,7 @@ class AppPanelProvider extends PanelProvider
             return true;
         }
 
-        if ($user instanceof \App\Models\SystemUser) {
+        if ($user instanceof SystemUser) {
             $loginUser = $user->findLinkedLoginUser();
 
             if ($loginUser && method_exists($loginUser, 'can') && $loginUser->can($permission)) {
@@ -648,7 +650,7 @@ class AppPanelProvider extends PanelProvider
                 return false;
             }
 
-            return \App\Models\ClosingDate::isCustomFormOpen((int) $profileFormId);
+            return ClosingDate::isCustomFormOpen((int) $profileFormId);
         } catch (Throwable $e) {
             report($e);
 
@@ -754,13 +756,13 @@ class AppPanelProvider extends PanelProvider
         ];
 
         foreach ([
-                     'display_order',
-                     'sort',
-                     'sort_order',
-                     'order_column',
-                     'ordering',
-                     'position',
-                 ] as $column) {
+            'display_order',
+            'sort',
+            'sort_order',
+            'order_column',
+            'ordering',
+            'position',
+        ] as $column) {
             if (isset($form->{$column}) && is_numeric($form->{$column}) && (int) $form->{$column} > 0) {
                 return (int) $form->{$column};
             }

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Support\StaffRoles;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Filament\Tables\Columns\TextColumn;
@@ -23,7 +24,7 @@ class AdminSidebarFormsTable extends TableWidget
 
     public static function canView(): bool
     {
-        return auth()->user()?->hasEffectiveRole(['admin', 'cashier', 'registrar']) ?? false;
+        return auth()->user()?->hasEffectiveRole(StaffRoles::AUDITED) ?? false;
     }
 
     public function table(Table $table): Table

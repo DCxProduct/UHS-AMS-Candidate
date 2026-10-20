@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Resources\CandidatePaymentLists\Pages;
 
 use App\Filament\Admin\Resources\CandidatePaymentLists\CandidatePaymentListResource;
 use App\Models\Payment;
+use App\Services\CandidatePaymentRecorder;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Model;
@@ -25,7 +26,7 @@ class CreateCandidatePaymentList extends CreateRecord
         }
 
         try {
-            return Payment::query()->create($data);
+            return app(CandidatePaymentRecorder::class)->record($data);
         } catch (QueryException $exception) {
             if (Payment::isReceiptNumberUniqueViolation($exception)) {
                 throw ValidationException::withMessages([
@@ -37,7 +38,7 @@ class CreateCandidatePaymentList extends CreateRecord
         }
     }
 
-    public function getTitle(): string | Htmlable
+    public function getTitle(): string|Htmlable
     {
         return __('payments.actions.create_payment');
     }

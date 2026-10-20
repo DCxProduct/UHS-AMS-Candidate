@@ -7,9 +7,9 @@ use Filament\Models\Contracts\FilamentUser;
 use Filament\Models\Contracts\HasAvatar;
 use Filament\Models\Contracts\HasName;
 use Filament\Panel;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Auth\Passwords\CanResetPassword;
 use Illuminate\Contracts\Auth\CanResetPassword as CanResetPasswordContract;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -20,11 +20,11 @@ use Illuminate\Support\Str;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
 
-class SystemUser extends Authenticatable implements FilamentUser, HasAvatar, HasName, CanResetPasswordContract
+class SystemUser extends Authenticatable implements CanResetPasswordContract, FilamentUser, HasAvatar, HasName
 {
+    use CanResetPassword;
     use Notifiable;
     use SoftDeletes;
-    use CanResetPassword;
 
     protected $table = 'system_users';
 
@@ -94,7 +94,7 @@ class SystemUser extends Authenticatable implements FilamentUser, HasAvatar, Has
         ]);
     }
 
-    public function hasJsonRole(array | string $roles): bool
+    public function hasJsonRole(array|string $roles): bool
     {
         $roles = is_array($roles) ? $roles : [$roles];
 
@@ -157,7 +157,7 @@ class SystemUser extends Authenticatable implements FilamentUser, HasAvatar, Has
         $loginUser = $this->linkedLoginUsersQuery(withTrashed: true)->first();
 
         if (! $loginUser) {
-            $loginUser = new User();
+            $loginUser = new User;
         } elseif (method_exists($loginUser, 'trashed') && $loginUser->trashed()) {
             $loginUser->restore();
         }
@@ -174,7 +174,7 @@ class SystemUser extends Authenticatable implements FilamentUser, HasAvatar, Has
             'seat_number' => $loginUser->seat_number,
             'avatar' => $this->avatar,
             'password' => $this->password,
-            'email_verified_at' => $this->email_verified_at ?? now(),
+            'email_verified_at' => $this->email_verified_at,
             'is_active' => (bool) $this->is_active,
         ]);
 
@@ -350,7 +350,7 @@ class SystemUser extends Authenticatable implements FilamentUser, HasAvatar, Has
                     'roles' => $roles,
                     'permissions' => $permissions,
                     'is_active' => (bool) $loginUser->is_active,
-                    'email_verified_at' => $loginUser->email_verified_at ?? now(),
+                    'email_verified_at' => $loginUser->email_verified_at,
                 ]);
 
                 if ($systemUser->trashed()) {

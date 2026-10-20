@@ -26,6 +26,10 @@ class DegreeLevel extends Model
     protected static function booted(): void
     {
         static::saving(function (DegreeLevel $degreeLevel): void {
+            if ($degreeLevel->sort_order === null) {
+                $degreeLevel->sort_order = ((int) static::query()->max('sort_order')) + 1;
+            }
+
             $degreeLevel->key = Str::of((string) $degreeLevel->key)
                 ->trim()
                 ->lower()

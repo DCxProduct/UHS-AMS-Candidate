@@ -673,6 +673,7 @@ class DashboardMetrics
             ->values()
             ->all();
     }
+
     public static function formIdBySlug(string $slug): ?int
     {
         if (
@@ -692,8 +693,8 @@ class DashboardMetrics
     public static function customFormEntryUrl(int $formId): string
     {
         return url('/custom-form-entries')
-            . '?'
-            . http_build_query([
+            .'?'
+            .http_build_query([
                 'tableFilters' => [
                     'custom_form_id' => [
                         'value' => $formId,
@@ -708,76 +709,23 @@ class DashboardMetrics
     |--------------------------------------------------------------------------
     */
 
-    private static function studentOwnerIds(int $userId): array
+    private static function applyStudentOwnerFilter(Builder $query, int $userId): Builder
     {
-        $ids = collect([$userId]);
-
-        if (
-            ! Schema::hasTable('users')
-            || ! Schema::hasTable('system_users')
-        ) {
-            return $ids->unique()->values()->all();
-        }
-
-        $user = DB::table('users')
-            ->where('id', $userId)
-            ->first();
-
-        if (! $user) {
-            return $ids->unique()->values()->all();
-        }
-
-        $criteria = [];
-
-        foreach (['username', 'email', 'phone'] as $column) {
-            if (
-                Schema::hasColumn('system_users', $column)
-                && filled($user->{$column} ?? null)
-            ) {
-                $criteria[] = [
-                    'column' => $column,
-                    'value' => $user->{$column},
-                ];
-            }
-        }
-
-        if (empty($criteria)) {
-            return $ids->unique()->values()->all();
-        }
-
-        $systemUserIds = DB::table('system_users')
-            ->where(function ($query) use ($criteria): void {
-                foreach ($criteria as $criterion) {
-                    $query->orWhere(
-                        $criterion['column'],
-                        $criterion['value']
-                    );
-                }
-            })
-            ->pluck('id');
-
-        return $ids
-            ->merge($systemUserIds)
-            ->map(fn ($id): int => (int) $id)
-            ->unique()
-            ->values()
-            ->all();
-    }
-
-    private static function applyStudentOwnerFilter(
-        Builder $query,
-        int $userId,
-    ): Builder {
         $ownerColumns = static::entryOwnerColumns();
-        $ownerIds = static::studentOwnerIds($userId);
+        $systemUserId = in_array('system_user_id', $ownerColumns, true)
+            ? User::find($userId)?->linkedSystemUser()?->getKey()
+            : null;
 
-        return $query->where(
-            function ($query) use ($ownerColumns, $ownerIds): void {
-                foreach ($ownerColumns as $column) {
-                    $query->orWhereIn($column, $ownerIds);
+        return $query->where(function (Builder $owners) use ($ownerColumns, $userId, $systemUserId): void {
+            // Each ownership column belongs to one ID domain. Never merge IDs.
+            $owners->whereRaw('1 = 0');
+            foreach ($ownerColumns as $column) {
+                $id = $column === 'system_user_id' ? $systemUserId : $userId;
+                if ($id !== null) {
+                    $owners->orWhere('custom_form_entries.'.$column, $id);
                 }
             }
-        );
+        });
     }
 
     /*
@@ -821,16 +769,16 @@ class DashboardMetrics
             ->where(function ($query) use ($formId, $name, $slug): void {
                 $query
                     ->whereIn('type', array_filter([
-                        'custom_form_' . $formId,
-                        'custom_form:' . $formId,
+                        'custom_form_'.$formId,
+                        'custom_form:'.$formId,
                         (string) $formId,
                         $name,
                         $slug,
-                        \Illuminate\Support\Str::slug($name),
+                        Str::slug($name),
                     ]))
                     ->orWhere('name', $name)
                     ->orWhere('name', $slug)
-                    ->orWhere('name', \Illuminate\Support\Str::slug($name));
+                    ->orWhere('name', Str::slug($name));
             })
             ->exists();
     }
@@ -958,10 +906,10 @@ class DashboardMetrics
         );
 
         foreach ([
-                     'review_status',
-                     'status',
-                     'admission_status',
-                 ] as $column) {
+            'review_status',
+            'status',
+            'admission_status',
+        ] as $column) {
             if (in_array($column, $columns, true)) {
                 return $column;
             }
@@ -1010,8 +958,8 @@ class DashboardMetrics
             ];
 
             return ($months[$month->month] ?? '')
-                . ' '
-                . $month->year;
+                .' '
+                .$month->year;
         }
 
         return $month->format('M Y');

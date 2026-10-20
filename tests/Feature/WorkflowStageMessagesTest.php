@@ -3,16 +3,16 @@
 namespace Tests\Feature;
 
 use App\Enums\WorkflowStageType;
-use App\Filament\Admin\Resources\CandidatePaymentLists\CandidatePaymentListResource;
 use App\Filament\Admin\Resources\CandidateEntranceStatistics\Tables\CandidateEntranceStatisticsTable;
+use App\Filament\Admin\Resources\CandidatePaymentLists\CandidatePaymentListResource;
 use App\Models\Payment;
 use App\Models\Role;
 use App\Models\User;
 use App\Models\WorkflowNotification;
-use App\Support\WorkflowStageMessages;
 use App\Support\NotificationLanguage;
 use App\Support\PassedResultMenuOptions;
 use App\Support\StatisticsMenuOptions;
+use App\Support\WorkflowStageMessages;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Pages\ListCustomFormEntries;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
@@ -346,7 +346,9 @@ class WorkflowStageMessagesTest extends TestCase
     public function test_approving_from_the_pdf_review_sends_the_review_notification(): void
     {
         $entry = $this->entry('pending');
-        $this->actingAs($this->user('admin_user', 'admin'));
+        $admin = $this->user('admin_user', 'admin');
+        $admin->assignRole(Role::findOrCreate('admin', 'web'));
+        $this->actingAs($admin);
 
         $this->post(route('admin.custom-form-entries.approve', $entry))->assertRedirect();
 

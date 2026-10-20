@@ -2,21 +2,21 @@
 
 namespace App\Filament\Admin\Resources\CandidatePaymentLists\Tables;
 
-use App\Support\WorkflowStageMessages;
-use App\Support\StaticWorkflowMessages;
 use App\Enums\WorkflowStageType;
 use App\Filament\Admin\Resources\CandidatePaymentLists\CandidatePaymentListResource;
-use App\Models\UnpaidApplication;
 use App\Models\ExchangeRate;
 use App\Models\Payment;
 use App\Models\PaymentType;
+use App\Models\UnpaidApplication;
+use App\Services\CandidatePaymentRecorder;
+use App\Support\CaseInsensitiveSearch;
 use App\Support\FilamentActionPermissions;
 use App\Support\FormEntryData;
-use App\Support\CaseInsensitiveSearch;
 use App\Support\LocalizedNumber;
-use App\Support\PaymentValidation;
 use App\Support\OfficialReport;
+use App\Support\PaymentValidation;
 use App\Support\TablePdfExporter;
+use App\Support\WorkflowStageMessages;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormField;
 use Filament\Actions\Action;
@@ -35,9 +35,10 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Database\QueryException;
-use Illuminate\Support\HtmlString;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\HtmlString;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class CandidatePaymentListsTable
 {
@@ -45,7 +46,7 @@ class CandidatePaymentListsTable
     {
         return OfficialReport::inKhmer(function () use ($records, $columnKeys) {
             $columnKeys = self::reportColumnKeys($columnKeys);
-            $path = storage_path('app/' . uniqid('unpaid-applications-', true) . '.xlsx');
+            $path = storage_path('app/'.uniqid('unpaid-applications-', true).'.xlsx');
 
             OfficialReport::writeXlsx($path, [
                 self::reportSheet($records, $columnKeys),
@@ -58,7 +59,6 @@ class CandidatePaymentListsTable
             return OfficialReport::excelDownload($path, self::reportTitle(), 'unpaid-applications');
         });
     }
-
 
     protected static function reportTitle(): string
     {
@@ -165,20 +165,20 @@ class CandidatePaymentListsTable
                     ->label(__('candidate_payment_lists.columns.name_khmer'))
                     ->getStateUsing(fn (UnpaidApplication $record): string => self::khmerName($record))
                     ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyAny($query, [
-                            'data->first_name_kh',
-                            'data->last_name_kh',
-                            'data->full_name_kh',
-                        ], $search))
+                        'data->first_name_kh',
+                        'data->last_name_kh',
+                        'data->full_name_kh',
+                    ], $search))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('name_latin')
                     ->label(__('candidate_payment_lists.columns.name_latin'))
                     ->getStateUsing(fn (UnpaidApplication $record): string => self::latinName($record))
                     ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyAny($query, [
-                            'data->first_name_en',
-                            'data->last_name_en',
-                            'data->full_name_en',
-                        ], $search))
+                        'data->first_name_en',
+                        'data->last_name_en',
+                        'data->full_name_en',
+                    ], $search))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('gender')
@@ -433,25 +433,16 @@ class CandidatePaymentListsTable
                         }
 
                         try {
-                            Payment::query()->create($paymentData);
+                            app(CandidatePaymentRecorder::class)->record($paymentData);
                         } catch (QueryException $exception) {
                             if (Payment::isReceiptNumberUniqueViolation($exception)) {
-                                throw \Illuminate\Validation\ValidationException::withMessages([
+                                throw ValidationException::withMessages([
                                     'receipt_number' => __('payments.validation.receipt_number_unique'),
                                 ]);
                             }
 
                             throw $exception;
                         }
-                        if (WorkflowStageMessages::hasConfiguredWorkflow($record)) {
-
-
-                            WorkflowStageMessages::notifyConfiguredStage($record, WorkflowStageType::Payment);
-                            WorkflowStageMessages::notifyResponsibleRole($record);
-                        } else {
-                            StaticWorkflowMessages::notifyPaymentCompleted($record);
-                        }
-
                         Notification::make()
                             ->title(__('payments.actions.record_payment'))
                             ->success()
@@ -611,7 +602,6 @@ class CandidatePaymentListsTable
             ->values()
             ->all();
     }
-
 
     protected static function entryValue(?UnpaidApplication $record, string $key, mixed $fallback = null): string
     {
@@ -1010,7 +1000,7 @@ class CandidatePaymentListsTable
 
     protected static function formFilterValue(int $formId): string
     {
-        return 'form:' . $formId;
+        return 'form:'.$formId;
     }
 
     protected static function formIdFromFilterValue(string $value): ?int

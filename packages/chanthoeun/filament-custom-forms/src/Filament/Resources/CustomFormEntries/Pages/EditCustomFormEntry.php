@@ -12,8 +12,13 @@ use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Schemas\Components\Wizard;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\On;
+use Livewire\Attributes\Url;
 use Throwable;
 
 class EditCustomFormEntry extends EditRecord
@@ -21,9 +26,10 @@ class EditCustomFormEntry extends EditRecord
     protected static string $resource = CustomFormEntryResource::class;
 
     protected bool $shouldResetToPendingAfterSave = false;
+
     protected bool $shouldNotifyAdminsAboutResubmission = false;
 
-    #[\Livewire\Attributes\Url(as: 'profile_edit', except: false)]
+    #[Url(as: 'profile_edit', except: false)]
     public bool $isEditingProfile = false;
 
     public ?string $wizard_step = null;
@@ -87,7 +93,7 @@ class EditCustomFormEntry extends EditRecord
                     $this->handleSubmitValidationException($exception);
                 }
             })
-            ->hidden(fn () => $this->isLockedForEditing() || $this->hasWizardOnFirstStep());
+            ->hidden(fn () => $this->isLockedForEditing() || $this->hasWizardBeforeFinalStep());
 
         $actions[] = Action::make('back')
             ->label(__('student_profile.back'))
@@ -120,44 +126,44 @@ class EditCustomFormEntry extends EditRecord
         }
 
         $actions[] = Action::make('save_draft')
-                ->label(__('student_profile.save_as_draft'))
-                ->color('info')
-                ->hidden(fn () => $this->isLockedForEditing()
-                    || ($this->hasWizardOnFirstStep() && ! CustomForm::isProfileSlug($this->record->customForm?->slug))
-                    || $this->entryStatus() !== 'draft')
-                ->action(function (): void {
-                    $data = $this->form->getStateSnapshot();
-                    $data = array_replace_recursive($this->rawFormState(), $data);
-                    $data = $this->mutateFormDataBeforeSave($data);
+            ->label(__('student_profile.save_as_draft'))
+            ->color('info')
+            ->hidden(fn () => $this->isLockedForEditing()
+                || ($this->hasWizardOnFirstStep() && ! CustomForm::isProfileSlug($this->record->customForm?->slug))
+                || $this->entryStatus() !== 'draft')
+            ->action(function (): void {
+                $data = $this->form->getStateSnapshot();
+                $data = array_replace_recursive($this->rawFormState(), $data);
+                $data = $this->mutateFormDataBeforeSave($data);
 
-                    $data['review_status'] = 'draft';
-                    $data['data'] = $data['data'] ?? [];
-                    $data['data']['registration_status'] = 'draft';
-                    unset($data['data']['candidate_reviewed_at']);
+                $data['review_status'] = 'draft';
+                $data['data'] = $data['data'] ?? [];
+                $data['data']['registration_status'] = 'draft';
+                unset($data['data']['candidate_reviewed_at']);
 
-                    if (Schema::hasColumn('custom_form_entries', 'status')) {
-                        $data['status'] = 'draft';
-                    }
+                if (Schema::hasColumn('custom_form_entries', 'status')) {
+                    $data['status'] = 'draft';
+                }
 
-                    if (Schema::hasColumn('custom_form_entries', 'reviewed_by')) {
-                        $data['reviewed_by'] = null;
-                    }
+                if (Schema::hasColumn('custom_form_entries', 'reviewed_by')) {
+                    $data['reviewed_by'] = null;
+                }
 
-                    if (Schema::hasColumn('custom_form_entries', 'reviewed_at')) {
-                        $data['reviewed_at'] = null;
-                    }
+                if (Schema::hasColumn('custom_form_entries', 'reviewed_at')) {
+                    $data['reviewed_at'] = null;
+                }
 
-                    $this->record->forceFill($data)->save();
+                $this->record->forceFill($data)->save();
 
-                    Notification::make()
-                        ->title(__('student_profile.draft_saved'))
-                        ->success()
-                        ->send();
+                Notification::make()
+                    ->title(__('student_profile.draft_saved'))
+                    ->success()
+                    ->send();
 
-                    $this->redirect(CustomFormEntryResource::getUrl('edit', [
-                        'record' => $this->record->id,
-                    ]));
-                });
+                $this->redirect(CustomFormEntryResource::getUrl('edit', [
+                    'record' => $this->record->id,
+                ]));
+            });
 
         return $actions;
     }
@@ -411,7 +417,7 @@ class EditCustomFormEntry extends EditRecord
         }
     }
 
-    public function getHeading(): string|\Illuminate\Contracts\Support\Htmlable
+    public function getHeading(): string|Htmlable
     {
         if (
             $this->isLockedForEditing()
@@ -428,12 +434,12 @@ class EditCustomFormEntry extends EditRecord
             ? (app()->getLocale() === 'km' ? 'មើល ' : 'View ')
             : (app()->getLocale() === 'km' ? 'កែប្រែ ' : 'Edit ');
 
-        return $prefix . $this->transText(
-                $this->getRecord()->customForm?->name ?? 'Entry'
-            );
+        return $prefix.$this->transText(
+            $this->getRecord()->customForm?->name ?? 'Entry'
+        );
     }
 
-    public function getTitle(): string|\Illuminate\Contracts\Support\Htmlable
+    public function getTitle(): string|Htmlable
     {
         return $this->getHeading();
     }
@@ -494,7 +500,7 @@ class EditCustomFormEntry extends EditRecord
         }
     }
 
-    #[\Livewire\Attributes\On('update-wizard-step')]
+    #[On('update-wizard-step')]
     public function updateWizardStep(string $step): void
     {
         $this->wizard_step = $step;
@@ -502,31 +508,41 @@ class EditCustomFormEntry extends EditRecord
 
     protected function hasWizardOnFirstStep(): bool
     {
-        if (! isset($this->form)) {
-            return false;
+        $position = $this->wizardPosition();
+
+        return $position !== null && $position['index'] === 0;
+    }
+
+    protected function hasWizardBeforeFinalStep(): bool
+    {
+        $position = $this->wizardPosition();
+
+        return $position !== null && $position['index'] < $position['last'];
+    }
+
+    protected function wizardPosition(): ?array
+    {
+        if (! isset($this->form)
+            || filled(data_get($this->rawFormState(), 'data.form_selection'))) {
+            return null;
         }
 
-        $wizard = $this->form->getComponent(fn ($component) => $component instanceof \Filament\Schemas\Components\Wizard);
-
+        $wizard = $this->form->getComponent(fn ($component) => $component instanceof Wizard);
         if (! $wizard) {
-            return false;
+            return null;
         }
 
-        if (filled(data_get($this->rawFormState(), 'data.form_selection'))) {
-            return false;
-        }
-
-        $step = $this->wizard_step;
-
-        if ($step) {
-            foreach ($wizard->getChildSchema()->getComponents() as $index => $stepComponent) {
-                if (\Illuminate\Support\Str::endsWith($step, $stepComponent->getId()) || \Illuminate\Support\Str::endsWith($step, $stepComponent->getKey())) {
-                    return $index === 0;
-                }
+        $steps = $wizard->getChildSchema()->getComponents();
+        $index = $wizard->getCurrentStepIndex();
+        foreach ($steps as $stepIndex => $step) {
+            if ($this->wizard_step && (Str::endsWith($this->wizard_step, $step->getId())
+                || Str::endsWith($this->wizard_step, $step->getKey()))) {
+                $index = $stepIndex;
+                break;
             }
         }
 
-        return $wizard->getCurrentStepIndex() === 0;
+        return ['index' => $index, 'last' => max(count($steps) - 1, 0)];
     }
 
     protected function rawFormState(): array
@@ -563,6 +579,7 @@ class EditCustomFormEntry extends EditRecord
         $customForm = $this->record->customForm;
         if ($customForm) {
             $formName = $this->transText($customForm->name);
+
             return app()->getLocale() === 'km'
                 ? "បានរក្សាទុក {$formName} ដោយជោគជ័យ"
                 : "Saved {$formName} successfully";
