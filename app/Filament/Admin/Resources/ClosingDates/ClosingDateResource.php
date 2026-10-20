@@ -23,8 +23,6 @@ class ClosingDateResource extends Resource
 
     protected static string | BackedEnum | null $navigationIcon = Heroicon::OutlinedCalendarDays;
 
-    protected static ?int $navigationSort = 60;
-
     protected static ?string $recordTitleAttribute = 'name';
 
     public static function getNavigationLabel(): string
@@ -39,7 +37,7 @@ class ClosingDateResource extends Resource
 
     public static function getNavigationSort(): ?int
     {
-        return 1;
+        return 2;
     }
 
     public static function getModelLabel(): string

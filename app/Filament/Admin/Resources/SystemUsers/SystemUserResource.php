@@ -26,8 +26,6 @@ class SystemUserResource extends Resource
 
     protected static string | BackedEnum | null $navigationIcon = Heroicon::OutlinedUsers;
 
-    protected static ?int $navigationSort = 71;
-
     protected static ?string $recordTitleAttribute = 'email';
 
     protected static ?string $slug = 'system-users';
@@ -44,7 +42,7 @@ class SystemUserResource extends Resource
 
     public static function getNavigationSort(): ?int
     {
-        return 3;
+        return 11;
     }
 
     public static function getModelLabel(): string

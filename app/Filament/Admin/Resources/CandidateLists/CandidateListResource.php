@@ -27,8 +27,6 @@ class CandidateListResource extends Resource
     protected static string | BackedEnum | null $navigationIcon =
         Heroicon::OutlinedUserGroup;
 
-    protected static ?int $navigationSort = 70;
-
     protected static ?string $recordTitleAttribute = 'name';
 
     protected static ?string $slug = 'candidate-lists';
@@ -45,7 +43,7 @@ class CandidateListResource extends Resource
 
     public static function getNavigationSort(): ?int
     {
-        return 4;
+        return 10;
     }
 
     public static function getModelLabel(): string
