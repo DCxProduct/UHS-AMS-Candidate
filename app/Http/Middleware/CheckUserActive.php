@@ -12,7 +12,9 @@ class CheckUserActive
 {
     public function handle(Request $request, Closure $next)
     {
-        if (Auth::check() && Auth::user()?->is_active === false) {
+        $user = $request->user();
+
+        if ($user && ! (bool) $user->fresh()?->is_active) {
             Notification::make()
                 ->title(NotificationLanguage::trans('auth.account_disabled'))
                 ->danger()
@@ -22,6 +24,10 @@ class CheckUserActive
 
             $request->session()->invalidate();
             $request->session()->regenerateToken();
+
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'This account is inactive.'], 403);
+            }
 
             return redirect('/login');
         }

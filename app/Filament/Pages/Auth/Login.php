@@ -29,17 +29,17 @@ class Login extends BaseLogin
         }
     }
 
-    public function getTitle(): string | Htmlable
+    public function getTitle(): string|Htmlable
     {
         return __('app.sign_in');
     }
 
-    public function getHeading(): string | Htmlable
+    public function getHeading(): string|Htmlable
     {
         return __('app.sign_in');
     }
 
-    public function getSubheading(): string | Htmlable | null
+    public function getSubheading(): string|Htmlable|null
     {
         return null;
     }
@@ -119,15 +119,13 @@ class Login extends BaseLogin
             })
             ->first();
 
-        if (! $user) {
-            throw ValidationException::withMessages([
-                'data.login' => __('app.login_account_not_found'),
-            ]);
-        }
+        // Always perform one password check, including for unknown identifiers.
+        $passwordHash = $user?->password ?? '$2y$12$PlJMhRM2a9x9vkOCktrtWe4ekdqMUmlFQLr5kzG/3WR/nrr.rnTcS';
+        $validPassword = Hash::check($password, $passwordHash);
 
-        if (! Hash::check($password, $user->password)) {
+        if (! $user || ! $validPassword) {
             throw ValidationException::withMessages([
-                'data.password' => __('app.login_wrong_password'),
+                'data.login' => __('auth.failed'),
             ]);
         }
 

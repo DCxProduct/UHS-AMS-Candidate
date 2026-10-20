@@ -2,29 +2,33 @@
 
 namespace App\Http\Controllers;
 
-use App\Support\WorkflowStageMessages;
-use App\Support\StaticWorkflowMessages;
 use App\Enums\WorkflowStageType;
 use App\Support\AuditLogger;
-use Chanthoeun\FilamentCustomForms\Models\CustomForm;
+use App\Support\FilamentActionPermissions;
+use App\Support\StaticWorkflowMessages;
+use App\Support\WorkflowStageMessages;
+use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate;
 use Chanthoeun\FilamentDocumentBuilder\Services\DocumentRenderer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 
 class AdminEntryPdfReviewController extends Controller
 {
     public function show(CustomFormEntry $entry)
     {
-        abort_unless(auth()->user()?->registration_type === 'admin', 403);
+        Gate::authorize('view', $entry);
+        FilamentActionPermissions::abortUnlessCanForResource(CustomFormEntryResource::class, 'view_pdf');
 
         return view('admin-entry-pdf-review', compact('entry'));
     }
 
     public function pdf(CustomFormEntry $entry)
     {
-        abort_unless(auth()->user()?->registration_type === 'admin', 403);
+        Gate::authorize('view', $entry);
+        FilamentActionPermissions::abortUnlessCanForResource(CustomFormEntryResource::class, 'view_pdf');
 
         $template = $this->findTemplate($entry);
         abort_if(! $template, 404);
@@ -33,7 +37,7 @@ class AdminEntryPdfReviewController extends Controller
 
         return response($pdf->output(), 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="entry-' . $entry->id . '.pdf"',
+            'Content-Disposition' => 'inline; filename="entry-'.$entry->id.'.pdf"',
             'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
             'Pragma' => 'no-cache',
             'Expires' => '0',
@@ -42,103 +46,125 @@ class AdminEntryPdfReviewController extends Controller
 
     public function approve(CustomFormEntry $entry)
     {
-        abort_unless(auth()->user()?->registration_type === 'admin', 403);
+        return DB::transaction(function () use ($entry) {
+            $entry = CustomFormEntry::query()->lockForUpdate()->findOrFail($entry->getKey());
+            $this->authorizeReview($entry, 'accepted');
 
-        $data = is_array($entry->data) ? $entry->data : [];
-        $oldValues = [
-            'review_status' => $entry->review_status,
-            'registration_status' => data_get($data, 'registration_status'),
-        ];
-        $data['candidate_status'] = 'pending';
-        $data['registration_status'] = 'approved';
+            $data = is_array($entry->data) ? $entry->data : [];
+            $oldValues = [
+                'review_status' => $entry->review_status,
+                'registration_status' => data_get($data, 'registration_status'),
+            ];
+            $data['candidate_status'] = 'pending';
+            $data['registration_status'] = 'approved';
 
-        DB::table('custom_form_entries')->where('id', $entry->id)->update([
-            'review_status' => 'approved',
-            'review_note' => null,
-            'reviewed_by' => auth()->id(),
-            'reviewed_at' => now(),
-            'updated_at' => now(),
-            'data' => json_encode($data),
-        ]);
-
-        $entry->refresh();
-
-        AuditLogger::log(
-            action: 'approved',
-            auditable: $entry,
-            oldValues: $oldValues,
-            newValues: [
+            DB::table('custom_form_entries')->where('id', $entry->id)->update([
                 'review_status' => 'approved',
-                'registration_status' => 'approved',
-            ],
-            description: 'Application approved from PDF review',
-            metadata: ['module' => 'Entrance Exam Statistics'],
-        );
+                'review_note' => null,
+                'reviewed_by' => auth()->id(),
+                'reviewed_at' => now(),
+                'updated_at' => now(),
+                'data' => json_encode($data),
+            ]);
 
-        if (WorkflowStageMessages::hasConfiguredWorkflow($entry)) {
-            WorkflowStageMessages::notifyReviewAction($entry, 'accept')
-                || WorkflowStageMessages::notifyConfiguredStage($entry, WorkflowStageType::Review);
-        } else {
-            StaticWorkflowMessages::notifyApplicationResult($entry, 'approved');
-        }
+            $entry->refresh();
 
-        return redirect()->back();
+            AuditLogger::log(
+                action: 'approved',
+                auditable: $entry,
+                oldValues: $oldValues,
+                newValues: [
+                    'review_status' => 'approved',
+                    'registration_status' => 'approved',
+                ],
+                description: 'Application approved from PDF review',
+                metadata: ['module' => 'Entrance Exam Statistics'],
+            );
+
+            DB::afterCommit(function () use ($entry): void {
+                if (WorkflowStageMessages::hasConfiguredWorkflow($entry)) {
+                    WorkflowStageMessages::notifyReviewAction($entry, 'accept')
+                        || WorkflowStageMessages::notifyConfiguredStage($entry, WorkflowStageType::Review);
+                } else {
+                    StaticWorkflowMessages::notifyApplicationResult($entry, 'approved');
+                }
+            });
+
+            return redirect()->back();
+        });
     }
 
     public function reject(Request $request, CustomFormEntry $entry)
     {
-        abort_unless(auth()->user()?->registration_type === 'admin', 403);
+        return DB::transaction(function () use ($request, $entry) {
+            $entry = CustomFormEntry::query()->lockForUpdate()->findOrFail($entry->getKey());
+            $this->authorizeReview($entry, 'rejected');
 
-        $request->validate([
-            'review_note' => ['required', 'string'],
-        ]);
+            $request->validate([
+                'review_note' => ['required', 'string'],
+            ]);
 
-        $data = is_array($entry->data) ? $entry->data : [];
-        $oldValues = [
-            'review_status' => $entry->review_status,
-            'registration_status' => data_get($data, 'registration_status'),
-            'review_note' => $entry->review_note,
-        ];
-        $data['registration_status'] = 'rejected';
+            $data = is_array($entry->data) ? $entry->data : [];
+            $oldValues = [
+                'review_status' => $entry->review_status,
+                'registration_status' => data_get($data, 'registration_status'),
+                'review_note' => $entry->review_note,
+            ];
+            $data['registration_status'] = 'rejected';
 
-        DB::table('custom_form_entries')->where('id', $entry->id)->update([
-            'review_status' => 'rejected',
-            'review_note' => $request->review_note,
-            'reviewed_by' => auth()->id(),
-            'reviewed_at' => now(),
-            'updated_at' => now(),
-            'data' => json_encode($data),
-        ]);
-
-        $entry->refresh();
-
-        AuditLogger::log(
-            action: 'rejected',
-            auditable: $entry,
-            oldValues: $oldValues,
-            newValues: [
+            DB::table('custom_form_entries')->where('id', $entry->id)->update([
                 'review_status' => 'rejected',
-                'registration_status' => 'rejected',
                 'review_note' => $request->review_note,
-            ],
-            description: 'Application rejected from PDF review',
-            metadata: ['module' => 'Entrance Exam Statistics'],
-        );
+                'reviewed_by' => auth()->id(),
+                'reviewed_at' => now(),
+                'updated_at' => now(),
+                'data' => json_encode($data),
+            ]);
 
-        if (WorkflowStageMessages::hasConfiguredWorkflow($entry)) {
-            WorkflowStageMessages::notifyReviewAction($entry, 'send_back', $request->review_note)
-                || WorkflowStageMessages::notify($entry, WorkflowStageType::Rejected);
-        } else {
-            StaticWorkflowMessages::notifyApplicationResult($entry, 'rejected', $request->review_note);
-        }
+            $entry->refresh();
 
-        return redirect()->back();
+            AuditLogger::log(
+                action: 'rejected',
+                auditable: $entry,
+                oldValues: $oldValues,
+                newValues: [
+                    'review_status' => 'rejected',
+                    'registration_status' => 'rejected',
+                    'review_note' => $request->review_note,
+                ],
+                description: 'Application rejected from PDF review',
+                metadata: ['module' => 'Entrance Exam Statistics'],
+            );
+
+            DB::afterCommit(function () use ($entry, $request): void {
+                if (WorkflowStageMessages::hasConfiguredWorkflow($entry)) {
+                    WorkflowStageMessages::notifyReviewAction($entry, 'send_back', $request->review_note)
+                        || WorkflowStageMessages::notify($entry, WorkflowStageType::Rejected);
+                } else {
+                    StaticWorkflowMessages::notifyApplicationResult($entry, 'rejected', $request->review_note);
+                }
+            });
+
+            return redirect()->back();
+        });
+    }
+
+    protected function authorizeReview(CustomFormEntry $entry, string $action): void
+    {
+        abort_unless(auth()->user()?->registration_type === 'admin', 403);
+        Gate::authorize('view', $entry);
+        FilamentActionPermissions::abortUnlessCanForResource(CustomFormEntryResource::class, $action);
+        abort_unless(WorkflowStageMessages::canCurrentUserHandleStage($entry, WorkflowStageType::Review), 403);
+
+        $status = strtolower((string) (data_get($entry->data, 'registration_status') ?: $entry->review_status));
+        $allowed = $action === 'accepted' ? ['pending', 'failed'] : ['pending'];
+        abort_unless(in_array($status, $allowed, true), 409, 'This application is no longer eligible for review.');
     }
 
     protected function findTemplate(CustomFormEntry $entry): ?DocumentTemplate
     {
         return DocumentTemplate::query()
-            ->where('type', 'custom_form_' . $entry->custom_form_id)
+            ->where('type', 'custom_form_'.$entry->custom_form_id)
             ->first();
     }
 }

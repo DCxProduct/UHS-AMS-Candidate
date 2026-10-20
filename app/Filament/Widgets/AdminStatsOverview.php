@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Support\StaffRoles;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
@@ -17,7 +18,7 @@ class AdminStatsOverview extends StatsOverviewWidget
 
     public static function canView(): bool
     {
-        return auth()->user()?->hasEffectiveRole(['admin', 'registrar']) ?? false;
+        return auth()->user()?->hasEffectiveRole(['admin', ...StaffRoles::REGISTRARS]) ?? false;
     }
 
     protected function getStats(): array

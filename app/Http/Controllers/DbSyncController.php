@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Filament\Pages\Sync;
 use App\Services\DbSyncApiService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -12,7 +13,7 @@ class DbSyncController extends Controller
 {
     public function sync(Request $request, DbSyncApiService $syncApi): JsonResponse
     {
-        abort_unless($request->user()?->registration_type === 'admin', 403);
+        abort_unless(Sync::canAccess(), 403);
 
         $validated = $request->validate([
             'dry_run' => ['sometimes', 'boolean'],

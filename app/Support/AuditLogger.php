@@ -82,23 +82,23 @@ class AuditLogger
             }
         }
 
-        return class_basename($actor) . ' #' . $actor->getKey();
+        return class_basename($actor).' #'.$actor->getKey();
     }
 
     protected static function actorRole(mixed $actor): ?string
     {
         if ($actor instanceof SystemUser) {
-            return collect(['admin', 'registrar', 'cashier'])
+            return collect(StaffRoles::AUDITED)
                 ->first(fn (string $role): bool => $actor->hasJsonRole($role));
         }
 
         if ($actor instanceof User) {
             if (method_exists($actor, 'effectiveRoleNames')) {
-                return collect(['admin', 'registrar', 'cashier'])
+                return collect(StaffRoles::AUDITED)
                     ->first(fn (string $role): bool => $actor->effectiveRoleNames()->contains($role));
             }
 
-            return collect(['admin', 'registrar', 'cashier'])
+            return collect(StaffRoles::AUDITED)
                 ->first(fn (string $role): bool => $actor->hasRole($role));
         }
 
@@ -132,7 +132,7 @@ class AuditLogger
     {
         $actorName = self::actorName($actor) ?: 'System';
         $module = self::moduleName($auditable, []);
-        $target = $auditable ? (' #' . $auditable->getKey()) : '';
+        $target = $auditable ? (' #'.$auditable->getKey()) : '';
 
         return "{$actorName} {$action} {$module}{$target}";
     }
@@ -140,10 +140,10 @@ class AuditLogger
     protected static function shouldLogForActor(mixed $actor): bool
     {
         return match (true) {
-            $actor instanceof SystemUser => $actor->hasJsonRole(['admin', 'registrar', 'cashier']),
+            $actor instanceof SystemUser => $actor->hasJsonRole(StaffRoles::AUDITED),
             $actor instanceof User => method_exists($actor, 'hasEffectiveRole')
-                ? $actor->hasEffectiveRole(['admin', 'registrar', 'cashier'])
-                : $actor->hasRole(['admin', 'registrar', 'cashier']),
+                ? $actor->hasEffectiveRole(StaffRoles::AUDITED)
+                : $actor->hasRole(StaffRoles::AUDITED),
             default => false,
         };
     }

@@ -2,18 +2,19 @@
 
 namespace App\Filament\Widgets;
 
-use App\Filament\Admin\Resources\CandidatePaymentLists\CandidatePaymentListResource;
-use App\Filament\Admin\Resources\CandidateLists\CandidateListResource;
 use App\Filament\Admin\Resources\CandidateEntranceStatistics\CandidateEntranceStatisticResource;
+use App\Filament\Admin\Resources\CandidateLists\CandidateListResource;
+use App\Filament\Admin\Resources\CandidatePaymentLists\CandidatePaymentListResource;
 use App\Filament\Admin\Resources\CandidateTypes\CandidateTypeResource;
 use App\Filament\Admin\Resources\ClosingDates\ClosingDateResource;
 use App\Filament\Admin\Resources\DegreeLevels\DegreeLevelResource;
 use App\Filament\Admin\Resources\ExamResults\ExamResultResource;
-use App\Filament\Admin\Resources\ExitExamResults\ExitExamResultResource;
 use App\Filament\Admin\Resources\ExchangeRates\ExchangeRateResource;
-use App\Filament\Admin\Resources\PaymentTypes\PaymentTypeResource;
+use App\Filament\Admin\Resources\ExitExamResults\ExitExamResultResource;
 use App\Filament\Admin\Resources\Payments\PaymentResource;
+use App\Filament\Admin\Resources\PaymentTypes\PaymentTypeResource;
 use App\Support\DashboardMetrics;
+use App\Support\StaffRoles;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomForms\CustomFormResource;
 use Chanthoeun\FilamentDocumentBuilder\Resources\DocumentTemplateResource;
@@ -69,14 +70,14 @@ class AdminMenuOverview extends Widget
 
     public static function canView(): bool
     {
-        return auth()->user()?->hasEffectiveRole(['admin', 'cashier', 'registrar']) ?? false;
+        return auth()->user()?->hasEffectiveRole(StaffRoles::AUDITED) ?? false;
     }
 
     protected function getViewData(): array
     {
         $items = $this->sortItems($this->buildDashboardItems());
         $isAdmin = auth()->user()?->hasEffectiveRole('admin') ?? false;
-        $isRegistrar = auth()->user()?->hasEffectiveRole('registrar') ?? false;
+        $isRegistrar = auth()->user()?->hasEffectiveRole(StaffRoles::REGISTRARS) ?? false;
 
         $formattedItems = array_map(
             fn (array $item): array => [
@@ -183,7 +184,7 @@ class AdminMenuOverview extends Widget
             return false;
         }
 
-        $allowedResources = auth()->user()?->hasEffectiveRole('registrar')
+        $allowedResources = auth()->user()?->hasEffectiveRole(StaffRoles::REGISTRARS)
             ? static::REGISTRAR_RESOURCES
             : static::ALLOWED_RESOURCES;
 
