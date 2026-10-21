@@ -6,6 +6,7 @@ use App\Filament\Admin\Resources\Majors\MajorResource;
 use App\Models\ClosingDate;
 use App\Models\Major;
 use App\Support\StudentDynamicFormSchema;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -84,5 +85,37 @@ class MajorConfigurationTest extends TestCase
     {
         $this->assertSame(Major::class, MajorResource::getModel());
         $this->assertSame('majors', MajorResource::getSlug());
+    }
+
+    public function test_major_names_and_abbreviations_may_repeat_but_keys_must_be_unique(): void
+    {
+        Major::query()->create([
+            'key' => 'public_health',
+            'abbreviation' => 'MPH',
+            'name_en' => 'Public Health',
+            'name_kh' => 'សុខភាពសាធារណៈ',
+            'is_active' => true,
+        ]);
+        Major::query()->create([
+            'key' => 'public_health_2',
+            'abbreviation' => 'MPH',
+            'name_en' => 'Public Health',
+            'name_kh' => 'សុខភាពសាធារណៈ',
+            'is_active' => true,
+        ]);
+
+        $this->assertDatabaseCount('majors', 2);
+
+        try {
+            Major::query()->create([
+                'key' => 'public_health',
+                'abbreviation' => 'OTHER',
+                'name_en' => 'Another Name',
+                'is_active' => true,
+            ]);
+            $this->fail('A duplicate major key should be rejected by the database.');
+        } catch (QueryException) {
+            $this->assertDatabaseCount('majors', 2);
+        }
     }
 }

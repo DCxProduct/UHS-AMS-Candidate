@@ -1,9 +1,9 @@
 <?php
 
 return [
-    'navigation_label' => 'ជំនាញ',
-    'resource_label' => 'ជំនាញ',
-    'resource_plural_label' => 'ជំនាញ',
+    'navigation_label' => 'ជំនាញ / ផ្នែក',
+    'resource_label' => 'ជំនាញ / ផ្នែក',
+    'resource_plural_label' => 'ជំនាញ / ផ្នែក',
     'search' => 'ស្វែងរកជំនាញ',
     'form' => [
         'section_title' => 'ព័ត៌មានជំនាញ',
@@ -24,5 +24,5 @@ return [
         'no' => 'ល.រ',
         'name' => 'ឈ្មោះ',
     ],
-    'closing_date_field' => 'ជំនាញ',
+    'closing_date_field' => 'ជំនាញ / ផ្នែក',
 ];

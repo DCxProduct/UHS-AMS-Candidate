@@ -37,13 +37,11 @@ class MajorForm
                         ->placeholder(__('majors.fields.abbreviation_placeholder'))
                         ->required()
                         ->maxLength(50)
-                        ->unique(ignoreRecord: true)
                         ->dehydrateStateUsing(fn ($state): string => strtoupper(trim((string) $state))),
                     TextInput::make('name_en')
                         ->label(__('majors.fields.name_en'))
                         ->required()
-                        ->maxLength(255)
-                        ->unique(ignoreRecord: true),
+                        ->maxLength(255),
                     TextInput::make('name_kh')
                         ->label(__('majors.fields.name_kh'))
                         ->maxLength(255),

@@ -71,7 +71,7 @@
              'faculties' => 'មហាវិទ្យាល័យ',
              'fiscal_years' => 'ឆ្នាំសារពើពន្ធ',
              'programs' => 'កម្មវិធីសិក្សា',
-             'majors' => 'ជំនាញ',
+             'majors' => 'ជំនាញ / ផ្នែក',
          ],
          'text_format_options' => [
              'normal' => 'ធម្មតា',
