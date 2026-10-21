@@ -17,7 +17,6 @@ class RolesAndPermissionsSeeder extends Seeder
     {
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
-
         Artisan::call('shield:generate', [
             '--all' => true,
             '--ignore-existing-policies' => true,
@@ -513,6 +512,8 @@ class RolesAndPermissionsSeeder extends Seeder
                     'Delete:CandidateList',
                     'ViewAny:CandidateSubmitPopupSetting',
                     'Update:CandidateSubmitPopupSetting',
+                    'Create:CandidateSubmitPopupSetting',
+                    'Delete:CandidateSubmitPopupSetting',
                 ])
                 ->get()
         );

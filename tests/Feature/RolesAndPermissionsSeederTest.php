@@ -371,6 +371,8 @@ class RolesAndPermissionsSeederTest extends TestCase
             'Delete:CandidateList',
             'ViewAny:CandidateSubmitPopupSetting',
             'Update:CandidateSubmitPopupSetting',
+            'Create:CandidateSubmitPopupSetting',
+            'Delete:CandidateSubmitPopupSetting',
         ];
         $registrarOfficerPermissions = [
             'ViewAny:CustomFormEntry',

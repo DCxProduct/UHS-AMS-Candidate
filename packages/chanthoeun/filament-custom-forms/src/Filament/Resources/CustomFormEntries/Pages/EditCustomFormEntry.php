@@ -81,7 +81,7 @@ class EditCustomFormEntry extends EditRecord
             ->label(__('app.done'))
             ->color('primary')
             ->keyBindings(['mod+s'])
-            ->requiresConfirmation()
+            ->requiresConfirmation(fn (): bool => $this->isSubmitPopupActive())
             ->modalHeading($this->submitPopupTitle())
             ->modalDescription($this->submitPopupDescription())
             ->modalSubmitActionLabel($this->submitPopupConfirmLabel())
@@ -295,7 +295,12 @@ class EditCustomFormEntry extends EditRecord
             return null;
         }
 
-        return CandidateSubmitPopupSetting::singleton();
+        return CandidateSubmitPopupSetting::forCustomFormId($this->record->custom_form_id);
+    }
+
+    protected function isSubmitPopupActive(): bool
+    {
+        return $this->submitPopupSetting()?->is_active ?? true;
     }
 
     protected function studentHasReviewedNonProfileApplication(): bool

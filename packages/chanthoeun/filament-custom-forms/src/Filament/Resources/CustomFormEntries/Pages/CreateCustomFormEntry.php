@@ -142,7 +142,7 @@ class CreateCustomFormEntry extends CreateRecord
             Action::make('submit')
                 ->label(__('app.done'))
                 ->color('primary')
-                ->requiresConfirmation()
+                ->requiresConfirmation(fn (): bool => $this->isSubmitPopupActive())
                 ->modalHeading($this->submitPopupTitle())
                 ->modalDescription($this->submitPopupDescription())
                 ->modalSubmitActionLabel($this->submitPopupConfirmLabel())
@@ -494,7 +494,15 @@ class CreateCustomFormEntry extends CreateRecord
             return null;
         }
 
-        return CandidateSubmitPopupSetting::singleton();
+        $formId = $this->form_id
+            ?? data_get($this->rawFormState(), 'custom_form_id')
+            ?? request()->query('form_id');
+
+        return CandidateSubmitPopupSetting::forCustomFormId($formId);
     }
 
+    protected function isSubmitPopupActive(): bool
+    {
+        return $this->submitPopupSetting()?->is_active ?? true;
+    }
 }

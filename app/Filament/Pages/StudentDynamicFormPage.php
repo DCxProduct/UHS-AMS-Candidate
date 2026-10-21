@@ -4,12 +4,12 @@ namespace App\Filament\Pages;
 
 use App\Filament\Concerns\StudentOnly;
 use App\Filament\Student\Resources\CustomFormEntries\CustomFormEntryResource;
+use App\Models\CandidateSubmitPopupSetting;
 use App\Support\AuditLogger;
 use App\Support\ClosingDateWorkflow;
 use App\Support\NotificationLanguage;
 use App\Support\ProfileFormData;
 use App\Support\StudentDynamicFormSchema;
-use App\Models\CandidateSubmitPopupSetting;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -25,8 +25,8 @@ use Illuminate\Support\Str;
 
 class StudentDynamicFormPage extends Page implements HasForms
 {
-    use StudentOnly;
     use InteractsWithForms;
+    use StudentOnly;
 
     protected string $view = 'filament.pages.student-dynamic-form-page';
 
@@ -66,7 +66,7 @@ class StudentDynamicFormPage extends Page implements HasForms
         $workflow = ClosingDateWorkflow::checkByCustomFormId((int) $this->customForm->id);
 
         if ($workflow['show_contact'] ?? false) {
-            $this->redirect('/contact-us?form_id=' . $this->customForm->id, navigate: false);
+            $this->redirect('/contact-us?form_id='.$this->customForm->id, navigate: false);
 
             return;
         }
@@ -155,7 +155,7 @@ class StudentDynamicFormPage extends Page implements HasForms
         $workflow = ClosingDateWorkflow::checkByCustomFormId((int) $this->customForm->id);
 
         if ($workflow['show_contact'] ?? false) {
-            $this->redirect('/contact-us?form_id=' . $this->customForm->id, navigate: false);
+            $this->redirect('/contact-us?form_id='.$this->customForm->id, navigate: false);
 
             return;
         }
@@ -199,7 +199,7 @@ class StudentDynamicFormPage extends Page implements HasForms
         $workflow = ClosingDateWorkflow::checkByCustomFormId((int) $this->customForm->id);
 
         if ($workflow['show_contact'] ?? false) {
-            $this->redirect('/contact-us?form_id=' . $this->customForm->id, navigate: false);
+            $this->redirect('/contact-us?form_id='.$this->customForm->id, navigate: false);
 
             return;
         }
@@ -362,12 +362,12 @@ class StudentDynamicFormPage extends Page implements HasForms
 
     public function getTitle(): string
     {
-        return __('app.create') . ' ' . $this->getTranslatedFormName();
+        return __('app.create').' '.$this->getTranslatedFormName();
     }
 
     public function getHeading(): string
     {
-        return __('app.create') . ' ' . $this->getTranslatedFormName();
+        return __('app.create').' '.$this->getTranslatedFormName();
     }
 
     public function getMaxContentWidth(): Width|string|null
@@ -379,6 +379,11 @@ class StudentDynamicFormPage extends Page implements HasForms
     {
         return $this->submitPopupSetting()?->localizedTitle()
             ?: __('app.confirm_submit_data');
+    }
+
+    public function isSubmitPopupActive(): bool
+    {
+        return (bool) ($this->submitPopupSetting()?->is_active ?? true);
     }
 
     public function submitPopupDescription(): string
@@ -408,7 +413,7 @@ class StudentDynamicFormPage extends Page implements HasForms
             ?? Str::slug($name)
         );
 
-        $key = 'app.forms_nav.' . $slug;
+        $key = 'app.forms_nav.'.$slug;
 
         $translated = __($key);
 
@@ -435,7 +440,7 @@ class StudentDynamicFormPage extends Page implements HasForms
         );
 
         if (filled($name)) {
-            $key = 'app.form_sections.' . $name;
+            $key = 'app.form_sections.'.$name;
 
             $translated = __($key);
 
@@ -573,7 +578,7 @@ class StudentDynamicFormPage extends Page implements HasForms
             return null;
         }
 
-        return CandidateSubmitPopupSetting::singleton();
+        return CandidateSubmitPopupSetting::forCustomFormId($this->customForm->id);
     }
 
     protected function firstExistingColumn(array $columns, array $names): ?string
