@@ -6,6 +6,7 @@ use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Schema;
 
@@ -20,6 +21,7 @@ class ClosingDate extends Model
         'name',
         'name_kh',
         'type',
+        'degree_level_id',
         'status',
         'start_date',
         'end_date',
@@ -36,6 +38,11 @@ class ClosingDate extends Model
     public function majors(): BelongsToMany
     {
         return $this->belongsToMany(Major::class, 'closing_date_major');
+    }
+
+    public function degreeLevel(): BelongsTo
+    {
+        return $this->belongsTo(DegreeLevel::class);
     }
 
     public const TYPE_PREFIX_CUSTOM_FORM = 'custom_form:';

@@ -35,6 +35,10 @@ class ClosingDatesTable
                     ->numeric()
                     ->alignCenter(),
 
+                TextColumn::make('degreeLevel.localized_label')
+                    ->label(__('degree_levels.navigation_label'))
+                    ->placeholder('-'),
+
                 TextColumn::make('status')
                     ->label(__('closing_dates.status'))
                     ->badge()

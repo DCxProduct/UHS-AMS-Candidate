@@ -4,8 +4,10 @@ namespace Tests\Feature;
 
 use App\Filament\Admin\Resources\Majors\MajorResource;
 use App\Models\ClosingDate;
+use App\Models\DegreeLevel;
 use App\Models\Major;
 use App\Support\StudentDynamicFormSchema;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -84,5 +86,114 @@ class MajorConfigurationTest extends TestCase
     {
         $this->assertSame(Major::class, MajorResource::getModel());
         $this->assertSame('majors', MajorResource::getSlug());
+    }
+
+    public function test_major_names_and_abbreviations_may_repeat_but_keys_must_be_unique(): void
+    {
+        Major::query()->create([
+            'key' => 'public_health',
+            'abbreviation' => 'MPH',
+            'name_en' => 'Public Health',
+            'name_kh' => 'សុខភាពសាធារណៈ',
+            'is_active' => true,
+        ]);
+        Major::query()->create([
+            'key' => 'public_health_2',
+            'abbreviation' => 'MPH',
+            'name_en' => 'Public Health',
+            'name_kh' => 'សុខភាពសាធារណៈ',
+            'is_active' => true,
+        ]);
+
+        $this->assertDatabaseCount('majors', 2);
+
+        try {
+            Major::query()->create([
+                'key' => 'public_health',
+                'abbreviation' => 'OTHER',
+                'name_en' => 'Another Name',
+                'is_active' => true,
+            ]);
+            $this->fail('A duplicate major key should be rejected by the database.');
+        } catch (QueryException) {
+            $this->assertDatabaseCount('majors', 2);
+        }
+    }
+
+    public function test_major_options_can_be_filtered_by_degree_level(): void
+    {
+        $degreeLevel = DegreeLevel::query()->create([
+            'key' => 'bachelor',
+            'label_en' => 'Bachelor',
+            'label_kh' => 'បរិញ្ញាបត្រ',
+            'is_active' => true,
+        ]);
+        $linkedMajor = Major::query()->create([
+            'key' => 'medicine',
+            'abbreviation' => 'MED',
+            'name_en' => 'Medicine',
+            'is_active' => true,
+        ]);
+        $unlinkedMajor = Major::query()->create([
+            'key' => 'nursing',
+            'abbreviation' => 'NUR',
+            'name_en' => 'Nursing',
+            'is_active' => true,
+        ]);
+
+        $linkedMajor->degreeLevels()->attach($degreeLevel);
+
+        $this->assertSame(
+            [$linkedMajor->getKey() => 'Medicine'],
+            Major::optionsForDegreeLevelId($degreeLevel->getKey())
+        );
+        $this->assertSame([], Major::optionsForDegreeLevelId(null));
+        $this->assertSame([], Major::optionsForDegreeLevelId('missing'));
+        $this->assertDatabaseHas('degree_level_major', [
+            'degree_level_id' => $degreeLevel->getKey(),
+            'major_id' => $linkedMajor->getKey(),
+        ]);
+        $this->assertDatabaseMissing('degree_level_major', [
+            'degree_level_id' => $degreeLevel->getKey(),
+            'major_id' => $unlinkedMajor->getKey(),
+        ]);
+    }
+
+    public function test_closing_date_major_options_respect_its_degree_level(): void
+    {
+        $degreeLevel = DegreeLevel::query()->create([
+            'key' => 'master',
+            'label_en' => 'Master',
+            'is_active' => true,
+        ]);
+        $linkedMajor = Major::query()->create([
+            'key' => 'public_health',
+            'abbreviation' => 'MPH',
+            'name_en' => 'Public Health',
+            'is_active' => true,
+        ]);
+        $otherMajor = Major::query()->create([
+            'key' => 'biomedical_engineering',
+            'abbreviation' => 'ABE',
+            'name_en' => 'Biomedical Engineering',
+            'is_active' => true,
+        ]);
+        $linkedMajor->degreeLevels()->attach($degreeLevel);
+
+        $closingDate = ClosingDate::query()->create([
+            'name' => 'Master application',
+            'type' => 'custom_form:42',
+            'degree_level_id' => $degreeLevel->getKey(),
+            'status' => ClosingDate::STATUS_OPEN,
+            'start_date' => now()->toDateString(),
+            'end_date' => now()->addWeek()->toDateString(),
+        ]);
+        $closingDate->majors()->sync([$linkedMajor->getKey(), $otherMajor->getKey()]);
+
+        $this->assertSame(
+            [$linkedMajor->getKey() => 'Public Health'],
+            Major::optionsForCustomFormId(42)
+        );
+        $this->assertSame($degreeLevel->getKey(), $closingDate->fresh()->degreeLevel->getKey());
     }
 }

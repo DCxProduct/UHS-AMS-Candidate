@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\Majors\Schemas;
 
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -37,16 +38,22 @@ class MajorForm
                         ->placeholder(__('majors.fields.abbreviation_placeholder'))
                         ->required()
                         ->maxLength(50)
-                        ->unique(ignoreRecord: true)
                         ->dehydrateStateUsing(fn ($state): string => strtoupper(trim((string) $state))),
-                    TextInput::make('name_en')
-                        ->label(__('majors.fields.name_en'))
-                        ->required()
-                        ->maxLength(255)
-                        ->unique(ignoreRecord: true),
                     TextInput::make('name_kh')
                         ->label(__('majors.fields.name_kh'))
                         ->maxLength(255),
+                    TextInput::make('name_en')
+                        ->label(__('majors.fields.name_en'))
+                        ->required()
+                        ->maxLength(255),
+                    Select::make('degreeLevels')
+                        ->label(__('majors.fields.degree_levels'))
+                        ->relationship('degreeLevels', 'label_en')
+                        ->getOptionLabelFromRecordUsing(fn ($record): string => $record->localized_label)
+                        ->multiple()
+                        ->searchable()
+                        ->preload()
+                        ->columnSpanFull(),
                     Toggle::make('is_active')
                         ->label(__('majors.fields.is_active'))
                         ->default(true)

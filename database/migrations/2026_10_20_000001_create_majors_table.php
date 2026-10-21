@@ -11,7 +11,7 @@ return new class extends Migration
     {
         Schema::create('majors', function (Blueprint $table): void {
             $table->id();
-            $table->string('name_en', 255)->unique();
+            $table->string('name_en', 255);
             $table->string('name_kh', 255)->nullable();
             $table->boolean('is_active')->default(true);
             $table->timestamps();

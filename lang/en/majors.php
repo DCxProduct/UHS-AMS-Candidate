@@ -15,6 +15,7 @@ return [
         'abbreviation_placeholder' => 'e.g. ABE',
         'name_en' => 'Name English',
         'name_kh' => 'Name Khmer',
+        'degree_levels' => 'Degree Levels',
         'is_active' => 'Active',
         'created_at' => 'Created At',
         'updated_at' => 'Updated At',

@@ -46,6 +46,11 @@ class Major extends Model
         return $this->belongsToMany(ClosingDate::class, 'closing_date_major');
     }
 
+    public function degreeLevels(): BelongsToMany
+    {
+        return $this->belongsToMany(DegreeLevel::class, 'degree_level_major');
+    }
+
     public function getLocalizedNameAttribute(): string
     {
         if (app()->getLocale() === 'km' && filled($this->name_kh)) {
@@ -71,6 +76,23 @@ class Major extends Model
             ->all();
     }
 
+    public static function optionsForDegreeLevelId(int|string|null $degreeLevelId): array
+    {
+        if (blank($degreeLevelId) || ! Schema::hasTable('degree_level_major')) {
+            return [];
+        }
+
+        return static::query()
+            ->where('is_active', true)
+            ->whereHas('degreeLevels', fn ($query) => $query->whereKey($degreeLevelId))
+            ->orderBy('name_en')
+            ->get()
+            ->mapWithKeys(fn (self $major): array => [
+                $major->getKey() => $major->localized_name,
+            ])
+            ->all();
+    }
+
     public static function optionsForCustomFormId(int|string|null $customFormId): array
     {
         if (blank($customFormId) || ! Schema::hasTable('closing_date_major')) {
@@ -83,10 +105,18 @@ class Major extends Model
             return [];
         }
 
-        return $closingDate->majors()
+        $query = $closingDate->majors()
             ->where('majors.is_active', true)
-            ->orderBy('majors.name_en')
-            ->get()
+            ->when(
+                filled($closingDate->degree_level_id) && Schema::hasTable('degree_level_major'),
+                fn ($query) => $query->whereHas(
+                    'degreeLevels',
+                    fn ($degreeLevels) => $degreeLevels->whereKey($closingDate->degree_level_id)
+                )
+            )
+            ->orderBy('majors.name_en');
+
+        return $query->get()
             ->mapWithKeys(fn (self $major): array => [
                 $major->getKey() => $major->localized_name,
             ])

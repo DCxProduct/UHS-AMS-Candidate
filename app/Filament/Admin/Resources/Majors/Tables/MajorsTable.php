@@ -32,6 +32,10 @@ class MajorsTable
                     ->label(__('majors.table.name'))
                     ->getStateUsing(fn (Major $record): string => $record->localized_name)
                     ->searchable(['name_en', 'name_kh']),
+                TextColumn::make('degreeLevels.localized_label')
+                    ->label(__('majors.fields.degree_levels'))
+                    ->listWithLineBreaks()
+                    ->bulleted(),
                 IconColumn::make('is_active')
                     ->label(__('majors.fields.is_active'))
                     ->boolean()

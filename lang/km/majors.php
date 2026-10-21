@@ -1,9 +1,9 @@
 <?php
 
 return [
-    'navigation_label' => 'ជំនាញ',
-    'resource_label' => 'ជំនាញ',
-    'resource_plural_label' => 'ជំនាញ',
+    'navigation_label' => 'ជំនាញ / ផ្នែក',
+    'resource_label' => 'ជំនាញ / ផ្នែក',
+    'resource_plural_label' => 'ជំនាញ / ផ្នែក',
     'search' => 'ស្វែងរកជំនាញ',
     'form' => [
         'section_title' => 'ព័ត៌មានជំនាញ',
@@ -16,6 +16,7 @@ return [
         'abbreviation_placeholder' => 'ឧ. ABE',
         'name_en' => 'ឈ្មោះជាភាសាអង់គ្លេស',
         'name_kh' => 'ឈ្មោះជាភាសាខ្មែរ',
+        'degree_levels' => 'កម្រិតសិក្សា',
         'is_active' => 'បើកប្រើ',
         'created_at' => 'កាលបរិច្ឆេទបង្កើត',
         'updated_at' => 'កាលបរិច្ឆេទកែប្រែ',
@@ -24,5 +25,5 @@ return [
         'no' => 'ល.រ',
         'name' => 'ឈ្មោះ',
     ],
-    'closing_date_field' => 'ជំនាញ',
+    'closing_date_field' => 'ជំនាញ / ផ្នែក',
 ];

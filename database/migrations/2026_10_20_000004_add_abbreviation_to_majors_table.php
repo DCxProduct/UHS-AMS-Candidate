@@ -10,7 +10,7 @@ return new class extends Migration
     {
         if (! Schema::hasColumn('majors', 'abbreviation')) {
             Schema::table('majors', function (Blueprint $table): void {
-                $table->string('abbreviation', 50)->nullable()->unique();
+                $table->string('abbreviation', 50)->nullable();
             });
         }
     }
