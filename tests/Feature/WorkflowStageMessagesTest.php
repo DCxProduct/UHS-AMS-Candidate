@@ -276,6 +276,10 @@ class WorkflowStageMessagesTest extends TestCase
         $assignedUser->assignRole('admin');
         $otherUser = $this->user('other_staff', 'admin');
         $otherUser->assignRole('cashier_officer');
+        Role::query()->create([
+            'name' => 'outsider_reviewer',
+            'guard_name' => 'web',
+        ]);
 
         $this->assertSame(0, WorkflowStageMessages::notifyResponsibleRole($entry));
         $this->assertSame(0, $assignedUser->notifications()->count());
@@ -310,7 +314,7 @@ class WorkflowStageMessagesTest extends TestCase
                         'data' => [
                             'stage_name' => 'Review',
                             'stage_type' => 'review',
-                            'responsible_role' => 'registrar_officer',
+                            'responsible_role' => ['registrar_officer', 'cashier_officer'],
                         ],
                     ],
                 ],
@@ -320,6 +324,9 @@ class WorkflowStageMessagesTest extends TestCase
         $this->assertTrue(WorkflowStageMessages::canCurrentUserHandleStage($entry, WorkflowStageType::Review));
 
         $this->actingAs($otherUser);
+        $this->assertTrue(WorkflowStageMessages::canCurrentUserHandleStage($entry, WorkflowStageType::Review));
+
+        $this->actingAs($this->student);
         $this->assertFalse(WorkflowStageMessages::canCurrentUserHandleStage($entry, WorkflowStageType::Review));
     }
 

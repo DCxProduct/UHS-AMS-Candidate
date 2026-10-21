@@ -179,7 +179,7 @@ class WorkflowNotificationForm
                         }
 
 
-                        $set('responsible_role', null);
+                        $set('responsible_role', []);
 
                         if ($type === WorkflowStageType::FormSubmission) {
                             $set('status_message', null);
@@ -192,6 +192,7 @@ class WorkflowNotificationForm
                 Select::make('responsible_role')
                     ->label(__('workflow_notifications.fields.responsible_role'))
                     ->options(fn (Get $get): array => self::responsibleRoleOptions($get('stage_type')))
+                    ->multiple()
                     ->searchable()
                     ->preload()
                     ->in(fn (Get $get): array => array_keys(self::responsibleRoleOptions($get('stage_type'))))
@@ -312,7 +313,7 @@ class WorkflowNotificationForm
         return [
             'stage_name' => null,
             'stage_type' => null,
-            'responsible_role' => null,
+            'responsible_role' => [],
             'status_message' => null,
             'notification_message' => null,
             'review_actions' => [],

@@ -47,6 +47,11 @@ class WorkflowNotification extends Model
                 $hasDataWrapper = is_array($stage['data'] ?? null);
                 $data = $hasDataWrapper ? $stage['data'] : $stage;
 
+                if (array_key_exists('responsible_role', $data)) {
+                    $roles = self::normalizeResponsibleRoles($data['responsible_role']);
+                    $data['responsible_role'] = $roles === [] ? null : $roles;
+                }
+
                 if ($hasDataWrapper) {
                     $stage['data'] = $data;
 
@@ -55,6 +60,17 @@ class WorkflowNotification extends Model
 
                 return $data;
             })
+            ->all();
+    }
+
+    /** @return array<string> */
+    public static function normalizeResponsibleRoles(mixed $roles): array
+    {
+        return collect(is_array($roles) ? $roles : [$roles])
+            ->filter(fn (mixed $role): bool => is_string($role) && filled(trim($role)))
+            ->map(fn (string $role): string => trim($role))
+            ->unique()
+            ->values()
             ->all();
     }
 

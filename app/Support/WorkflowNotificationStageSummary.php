@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Enums\WorkflowStageType;
 use App\Models\Role;
+use App\Models\WorkflowNotification;
 use Illuminate\Support\Str;
 
 final class WorkflowNotificationStageSummary
@@ -15,8 +16,7 @@ final class WorkflowNotificationStageSummary
             ->values();
 
         $roleNames = $stageData
-            ->pluck('responsible_role')
-            ->filter()
+            ->flatMap(fn (array $stage): array => WorkflowNotification::normalizeResponsibleRoles($stage['responsible_role'] ?? null))
             ->unique()
             ->values();
 
@@ -39,18 +39,19 @@ final class WorkflowNotificationStageSummary
         return $stageData
             ->map(function (array $stage) use ($roleLabels): array {
                 $type = WorkflowStageType::tryFrom((string) ($stage['stage_type'] ?? null));
+                $responsibleRoles = WorkflowNotification::normalizeResponsibleRoles($stage['responsible_role'] ?? null);
 
                 $responsibleLabel = match ($type) {
                     WorkflowStageType::FormSubmission => __('workflow_notifications.view.candidate'),
                     WorkflowStageType::Completed => __('workflow_notifications.view.automatic'),
-                    default => filled($stage['responsible_role'] ?? null)
-                        ? $roleLabels->get(
-                            $stage['responsible_role'],
-                            Str::of((string) $stage['responsible_role'])
+                    default => count($responsibleRoles) > 0
+                        ? collect($responsibleRoles)->map(fn (string $role): string => $roleLabels->get(
+                            $role,
+                            Str::of($role)
                                 ->replace(['_', '-'], ' ')
                                 ->title()
                                 ->toString(),
-                        )
+                        ))->implode(', ')
                         : __('workflow_notifications.not_assigned'),
                 };
 
