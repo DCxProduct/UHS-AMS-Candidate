@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\ClosingDates\Schemas;
 
 use App\Models\ClosingDate;
+use App\Models\DegreeLevel;
 use App\Models\Major;
 use App\Support\DatePickerKeyboardInput;
 use Carbon\Carbon;
@@ -60,10 +61,33 @@ class ClosingDateForm
                             ])
                             ->columnSpan(1),
 
+                        Select::make('degree_level_id')
+                            ->label(__('degree_levels.navigation_label'))
+                            ->placeholder(__('degree_levels.form.select_degree_level'))
+                            ->options(fn (): array => DegreeLevel::selectOptions())
+                            ->searchable()
+                            ->preload()
+                            ->live()
+                            ->afterStateUpdated(function (Get $get, $set): void {
+                                $selectedMajorIds = collect($get('major_ids') ?? []);
+                                $degreeLevelId = $get('degree_level_id');
+
+                                if (filled($degreeLevelId)) {
+                                    $selectedMajorIds = $selectedMajorIds->intersect(
+                                        array_keys(Major::optionsForDegreeLevelId($degreeLevelId))
+                                    );
+                                }
+
+                                $set('major_ids', $selectedMajorIds->values()->all());
+                            })
+                            ->columnSpan(1),
+
                         Select::make('major_ids')
                             ->label(__('majors.closing_date_field'))
                             ->placeholder(__('majors.search'))
-                            ->options(fn (): array => Major::options())
+                            ->options(fn (Get $get): array => filled($get('degree_level_id'))
+                                ? Major::optionsForDegreeLevelId($get('degree_level_id'))
+                                : Major::options())
                             ->multiple()
                             ->searchable()
                             ->preload()
@@ -81,8 +105,7 @@ class ClosingDateForm
                             ->required()
                             ->validationMessages([
                                 'required' => __('closing_dates.status_required'),
-                            ])
-                            ->columnSpanFull(),
+                            ]),
 
                         DatePickerKeyboardInput::applyMonthName(
                             DatePicker::make('start_date')

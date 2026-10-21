@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\Majors\Schemas;
 
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -45,6 +46,14 @@ class MajorForm
                         ->label(__('majors.fields.name_en'))
                         ->required()
                         ->maxLength(255),
+                    Select::make('degreeLevels')
+                        ->label(__('majors.fields.degree_levels'))
+                        ->relationship('degreeLevels', 'label_en')
+                        ->getOptionLabelFromRecordUsing(fn ($record): string => $record->localized_label)
+                        ->multiple()
+                        ->searchable()
+                        ->preload()
+                        ->columnSpanFull(),
                     Toggle::make('is_active')
                         ->label(__('majors.fields.is_active'))
                         ->default(true)

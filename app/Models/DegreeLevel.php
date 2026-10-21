@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
@@ -48,6 +49,11 @@ class DegreeLevel extends Model
         });
     }
 
+    public function majors(): BelongsToMany
+    {
+        return $this->belongsToMany(Major::class, 'degree_level_major');
+    }
+
     public function getLocalizedLabelAttribute(): string
     {
         if (app()->getLocale() === 'km' && filled($this->label_kh)) {
@@ -70,6 +76,23 @@ class DegreeLevel extends Model
             ->get()
             ->mapWithKeys(fn (self $degreeLevel): array => [
                 $degreeLevel->key => $degreeLevel->localized_label,
+            ])
+            ->all();
+    }
+
+    public static function selectOptions(): array
+    {
+        if (! Schema::hasTable('degree_levels')) {
+            return [];
+        }
+
+        return static::query()
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get()
+            ->mapWithKeys(fn (self $degreeLevel): array => [
+                $degreeLevel->getKey() => $degreeLevel->localized_label,
             ])
             ->all();
     }

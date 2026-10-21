@@ -7,6 +7,7 @@ return [
     'search' => 'Search degree levels',
     'form' => [
         'section_title' => 'Degree Level Details',
+        'select_degree_level' => 'Select degree level',
     ],
     'fields' => [
         'key' => 'Key',
