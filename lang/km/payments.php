@@ -93,6 +93,7 @@ return [
             'receipt_number' => 'លេខបង្កាន់ដៃ',
             'type_payment' => 'ប្រភេទទូទាត់',
             'amount_usd' => 'ដុល្លារ',
+            'received_by' => 'អ្នកទទួល',
             'amount_kh' => 'រៀល',
             'description' => 'សម្គាល់',
         ],

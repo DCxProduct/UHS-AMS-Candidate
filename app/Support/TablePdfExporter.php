@@ -152,6 +152,13 @@ class TablePdfExporter
         $summaryHeadHtml = collect($summaryCells)->map(fn (array $cell): string => '<th>' . e((string) $cell[0]) . '</th>')->implode('');
         $summaryBodyHtml = collect($summaryCells)->map(fn (array $cell): string => '<td>' . e((string) $cell[1]) . '</td>')->implode('');
         $summaryWidth = min(58, 20 * max(1, count($summaryCells)));
+        $footerColumnCount = max(1, count($headings));
+        $footerColumn = min(max(1, (int) ($options['footer_column'] ?? $footerColumnCount)), $footerColumnCount);
+        $footerColumnWidth = 100 / $footerColumnCount;
+        $footerOffset = ($footerColumn - 1) * $footerColumnWidth;
+        $footerText = filled($options['footer_text'] ?? null)
+            ? '<div class="report-signature" style="width: ' . $footerColumnWidth . '%; margin-left: ' . $footerOffset . '%;">' . e((string) $options['footer_text']) . '</div>'
+            : '';
         $documentTitle = e(filled($title) ? (string) $title : 'Payment Records');
         $subtitle = e((string) ($options['subtitle'] ?? ''));
         $logo = self::logoDataUri();
@@ -188,6 +195,7 @@ class TablePdfExporter
         .summary-table th, .summary-table td { border: 0.5pt solid #7f8ea3; padding: 4px 6px; }
         .summary-table th { background-color: #003b95; color: #ffffff; font-weight: bold; text-align: center; }
         .summary-table td { background-color: #f2f5fa; font-weight: bold; text-align: center; }
+        .report-signature { font-family: khmermuol, khmerbattambang, sans-serif; font-size: 10pt; font-weight: bold; margin-top: 32mm; text-align: center; }
     </style>
 </head>
 <body>
@@ -225,6 +233,7 @@ class TablePdfExporter
             <tbody><tr>' . $summaryBodyHtml . '</tr></tbody>
         </table>
     </div>
+    ' . $footerText . '
 </body>
 </html>';
     }

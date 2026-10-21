@@ -93,6 +93,7 @@ return [
             'receipt_number' => 'Receipt',
             'type_payment' => 'Payment Type',
             'amount_usd' => 'USD',
+            'received_by' => 'Receiver',
             'amount_kh' => 'KHR',
             'description' => 'Description',
         ],

@@ -8,6 +8,7 @@ use App\Filament\Admin\Resources\Payments\Tables\PaymentsTable;
 use App\Models\Payment;
 use App\Models\Role;
 use App\Models\User;
+use App\Support\TablePdfExporter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Livewire\Livewire;
@@ -97,8 +98,26 @@ class PaymentReceivedByTest extends TestCase
         $this->actingAs($this->admin);
 
         $exportRow = new ReflectionMethod(PaymentsTable::class, 'exportRow');
+        $reportDefinitions = new ReflectionMethod(PaymentsTable::class, 'reportColumnDefinitions');
+        $definitions = $reportDefinitions->invoke(null);
 
         $this->assertSame(['Officer B'], $exportRow->invoke(null, $theirs->load('receivedBy'), 1, ['received_by']));
+        $this->assertArrayNotHasKey('received_by', $definitions);
+
+        $reportSheet = new ReflectionMethod(PaymentsTable::class, 'reportSheet');
+        $sheet = $reportSheet->invoke(null, [$theirs->load(['receivedBy', 'user'])]);
+        $sheetRows = $sheet['rows'];
+        $footerRow = end($sheetRows);
+        $this->assertSame('អ្នកទទួល', $footerRow[8]);
+
+        $pdfTemplate = new ReflectionMethod(TablePdfExporter::class, 'paymentRecordsHtml');
+        $pdfHtml = $pdfTemplate->invoke(null, array_fill(0, 11, 'Column'), [], 'Payments', [
+            'footer_text' => 'អ្នកទទួល',
+            'footer_column' => 9,
+        ]);
+        $this->assertStringContainsString('>អ្នកទទួល</div>', $pdfHtml);
+        $this->assertStringContainsString('margin-left: 72.727272727273%', $pdfHtml);
+        $this->assertStringContainsString('font-family: khmermuol, khmerbattambang, sans-serif; font-size: 10pt; font-weight: bold;', $pdfHtml);
     }
 
     /**

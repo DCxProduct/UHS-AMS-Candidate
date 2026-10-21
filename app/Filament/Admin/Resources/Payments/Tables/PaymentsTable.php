@@ -593,6 +593,8 @@ class PaymentsTable
                 [__('payments.export.total_khr'), $summary['khr'] . ' KHR'],
             ],
             [1 => 16, 2 => 25, 3 => 25, 4 => 10, 5 => 24, 6 => 16, 7 => 16, 8 => 16, 9 => 16, 10 => 14, 11 => 16],
+            footerText: __('payments.export.columns.received_by'),
+            footerColumn: 9,
         );
     }
 
@@ -639,6 +641,8 @@ class PaymentsTable
                 'layout' => 'payment-records',
                 'subtitle' => self::reportSubtitle(),
                 'summary' => self::reportSummary($records),
+                'footer_text' => __('payments.export.columns.received_by'),
+                'footer_column' => 9,
                 'filename' => OfficialReport::filename(__('payments.export.title'), 'pdf'),
                 'filename_fallback' => OfficialReport::filename(__('payments.export.title'), 'pdf', 'payment-records'),
             ],

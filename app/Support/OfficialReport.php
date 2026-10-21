@@ -59,12 +59,15 @@ class OfficialReport
      * @param  array<int, int|float>  $columnWidths  column number => width
      * @param  array<int, int>  $leftAlignedColumns  column numbers aligned left (names)
      */
-    public static function sheet(string $name, string $title, array $headings, array $dataRows, array $summary, array $columnWidths, array $leftAlignedColumns = [2, 3]): array
+    public static function sheet(string $name, string $title, array $headings, array $dataRows, array $summary, array $columnWidths, array $leftAlignedColumns = [2, 3], ?string $footerText = null, ?int $footerColumn = null): array
     {
         $lastColumn = self::columnName(count($headings));
         $headingRow = 11;
         $summaryTitleRow = $headingRow + count($dataRows) + 2;
         $summaryRow = $summaryTitleRow + 1;
+        $footerRow = $summaryRow + 2;
+        $footerColumn = min(max(1, $footerColumn ?? count($headings)), count($headings));
+        $footerCellColumn = self::columnName($footerColumn);
         $cellStyles = [];
         $dataRowHeights = [];
 
@@ -84,25 +87,36 @@ class OfficialReport
             $cellStyles[$column . $summaryRow] = 13;
         }
 
+        if (filled($footerText)) {
+            $cellStyles[$footerCellColumn . $footerRow] = 14;
+        }
+
+        $rows = [
+            [__('payments.export.kingdom')],
+            [__('payments.export.motto')],
+            [],
+            [],
+            [],
+            [],
+            [__('payments.export.university')],
+            [$title],
+            [self::subtitle()],
+            [],
+            $headings,
+            ...$dataRows,
+            [],
+            array_column($summary, 0),
+            array_column($summary, 1),
+        ];
+
+        if (filled($footerText)) {
+            $rows[] = [];
+            $rows[] = [...array_fill(0, $footerColumn - 1, ''), $footerText];
+        }
+
         return [
             'name' => $name,
-            'rows' => [
-                [__('payments.export.kingdom')],
-                [__('payments.export.motto')],
-                [],
-                [],
-                [],
-                [],
-                [__('payments.export.university')],
-                [$title],
-                [self::subtitle()],
-                [],
-                $headings,
-                ...$dataRows,
-                [],
-                array_column($summary, 0),
-                array_column($summary, 1),
-            ],
+            'rows' => $rows,
             'options' => [
                 'logo' => true,
                 'ignoreNumbersAsText' => true,
@@ -138,6 +152,7 @@ class OfficialReport
                     ...$dataRowHeights,
                     $summaryTitleRow => 22,
                     $summaryRow => 22,
+                    ...(filled($footerText) ? [$footerRow => 24] : []),
                 ],
                 'columnWidths' => $columnWidths,
             ],
@@ -352,7 +367,7 @@ class OfficialReport
             . '<cellStyleXfs count="1">'
             . '<xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>'
             . '</cellStyleXfs>'
-            . '<cellXfs count="14">'
+            . '<cellXfs count="15">'
             . '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
             . '<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>'
             . '<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>'
@@ -367,6 +382,7 @@ class OfficialReport
             . '<xf numFmtId="0" fontId="3" fillId="0" borderId="2" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>'
             . '<xf numFmtId="0" fontId="3" fillId="0" borderId="2" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>'
             . '<xf numFmtId="0" fontId="1" fillId="4" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>'
+            . '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>'
             . '</cellXfs>'
             . '<cellStyles count="1">'
             . '<cellStyle name="Normal" xfId="0" builtinId="0"/>'
