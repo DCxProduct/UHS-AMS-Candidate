@@ -81,6 +81,8 @@ class ProfileFormData
                         data_set($data, $fieldName, $value);
                     }
                 }
+
+                $this->prefillEmailFields($this->fieldsForForms([$customFormId]), $data, $user->email);
             }
 
             data_set($state, 'custom_form_id', $customFormId);
@@ -100,6 +102,7 @@ class ProfileFormData
         if ($user) {
             foreach ($targetFields as $targetField) {
                 $targetName = trim((string) ($targetField->name ?? ''));
+                $targetType = $this->normalizeType($targetField->type ?? '');
 
                 if ($targetName === '') {
                     continue;
@@ -108,7 +111,11 @@ class ProfileFormData
                 if (in_array($targetName, ['phone', 'phone_number', 'phone_no']) && !filled(data_get($data, $targetName)) && filled($user->phone)) {
                     data_set($data, $targetName, $user->phone);
                 }
-                if (in_array($targetName, ['email', 'email_address']) && !filled(data_get($data, $targetName)) && filled($user->email)) {
+                if (
+                    ($targetType === 'email' || in_array($targetName, ['email', 'email_address'], true))
+                    && ! filled(data_get($data, $targetName))
+                    && filled($user->email)
+                ) {
                     data_set($data, $targetName, $user->email);
                 }
                 if (in_array($targetName, ['name', 'full_name', 'student_name']) && !filled(data_get($data, $targetName)) && filled($user->name)) {
@@ -170,6 +177,26 @@ class ProfileFormData
         data_set($state, $dataPath, $data);
 
         return $state;
+    }
+
+    private function prefillEmailFields(Collection $fields, array &$data, ?string $email): void
+    {
+        if (! filled($email)) {
+            return;
+        }
+
+        foreach ($fields as $field) {
+            $name = trim((string) ($field->name ?? ''));
+            $type = $this->normalizeType($field->type ?? '');
+
+            if (
+                $name !== ''
+                && ($type === 'email' || in_array($name, ['email', 'email_address'], true))
+                && ! filled(data_get($data, $name))
+            ) {
+                data_set($data, $name, $email);
+            }
+        }
     }
 
     public function profileKeywordOptions(array $exceptNames = []): array

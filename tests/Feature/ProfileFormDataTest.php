@@ -35,15 +35,19 @@ class ProfileFormDataTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        foreach (['first_name_en', 'last_name_en'] as $sort => $fieldName) {
+        foreach ([
+            'first_name_en' => 'text_input',
+            'last_name_en' => 'text_input',
+            'contact_email' => 'email',
+        ] as $sort => $type) {
             DB::table('custom_form_fields')->insert([
                 'custom_form_id' => $profileFormId,
-                'name' => $fieldName,
-                'label' => $fieldName,
-                'type' => 'text_input',
+                'name' => $sort,
+                'label' => $sort,
+                'type' => $type,
                 'required' => true,
                 'options' => json_encode([]),
-                'sort' => $sort + 1,
+                'sort' => 1,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -57,15 +61,61 @@ class ProfileFormDataTest extends TestCase
 
         $this->assertSame('Dara', data_get($prefilled, 'data.first_name_en'));
         $this->assertSame('Sok', data_get($prefilled, 'data.last_name_en'));
+        $this->assertSame('dara-sok@example.test', data_get($prefilled, 'data.contact_email'));
 
         $existingValues = app(ProfileFormData::class)->prefillStateForForm($profileFormId, [
             'data' => [
                 'first_name_en' => 'ExistingFirst',
                 'last_name_en' => 'ExistingLast',
+                'contact_email' => 'changed@example.test',
             ],
         ]);
 
         $this->assertSame('ExistingFirst', data_get($existingValues, 'data.first_name_en'));
         $this->assertSame('ExistingLast', data_get($existingValues, 'data.last_name_en'));
+        $this->assertSame('changed@example.test', data_get($existingValues, 'data.contact_email'));
+    }
+
+    public function test_email_builder_fields_prefill_the_candidate_account_email(): void
+    {
+        $user = User::query()->create([
+            'registration_type' => 'student',
+            'name' => 'Dara Sok',
+            'username' => 'student_010123457',
+            'email' => 'dara-sok@example.test',
+            'date_of_birth' => '2000-01-01',
+            'password' => 'password',
+            'is_active' => true,
+        ]);
+        $formId = DB::table('custom_forms')->insertGetId([
+            'name' => 'Application',
+            'slug' => 'application',
+            'is_active' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('custom_form_fields')->insert([
+            'custom_form_id' => $formId,
+            'name' => 'applicant_contact',
+            'label' => 'Contact email',
+            'type' => 'email',
+            'required' => false,
+            'options' => json_encode([]),
+            'sort' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        Auth::login($user);
+
+        $prefilled = app(ProfileFormData::class)->prefillStateForForm($formId, ['data' => []]);
+
+        $this->assertSame('dara-sok@example.test', data_get($prefilled, 'data.applicant_contact'));
+
+        $existing = app(ProfileFormData::class)->prefillStateForForm($formId, [
+            'data' => ['applicant_contact' => 'alternate@example.test'],
+        ]);
+
+        $this->assertSame('alternate@example.test', data_get($existing, 'data.applicant_contact'));
     }
 }
