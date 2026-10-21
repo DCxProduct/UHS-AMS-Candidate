@@ -193,7 +193,9 @@ class PaymentsTable
                             ->label(__('payments.table.received_by'))
                             ->placeholder(__('payments.placeholders.received_by'))
                             ->options(fn (): array => self::dynamicReceiverOptions())
-                            ->visible(fn (): bool => ! PaymentResource::showsOnlyOwnReceivedPayments())
+                            ->default(fn (): ?string => PaymentResource::showsOnlyOwnReceivedPayments() && auth()->check()
+                                ? (string) auth()->id()
+                                : null)
                             ->native(false)
                             ->searchable()
                             ->live(),
@@ -235,7 +237,7 @@ class PaymentsTable
                                 fn (Builder $query): Builder => $query->where('form_id', $data['form_id'])
                             )
                             ->when(
-                                filled($data['received_by'] ?? null),
+                                filled($data['received_by'] ?? null) && $data['received_by'] !== 'all',
                                 fn (Builder $query): Builder => $query->where('received_by', $data['received_by'])
                             )
                             ->when(
@@ -380,12 +382,24 @@ class PaymentsTable
      */
     protected static function dynamicReceiverOptions(): array
     {
-        return User::query()
-            ->whereIn('id', PaymentResource::getEloquentQuery()->whereNotNull('received_by')->select('received_by'))
+        $receiverIds = PaymentResource::getEloquentQuery()
+            ->whereNotNull('received_by')
+            ->pluck('received_by')
+            ->map(fn (mixed $id): string => (string) $id)
+            ->all();
+
+        if (PaymentResource::showsOnlyOwnReceivedPayments() && auth()->check()) {
+            $receiverIds[] = (string) auth()->id();
+        }
+
+        $cashiers = User::query()
+            ->whereIn('id', array_unique($receiverIds))
             ->orderBy('name')
             ->get(['id', 'name', 'username'])
             ->mapWithKeys(fn (User $user): array => [(string) $user->id => (string) ($user->name ?: $user->username)])
             ->toArray();
+
+        return ['all' => __('payments.options.all_cashiers')] + $cashiers;
     }
 
     protected static function dynamicFormOptions(): array

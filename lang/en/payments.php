@@ -137,6 +137,7 @@ return [
     ],
 
     'options' => [
+        'all_cashiers' => 'All',
         'type_payment' => [
             'aba' => 'ABA',
             'wing' => 'WING',

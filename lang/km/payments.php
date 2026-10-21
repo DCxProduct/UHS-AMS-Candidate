@@ -137,6 +137,7 @@ return [
     ],
 
     'options' => [
+        'all_cashiers' => 'ទាំងអស់',
         'type_payment' => [
             'aba' => 'ABA',
             'wing' => 'WING',

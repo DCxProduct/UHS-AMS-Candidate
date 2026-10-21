@@ -60,17 +60,26 @@ class PaymentReceivedByTest extends TestCase
         ])->received_by);
     }
 
-    public function test_a_cashier_officer_sees_only_their_own_payments(): void
+    public function test_a_cashier_officer_defaults_to_their_own_payments_and_can_filter_all_cashiers(): void
     {
         [$mine, $theirs] = $this->paymentsByBothOfficers();
 
         $this->actingAs($this->officerA);
 
-        $this->assertSame([$mine->id], PaymentResource::getEloquentQuery()->pluck('id')->all());
+        $this->assertEqualsCanonicalizing([$mine->id, $theirs->id], PaymentResource::getEloquentQuery()->pluck('id')->all());
+        $receiverOptions = (new ReflectionMethod(PaymentsTable::class, 'dynamicReceiverOptions'))->invoke(null);
+        $this->assertSame(__('payments.options.all_cashiers'), $receiverOptions['all']);
+        $this->assertArrayHasKey((string) $this->officerA->id, $receiverOptions);
+        $this->assertArrayHasKey((string) $this->officerB->id, $receiverOptions);
+
         Livewire::test(ListPayments::class)
+            ->assertTableFilterExists('payment_filters')
             ->assertCanSeeTableRecords([$mine])
             ->assertCanNotSeeTableRecords([$theirs])
-            ->assertTableColumnSummarySet('amount_usd', 'amount_usd_total', 5);
+            ->assertTableColumnSummarySet('amount_usd', 'amount_usd_total', 5)
+            ->set('tableFilters.payment_filters.received_by', 'all')
+            ->assertCanSeeTableRecords([$mine, $theirs])
+            ->assertTableColumnSummarySet('amount_usd', 'amount_usd_total', 15);
     }
 
     public function test_admin_and_cashier_manager_see_all_and_can_filter_by_cashier(): void
