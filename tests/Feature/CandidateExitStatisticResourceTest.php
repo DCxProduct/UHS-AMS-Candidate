@@ -4,9 +4,13 @@ namespace Tests\Feature;
 
 use App\Filament\Admin\Resources\CandidateExitStatistics\CandidateExitStatisticResource;
 use App\Models\CandidateExitStatistic;
+use App\Models\User;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Schema;
+use Livewire\Livewire;
+use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
 class CandidateExitStatisticResourceTest extends TestCase
@@ -78,5 +82,24 @@ class CandidateExitStatisticResourceTest extends TestCase
     public function test_resource_does_not_register_a_direct_edit_page(): void
     {
         $this->assertArrayNotHasKey('edit', CandidateExitStatisticResource::getPages());
+    }
+
+    public function test_exit_exam_statistics_page_renders_for_a_user_with_read_permission(): void
+    {
+        Filament::setCurrentPanel(Filament::getPanel('app'));
+        $user = User::query()->forceCreate([
+            'registration_type' => 'admin',
+            'name' => 'Exit statistics admin',
+            'username' => 'exit-statistics-admin',
+            'email' => 'exit-statistics-admin@example.test',
+            'date_of_birth' => '1990-01-01',
+            'password' => 'password',
+            'is_active' => true,
+        ]);
+        $user->givePermissionTo(Permission::findOrCreate('ViewAny:CandidateExitStatistic', 'web'));
+
+        Livewire::actingAs($user)
+            ->test(\App\Filament\Admin\Resources\CandidateExitStatistics\Pages\ListCandidateExitStatistics::class)
+            ->assertSuccessful();
     }
 }
