@@ -1923,9 +1923,9 @@ class CustomFormEntriesTable
 
         if (! array_key_exists($locale, self::$majorLocalizedNameCache)) {
             self::$majorLocalizedNameCache[$locale] = Major::query()
-                ->get(['id', 'name_en', 'name_kh'])
+                ->get(['id', 'abbreviation', 'name_en', 'name_kh'])
                 ->mapWithKeys(fn (Major $major): array => [
-                    (string) $major->getKey() => $major->localized_name,
+                    (string) $major->getKey() => $major->localized_option_label,
                 ])
                 ->all();
         }
