@@ -12,12 +12,14 @@ class EditCandidateSubmitPopupSetting extends EditRecord
 
     public function getTitle(): string|Htmlable
     {
-        return __('candidate_submit_popup_settings.resource_label');
+        return __('candidate_submit_popup_settings.edit_title', [
+            'form' => $this->getRecord()->customForm?->display_name ?? __('candidate_submit_popup_settings.default_form'),
+        ]);
     }
 
     public function getHeading(): string|Htmlable
     {
-        return __('candidate_submit_popup_settings.resource_label');
+        return $this->getTitle();
     }
 
     public function getBreadcrumb(): string

@@ -2,6 +2,7 @@
 
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomForms\RelationManagers;
 
+use App\Models\Major;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
@@ -248,6 +249,7 @@ class FieldsRelationManager extends RelationManager
                                     ))
                                     ->searchable()
                                     ->preload()
+                                    ->multiple()
                                     ->native(false)
                                     ->disabled(fn ($get): bool => blank($get('options.conditional_when.field')))
                                     ->required(fn ($get): bool => (bool) $get('options.conditional_when.enabled'))
@@ -634,6 +636,12 @@ class FieldsRelationManager extends RelationManager
 
                         $data['options'] = $options;
 
+                        $conditionalValues = data_get($options, 'conditional_when.values');
+
+                        if (filled($conditionalValues) && ! is_array($conditionalValues)) {
+                            data_set($data, 'options.conditional_when.values', [$conditionalValues]);
+                        }
+
                         if (
                             blank(data_get($options, 'conditional_when.field'))
                             && filled(data_get($options, 'visible_when.field'))
@@ -641,8 +649,8 @@ class FieldsRelationManager extends RelationManager
                         ) {
                             $visibleValue = data_get($options, 'visible_when.value');
 
-                            if (is_array($visibleValue)) {
-                                $visibleValue = head($visibleValue);
+                            if (! is_array($visibleValue)) {
+                                $visibleValue = filled($visibleValue) ? [$visibleValue] : [];
                             }
 
                             data_set($data, 'options.conditional_when.field', data_get($options, 'visible_when.field'));
@@ -848,7 +856,7 @@ class FieldsRelationManager extends RelationManager
 
         return $ownerForm->fields()
             ->when($recordId, fn ($query) => $query->whereKeyNot($recordId))
-            ->where('type', 'select_dropdown')
+            ->whereIn('type', ['select_dropdown', 'radio', 'checkbox_list', 'multi_select'])
             ->orderBy('sort')
             ->get(['name', 'label'])
             ->filter(fn ($field): bool => filled($field->name))
@@ -883,6 +891,11 @@ class FieldsRelationManager extends RelationManager
         }
 
         $options = self::normalizeOptions($field->options ?? []);
+
+        if (strtolower(trim((string) ($options['data_source_table'] ?? ''))) === 'majors') {
+            return Major::optionsForCustomFormId($ownerForm->getKey());
+        }
+
         $choices = $options['choices'] ?? [];
 
         if (! is_array($choices)) {

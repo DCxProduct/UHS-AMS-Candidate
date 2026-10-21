@@ -75,15 +75,13 @@ class PaymentResource extends Resource
             }
 
             $query->where('users_id', $userId);
-        } elseif (static::showsOnlyOwnReceivedPayments()) {
-            $query->where('received_by', auth()->id());
         }
 
         return $query;
     }
 
     /**
-     * Cashier officers see only the payments they received; admins and cashier managers see all.
+     * Cashier officers default to their own payments, with table filtering controlling the selected cashier scope.
      */
     public static function showsOnlyOwnReceivedPayments(): bool
     {

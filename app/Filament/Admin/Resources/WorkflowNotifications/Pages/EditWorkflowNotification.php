@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\WorkflowNotifications\Pages;
 
 use App\Filament\Admin\Resources\WorkflowNotifications\WorkflowNotificationResource;
+use App\Models\WorkflowNotification;
 use Filament\Actions\DeleteAction;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
@@ -21,11 +22,23 @@ class EditWorkflowNotification extends EditRecord
     {
         $data['stages'] = collect($data['stages'] ?? [])
             ->map(function (array $item): array {
-                if (is_array($item['data'] ?? null) && ! array_key_exists('notification_channels', $item['data'])) {
-                    $item['data']['notification_channels'] = ['system'];
+                $data = is_array($item['data'] ?? null) ? $item['data'] : $item;
+
+                if (! array_key_exists('notification_channels', $data)) {
+                    $data['notification_channels'] = ['system'];
                 }
 
-                return $item;
+                if (array_key_exists('responsible_role', $data)) {
+                    $data['responsible_role'] = WorkflowNotification::normalizeResponsibleRoles($data['responsible_role']);
+                }
+
+                if (is_array($item['data'] ?? null)) {
+                    $item['data'] = $data;
+
+                    return $item;
+                }
+
+                return $data;
             })
             ->all();
 

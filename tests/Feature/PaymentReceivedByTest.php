@@ -8,6 +8,7 @@ use App\Filament\Admin\Resources\Payments\Tables\PaymentsTable;
 use App\Models\Payment;
 use App\Models\Role;
 use App\Models\User;
+use App\Support\TablePdfExporter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Livewire\Livewire;
@@ -59,17 +60,26 @@ class PaymentReceivedByTest extends TestCase
         ])->received_by);
     }
 
-    public function test_a_cashier_officer_sees_only_their_own_payments(): void
+    public function test_a_cashier_officer_defaults_to_their_own_payments_and_can_filter_all_cashiers(): void
     {
         [$mine, $theirs] = $this->paymentsByBothOfficers();
 
         $this->actingAs($this->officerA);
 
-        $this->assertSame([$mine->id], PaymentResource::getEloquentQuery()->pluck('id')->all());
+        $this->assertEqualsCanonicalizing([$mine->id, $theirs->id], PaymentResource::getEloquentQuery()->pluck('id')->all());
+        $receiverOptions = (new ReflectionMethod(PaymentsTable::class, 'dynamicReceiverOptions'))->invoke(null);
+        $this->assertSame(__('payments.options.all_cashiers'), $receiverOptions['all']);
+        $this->assertArrayHasKey((string) $this->officerA->id, $receiverOptions);
+        $this->assertArrayHasKey((string) $this->officerB->id, $receiverOptions);
+
         Livewire::test(ListPayments::class)
+            ->assertTableFilterExists('payment_filters')
             ->assertCanSeeTableRecords([$mine])
             ->assertCanNotSeeTableRecords([$theirs])
-            ->assertTableColumnSummarySet('amount_usd', 'amount_usd_total', 5);
+            ->assertTableColumnSummarySet('amount_usd', 'amount_usd_total', 5)
+            ->set('tableFilters.payment_filters.received_by', 'all')
+            ->assertCanSeeTableRecords([$mine, $theirs])
+            ->assertTableColumnSummarySet('amount_usd', 'amount_usd_total', 15);
     }
 
     public function test_admin_and_cashier_manager_see_all_and_can_filter_by_cashier(): void
@@ -97,8 +107,26 @@ class PaymentReceivedByTest extends TestCase
         $this->actingAs($this->admin);
 
         $exportRow = new ReflectionMethod(PaymentsTable::class, 'exportRow');
+        $reportDefinitions = new ReflectionMethod(PaymentsTable::class, 'reportColumnDefinitions');
+        $definitions = $reportDefinitions->invoke(null);
 
         $this->assertSame(['Officer B'], $exportRow->invoke(null, $theirs->load('receivedBy'), 1, ['received_by']));
+        $this->assertArrayNotHasKey('received_by', $definitions);
+
+        $reportSheet = new ReflectionMethod(PaymentsTable::class, 'reportSheet');
+        $sheet = $reportSheet->invoke(null, [$theirs->load(['receivedBy', 'user'])]);
+        $sheetRows = $sheet['rows'];
+        $footerRow = end($sheetRows);
+        $this->assertSame('អ្នកទទួល', $footerRow[8]);
+
+        $pdfTemplate = new ReflectionMethod(TablePdfExporter::class, 'paymentRecordsHtml');
+        $pdfHtml = $pdfTemplate->invoke(null, array_fill(0, 11, 'Column'), [], 'Payments', [
+            'footer_text' => 'អ្នកទទួល',
+            'footer_column' => 9,
+        ]);
+        $this->assertStringContainsString('>អ្នកទទួល</div>', $pdfHtml);
+        $this->assertStringContainsString('margin-left: 72.727272727273%', $pdfHtml);
+        $this->assertStringContainsString('font-family: khmermuol, khmerbattambang, sans-serif; font-size: 10pt; font-weight: bold;', $pdfHtml);
     }
 
     /**

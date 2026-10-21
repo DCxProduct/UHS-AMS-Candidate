@@ -34,7 +34,7 @@ return [
     'date_of_birth' => 'ថ្ងៃខែឆ្នាំកំណើត',
     'exam_date' => 'ថ្ងៃប្រឡង',
     'degree_level' => 'កម្រិតសញ្ញាបត្រ',
-    'major' => 'ផ្នែក',
+    'major' => 'ជំនាញ / ផ្នែក',
     'options' => [
         'form_type' => [
             'associate' => 'បរិញ្ញាបត្ររង',

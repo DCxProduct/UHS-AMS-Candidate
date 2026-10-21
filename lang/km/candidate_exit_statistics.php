@@ -11,7 +11,7 @@ return [
         'form_type' => 'ទម្រង់ប្រភេទ',
         'review_status' => 'ស្ថានភាពពិនិត្យ',
         'user_type' => 'ប្រភេទបេក្ខជន',
-        'major' => 'ផ្នែក',
+        'major' => 'ជំនាញ / ផ្នែក',
         'year' => 'ឆ្នាំ',
     ],
     'form' => [
@@ -29,7 +29,7 @@ return [
         'name_khmer' => 'ឈ្មោះ (ខ្មែរ)',
         'name_latin' => 'ឈ្មោះ (ឡាតាំង)',
         'gender' => 'ភេទ',
-        'major' => 'ផ្នែក',
+        'major' => 'ជំនាញ / ផ្នែក',
         'date_of_birth' => 'ថ្ងៃខែឆ្នាំកំណើត',
         'candidate_status' => 'លទ្ធផលប្រឡង',
         'candidate_reviewed_at' => 'បានពិនិត្យនៅ',

@@ -10,6 +10,7 @@ use App\Support\CandidateTypeResolver;
 use App\Support\CandidateStatisticsSynchronizer;
 use App\Support\CaseInsensitiveSearch;
 use App\Support\FilamentActionPermissions;
+use App\Support\FormEntryData;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
 use App\Support\WorkflowStageMessages;
@@ -101,6 +102,7 @@ class CandidateExitStatisticsTable
                 TextColumn::make('major')
                     ->label(__('candidate_exit_statistics.fields.major'))
                     ->badge()
+                    ->formatStateUsing(fn ($state): string => FormEntryData::majorLabel(['major' => $state]))
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: false),
 
@@ -521,7 +523,7 @@ class CandidateExitStatisticsTable
             'major' => [
                 'label' => __('candidate_exit_statistics.fields.major'),
                 'field_key' => 'major',
-                'value' => fn (CandidateExitStatistic $record): string => (string) $record->major,
+                'value' => fn (CandidateExitStatistic $record): string => FormEntryData::majorLabel(['major' => $record->major]),
                 'clean' => fn (CandidateExitStatistic $record): string => (string) $record->major,
             ],
             'date_of_birth' => [
@@ -789,6 +791,14 @@ class CandidateExitStatisticsTable
             ->all();
 
         if ($column !== 'user_type') {
+            if ($column === 'major') {
+                return collect($values)
+                    ->mapWithKeys(fn (string $value): array => [
+                        $value => FormEntryData::majorLabel(['major' => $value]),
+                    ])
+                    ->all();
+            }
+
             return $values;
         }
 

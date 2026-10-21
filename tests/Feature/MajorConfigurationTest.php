@@ -7,6 +7,7 @@ use App\Models\ClosingDate;
 use App\Models\DegreeLevel;
 use App\Models\Major;
 use App\Support\StudentDynamicFormSchema;
+use App\Support\FormEntryData;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -56,10 +57,17 @@ class MajorConfigurationTest extends TestCase
         $this->assertSame('MED', $major->abbreviation);
         app()->setLocale('en');
         $this->assertSame('Medicine', $major->localized_name);
+        $this->assertSame('MED-Medicine', $major->localized_option_label);
+        $this->assertSame('MED-Medicine', FormEntryData::majorLabel(['major' => (string) $major->getKey()]));
+        $this->assertSame(
+            'MED-Medicine, ABE-Biomedical Engineering',
+            FormEntryData::majorLabel(['major' => [$major->getKey(), $secondMajor->getKey()]])
+        );
         $this->assertSame('Medicine', Major::options()[$major->getKey()]);
+        $this->assertSame('MED-Medicine', Major::options(includeAbbreviation: true)[$major->getKey()]);
         $this->assertSame([
-            $secondMajor->getKey() => 'Biomedical Engineering',
-            $major->getKey() => 'Medicine',
+            $secondMajor->getKey() => 'ABE-Biomedical Engineering',
+            $major->getKey() => 'MED-Medicine',
         ], Major::optionsForCustomFormId(1));
         $selectOptionsMethod = new \ReflectionMethod(StudentDynamicFormSchema::class, 'getSelectOptions');
         $selectOptionsMethod->setAccessible(true);
@@ -75,10 +83,12 @@ class MajorConfigurationTest extends TestCase
 
         app()->setLocale('km');
         $this->assertSame('វេជ្ជសាស្ត្រ', $major->fresh()->localized_name);
+        $this->assertSame('MED-វេជ្ជសាស្ត្រ', $major->fresh()->localized_option_label);
         $this->assertSame('វេជ្ជសាស្ត្រ', Major::options()[$major->getKey()]);
+        $this->assertSame('MED-វេជ្ជសាស្ត្រ', Major::options(includeAbbreviation: true)[$major->getKey()]);
         $this->assertSame([
-            $secondMajor->getKey() => 'វិស្វកម្មវេជ្ជជីវសាស្រ្ត',
-            $major->getKey() => 'វេជ្ជសាស្ត្រ',
+            $secondMajor->getKey() => 'ABE-វិស្វកម្មវេជ្ជជីវសាស្រ្ត',
+            $major->getKey() => 'MED-វេជ្ជសាស្ត្រ',
         ], Major::optionsForCustomFormId(1));
     }
 
@@ -147,6 +157,10 @@ class MajorConfigurationTest extends TestCase
             [$linkedMajor->getKey() => 'Medicine'],
             Major::optionsForDegreeLevelId($degreeLevel->getKey())
         );
+        $this->assertSame(
+            [$linkedMajor->getKey() => 'MED-Medicine'],
+            Major::optionsForDegreeLevelId($degreeLevel->getKey(), includeAbbreviation: true)
+        );
         $this->assertSame([], Major::optionsForDegreeLevelId(null));
         $this->assertSame([], Major::optionsForDegreeLevelId('missing'));
         $this->assertDatabaseHas('degree_level_major', [
@@ -191,7 +205,7 @@ class MajorConfigurationTest extends TestCase
         $closingDate->majors()->sync([$linkedMajor->getKey(), $otherMajor->getKey()]);
 
         $this->assertSame(
-            [$linkedMajor->getKey() => 'Public Health'],
+            [$linkedMajor->getKey() => 'MPH-Public Health'],
             Major::optionsForCustomFormId(42)
         );
         $this->assertSame($degreeLevel->getKey(), $closingDate->fresh()->degreeLevel->getKey());

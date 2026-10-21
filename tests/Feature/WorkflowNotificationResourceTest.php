@@ -18,6 +18,7 @@ use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Carbon;
 use Livewire\Livewire;
@@ -72,7 +73,7 @@ class WorkflowNotificationResourceTest extends TestCase
                 ['type' => 'stage', 'data' => [
                     'stage_name' => 'Check documents',
                     'stage_type' => 'review',
-                    'responsible_role' => 'registrar_officer',
+                    'responsible_role' => ['registrar_officer', 'cashier_officer'],
                     'status_message' => 'Under review',
                     'notification_message' => 'Your documents are being checked.',
                 ]],
@@ -101,7 +102,7 @@ class WorkflowNotificationResourceTest extends TestCase
                 ->assertSee('Form Submission')
                 ->assertSee('Responsible: Candidate')
                 ->assertSee('Check documents')
-                ->assertSee('Responsible: Registrar Officer')
+                ->assertSee('Responsible: Registrar Officer, Cashier Officer')
                 ->assertSee('Under review')
                 ->assertSee('Your documents are being checked.')
                 ->assertSee('Payment')
@@ -332,14 +333,14 @@ class WorkflowNotificationResourceTest extends TestCase
                     'b' => ['type' => 'stage', 'data' => [
                         'stage_name' => 'Check documents',
                         'stage_type' => 'review',
-                        'responsible_role' => 'registrar_officer',
+                        'responsible_role' => ['registrar_officer'],
                         'status_message' => 'Under review',
                         'notification_message' => 'Your documents are being checked.',
                     ]],
                     'c' => ['type' => 'stage', 'data' => [
                         'stage_name' => 'Payment',
                         'stage_type' => 'payment',
-                        'responsible_role' => 'cashier_officer',
+                        'responsible_role' => ['cashier_officer'],
                     ]],
                 ],
             ])
@@ -350,6 +351,8 @@ class WorkflowNotificationResourceTest extends TestCase
 
         $this->assertSame('Foreign Internship Registration', $template->name);
         $this->assertSame(3, $template->steps_count);
+        $this->assertSame(['registrar_officer'], data_get($template->stages, '1.data.responsible_role'));
+        $this->assertSame(['cashier_officer'], data_get($template->stages, '2.data.responsible_role'));
         $this->assertSame([], $template->forms()->pluck('custom_forms.id')->all());
     }
 
@@ -498,7 +501,7 @@ class WorkflowNotificationResourceTest extends TestCase
                 'stages' => ['a' => ['type' => 'stage', 'data' => [
                     'stage_name' => 'Payment',
                     'stage_type' => 'payment',
-                    'responsible_role' => 'candidate',
+                    'responsible_role' => ['candidate'],
                 ]]],
             ])
             ->call('create')
@@ -516,9 +519,30 @@ class WorkflowNotificationResourceTest extends TestCase
 
         $component
             ->set("{$stagePath}.stage_type", 'review')
-            ->set("{$stagePath}.responsible_role", 'registrar_officer')
+            ->set("{$stagePath}.responsible_role", ['registrar_officer'])
             ->set("{$stagePath}.stage_type", 'payment')
-            ->assertSet("{$stagePath}.responsible_role", null);
+            ->assertSet("{$stagePath}.responsible_role", []);
+    }
+
+    public function test_existing_single_role_workflows_open_in_the_multi_select(): void
+    {
+        $template = $this->template();
+        DB::table('workflow_notifications')
+            ->where('id', $template->id)
+            ->update(['stages' => json_encode([
+                ['type' => 'stage', 'data' => [
+                    'stage_name' => 'Review',
+                    'stage_type' => 'review',
+                    'responsible_role' => 'registrar_officer',
+                ]],
+            ])]);
+
+        $this->actingAs($this->admin);
+
+        $component = Livewire::test(EditWorkflowNotification::class, ['record' => $template->getRouteKey()]);
+        $stages = $component->get('data.stages');
+
+        $this->assertSame(['registrar_officer'], data_get(collect($stages)->first(), 'data.responsible_role'));
     }
 
     public function test_template_names_must_be_unique(): void

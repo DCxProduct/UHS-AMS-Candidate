@@ -3,11 +3,14 @@
 namespace App\Support;
 
 use Chanthoeun\FilamentCustomForms\Models\CustomFormField;
+use App\Models\Major;
 use Illuminate\Database\Eloquent\Builder;
 
 class FormEntryData
 {
     protected static array $fieldOptionCache = [];
+
+    protected static array $majorIdLabelCache = [];
 
     public static function majorKeys(): array
     {
@@ -85,13 +88,27 @@ class FormEntryData
     public static function majorLabel(array | object | null $data, mixed $fallback = '-'): string
     {
         $fieldName = static::firstFilledKey($data, static::majorKeys(), 'major');
-        $value = static::majorValue($data, $fallback);
+        $value = static::firstFilled($data, static::majorKeys(), $fallback);
 
-        if ($value === (string) $fallback) {
-            return $value;
+        if (blank($value)) {
+            return (string) $fallback;
         }
 
-        return static::optionLabelForFieldValue((string) $fieldName, $value) ?? $value;
+        return collect(static::normalizeOptionValues($value))
+            ->map(function (mixed $item) use ($fieldName): string {
+                $item = trim((string) $item);
+
+                if ($item === '') {
+                    return '';
+                }
+
+                return static::majorIdLabel($item)
+                    ?? static::optionLabelForFieldValue((string) $fieldName, $item)
+                    ?? $item;
+            })
+            ->filter()
+            ->unique()
+            ->join(', ') ?: (string) $fallback;
     }
 
     public static function academicYearValue(array | object | null $data, mixed $fallback = '-'): string
@@ -156,8 +173,56 @@ class FormEntryData
             return (string) $fallback;
         }
 
-        return static::optionLabelForFirstMatchingFieldValue(static::majorKeys(), $value)
+        return static::majorIdLabel($value)
+            ?? static::optionLabelForFirstMatchingFieldValue(static::majorKeys(), $value)
             ?? (string) $fallback;
+    }
+
+    protected static function majorIdLabel(string $value): ?string
+    {
+        if (! ctype_digit($value)) {
+            return null;
+        }
+
+        $locale = app()->getLocale();
+
+        if (! array_key_exists($locale, static::$majorIdLabelCache)) {
+            static::$majorIdLabelCache[$locale] = Major::query()
+                ->get(['id', 'abbreviation', 'name_en', 'name_kh'])
+                ->mapWithKeys(fn (Major $major): array => [
+                    (string) $major->getKey() => $major->localized_option_label,
+                ])
+                ->all();
+        }
+
+        if (array_key_exists($value, static::$majorIdLabelCache[$locale])) {
+            return static::$majorIdLabelCache[$locale][$value];
+        }
+
+        $major = Major::query()->find($value);
+
+        if (! $major) {
+            return null;
+        }
+
+        return static::$majorIdLabelCache[$locale][$value] = $major->localized_option_label;
+    }
+
+    protected static function normalizeOptionValues(mixed $value): array
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+
+            if (is_array($decoded)) {
+                return $decoded;
+            }
+        }
+
+        return [$value];
     }
 
     public static function academicYearOptionLabel(string $value, mixed $fallback = null): string

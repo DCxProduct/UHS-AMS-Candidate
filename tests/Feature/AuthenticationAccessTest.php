@@ -182,6 +182,7 @@ class AuthenticationAccessTest extends TestCase
 
         $this->assertSame('DARA SOK', $user->name);
         $this->assertSame('DARA SOK', $user->name_latin);
+        $this->assertSame('dara-sok@example.test', $user->email);
         $this->assertSame('student_010123456', $user->username);
         $this->assertSame('DARA SOK', CandidateDisplayName::for($user->fresh()));
         $this->assertSame('DARA SOK', $user->linkedSystemUser()?->name);

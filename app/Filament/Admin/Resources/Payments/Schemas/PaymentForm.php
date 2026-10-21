@@ -17,6 +17,7 @@ use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Support\RawJs;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -102,6 +103,7 @@ class PaymentForm
                                     ->markAsRequired()
                                     ->placeholder(__('payments.placeholders.amount_kh'))
                                     ->suffix('KHR')
+                                    ->mask(RawJs::make('$money($input)'))
                                     ->inputMode('decimal')
                                     ->required()
                                     ->rules(PaymentValidation::amountKhRules())

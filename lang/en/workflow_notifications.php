@@ -53,7 +53,7 @@ return [
 
     'review_actions' => [
         'accept' => [
-            'title' => 'Accept',
+            'title' => 'Checked',
             'status_message' => 'Candidate Status Message (Optional)',
             'notification_message' => 'Candidate Notification Message (Optional)',
         ],

@@ -666,21 +666,34 @@ class CustomFormEntryForm
         $field = (string) ($rule['field'] ?? '');
         $operator = (string) ($rule['operator'] ?? '=');
         $expected = $rule['value'] ?? null;
-
         if ($field === '' || blank($expected) || $expected === false || $expected === 'false') {
             return;
         }
 
         $component->visible(function (Get $get) use ($field, $operator, $expected): bool {
-            $actual = $get("data.{$field}") ?? data_get($get('data'), $field);
+            $actual = $get("data.data.{$field}", isAbsolute: true);
 
             return match ($operator) {
                 '!=', '<>' => (string) $actual !== (string) $expected,
-                'in' => in_array($actual, (array) $expected, true),
-                'not_in' => ! in_array($actual, (array) $expected, true),
+                'in' => self::visibilityValueMatches($actual, (array) $expected),
+                'not_in' => ! self::visibilityValueMatches($actual, (array) $expected),
                 default => strtolower((string) $actual) === strtolower((string) $expected),
             };
         });
+    }
+
+    protected static function visibilityValueMatches(mixed $actual, array $expected): bool
+    {
+        $actualValues = is_array($actual) ? $actual : [$actual];
+        $expectedValues = array_map(static fn ($value): string => (string) $value, $expected);
+
+        foreach ($actualValues as $value) {
+            if (in_array((string) $value, $expectedValues, true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     protected static function resolvePlaceholder(object $fieldModel, array $options): ?string

@@ -10,6 +10,7 @@
             <br>
 
             <div class="flex justify-end">
+                @if ($this->isSubmitPopupActive())
                 <x-filament::button
                     type="button"
                     color="warning"
@@ -18,9 +19,19 @@
                 >
                     {{ __('app.save') }}
                 </x-filament::button>
+                @else
+                <x-filament::button
+                    type="submit"
+                    color="warning"
+                    icon="heroicon-o-check-circle"
+                >
+                    {{ __('app.save') }}
+                </x-filament::button>
+                @endif
             </div>
         </form>
 
+        @if ($this->isSubmitPopupActive())
         <div
             x-cloak
             x-show="confirmSubmitOpen"
@@ -86,5 +97,6 @@
                 </div>
             </div>
         </div>
+        @endif
     </div>
 </x-filament-panels::page>

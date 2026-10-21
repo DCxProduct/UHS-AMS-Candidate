@@ -74,7 +74,10 @@ class ClosingDateForm
 
                                 if (filled($degreeLevelId)) {
                                     $selectedMajorIds = $selectedMajorIds->intersect(
-                                        array_keys(Major::optionsForDegreeLevelId($degreeLevelId))
+                                        array_keys(Major::optionsForDegreeLevelId(
+                                            $degreeLevelId,
+                                            includeAbbreviation: true,
+                                        ))
                                     );
                                 }
 
@@ -86,8 +89,8 @@ class ClosingDateForm
                             ->label(__('majors.closing_date_field'))
                             ->placeholder(__('majors.search'))
                             ->options(fn (Get $get): array => filled($get('degree_level_id'))
-                                ? Major::optionsForDegreeLevelId($get('degree_level_id'))
-                                : Major::options())
+                                ? Major::optionsForDegreeLevelId($get('degree_level_id'), includeAbbreviation: true)
+                                : Major::options(includeAbbreviation: true))
                             ->multiple()
                             ->searchable()
                             ->preload()

@@ -27,6 +27,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
+use Filament\Support\RawJs;
 use Filament\Schemas\Components\Grid;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
@@ -350,6 +351,7 @@ class CandidatePaymentListsTable
                                 ->label(__('payments.fields.amount_kh'))
                                 ->placeholder(__('payments.placeholders.amount_kh'))
                                 ->suffix('KHR')
+                                ->mask(RawJs::make('$money($input)'))
                                 ->inputMode('decimal')
                                 ->rules(PaymentValidation::amountKhRules())
                                 ->rule(static function (): \Closure {
@@ -565,7 +567,7 @@ class CandidatePaymentListsTable
             'gender' => self::genderLabel(self::entryValue($record, 'gender')),
             'phone_number' => self::entryValue($record, 'phone_number', $record->creator?->phone),
             'date_of_birth' => self::dateOfBirth($record),
-            'major' => (string) FormEntryData::firstFilled($record->data, FormEntryData::majorKeys(), '-'),
+            'major' => FormEntryData::majorLabel($record->data),
             'academic_year' => FormEntryData::academicYearLabel(
                 ['academic_year' => self::entryValue($record, 'academic_year', $record->creator?->academic_year)]
             ),

@@ -5,6 +5,7 @@ namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Ta
 use App\Support\WorkflowStageMessages;
 use App\Support\StaticWorkflowMessages;
 use App\Enums\WorkflowStageType;
+use App\Models\Major;
 use App\Models\Payment;
 use App\Models\WorkflowNotification;
 use App\Support\AuditLogger;
@@ -34,6 +35,8 @@ use Illuminate\Support\Facades\Schema;
 
 class CustomFormEntriesTable
 {
+    protected static array $majorLocalizedNameCache = [];
+
     public static function configure(Table $table): Table
     {
         $formId = self::getFormId($table);
@@ -420,13 +423,15 @@ class CustomFormEntriesTable
             TextColumn::make('data.first_name_kh')
                 ->label(__('candidate_entrance_statistics.first_name_kh'))
                 ->placeholder('-')
-                ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::apply($query, 'data->first_name_kh', $search)),
+                ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::apply($query, 'data->first_name_kh', $search))
+                ->toggleable(isToggledHiddenByDefault: false),
 
             // 3. Last Name
             TextColumn::make('data.last_name_kh')
                 ->label(__('candidate_entrance_statistics.last_name_kh'))
                 ->placeholder('-')
-                ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::apply($query, 'data->last_name_kh', $search)),
+                ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::apply($query, 'data->last_name_kh', $search))
+                ->toggleable(isToggledHiddenByDefault: false),
 
             // 4. Major
             TextColumn::make('major')
@@ -436,7 +441,8 @@ class CustomFormEntriesTable
                     $key = FormEntryData::firstFilledKey($record->data, FormEntryData::majorKeys(), 'major');
                     $state = data_get($record->data, $key);
 
-                    return self::entryOptionLabel($record, $key, $state);
+                    return self::majorNameLabel($state)
+                        ?? self::entryOptionLabel($record, $key, $state);
                 })
                 ->placeholder('-')
                 ->searchable(query: fn (Builder $query, string $search): Builder => FormEntryData::applyJsonLikeFilter($query, FormEntryData::majorKeys(), $search))
@@ -873,7 +879,7 @@ class CustomFormEntriesTable
             ->filter(fn (string $value): bool => $value !== '')
             ->unique()
             ->sort()
-            ->mapWithKeys(fn (string $value): array => [$value => $value])
+            ->mapWithKeys(fn (string $value): array => [$value => FormEntryData::majorOptionLabel($value, $value)])
             ->toArray();
     }
 
@@ -1896,6 +1902,40 @@ class CustomFormEntriesTable
         }
 
         return self::globalFieldOptionLabel($key, $state) ?? $label;
+    }
+
+    protected static function majorNameLabel(mixed $state): ?string
+    {
+        $values = collect(self::decodeJsonArray($state))
+            ->map(fn (mixed $value): string => trim((string) $value))
+            ->filter()
+            ->values();
+
+        $majorIds = $values
+            ->filter(fn (string $value): bool => ctype_digit($value))
+            ->all();
+
+        if ($majorIds === []) {
+            return null;
+        }
+
+        $locale = app()->getLocale();
+
+        if (! array_key_exists($locale, self::$majorLocalizedNameCache)) {
+            self::$majorLocalizedNameCache[$locale] = Major::query()
+                ->get(['id', 'abbreviation', 'name_en', 'name_kh'])
+                ->mapWithKeys(fn (Major $major): array => [
+                    (string) $major->getKey() => $major->localized_option_label,
+                ])
+                ->all();
+        }
+
+        $labels = $values
+            ->map(fn (string $value): ?string => self::$majorLocalizedNameCache[$locale][$value] ?? null)
+            ->filter(fn (?string $label): bool => filled($label))
+            ->values();
+
+        return $labels->isNotEmpty() ? $labels->join(', ') : null;
     }
 
     protected static function fieldOptionLabel($field, mixed $state, array $formIds = [], ?string $fieldName = null): string

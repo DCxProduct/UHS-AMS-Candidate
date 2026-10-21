@@ -22,6 +22,7 @@ use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\HtmlString;
 
@@ -192,21 +193,34 @@ class PaymentsTable
                             ->label(__('payments.table.received_by'))
                             ->placeholder(__('payments.placeholders.received_by'))
                             ->options(fn (): array => self::dynamicReceiverOptions())
-                            ->visible(fn (): bool => ! PaymentResource::showsOnlyOwnReceivedPayments())
+                            ->default(fn (): ?string => PaymentResource::showsOnlyOwnReceivedPayments() && auth()->check()
+                                ? (string) auth()->id()
+                                : null)
                             ->native(false)
                             ->searchable()
                             ->live(),
 
-                        DatePicker::make('datetime_pay')
-                            ->label(__('payments.table.datetime_pay'))
-                            ->placeholder(__('payments.placeholders.datetime_pay'))
+                        DatePicker::make('from_date')
+                            ->label(__('payments.table.from_date'))
+                            ->placeholder(__('payments.placeholders.from_date'))
+                            ->default(today()->toDateString())
+                            ->displayFormat('d-M-Y')
+                            ->native(false)
+                            ->closeOnDateSelection()
+                            ->maxDate(now())
+                            ->live(),
+
+                        DatePicker::make('to_date')
+                            ->label(__('payments.table.to_date'))
+                            ->placeholder(__('payments.placeholders.to_date'))
+                            ->default(today()->toDateString())
                             ->displayFormat('d-M-Y')
                             ->native(false)
                             ->closeOnDateSelection()
                             ->maxDate(now())
                             ->live(),
                     ])
-                    ->columns(5)
+                    ->columns(3)
                     ->columnSpanFull()
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
@@ -223,17 +237,21 @@ class PaymentsTable
                                 fn (Builder $query): Builder => $query->where('form_id', $data['form_id'])
                             )
                             ->when(
-                                filled($data['received_by'] ?? null),
+                                filled($data['received_by'] ?? null) && $data['received_by'] !== 'all',
                                 fn (Builder $query): Builder => $query->where('received_by', $data['received_by'])
                             )
                             ->when(
-                                filled($data['datetime_pay'] ?? null),
-                                fn (Builder $query): Builder => $query->whereDate('datetime_pay', $data['datetime_pay'])
+                                filled($data['from_date'] ?? null),
+                                fn (Builder $query): Builder => $query->whereDate('datetime_pay', '>=', Carbon::parse($data['from_date'])->toDateString())
+                            )
+                            ->when(
+                                filled($data['to_date'] ?? null),
+                                fn (Builder $query): Builder => $query->whereDate('datetime_pay', '<=', Carbon::parse($data['to_date'])->toDateString())
                             );
                     }),
             ], layout: FiltersLayout::AboveContent)
             ->deferFilters(false)
-            ->filtersFormColumns(5)
+            ->filtersFormColumns(6)
             ->recordActions([
                 EditAction::make()
                     ->label(__('payments.actions.edit'))
@@ -364,12 +382,24 @@ class PaymentsTable
      */
     protected static function dynamicReceiverOptions(): array
     {
-        return User::query()
-            ->whereIn('id', PaymentResource::getEloquentQuery()->whereNotNull('received_by')->select('received_by'))
+        $receiverIds = PaymentResource::getEloquentQuery()
+            ->whereNotNull('received_by')
+            ->pluck('received_by')
+            ->map(fn (mixed $id): string => (string) $id)
+            ->all();
+
+        if (PaymentResource::showsOnlyOwnReceivedPayments() && auth()->check()) {
+            $receiverIds[] = (string) auth()->id();
+        }
+
+        $cashiers = User::query()
+            ->whereIn('id', array_unique($receiverIds))
             ->orderBy('name')
             ->get(['id', 'name', 'username'])
             ->mapWithKeys(fn (User $user): array => [(string) $user->id => (string) ($user->name ?: $user->username)])
             ->toArray();
+
+        return ['all' => __('payments.options.all_cashiers')] + $cashiers;
     }
 
     protected static function dynamicFormOptions(): array
@@ -593,6 +623,8 @@ class PaymentsTable
                 [__('payments.export.total_khr'), $summary['khr'] . ' KHR'],
             ],
             [1 => 16, 2 => 25, 3 => 25, 4 => 10, 5 => 24, 6 => 16, 7 => 16, 8 => 16, 9 => 16, 10 => 14, 11 => 16],
+            footerText: __('payments.export.columns.received_by'),
+            footerColumn: 9,
         );
     }
 
@@ -639,6 +671,8 @@ class PaymentsTable
                 'layout' => 'payment-records',
                 'subtitle' => self::reportSubtitle(),
                 'summary' => self::reportSummary($records),
+                'footer_text' => __('payments.export.columns.received_by'),
+                'footer_column' => 9,
                 'filename' => OfficialReport::filename(__('payments.export.title'), 'pdf'),
                 'filename_fallback' => OfficialReport::filename(__('payments.export.title'), 'pdf', 'payment-records'),
             ],

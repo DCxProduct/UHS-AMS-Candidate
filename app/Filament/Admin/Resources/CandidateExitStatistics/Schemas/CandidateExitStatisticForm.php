@@ -2,6 +2,9 @@
 
 namespace App\Filament\Admin\Resources\CandidateExitStatistics\Schemas;
 
+use App\Models\CandidateExitStatistic;
+use App\Models\Major;
+use App\Support\FormEntryData;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -61,9 +64,14 @@ class CandidateExitStatisticForm
                                 ->options(__('candidate_exit_statistics.options.gender'))
                                 ->native(false),
 
-                            TextInput::make('major')
+                            Select::make('major')
                                 ->label(__('candidate_exit_statistics.fields.major'))
-                                ->maxLength(150),
+                                ->options(fn (?CandidateExitStatistic $record): array => Major::options(includeAbbreviation: true)
+                                    + (filled($record?->major) ? [
+                                        (string) $record->major => FormEntryData::majorLabel(['major' => $record->major]),
+                                    ] : []))
+                                ->searchable()
+                                ->native(false),
 
                             DatePicker::make('date_of_birth')
                                 ->label(__('candidate_exit_statistics.fields.date_of_birth'))

@@ -32,6 +32,8 @@ return [
         'type_payment' => 'Select payment type',
         'exchange_rate' => 'Enter KHR amount for 1 USD',
         'datetime_pay' => 'Select payment date',
+        'from_date' => 'Select start date',
+        'to_date' => 'Select end date',
         'received_by' => 'Select cashier',
         'receipt_number' => 'Enter receipt number',
         'payment_slip' => 'Upload payment receipt image',
@@ -63,6 +65,8 @@ return [
         'amount_usd' => 'Amount USD',
         'amount_kh' => 'Amount KHR',
         'datetime_pay' => 'Payment Date',
+        'from_date' => 'From Date',
+        'to_date' => 'To Date',
         'received_by' => 'Cashier',
         'status' => 'Active',
         'created_at' => 'Created At',
@@ -93,6 +97,7 @@ return [
             'receipt_number' => 'Receipt',
             'type_payment' => 'Payment Type',
             'amount_usd' => 'USD',
+            'received_by' => 'Receiver',
             'amount_kh' => 'KHR',
             'description' => 'Description',
         ],
@@ -132,6 +137,7 @@ return [
     ],
 
     'options' => [
+        'all_cashiers' => 'All',
         'type_payment' => [
             'aba' => 'ABA',
             'wing' => 'WING',

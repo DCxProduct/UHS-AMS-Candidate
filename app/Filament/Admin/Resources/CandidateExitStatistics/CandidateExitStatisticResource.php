@@ -65,9 +65,7 @@ class CandidateExitStatisticResource extends Resource
             ->where(function (Builder $query): void {
                 $query
                     ->whereNull('hidden_from_statistics')
-                    ->orWhere('hidden_from_statistics', false)
-                    ->orWhere('hidden_from_statistics', 0)
-                    ->orWhere('hidden_from_statistics', '0');
+                    ->orWhere('hidden_from_statistics', false);
             });
     }
 

@@ -2,6 +2,7 @@
 
 return [
     'language' => 'ភាសា',
+    'select_all_columns' => 'ជ្រើសរើសទាំងអស់',
     'khmer' => 'ខ្មែរ',
     'english' => 'English',
 
@@ -326,7 +327,7 @@ return [
             'last_name_en' => 'អក្សរឡាតាំងនាមខ្លួន',
             'first_name_en' => 'អក្សរឡាតាំងនាមត្រកូល',
             'no' => 'ល.រ',
-            'major' => 'ផ្នែក',
+            'major' => 'ជំនាញ / ផ្នែក',
             'gender' => 'ភេទ',
             'phone_number' => 'លេខទូរស័ព្ទ',
             'academic_year' => 'ឆ្នាំសិក្សា',

@@ -32,6 +32,8 @@ return [
         'type_payment' => 'សូមជ្រើសរើសប្រភេទទូទាត់',
         'exchange_rate' => 'សូមបញ្ចូលចំនួនប្រាក់រៀលសម្រាប់ 1 ដុល្លារ',
         'datetime_pay' => 'សូមជ្រើសរើសថ្ងៃបង់ប្រាក់',
+        'from_date' => 'សូមជ្រើសរើសថ្ងៃចាប់ផ្តើម',
+        'to_date' => 'សូមជ្រើសរើសថ្ងៃបញ្ចប់',
         'received_by' => 'សូមជ្រើសរើសអ្នកទទួលប្រាក់',
         'receipt_number' => 'សូមបញ្ចូលលេខបង្កាន់ដៃ',
         'payment_slip' => 'សូមផ្ទុករូបភាពបង្កាន់ដៃបង់ប្រាក់',
@@ -53,7 +55,7 @@ return [
         'name_latin' => 'ឈ្មោះឡាតាំង',
         'gender' => 'ភេទ',
         'phone_number' => 'លេខទូរស័ព្ទ',
-        'major' => 'ផ្នែក',
+        'major' => 'ជំនាញ / ផ្នែក',
         'date_of_birth' => 'ថ្ងៃខែឆ្នាំកំណើត',
         'receipt_number' => 'លេខបង្កាន់ដៃ',
         'payment_slip' => 'បង្កាន់ដៃបង់ប្រាក់',
@@ -63,6 +65,8 @@ return [
         'amount_usd' => 'ចំនួនទឹកប្រាក់ដុល្លារអាមេរិច',
         'amount_kh' => 'ចំនួនទឹកប្រាក់រៀល',
         'datetime_pay' => 'ថ្ងៃបង់ប្រាក់',
+        'from_date' => 'ចាប់ពីថ្ងៃ',
+        'to_date' => 'ដល់ថ្ងៃ',
         'received_by' => 'អ្នកទទួលប្រាក់',
         'status' => 'សកម្ម',
         'created_at' => 'បានបង្កើតនៅ',
@@ -93,6 +97,7 @@ return [
             'receipt_number' => 'លេខបង្កាន់ដៃ',
             'type_payment' => 'ប្រភេទទូទាត់',
             'amount_usd' => 'ដុល្លារ',
+            'received_by' => 'អ្នកទទួល',
             'amount_kh' => 'រៀល',
             'description' => 'សម្គាល់',
         ],
@@ -132,6 +137,7 @@ return [
     ],
 
     'options' => [
+        'all_cashiers' => 'ទាំងអស់',
         'type_payment' => [
             'aba' => 'ABA',
             'wing' => 'WING',

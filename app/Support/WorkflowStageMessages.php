@@ -252,21 +252,21 @@ final class WorkflowStageMessages
         }
 
         $stage = self::configuredStage($entry, $stageType);
-        $responsibleRole = trim((string) ($stage['responsible_role'] ?? ''));
+        $responsibleRoles = WorkflowNotification::normalizeResponsibleRoles($stage['responsible_role'] ?? null);
 
-        if ($stage === null || $responsibleRole === '') {
+        if ($stage === null || $responsibleRoles === []) {
             return false;
         }
 
         $user = auth()->user();
 
-        if (strtolower($responsibleRole) === 'admin'
+        if (in_array('admin', array_map(strtolower(...), $responsibleRoles), true)
             && (string) ($user->registration_type ?? '') === 'admin') {
             return true;
         }
 
         return method_exists($user, 'hasEffectiveRole')
-            ? $user->hasEffectiveRole($responsibleRole)
+            ? $user->hasEffectiveRole($responsibleRoles)
             : false;
     }
 

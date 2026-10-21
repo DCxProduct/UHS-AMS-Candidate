@@ -50,7 +50,7 @@ return [
     'statuses' => [
         'pending' => 'កំពុងរង់ចាំ',
         'received' => 'បានទទួល',
-        'accepted' => 'សូមទៅបញ្ជរបេឡា',
+        'accepted' => 'បានពិនិត្យ',
         'paid' => 'បានបង់ប្រាក់រួចរាល់',
         'rejected' => 'មិនគ្រប់គ្រាន់',
         'final_rejected' => 'បដិសេធ',
@@ -108,7 +108,7 @@ return [
 
     'form_type' => 'ទម្រង់ប្រភេទ',
     'user_type' => 'ប្រភេទអ្នកប្រើ',
-    'major' => 'ផ្នែក',
+    'major' => 'ជំនាញ / ផ្នែក',
     'reviewed_year' => 'ឆ្នាំ',
     'national_registration_number' => 'លេខចុះឈ្មោះថ្នាក់ជាតិ',
     'not_reviewed_yet' => 'មិនទាន់បានពិនិត្យ',
