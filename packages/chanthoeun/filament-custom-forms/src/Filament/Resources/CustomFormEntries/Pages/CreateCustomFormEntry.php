@@ -133,7 +133,11 @@ class CreateCustomFormEntry extends CreateRecord
             $state['data']['form_selection'] = $this->form_selection;
         }
 
-        $this->form->fill(app(ProfileFormData::class)->prefillStateForForm($currentFormId, $state));
+        $this->form->fill(app(ProfileFormData::class)->prefillStateForForm(
+            $currentFormId,
+            $state,
+            wrapRepeaterItemData: true,
+        ));
     }
 
     protected function getFormActions(): array

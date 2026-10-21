@@ -41,8 +41,12 @@ class ProfileFormData
         );
     }
 
-    public function prefillStateForForm(int|string|null $customFormId, array $state, string $dataPath = 'data'): array
-    {
+    public function prefillStateForForm(
+        int|string|null $customFormId,
+        array $state,
+        string $dataPath = 'data',
+        bool $wrapRepeaterItemData = false,
+    ): array {
         $customFormId = (int) $customFormId;
 
         if (
@@ -137,7 +141,53 @@ class ProfileFormData
                     $targetName = trim((string) ($targetField->name ?? ''));
                     $targetType = $this->normalizeType($targetField->type ?? '');
 
-                    if ($targetName === '' || in_array($targetType, self::CONTAINER_TYPES, true) || $targetType === 'info') {
+                    if ($targetName === '') {
+                        continue;
+                    }
+
+                    if ($targetType === 'repeater') {
+                        $targetOptions = $this->normalizeOptions($targetField->options ?? []);
+                        $profileKey = trim((string) (
+                            $targetOptions['profile_keyword']
+                            ?? $targetOptions['profile_field']
+                            ?? $targetOptions['profile_data_key']
+                            ?? $targetName
+                        ));
+                        $profileField = $profileFields->get($profileKey)
+                            ?? $profileFieldsByLabel[$this->normalizeFieldLabel($targetField->label ?? null)]
+                            ?? null;
+
+                        if (
+                            ! $profileField
+                            || $this->normalizeType($profileField->type ?? '') !== 'repeater'
+                        ) {
+                            continue;
+                        }
+
+                        $profileKey = (string) $profileField->name;
+                        $profileRows = data_get($profileData, $profileKey);
+
+                        if (! is_array($profileRows) || $profileRows === []) {
+                            continue;
+                        }
+
+                        $mappedRows = $this->mapRepeaterRows(
+                            $profileRows,
+                            $profileField,
+                            $targetField,
+                            $wrapRepeaterItemData
+                        );
+
+                        data_set(
+                            $data,
+                            $targetName,
+                            $this->mergeRepeaterRows(data_get($data, $targetName, []), $mappedRows)
+                        );
+
+                        continue;
+                    }
+
+                    if (in_array($targetType, self::CONTAINER_TYPES, true) || $targetType === 'info') {
                         continue;
                     }
 
@@ -371,6 +421,109 @@ class ProfileFormData
             ->lower()
             ->replaceMatches('/[^\\pL\\pN]+/u', '')
             ->toString();
+    }
+
+    private function mapRepeaterRows(
+        array $rows,
+        object $profileRepeater,
+        object $targetRepeater,
+        bool $wrapItemData = false,
+    ): array {
+        $profileChildren = DB::table('custom_form_fields')
+            ->where('parent_id', $profileRepeater->id)
+            ->orderBy('sort')
+            ->get();
+        $targetChildren = DB::table('custom_form_fields')
+            ->where('parent_id', $targetRepeater->id)
+            ->orderBy('sort')
+            ->get();
+        $profileChildrenByName = $profileChildren->keyBy('name');
+        $profileChildrenByLabel = $this->uniqueProfileFieldsByLabel($profileChildren);
+
+        return collect($rows)
+            ->map(function (mixed $row) use ($profileChildrenByName, $profileChildrenByLabel, $targetChildren, $wrapItemData): array {
+                $row = is_array($row) ? $row : (array) $row;
+                // Entries created through the Filament resource form can keep
+                // each repeater item's fields under a nested `data` key.
+                $profileRow = is_array($row['data'] ?? null) ? $row['data'] : $row;
+                $mapped = [];
+
+                foreach ($targetChildren as $targetChild) {
+                    $targetName = trim((string) ($targetChild->name ?? ''));
+                    $targetType = $this->normalizeType($targetChild->type ?? '');
+
+                    if (
+                        $targetName === ''
+                        || in_array($targetType, self::CONTAINER_TYPES, true)
+                        || $targetType === 'info'
+                    ) {
+                        continue;
+                    }
+
+                    $profileChild = $profileChildrenByName->get($targetName)
+                        ?? $profileChildrenByLabel[$this->normalizeFieldLabel($targetChild->label ?? null)]
+                        ?? null;
+
+                    if (! $profileChild || ! array_key_exists((string) $profileChild->name, $profileRow)) {
+                        continue;
+                    }
+
+                    $mapped[$targetName] = $this->resolveProfileValue(
+                        $profileRow[(string) $profileChild->name],
+                        $profileChild,
+                        $targetChild
+                    );
+                }
+
+                if ($mapped === []) {
+                    return $row;
+                }
+
+                return $wrapItemData ? ['data' => $mapped] : $mapped;
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Fill blank repeater items from the profile while retaining values the
+     * candidate has already entered in the current form.
+     */
+    private function mergeRepeaterRows(mixed $existingRows, array $profileRows): array
+    {
+        $existingRows = is_array($existingRows) ? $existingRows : [];
+        $existingKeys = array_keys($existingRows);
+        $mergedRows = $existingRows;
+
+        foreach ($profileRows as $index => $profileRow) {
+            $key = $existingKeys[$index] ?? $index;
+            $existingRow = $mergedRows[$key] ?? [];
+            $mergedRows[$key] = $this->mergeBlankValues(
+                is_array($existingRow) ? $existingRow : [],
+                is_array($profileRow) ? $profileRow : []
+            );
+        }
+
+        return $mergedRows;
+    }
+
+    private function mergeBlankValues(array $existing, array $defaults): array
+    {
+        foreach ($defaults as $key => $defaultValue) {
+            $existingValue = $existing[$key] ?? null;
+
+            if (is_array($existingValue) && is_array($defaultValue)) {
+                $existing[$key] = $this->mergeBlankValues($existingValue, $defaultValue);
+
+                continue;
+            }
+
+            if (! filled($existingValue) && filled($defaultValue)) {
+                $existing[$key] = $defaultValue;
+            }
+        }
+
+        return $existing;
     }
 
     private function resolveProfileValue(mixed $profileValue, ?object $profileField, object $targetField): mixed

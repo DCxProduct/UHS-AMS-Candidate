@@ -483,7 +483,8 @@ class EditCustomFormEntry extends EditRecord
         $this->form->fill(
             app(ProfileFormData::class)->prefillStateForForm(
                 $this->record->custom_form_id,
-                $this->rawFormState()
+                $this->rawFormState(),
+                wrapRepeaterItemData: true,
             )
         );
 
