@@ -6,6 +6,7 @@ use App\Enums\WorkflowStageType;
 use App\Filament\Admin\Resources\CandidateEntranceStatistics\Tables\CandidateEntranceStatisticsTable;
 use App\Filament\Admin\Resources\CandidatePaymentLists\CandidatePaymentListResource;
 use App\Models\Payment;
+use App\Models\Major;
 use App\Models\Role;
 use App\Models\User;
 use App\Models\WorkflowNotification;
@@ -543,6 +544,32 @@ class WorkflowStageMessagesTest extends TestCase
         $this->actingAs($this->student);
         $column->record($entry);
         $this->assertSame('Under review', $column->formatState($column->getState()));
+    }
+
+    public function test_form_submission_major_column_displays_the_major_name_instead_of_its_id(): void
+    {
+        Filament::setCurrentPanel(Filament::getPanel('app'));
+        app()->setLocale('en');
+        $major = Major::query()->create([
+            'key' => 'biomedical_engineering',
+            'abbreviation' => 'BME',
+            'name_en' => 'Biomedical Engineering',
+            'name_kh' => 'វិស្វកម្មវេជ្ជជីវសាស្រ្ត',
+            'is_active' => true,
+        ]);
+        $entry = $this->entry('pending', ['selected_major' => (string) $major->getKey()]);
+        $admin = $this->user('major_table_admin', 'admin');
+        Role::query()->firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+
+        $column = Livewire::test(ListCustomFormEntries::class)
+            ->instance()
+            ->getTable()
+            ->getColumn('major')
+            ->record($entry);
+
+        $this->assertSame('Biomedical Engineering', $column->formatState($column->getState()));
     }
 
     private function stage(string $name, string $type, ?string $status = null, ?string $notification = null): array
