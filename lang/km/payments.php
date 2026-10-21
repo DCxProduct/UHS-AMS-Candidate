@@ -53,7 +53,7 @@ return [
         'name_latin' => 'ឈ្មោះឡាតាំង',
         'gender' => 'ភេទ',
         'phone_number' => 'លេខទូរស័ព្ទ',
-        'major' => 'ផ្នែក',
+        'major' => 'ជំនាញ / ផ្នែក',
         'date_of_birth' => 'ថ្ងៃខែឆ្នាំកំណើត',
         'receipt_number' => 'លេខបង្កាន់ដៃ',
         'payment_slip' => 'បង្កាន់ដៃបង់ប្រាក់',
