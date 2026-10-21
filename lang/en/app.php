@@ -2,6 +2,7 @@
 
 return [
     'language' => 'Language',
+    'select_all_columns' => 'Select all',
     'khmer' => 'Khmer',
     'english' => 'English',
 

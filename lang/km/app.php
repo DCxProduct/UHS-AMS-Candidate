@@ -2,6 +2,7 @@
 
 return [
     'language' => 'ភាសា',
+    'select_all_columns' => 'ជ្រើសរើសទាំងអស់',
     'khmer' => 'ខ្មែរ',
     'english' => 'English',
 
