@@ -53,7 +53,7 @@ return [
 
     'review_actions' => [
         'accept' => [
-            'title' => 'ទទួលយក',
+            'title' => 'បានពិនិត្យ',
             'status_message' => 'សារស្ថានភាពសម្រាប់បេក្ខជន (ជាជម្រើស)',
             'notification_message' => 'សារជូនដំណឹងសម្រាប់បេក្ខជន (ជាជម្រើស)',
         ],

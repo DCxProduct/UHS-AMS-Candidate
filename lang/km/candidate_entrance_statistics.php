@@ -50,7 +50,7 @@ return [
     'statuses' => [
         'pending' => 'កំពុងរង់ចាំ',
         'received' => 'បានទទួល',
-        'accepted' => 'សូមទៅបញ្ជរបេឡា',
+        'accepted' => 'បានពិនិត្យ',
         'paid' => 'បានបង់ប្រាក់រួចរាល់',
         'rejected' => 'មិនគ្រប់គ្រាន់',
         'final_rejected' => 'បដិសេធ',
