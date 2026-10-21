@@ -565,7 +565,7 @@ class CandidatePaymentListsTable
             'gender' => self::genderLabel(self::entryValue($record, 'gender')),
             'phone_number' => self::entryValue($record, 'phone_number', $record->creator?->phone),
             'date_of_birth' => self::dateOfBirth($record),
-            'major' => (string) FormEntryData::firstFilled($record->data, FormEntryData::majorKeys(), '-'),
+            'major' => FormEntryData::majorLabel($record->data),
             'academic_year' => FormEntryData::academicYearLabel(
                 ['academic_year' => self::entryValue($record, 'academic_year', $record->creator?->academic_year)]
             ),

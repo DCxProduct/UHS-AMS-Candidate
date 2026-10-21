@@ -7,6 +7,7 @@ use App\Models\ClosingDate;
 use App\Models\DegreeLevel;
 use App\Models\Major;
 use App\Support\StudentDynamicFormSchema;
+use App\Support\FormEntryData;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -57,6 +58,11 @@ class MajorConfigurationTest extends TestCase
         app()->setLocale('en');
         $this->assertSame('Medicine', $major->localized_name);
         $this->assertSame('MED-Medicine', $major->localized_option_label);
+        $this->assertSame('MED-Medicine', FormEntryData::majorLabel(['major' => (string) $major->getKey()]));
+        $this->assertSame(
+            'MED-Medicine, ABE-Biomedical Engineering',
+            FormEntryData::majorLabel(['major' => [$major->getKey(), $secondMajor->getKey()]])
+        );
         $this->assertSame('Medicine', Major::options()[$major->getKey()]);
         $this->assertSame('MED-Medicine', Major::options(includeAbbreviation: true)[$major->getKey()]);
         $this->assertSame([

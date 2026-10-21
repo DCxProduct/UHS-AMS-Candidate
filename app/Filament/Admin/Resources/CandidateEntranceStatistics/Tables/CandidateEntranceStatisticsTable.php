@@ -622,7 +622,7 @@ class CandidateEntranceStatisticsTable
             'major' => [
                 'label' => __('candidate_entrance_statistics.major'),
                 'field_key' => 'major',
-                'value' => fn (CustomFormEntry $record): string => (string) FormEntryData::firstFilled($record->data, FormEntryData::majorKeys(), '-'),
+                'value' => fn (CustomFormEntry $record): string => FormEntryData::majorLabel($record->data),
                 'clean' => fn (CustomFormEntry $record): string => (string) FormEntryData::firstFilled($record->data, FormEntryData::majorKeys(), '-'),
             ],
             'date_of_birth' => [

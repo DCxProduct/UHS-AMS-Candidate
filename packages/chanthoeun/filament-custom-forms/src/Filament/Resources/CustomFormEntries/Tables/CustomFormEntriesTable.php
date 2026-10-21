@@ -879,7 +879,7 @@ class CustomFormEntriesTable
             ->filter(fn (string $value): bool => $value !== '')
             ->unique()
             ->sort()
-            ->mapWithKeys(fn (string $value): array => [$value => $value])
+            ->mapWithKeys(fn (string $value): array => [$value => FormEntryData::majorOptionLabel($value, $value)])
             ->toArray();
     }
 
