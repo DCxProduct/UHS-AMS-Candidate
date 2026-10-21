@@ -28,11 +28,13 @@ class PaymentTotalsTest extends TestCase
             'receipt_number' => 'TOTAL-001',
             'amount_usd' => '5.00',
             'amount_kh' => '20500.00',
+            'datetime_pay' => now(),
         ]);
         Payment::query()->create([
             'receipt_number' => 'TOTAL-002',
             'amount_usd' => '10.00',
             'amount_kh' => '41000.00',
+            'datetime_pay' => now(),
         ]);
 
         Livewire::test(ListPayments::class)
@@ -50,11 +52,13 @@ class PaymentTotalsTest extends TestCase
             'receipt_number' => 'MATCH-001',
             'amount_usd' => '5.00',
             'amount_kh' => '20500.00',
+            'datetime_pay' => now(),
         ]);
         Payment::query()->create([
             'receipt_number' => 'OTHER-001',
             'amount_usd' => '10.00',
             'amount_kh' => '41000.00',
+            'datetime_pay' => now(),
         ]);
 
         $component = Livewire::test(ListPayments::class)
@@ -74,17 +78,69 @@ class PaymentTotalsTest extends TestCase
             'receipt_number' => 'FILTER-001',
             'amount_usd' => '5.00',
             'amount_kh' => '20500.00',
+            'datetime_pay' => now(),
         ]);
         Payment::query()->create([
             'receipt_number' => 'OTHER-001',
             'amount_usd' => '10.00',
             'amount_kh' => '41000.00',
+            'datetime_pay' => now(),
         ]);
 
         Livewire::test(ListPayments::class)
             ->set('tableFilters.payment_filters.receipt_number', 'FILTER-001')
             ->assertTableColumnSummarySet('amount_usd', 'amount_usd_total', 5)
             ->assertTableColumnSummarySet('amount_kh', 'amount_khr_total', 20500);
+    }
+
+    public function test_payment_date_filter_defaults_to_today_and_accepts_an_inclusive_range(): void
+    {
+        $this->travelTo(now()->setDate(2026, 10, 21)->startOfDay());
+        $this->createPaymentViewer();
+
+        $beforeRange = Payment::query()->create([
+            'receipt_number' => 'DATE-018',
+            'amount_usd' => '1.00',
+            'datetime_pay' => '2026-10-18',
+        ]);
+        $startDate = Payment::query()->create([
+            'receipt_number' => 'DATE-019',
+            'amount_usd' => '2.00',
+            'datetime_pay' => '2026-10-19',
+        ]);
+        $today = Payment::query()->create([
+            'receipt_number' => 'DATE-021',
+            'amount_usd' => '3.00',
+            'datetime_pay' => '2026-10-21',
+        ]);
+        $endDate = Payment::query()->create([
+            'receipt_number' => 'DATE-023',
+            'amount_usd' => '4.00',
+            'datetime_pay' => '2026-10-23',
+        ]);
+        $afterRange = Payment::query()->create([
+            'receipt_number' => 'DATE-024',
+            'amount_usd' => '5.00',
+            'datetime_pay' => '2026-10-24',
+        ]);
+
+        $component = Livewire::test(ListPayments::class)
+            ->assertCanSeeTableRecords([$today])
+            ->assertCanNotSeeTableRecords([$beforeRange, $startDate, $endDate, $afterRange])
+            ->set('tableFilters.payment_filters.from_date', '2026-10-19')
+            ->set('tableFilters.payment_filters.to_date', '2026-10-23')
+            ->assertCanSeeTableRecords([$startDate, $today, $endDate])
+            ->assertCanNotSeeTableRecords([$beforeRange, $afterRange]);
+
+        $selectedOrFilteredQuery = new ReflectionMethod(ListPayments::class, 'selectedOrFilteredQuery');
+        $exportAndClearRecords = $selectedOrFilteredQuery
+            ->invoke($component->instance())
+            ->pluck('receipt_number')
+            ->sort()
+            ->values()
+            ->all();
+
+        $this->assertSame(['DATE-019', 'DATE-021', 'DATE-023'], $exportAndClearRecords);
     }
 
     public function test_payment_total_labels_are_localized(): void

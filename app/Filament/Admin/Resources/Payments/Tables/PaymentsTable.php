@@ -22,6 +22,7 @@ use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\HtmlString;
 
@@ -197,16 +198,27 @@ class PaymentsTable
                             ->searchable()
                             ->live(),
 
-                        DatePicker::make('datetime_pay')
-                            ->label(__('payments.table.datetime_pay'))
-                            ->placeholder(__('payments.placeholders.datetime_pay'))
+                        DatePicker::make('from_date')
+                            ->label(__('payments.table.from_date'))
+                            ->placeholder(__('payments.placeholders.from_date'))
+                            ->default(today()->toDateString())
+                            ->displayFormat('d-M-Y')
+                            ->native(false)
+                            ->closeOnDateSelection()
+                            ->maxDate(now())
+                            ->live(),
+
+                        DatePicker::make('to_date')
+                            ->label(__('payments.table.to_date'))
+                            ->placeholder(__('payments.placeholders.to_date'))
+                            ->default(today()->toDateString())
                             ->displayFormat('d-M-Y')
                             ->native(false)
                             ->closeOnDateSelection()
                             ->maxDate(now())
                             ->live(),
                     ])
-                    ->columns(5)
+                    ->columns(3)
                     ->columnSpanFull()
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
@@ -227,13 +239,17 @@ class PaymentsTable
                                 fn (Builder $query): Builder => $query->where('received_by', $data['received_by'])
                             )
                             ->when(
-                                filled($data['datetime_pay'] ?? null),
-                                fn (Builder $query): Builder => $query->whereDate('datetime_pay', $data['datetime_pay'])
+                                filled($data['from_date'] ?? null),
+                                fn (Builder $query): Builder => $query->whereDate('datetime_pay', '>=', Carbon::parse($data['from_date'])->toDateString())
+                            )
+                            ->when(
+                                filled($data['to_date'] ?? null),
+                                fn (Builder $query): Builder => $query->whereDate('datetime_pay', '<=', Carbon::parse($data['to_date'])->toDateString())
                             );
                     }),
             ], layout: FiltersLayout::AboveContent)
             ->deferFilters(false)
-            ->filtersFormColumns(5)
+            ->filtersFormColumns(6)
             ->recordActions([
                 EditAction::make()
                     ->label(__('payments.actions.edit'))
