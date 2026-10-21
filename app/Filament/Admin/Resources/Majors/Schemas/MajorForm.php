@@ -38,12 +38,12 @@ class MajorForm
                         ->required()
                         ->maxLength(50)
                         ->dehydrateStateUsing(fn ($state): string => strtoupper(trim((string) $state))),
+                    TextInput::make('name_kh')
+                        ->label(__('majors.fields.name_kh'))
+                        ->maxLength(255),
                     TextInput::make('name_en')
                         ->label(__('majors.fields.name_en'))
                         ->required()
-                        ->maxLength(255),
-                    TextInput::make('name_kh')
-                        ->label(__('majors.fields.name_kh'))
                         ->maxLength(255),
                     Toggle::make('is_active')
                         ->label(__('majors.fields.is_active'))
