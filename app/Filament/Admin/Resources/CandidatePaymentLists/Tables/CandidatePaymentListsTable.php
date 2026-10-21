@@ -27,6 +27,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
+use Filament\Support\RawJs;
 use Filament\Schemas\Components\Grid;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
@@ -350,6 +351,7 @@ class CandidatePaymentListsTable
                                 ->label(__('payments.fields.amount_kh'))
                                 ->placeholder(__('payments.placeholders.amount_kh'))
                                 ->suffix('KHR')
+                                ->mask(RawJs::make('$money($input)'))
                                 ->inputMode('decimal')
                                 ->rules(PaymentValidation::amountKhRules())
                                 ->rule(static function (): \Closure {
