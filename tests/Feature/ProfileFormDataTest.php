@@ -118,4 +118,69 @@ class ProfileFormDataTest extends TestCase
 
         $this->assertSame('alternate@example.test', data_get($existing, 'data.applicant_contact'));
     }
+
+    public function test_matching_profile_fields_prefill_form_builder_fields_by_name_or_unique_label(): void
+    {
+        $user = User::query()->create([
+            'registration_type' => 'student',
+            'name' => 'Dara Sok',
+            'username' => 'student_010123458',
+            'email' => 'dara-profile@example.test',
+            'date_of_birth' => '2000-01-01',
+            'password' => 'password',
+            'is_active' => true,
+        ]);
+
+        $profileFormId = DB::table('custom_forms')->insertGetId([
+            'name' => 'Profile',
+            'slug' => 'profile',
+            'is_active' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $applicationFormId = DB::table('custom_forms')->insertGetId([
+            'name' => 'Application',
+            'slug' => 'application-profile-prefill',
+            'is_active' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        foreach ([
+            [$profileFormId, 'profile_phone', 'Phone Number'],
+            [$profileFormId, 'profile_address', 'Address'],
+            [$applicationFormId, 'profile_phone', 'Phone Number'],
+            [$applicationFormId, 'application_address', 'Address'],
+        ] as [$formId, $name, $label]) {
+            DB::table('custom_form_fields')->insert([
+                'custom_form_id' => $formId,
+                'name' => $name,
+                'label' => $label,
+                'type' => 'text_input',
+                'required' => false,
+                'options' => json_encode([]),
+                'sort' => 1,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        DB::table('custom_form_entries')->insert([
+            'custom_form_id' => $profileFormId,
+            'created_by' => $user->id,
+            'data' => json_encode([
+                'profile_phone' => '012345678',
+                'profile_address' => 'Phnom Penh',
+            ]),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        Auth::login($user);
+
+        $prefilled = app(ProfileFormData::class)->prefillDataForForm($applicationFormId, []);
+
+        $this->assertSame('012345678', data_get($prefilled, 'profile_phone'));
+        $this->assertSame('Phnom Penh', data_get($prefilled, 'application_address'));
+    }
 }
