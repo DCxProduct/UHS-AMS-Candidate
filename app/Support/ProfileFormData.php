@@ -131,6 +131,7 @@ class ProfileFormData
 
             if (! empty($profileData)) {
                 $profileFields = $this->fieldsForForms([$profileFormId])->keyBy('name');
+                $profileFieldsByLabel = $this->uniqueProfileFieldsByLabel($profileFields);
 
                 foreach ($targetFields as $targetField) {
                     $targetName = trim((string) ($targetField->name ?? ''));
@@ -145,12 +146,20 @@ class ProfileFormData
                     }
 
                     $targetOptions = $this->normalizeOptions($targetField->options ?? []);
-                    $profileKey = trim((string) (
+                    $configuredProfileKey = trim((string) (
                         $targetOptions['profile_keyword']
                         ?? $targetOptions['profile_field']
                         ?? $targetOptions['profile_data_key']
-                        ?? $targetName
+                        ?? ''
                     ));
+
+                    $profileKey = $configuredProfileKey !== '' ? $configuredProfileKey : $targetName;
+                    $profileField = $profileFields->get($profileKey);
+
+                    if (! $profileField) {
+                        $profileField = $profileFieldsByLabel[$this->normalizeFieldLabel($targetField->label ?? null)] ?? null;
+                        $profileKey = trim((string) ($profileField->name ?? $profileKey));
+                    }
 
                     if ($profileKey === '') {
                         continue;
@@ -161,8 +170,6 @@ class ProfileFormData
                     if (! filled($profileValue)) {
                         continue;
                     }
-
-                    $profileField = $profileFields->get($profileKey);
 
                     data_set(
                         $data,
@@ -339,6 +346,31 @@ class ProfileFormData
             ->orderBy('custom_form_id')
             ->orderBy('sort')
             ->get();
+    }
+
+    /**
+     * Match fields with different internal keys only when their labels uniquely
+     * identify a field in the Profile form. Exact keys and explicit mappings
+     * remain the preferred match.
+     */
+    private function uniqueProfileFieldsByLabel(Collection $fields): array
+    {
+        return $fields
+            ->filter(fn (object $field): bool => $this->normalizeFieldLabel($field->label ?? null) !== '')
+            ->groupBy(fn (object $field): string => $this->normalizeFieldLabel($field->label ?? null))
+            ->filter(fn (Collection $matches): bool => $matches->count() === 1)
+            ->map(fn (Collection $matches): object => $matches->first())
+            ->all();
+    }
+
+    private function normalizeFieldLabel(mixed $label): string
+    {
+        $label = $this->transText($label);
+
+        return Str::of($label)
+            ->lower()
+            ->replaceMatches('/[^\\pL\\pN]+/u', '')
+            ->toString();
     }
 
     private function resolveProfileValue(mixed $profileValue, ?object $profileField, object $targetField): mixed
