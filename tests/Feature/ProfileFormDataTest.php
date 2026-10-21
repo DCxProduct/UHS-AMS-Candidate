@@ -183,4 +183,129 @@ class ProfileFormDataTest extends TestCase
         $this->assertSame('012345678', data_get($prefilled, 'profile_phone'));
         $this->assertSame('Phnom Penh', data_get($prefilled, 'application_address'));
     }
+
+    public function test_profile_repeater_prefills_matching_form_builder_repeater_rows(): void
+    {
+        $user = User::query()->create([
+            'registration_type' => 'student',
+            'name' => 'Dara Sok',
+            'username' => 'student_010123459',
+            'email' => 'dara-repeater@example.test',
+            'date_of_birth' => '2000-01-01',
+            'password' => 'password',
+            'is_active' => true,
+        ]);
+
+        $profileFormId = DB::table('custom_forms')->insertGetId([
+            'name' => 'Profile',
+            'slug' => 'profile',
+            'is_active' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $applicationFormId = DB::table('custom_forms')->insertGetId([
+            'name' => 'Application',
+            'slug' => 'application-repeater-prefill',
+            'is_active' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $profileRepeaterId = DB::table('custom_form_fields')->insertGetId([
+            'custom_form_id' => $profileFormId,
+            'name' => 'educations',
+            'label' => 'Education',
+            'type' => 'repeater',
+            'required' => false,
+            'options' => json_encode([]),
+            'sort' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $targetRepeaterId = DB::table('custom_form_fields')->insertGetId([
+            'custom_form_id' => $applicationFormId,
+            'name' => 'education_history',
+            'label' => 'Education',
+            'type' => 'repeater',
+            'required' => false,
+            'options' => json_encode([]),
+            'sort' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        foreach ([
+            [$profileFormId, $profileRepeaterId, 'school_name', 'Educational Institution'],
+            [$applicationFormId, $targetRepeaterId, 'institution', 'Educational Institution'],
+            [$profileFormId, $profileRepeaterId, 'from_year', 'From Year'],
+            [$applicationFormId, $targetRepeaterId, 'from_year', 'From Year'],
+        ] as [$formId, $parentId, $name, $label]) {
+            DB::table('custom_form_fields')->insert([
+                'custom_form_id' => $formId,
+                'parent_id' => $parentId,
+                'name' => $name,
+                'label' => $label,
+                'type' => 'text_input',
+                'required' => false,
+                'options' => json_encode([]),
+                'sort' => 1,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        DB::table('custom_form_entries')->insert([
+            'custom_form_id' => $profileFormId,
+            'created_by' => $user->id,
+            'data' => json_encode([
+                'educations' => [
+                    ['data' => ['school_name' => 'University One', 'from_year' => '2020']],
+                    ['data' => ['school_name' => 'University Two', 'from_year' => '2024']],
+                ],
+            ]),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        Auth::login($user);
+
+        $prefilled = app(ProfileFormData::class)->prefillDataForForm($applicationFormId, []);
+
+        $this->assertSame([
+            ['institution' => 'University One', 'from_year' => '2020'],
+            ['institution' => 'University Two', 'from_year' => '2024'],
+        ], data_get($prefilled, 'education_history'));
+
+        $blankRows = app(ProfileFormData::class)->prefillStateForForm($applicationFormId, [
+            'data' => [
+                'education_history' => [
+                    'row-one' => ['institution' => '', 'from_year' => 'Candidate value'],
+                    'row-two' => ['institution' => '', 'from_year' => ''],
+                ],
+            ],
+        ]);
+
+        $this->assertSame([
+            'row-one' => ['institution' => 'University One', 'from_year' => 'Candidate value'],
+            'row-two' => ['institution' => 'University Two', 'from_year' => '2024'],
+        ], data_get($blankRows, 'data.education_history'));
+
+        $filamentRows = app(ProfileFormData::class)->prefillStateForForm(
+            $applicationFormId,
+            [
+                'data' => [
+                    'education_history' => [
+                        'row-one' => ['data' => ['institution' => '', 'from_year' => '']],
+                        'row-two' => ['data' => ['institution' => '', 'from_year' => '']],
+                    ],
+                ],
+            ],
+            wrapRepeaterItemData: true,
+        );
+
+        $this->assertSame([
+            'row-one' => ['data' => ['institution' => 'University One', 'from_year' => '2020']],
+            'row-two' => ['data' => ['institution' => 'University Two', 'from_year' => '2024']],
+        ], data_get($filamentRows, 'data.education_history'));
+    }
 }
