@@ -25,11 +25,11 @@ class CandidateTypeResource extends Resource
 
     protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-user';
 
-    protected static ?int $navigationSort = 61;
+    protected static ?int $navigationSort = 9;
 
     public static function getNavigationSort(): ?int
     {
-        return 2;
+        return 9;
     }
 
     public static function getNavigationLabel(): string

@@ -46,8 +46,8 @@ trait HasShieldFormComponents
             ->map(function (array $entity): Section {
                 $sectionLabel = strval(
                     static::shield()->hasLocalizedPermissionLabels()
-                    ? FilamentShield::getLocalizedResourceLabel($entity['resourceFqcn'])
-                    : $entity['model']
+                        ? FilamentShield::getLocalizedResourceLabel($entity['resourceFqcn'])
+                        : $entity['model']
                 );
 
                 return Section::make($sectionLabel)
@@ -77,25 +77,26 @@ trait HasShieldFormComponents
             'WorkflowNotification' => 9,
             'EmailTemplate' => 10,
             'SmsTemplate' => 11,
-            'GeoLocation' => 12,
-            'ClosingDate' => 13,
-            'DegreeLevel' => 14,
-            'UserType' => 15,
-            'CandidateType' => 15,
-            'SystemUser' => 16,
-            'CandidateList' => 17,
-            'PaymentType' => 18,
-            'ExchangeRate' => 19,
-            'CandidateSubmitPopupSetting' => 20,
+            'GeoLocation' => 13,
+            'ClosingDate' => 14,
+            'Major' => 15,
+            'DegreeLevel' => 16,
+            'PaymentType' => 17,
+            'ExchangeRate' => 18,
+            'CandidateSubmitPopupSetting' => 19,
             'MessagingSetting' => 20,
-            'RoleType' => 21,
-            'Role' => 22,
-            'AuditLog' => 23,
+            'UserType' => 21,
+            'CandidateType' => 21,
+            'CandidateList' => 22,
+            'SystemUser' => 23,
+            'RoleType' => 24,
+            'Role' => 24,
+            'AuditLog' => 25,
         ];
 
         $resourceOrder = [
-            'CandidateTypeResource' => 14,
-            'RoleResource' => 22,
+            'CandidateTypeResource' => 21,
+            'RoleResource' => 24,
         ];
 
         $resourceBaseName = class_basename((string) ($entity['resourceFqcn'] ?? ''));

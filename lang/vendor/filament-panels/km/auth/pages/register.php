@@ -2,9 +2,9 @@
 
 return [
 
-    'title' => 'ចុះឈ្មោះ',
+    'title' => 'បង្កើតគណនី',
 
-    'heading' => 'ចុះឈ្មោះ',
+    'heading' => 'បង្កើតគណនី',
 
     'actions' => [
 
@@ -37,7 +37,7 @@ return [
         'actions' => [
 
             'register' => [
-                'label' => 'ចុះឈ្មោះ',
+                'label' => 'បង្កើតគណនី',
             ],
 
         ],

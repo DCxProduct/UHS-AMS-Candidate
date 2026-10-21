@@ -7,7 +7,7 @@ return [
 
     'or' => 'ឬ',
     'sign_in' => 'ចូលប្រព័ន្ធ',
-    'sign_up' => 'ចុះឈ្មោះ',
+    'sign_up' => 'បង្កើតគណនី',
     'sign_up_new_account' => 'ចុះឈ្មោះគណនីថ្មី',
     'already_have_account' => 'មានគណនីរួចហើយ?',
     'student_type' => 'ប្រភេទនិស្សិត',

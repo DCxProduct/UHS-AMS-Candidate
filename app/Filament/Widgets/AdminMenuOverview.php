@@ -8,6 +8,7 @@ use App\Filament\Admin\Resources\CandidatePaymentLists\CandidatePaymentListResou
 use App\Filament\Admin\Resources\CandidateTypes\CandidateTypeResource;
 use App\Filament\Admin\Resources\ClosingDates\ClosingDateResource;
 use App\Filament\Admin\Resources\DegreeLevels\DegreeLevelResource;
+use App\Filament\Admin\Resources\Majors\MajorResource;
 use App\Filament\Admin\Resources\ExamResults\ExamResultResource;
 use App\Filament\Admin\Resources\ExchangeRates\ExchangeRateResource;
 use App\Filament\Admin\Resources\ExitExamResults\ExitExamResultResource;
@@ -53,6 +54,7 @@ class AdminMenuOverview extends Widget
         DocumentTemplateResource::class,
         ClosingDateResource::class,
         DegreeLevelResource::class,
+        MajorResource::class,
         CandidateTypeResource::class,
         PaymentTypeResource::class,
         ExchangeRateResource::class,

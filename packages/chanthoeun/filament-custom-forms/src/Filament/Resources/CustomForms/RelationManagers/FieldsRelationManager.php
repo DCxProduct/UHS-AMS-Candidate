@@ -796,6 +796,7 @@ class FieldsRelationManager extends RelationManager
             'faculties' => __('filament-custom-forms::fcf.admin.data_source_options.faculties'),
             'fiscal_years' => __('filament-custom-forms::fcf.admin.data_source_options.fiscal_years'),
             'programs' => __('filament-custom-forms::fcf.admin.data_source_options.programs'),
+            'majors' => __('filament-custom-forms::fcf.admin.data_source_options.majors'),
         ];
     }
 

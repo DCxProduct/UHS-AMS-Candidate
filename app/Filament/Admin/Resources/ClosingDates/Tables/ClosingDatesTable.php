@@ -29,6 +29,12 @@ class ClosingDatesTable
                     ->searchable()
                     ->sortable(),
 
+                TextColumn::make('majors_count')
+                    ->label(__('majors.closing_date_field'))
+                    ->counts('majors')
+                    ->numeric()
+                    ->alignCenter(),
+
                 TextColumn::make('status')
                     ->label(__('closing_dates.status'))
                     ->badge()

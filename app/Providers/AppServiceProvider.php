@@ -13,6 +13,7 @@ use App\Models\ExamResult;
 use App\Models\ExchangeRate;
 use App\Models\ExitExamResult;
 use App\Models\GeoLocation;
+use App\Models\Major;
 use App\Models\MessagingSetting;
 use App\Models\Payment;
 use App\Models\PaymentType;
@@ -209,6 +210,7 @@ class AppServiceProvider extends ServiceProvider
             GeoLocation::class,
             UserType::class,
             ClosingDate::class,
+            Major::class,
             DegreeLevel::class,
             ExchangeRate::class,
             RoleType::class,

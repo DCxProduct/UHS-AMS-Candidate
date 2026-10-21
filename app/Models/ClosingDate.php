@@ -5,6 +5,7 @@ namespace App\Models;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Schema;
 
@@ -30,6 +31,11 @@ class ClosingDate extends Model
             'start_date' => 'date',
             'end_date' => 'date',
         ];
+    }
+
+    public function majors(): BelongsToMany
+    {
+        return $this->belongsToMany(Major::class, 'closing_date_major');
     }
 
     public const TYPE_PREFIX_CUSTOM_FORM = 'custom_form:';
