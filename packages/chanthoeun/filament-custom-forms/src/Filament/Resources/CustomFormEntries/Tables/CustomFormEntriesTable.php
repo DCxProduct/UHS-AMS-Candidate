@@ -1038,7 +1038,7 @@ class CustomFormEntriesTable
                 ->visible(fn ($record): bool =>
                     ! self::currentPanelIsAdmin()
                     && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'view')
-                    && self::entryStatus($record) !== 'draft'
+                    && ! in_array(self::entryStatus($record), ['draft', 'rejected'], true)
                 ),
 
             EditAction::make()
