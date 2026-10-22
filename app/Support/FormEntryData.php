@@ -178,6 +178,17 @@ class FormEntryData
             ?? (string) $fallback;
     }
 
+    public static function majorKhmerOptionLabel(string $value): string
+    {
+        if (! ctype_digit($value)) {
+            return $value;
+        }
+
+        $name = Major::query()->whereKey($value)->value('name_kh');
+
+        return filled($name) ? (string) $name : $value;
+    }
+
     protected static function majorIdLabel(string $value): ?string
     {
         if (! ctype_digit($value)) {

@@ -2,6 +2,8 @@
 
 namespace Chanthoeun\FilamentDocumentBuilder\Services;
 
+use App\Support\FormEntryData;
+use App\Support\LocalizedDate;
 use Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
@@ -376,6 +378,16 @@ class DocumentRenderer
     {
         if (! is_scalar($value)) {
             return '';
+        }
+
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $value) === 1) {
+            return LocalizedDate::dayKhmerMonthYear((string) $value);
+        }
+
+        $fieldKey = str_contains($key, '.') ? str($key)->afterLast('.')->toString() : $key;
+
+        if (in_array($fieldKey, FormEntryData::majorKeys(), true)) {
+            return FormEntryData::majorKhmerOptionLabel((string) $value);
         }
 
         $geoLocationLabel = $this->geoLocationLabelForKey($key, (string) $value, $data);

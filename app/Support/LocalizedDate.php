@@ -8,6 +8,25 @@ use Illuminate\Support\Carbon;
 
 class LocalizedDate
 {
+    public static function dayKhmerMonthYear(mixed $value): string
+    {
+        if (blank($value)) {
+            return '-';
+        }
+
+        $date = self::parse($value);
+
+        if (! $date) {
+            return (string) $value;
+        }
+
+        return implode('-', [
+            str_pad((string) $date->day, 2, '0', STR_PAD_LEFT),
+            self::khmerMonth($date->month),
+            (string) $date->year,
+        ]);
+    }
+
     public static function dayMonthYear(mixed $value): string
     {
         if (blank($value)) {

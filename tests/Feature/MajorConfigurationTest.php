@@ -8,6 +8,7 @@ use App\Models\DegreeLevel;
 use App\Models\Major;
 use App\Support\StudentDynamicFormSchema;
 use App\Support\FormEntryData;
+use Chanthoeun\FilamentDocumentBuilder\Services\DocumentRenderer;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -96,6 +97,28 @@ class MajorConfigurationTest extends TestCase
     {
         $this->assertSame(Major::class, MajorResource::getModel());
         $this->assertSame('majors', MajorResource::getSlug());
+    }
+
+    public function test_document_renderer_displays_a_major_name_instead_of_its_numeric_id(): void
+    {
+        app()->setLocale('km');
+
+        $major = Major::query()->create([
+            'key' => 'medicine',
+            'abbreviation' => 'MED',
+            'name_en' => 'Medicine',
+            'name_kh' => 'ប្រឡងថ្នាក់ជាតិចូល-បរិញ្ញាបត្ររង',
+            'is_active' => true,
+        ]);
+
+        $renderer = new DocumentRenderer;
+        $displayValueForKey = new \ReflectionMethod($renderer, 'displayValueForKey');
+        $displayValueForKey->setAccessible(true);
+
+        $this->assertSame(
+            'ប្រឡងថ្នាក់ជាតិចូល-បរិញ្ញាបត្ររង',
+            $displayValueForKey->invoke($renderer, 'major', (string) $major->getKey(), []),
+        );
     }
 
     public function test_major_names_and_abbreviations_may_repeat_but_keys_must_be_unique(): void
