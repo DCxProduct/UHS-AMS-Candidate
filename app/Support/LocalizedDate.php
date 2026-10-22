@@ -39,6 +39,37 @@ class LocalizedDate
         ]);
     }
 
+    /** @return array{day: string, month: string, year: string}|null */
+    public static function formalDayMonthYearParts(mixed $value): ?array
+    {
+        if (blank($value)) {
+            return null;
+        }
+
+        $date = self::parse($value);
+
+        if (! $date) {
+            return null;
+        }
+
+        $day = str_pad((string) $date->day, 2, '0', STR_PAD_LEFT);
+        $year = (string) $date->year;
+
+        if (app()->getLocale() === 'km') {
+            return [
+                'day' => self::toKhmerDigits($day),
+                'month' => self::khmerMonth($date->month),
+                'year' => self::toKhmerDigits($year),
+            ];
+        }
+
+        return [
+            'day' => $day,
+            'month' => $date->format('M'),
+            'year' => $year,
+        ];
+    }
+
     public static function dayMonthYearTime(mixed $value): string
     {
         if (blank($value)) {

@@ -59,7 +59,21 @@ class OfficialReport
      * @param  array<int, int|float>  $columnWidths  column number => width
      * @param  array<int, int>  $leftAlignedColumns  column numbers aligned left (names)
      */
-    public static function sheet(string $name, string $title, array $headings, array $dataRows, array $summary, array $columnWidths, array $leftAlignedColumns = [2, 3], ?string $footerText = null, ?int $footerColumn = null): array
+    public static function sheet(
+        string $name,
+        string $title,
+        array $headings,
+        array $dataRows,
+        array $summary,
+        array $columnWidths,
+        array $leftAlignedColumns = [2, 3],
+        ?string $footerText = null,
+        ?int $footerColumn = null,
+        ?string $footerDateText = null,
+        ?string $footerName = null,
+        ?array $footerDateParts = null,
+        ?string $footerReceiverText = null,
+    ): array
     {
         $lastColumn = self::columnName(count($headings));
         $headingRow = 11;
@@ -68,6 +82,8 @@ class OfficialReport
         $footerRow = $summaryRow + 2;
         $footerColumn = min(max(1, $footerColumn ?? count($headings)), count($headings));
         $footerCellColumn = self::columnName($footerColumn);
+        $footerLastColumn = self::columnName(count($headings));
+        $hasSignatureBlock = filled($footerDateText) || filled($footerName);
         $cellStyles = [];
         $dataRowHeights = [];
 
@@ -88,8 +104,26 @@ class OfficialReport
         }
 
         if (filled($footerText)) {
-            $cellStyles[$footerCellColumn . $footerRow] = 14;
+            if ($hasSignatureBlock) {
+                $cellStyles[$footerCellColumn . $footerRow] = 3;
+                $cellStyles[$footerCellColumn . ($footerRow + 1)] = 14;
+                $cellStyles[$footerCellColumn . ($footerRow + 2)] = 14;
+
+                if (filled($footerReceiverText)) {
+                    $cellStyles['B' . ($footerRow + 1)] = 14;
+                }
+            } else {
+                $cellStyles[$footerCellColumn . $footerRow] = 14;
+            }
         }
+
+        $footerMerges = $hasSignatureBlock
+            ? [
+                $footerCellColumn . $footerRow . ':' . $footerLastColumn . $footerRow,
+                $footerCellColumn . ($footerRow + 1) . ':' . $footerLastColumn . ($footerRow + 1),
+                $footerCellColumn . ($footerRow + 2) . ':' . $footerLastColumn . ($footerRow + 2),
+            ]
+            : [];
 
         $rows = [
             [__('payments.export.kingdom')],
@@ -111,7 +145,21 @@ class OfficialReport
 
         if (filled($footerText)) {
             $rows[] = [];
-            $rows[] = [...array_fill(0, $footerColumn - 1, ''), $footerText];
+
+            if ($hasSignatureBlock) {
+                $rows[] = [...array_fill(0, $footerColumn - 1, ''), $footerDateText ?? ''];
+                $signatureRow = array_fill(0, $footerColumn, '');
+                $signatureRow[$footerColumn - 1] = $footerText;
+
+                if (filled($footerReceiverText)) {
+                    $signatureRow[1] = $footerReceiverText;
+                }
+
+                $rows[] = $signatureRow;
+                $rows[] = [...array_fill(0, $footerColumn - 1, ''), $footerName ?? ''];
+            } else {
+                $rows[] = [...array_fill(0, $footerColumn - 1, ''), $footerText];
+            }
         }
 
         return [
@@ -127,6 +175,7 @@ class OfficialReport
                     'A7:B7',
                     'A8:' . $lastColumn . '8',
                     'A9:' . $lastColumn . '9',
+                    ...$footerMerges,
                 ],
                 'rowStyles' => [
                     1 => 9,
@@ -137,6 +186,9 @@ class OfficialReport
                     $headingRow => 4,
                 ],
                 'cellStyles' => $cellStyles,
+                    'richTextCells' => filled($footerDateParts) && filled($footerText)
+                        ? [$footerCellColumn . $footerRow => $footerDateParts]
+                        : [],
                 'rowHeights' => [
                     1 => 26,
                     2 => 26,
@@ -152,7 +204,9 @@ class OfficialReport
                     ...$dataRowHeights,
                     $summaryTitleRow => 22,
                     $summaryRow => 22,
-                    ...(filled($footerText) ? [$footerRow => 24] : []),
+                    ...(filled($footerText) ? ($hasSignatureBlock
+                        ? [$footerRow => 22, $footerRow + 1 => 24, $footerRow + 2 => 24]
+                        : [$footerRow => 24]) : []),
                 ],
                 'columnWidths' => $columnWidths,
             ],
@@ -210,6 +264,7 @@ class OfficialReport
         $mergedCells = $options['mergedCells'] ?? [];
         $columnWidths = $options['columnWidths'] ?? [];
         $rowHeights = $options['rowHeights'] ?? [];
+        $richTextCells = $options['richTextCells'] ?? [];
         $hasLogo = ($options['logo'] ?? false) === true;
         $printLandscape = ($options['printLandscape'] ?? false) === true;
         $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
@@ -228,6 +283,21 @@ class OfficialReport
                 $cell = self::columnName($columnIndex + 1) . $excelRow;
                 $styleId = $cellStyles[$cell] ?? $rowStyles[$excelRow] ?? (in_array($excelRow, $styledRows, true) ? 1 : 0);
                 $style = $styleId > 0 ? ' s="' . $styleId . '"' : '';
+
+                if (isset($richTextCells[$cell]) && is_array($richTextCells[$cell])) {
+                    $runs = collect($richTextCells[$cell])
+                        ->map(function (array $run): string {
+                            $properties = ($run['bold'] ?? false) ? '<rPr><b/></rPr>' : '';
+
+                            return '<r>' . $properties . '<t xml:space="preserve">' . self::xmlValue($run['text'] ?? '') . '</t></r>';
+                        })
+                        ->implode('');
+
+                    $xml .= '<c r="' . $cell . '"' . $style . ' t="inlineStr"><is>' . $runs . '</is></c>';
+
+                    continue;
+                }
+
                 $xml .= '<c r="' . $cell . '"' . $style . ' t="inlineStr"><is><t>' . self::xmlValue($value) . '</t></is></c>';
             }
 

@@ -607,6 +607,39 @@ class PaymentsTable
         return OfficialReport::subtitle();
     }
 
+    protected static function exportingUserName(): string
+    {
+        $user = auth()->user();
+
+        return (string) ($user?->name ?: $user?->name_latin ?: '');
+    }
+
+    protected static function reportFooterDateParts(): array
+    {
+        $date = LocalizedDate::formalDayMonthYearParts(now());
+
+        if (! $date) {
+            return [];
+        }
+
+        return [
+            ['text' => __('payments.export.footer.location')],
+            ['text' => __('payments.export.footer.day_prefix')],
+            ['text' => $date['day'], 'bold' => true],
+            ['text' => __('payments.export.footer.month_prefix')],
+            ['text' => $date['month'], 'bold' => true],
+            ['text' => __('payments.export.footer.year_prefix')],
+            ['text' => $date['year'], 'bold' => true],
+        ];
+    }
+
+    protected static function reportFooterDateText(): string
+    {
+        return collect(self::reportFooterDateParts())
+            ->pluck('text')
+            ->implode('');
+    }
+
     protected static function reportSheet(iterable $records): array
     {
         $records = collect($records);
@@ -623,8 +656,12 @@ class PaymentsTable
                 [__('payments.export.total_khr'), $summary['khr'] . ' KHR'],
             ],
             [1 => 16, 2 => 25, 3 => 25, 4 => 10, 5 => 24, 6 => 16, 7 => 16, 8 => 16, 9 => 16, 10 => 14, 11 => 16],
-            footerText: __('payments.export.columns.received_by'),
+            footerText: __('payments.export.footer.handed_over_by'),
             footerColumn: 9,
+            footerDateText: self::reportFooterDateText(),
+            footerDateParts: self::reportFooterDateParts(),
+            footerName: self::exportingUserName(),
+            footerReceiverText: __('payments.export.footer.received_by'),
         );
     }
 
@@ -671,8 +708,12 @@ class PaymentsTable
                 'layout' => 'payment-records',
                 'subtitle' => self::reportSubtitle(),
                 'summary' => self::reportSummary($records),
-                'footer_text' => __('payments.export.columns.received_by'),
+                'footer_text' => __('payments.export.footer.handed_over_by'),
                 'footer_column' => 9,
+                'footer_span' => 3,
+                'footer_date_parts' => self::reportFooterDateParts(),
+                'footer_name' => self::exportingUserName(),
+                'footer_receiver_text' => __('payments.export.footer.received_by'),
                 'filename' => OfficialReport::filename(__('payments.export.title'), 'pdf'),
                 'filename_fallback' => OfficialReport::filename(__('payments.export.title'), 'pdf', 'payment-records'),
             ],

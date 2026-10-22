@@ -8,6 +8,7 @@ use App\Filament\Admin\Resources\Payments\Tables\PaymentsTable;
 use App\Models\Payment;
 use App\Models\Role;
 use App\Models\User;
+use App\Support\LocalizedDate;
 use App\Support\TablePdfExporter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -116,16 +117,46 @@ class PaymentReceivedByTest extends TestCase
         $reportSheet = new ReflectionMethod(PaymentsTable::class, 'reportSheet');
         $sheet = $reportSheet->invoke(null, [$theirs->load(['receivedBy', 'user'])]);
         $sheetRows = $sheet['rows'];
-        $footerRow = end($sheetRows);
-        $this->assertSame('អ្នកទទួល', $footerRow[8]);
+        $footerNameRow = end($sheetRows);
+        $footerLabelRow = $sheetRows[count($sheetRows) - 2];
+        $footerDateRow = $sheetRows[count($sheetRows) - 3];
+        $this->assertSame('Admin User', $footerNameRow[8]);
+        $this->assertSame('អ្នកទទួល', $footerLabelRow[1]);
+        $this->assertSame('អ្នកប្រគល់', $footerLabelRow[8]);
+        $this->assertStringContainsString('រាជធានីភ្នំពេញ ថ្ងៃទី ', $footerDateRow[8]);
+        $this->assertStringContainsString(' ខែ ', $footerDateRow[8]);
+        $this->assertStringContainsString(' ឆ្នាំ ', $footerDateRow[8]);
+
+        $worksheetXml = (new ReflectionMethod(PaymentsTable::class, 'worksheetXml'))
+            ->invoke(null, $sheetRows, [], $sheet['options']);
+        $this->assertStringContainsString('<mergeCell ref="I17:K17"/>', $worksheetXml);
+        $this->assertStringContainsString('<t>អ្នកទទួល</t>', $worksheetXml);
+        $this->assertStringContainsString('<t>អ្នកប្រគល់</t>', $worksheetXml);
+        $this->assertStringContainsString('<t>Admin User</t>', $worksheetXml);
+        $this->assertStringContainsString('<rPr><b/></rPr><t xml:space="preserve">' . LocalizedDate::formalDayMonthYearParts(now())['day'] . '</t>', $worksheetXml);
 
         $pdfTemplate = new ReflectionMethod(TablePdfExporter::class, 'paymentRecordsHtml');
         $pdfHtml = $pdfTemplate->invoke(null, array_fill(0, 11, 'Column'), [], 'Payments', [
-            'footer_text' => 'អ្នកទទួល',
+            'footer_text' => 'អ្នកប្រគល់',
             'footer_column' => 9,
+            'footer_span' => 3,
+            'footer_date_parts' => [
+                ['text' => 'រាជធានីភ្នំពេញ'],
+                ['text' => ' ថ្ងៃទី '],
+                ['text' => '២២', 'bold' => true],
+                ['text' => ' ខែ '],
+                ['text' => 'តុលា', 'bold' => true],
+                ['text' => ' ឆ្នាំ '],
+                ['text' => '២០២៦', 'bold' => true],
+            ],
+            'footer_name' => 'Admin User',
+            'footer_receiver_text' => 'អ្នកទទួល',
         ]);
-        $this->assertStringContainsString('>អ្នកទទួល</div>', $pdfHtml);
-        $this->assertStringContainsString('margin-left: 72.727272727273%', $pdfHtml);
+        $this->assertStringContainsString('>អ្នកទទួល</td>', $pdfHtml);
+        $this->assertStringContainsString('>អ្នកប្រគល់</div>', $pdfHtml);
+        $this->assertStringContainsString('>Admin User</div>', $pdfHtml);
+        $this->assertStringContainsString('រាជធានីភ្នំពេញ ថ្ងៃទី <strong class="report-date-bold">២២</strong> ខែ <strong class="report-date-bold">តុលា</strong> ឆ្នាំ <strong class="report-date-bold">២០២៦</strong>', $pdfHtml);
+        $this->assertStringContainsString('width: 27.272727272727%', $pdfHtml);
         $this->assertStringContainsString('font-family: khmermuol, khmerbattambang, sans-serif; font-size: 10pt; font-weight: bold;', $pdfHtml);
     }
 

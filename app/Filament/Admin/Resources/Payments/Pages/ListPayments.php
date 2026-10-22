@@ -7,7 +7,6 @@ use App\Filament\Admin\Resources\Payments\Tables\PaymentsTable;
 use App\Support\AuditLogger;
 use App\Support\FilamentActionPermissions;
 use Filament\Actions\Action;
-use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 
 class ListPayments extends ListRecords
@@ -135,15 +134,6 @@ class ListPayments extends ListRecords
         )
             ->with(['user', 'form', 'receivedBy'])
             ->get();
-
-        if ($records->isEmpty()) {
-            Notification::make()
-                ->title(__('payments.no_records_to_export'))
-                ->warning()
-                ->send();
-
-            return null;
-        }
 
         AuditLogger::log(
             action: 'downloaded',

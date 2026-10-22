@@ -330,6 +330,7 @@ class PaymentTotalsTest extends TestCase
             $this->assertStringContainsString('Total Records', $pdfHtml);
             $this->assertStringContainsString('Date: 09-Sep-2026', $pdfHtml);
             $this->assertStringContainsString('Name Latin', $pdfHtml);
+            $this->assertStringNotContainsString('Payment Status', $pdfHtml);
             $this->assertStringNotContainsString('Candidate ID', $pdfHtml);
             $this->assertStringNotContainsString('Summary', $pdfHtml);
             $this->assertStringNotContainsString('Prepared by', $pdfHtml);
@@ -457,6 +458,25 @@ class PaymentTotalsTest extends TestCase
         } finally {
             app()->setLocale($originalLocale);
         }
+    }
+
+    public function test_pdf_export_allows_empty_results_and_uses_excel_report_columns(): void
+    {
+        $user = $this->createPaymentViewer();
+        $downloadPermission = Permission::query()->create([
+            'name' => 'DownloadPdf:Payment',
+            'guard_name' => 'web',
+        ]);
+        $user->givePermissionTo($downloadPermission);
+
+        Pdf::shouldReceive('loadHTML')
+            ->once()
+            ->withArgs(fn (string $html): bool => str_contains($html, __('payments.export.columns.no'))
+                && ! str_contains($html, __('payments.table.status_payt')))
+            ->andReturn(\Mockery::mock(['output' => '%PDF']));
+
+        Livewire::test(ListPayments::class)
+            ->call('downloadPdfFromTableSelection');
     }
 
     private function invokeProtectedStatic(string $class, string $method, array $arguments): mixed
