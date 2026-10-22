@@ -8,6 +8,7 @@ use App\Support\CustomFormEntryFiles;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormField;
+use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Tables\CustomFormEntriesTable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -76,7 +77,7 @@ class ProtectedFileAccessTest extends TestCase
 
         CustomFormField::query()->create([
             'custom_form_id' => $form->getKey(),
-            'name' => 'documents',
+            'name' => 'file',
             'type' => 'file_upload',
             'required' => false,
             'options' => [],
@@ -90,20 +91,38 @@ class ProtectedFileAccessTest extends TestCase
             'options' => [],
             'sort' => 2,
         ]);
+        CustomFormField::query()->create([
+            'custom_form_id' => $form->getKey(),
+            'name' => 'File2',
+            'type' => 'file_upload',
+            'required' => false,
+            'options' => [],
+            'sort' => 3,
+        ]);
+
+        $columnsMethod = new \ReflectionMethod(CustomFormEntriesTable::class, 'getColumns');
+        $this->actingAs($candidate);
+        $columns = $columnsMethod->invoke(null, (string) $form->getKey());
+        $uploadedFilesColumn = collect($columns)->first(
+            fn ($column): bool => $column->getName() === 'uploaded_files'
+        );
+        $this->assertNull($uploadedFilesColumn);
 
         Storage::disk('private')->put('custom-form-uploads/application.docx', 'word-data');
         Storage::disk('private')->put('custom-form-uploads/notes.pdf', 'pdf-data');
         Storage::disk('private')->put('custom-form-uploads/photo.png', 'image-data');
+        Storage::disk('private')->put('custom-form-uploads/other.docx', 'other-word-data');
 
         $entry = CustomFormEntry::query()->create([
             'custom_form_id' => $form->getKey(),
             'created_by' => $candidate->getKey(),
             'data' => [
-                'documents' => [
+                'file' => [
                     'custom-form-uploads/application.docx',
                     'custom-form-uploads/notes.pdf',
                 ],
                 'photo' => 'custom-form-uploads/photo.png',
+                'File2' => 'custom-form-uploads/other.docx',
             ],
         ]);
 
@@ -111,7 +130,7 @@ class ProtectedFileAccessTest extends TestCase
 
         $this->assertSame(
             'Word document (.docx), PDF document (.pdf)',
-            app(CustomFormEntryFiles::class)->displayLabel($entry->data['documents']),
+            app(CustomFormEntryFiles::class)->displayLabel($entry->data['file']),
         );
 
         $firstResponse = $this->actingAs($candidate)
@@ -148,10 +167,28 @@ class ProtectedFileAccessTest extends TestCase
             ->assertHeader('Content-Disposition', 'attachment; filename=notes.pdf');
         $this->assertSame('pdf-data', $secondResponse->streamedContent());
 
+        $zipResponse = $this->actingAs($candidate)
+            ->get(route('protected.custom-form-entry-files-zip', ['entry' => $entry]));
+        $zipResponse->assertOk();
+        $this->assertStringContainsString(
+            $candidate->getFilamentName().'.zip',
+            (string) $zipResponse->headers->get('Content-Disposition'),
+        );
+
+        $archive = new \ZipArchive();
+        $archivePath = $zipResponse->getFile()->getPathname();
+        $this->assertTrue($archive->open($archivePath) === true);
+        $this->assertSame('word-data', $archive->getFromName('file.docx'));
+        $this->assertSame('pdf-data', $archive->getFromName('file.pdf'));
+        $this->assertSame('other-word-data', $archive->getFromName('File2.docx'));
+        $this->assertFalse($archive->locateName('photo.png') !== false);
+        $archive->close();
+        @unlink($archivePath);
+
         $this->actingAs($candidate)
             ->get(route('protected.custom-form-entry-document', [
                 'entry' => $entry,
-                'fileIndex' => 2,
+                'fileIndex' => 3,
             ]))
             ->assertNotFound();
     }

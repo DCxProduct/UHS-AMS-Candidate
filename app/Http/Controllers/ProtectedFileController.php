@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ProtectedFileController extends Controller
@@ -58,6 +59,72 @@ class ProtectedFileController extends Controller
             app(CustomFormEntryFiles::class)->filename($file['path']),
             inline: $request->boolean('inline'),
         );
+    }
+
+    public function customFormEntryFilesZip(CustomFormEntry $entry): BinaryFileResponse
+    {
+        $this->authorizeEntryFileAccess($entry);
+
+        $fileService = app(CustomFormEntryFiles::class);
+        $files = $fileService->files($entry);
+        abort_if($files === [], 404);
+
+        $zipPath = storage_path('app/review-uploaded-files-'.$entry->getKey().'-'.Str::uuid().'.zip');
+        $zip = new \ZipArchive();
+        abort_unless($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true, 500);
+
+        $usedNames = [];
+        $addedFiles = 0;
+
+        foreach ($files as $file) {
+            $stream = $file['disk']->readStream($file['path']);
+
+            if (! is_resource($stream)) {
+                continue;
+            }
+
+            $contents = stream_get_contents($stream);
+            fclose($stream);
+
+            if ($contents === false) {
+                continue;
+            }
+
+            $filename = $fileService->archiveFilename($file['field_name'], $file['path']);
+            $archiveName = $filename;
+            $suffix = 2;
+
+            while (isset($usedNames[strtolower($archiveName)])) {
+                $extension = pathinfo($filename, PATHINFO_EXTENSION);
+                $basename = pathinfo($filename, PATHINFO_FILENAME);
+                $archiveName = $basename.' ('.$suffix++.')'.($extension !== '' ? '.'.$extension : '');
+            }
+
+            $usedNames[strtolower($archiveName)] = true;
+
+            if ($zip->addFromString($archiveName, $contents)) {
+                $addedFiles++;
+            }
+        }
+
+        $zip->close();
+
+        if ($addedFiles === 0) {
+            @unlink($zipPath);
+            abort(404);
+        }
+
+        $actor = auth()->user();
+        $displayName = method_exists($actor, 'getFilamentName')
+            ? $actor->getFilamentName()
+            : (string) data_get($actor, 'name', 'User');
+        $safeName = str_replace(['/', '\\'], '-', trim($displayName));
+        $safeName = preg_replace('/[\x00-\x1F\x7F]/u', '', $safeName) ?? '';
+        $safeName = trim($safeName, " .\t\n\r\0\x0B");
+        $downloadName = ($safeName !== '' ? $safeName : 'User').'.zip';
+
+        return response()->download($zipPath, $downloadName)
+            ->deleteFileAfterSend(true);
     }
 
     protected function authorizeEntryFileAccess(CustomFormEntry $entry): void

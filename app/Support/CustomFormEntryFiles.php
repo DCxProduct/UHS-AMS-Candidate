@@ -9,9 +9,9 @@ use Illuminate\Support\Str;
 
 class CustomFormEntryFiles
 {
-    public function files(CustomFormEntry $entry): array
+    public function fieldNames(CustomFormEntry $entry): array
     {
-        $fieldNames = CustomFormField::query()
+        return CustomFormField::query()
             ->where('custom_form_id', $entry->custom_form_id)
             ->whereIn('type', ['file', 'file_upload', 'fileupload'])
             ->pluck('name')
@@ -19,6 +19,11 @@ class CustomFormEntryFiles
             ->map(fn ($name): string => (string) $name)
             ->values()
             ->all();
+    }
+
+    public function files(CustomFormEntry $entry): array
+    {
+        $fieldNames = $this->fieldNames($entry);
 
         if ($fieldNames === []) {
             return [];
@@ -26,25 +31,20 @@ class CustomFormEntryFiles
 
         $data = is_array($entry->data) ? $entry->data : [];
         $paths = [];
-
-        foreach ($fieldNames as $fieldName) {
-            $this->collectFilePaths(data_get($data, $fieldName), $paths);
-        }
-
-        $this->collectNestedFieldPaths($data, $fieldNames, $paths);
+        $this->collectNamedFieldPaths($data, $fieldNames, $paths);
 
         $files = [];
         $seenPaths = [];
 
-        foreach ($paths as $path) {
-            $resolved = $this->resolveFile((string) $path);
+        foreach ($paths as $file) {
+            $resolved = $this->resolveFile((string) $file['path']);
 
             if ($resolved === null || isset($seenPaths[$resolved['path']])) {
                 continue;
             }
 
             $seenPaths[$resolved['path']] = true;
-            $files[] = $resolved;
+            $files[] = ['field_name' => $file['field_name'], ...$resolved];
         }
 
         return $files;
@@ -77,11 +77,28 @@ class CustomFormEntryFiles
         return route('protected.custom-form-entry-document', $parameters);
     }
 
+    public function protectedZipUrl(CustomFormEntry $entry): ?string
+    {
+        if ($this->files($entry) === []) {
+            return null;
+        }
+
+        return route('protected.custom-form-entry-files-zip', ['entry' => $entry]);
+    }
+
     public function filename(string $path): string
     {
         $filename = basename($path);
 
         return preg_replace('/[^A-Za-z0-9._ -]/', '_', $filename) ?: 'document';
+    }
+
+    public function archiveFilename(string $fieldName, string $path): string
+    {
+        $fieldName = preg_replace('/[^A-Za-z0-9._ -]/', '_', trim($fieldName)) ?: 'document';
+        $extension = pathinfo($path, PATHINFO_EXTENSION);
+
+        return $fieldName.($extension !== '' ? '.'.strtolower($extension) : '');
     }
 
     public function displayLabel(mixed $value): string
@@ -138,7 +155,7 @@ class CustomFormEntryFiles
         }
     }
 
-    protected function collectNestedFieldPaths(mixed $value, array $fieldNames, array &$paths): void
+    protected function collectNamedFieldPaths(mixed $value, array $fieldNames, array &$paths): void
     {
         if (! is_array($value)) {
             return;
@@ -146,11 +163,17 @@ class CustomFormEntryFiles
 
         foreach ($value as $key => $nestedValue) {
             if (in_array((string) $key, $fieldNames, true)) {
-                $this->collectFilePaths($nestedValue, $paths);
+                $fieldPaths = [];
+                $this->collectFilePaths($nestedValue, $fieldPaths);
+
+                foreach ($fieldPaths as $path) {
+                    $paths[] = ['field_name' => (string) $key, 'path' => $path];
+                }
+
                 continue;
             }
 
-            $this->collectNestedFieldPaths($nestedValue, $fieldNames, $paths);
+            $this->collectNamedFieldPaths($nestedValue, $fieldNames, $paths);
         }
     }
 

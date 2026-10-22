@@ -25,6 +25,8 @@ return [
     'review_note_placeholder' => 'បញ្ចូលមូលហេតុបដិសេធ ឬកំណត់សម្គាល់',
     'reviewed_at' => 'បានពិនិត្យនៅ',
     'submitted_at' => 'បានដាក់ស្នើនៅ',
+    'uploaded_files' => 'ឯកសារដែលបានបញ្ចូល',
+    'download_files_count' => 'ទាញយក :count',
 
     'details_title' => 'ព័ត៌មានលម្អិតពាក្យស្នើសុំ',
     'application_information' => 'ព័ត៌មានពាក្យស្នើសុំ',
@@ -62,7 +64,7 @@ return [
     'actions' => [
         'view_details' => 'មើលលម្អិត',
         'view_data' => 'មើលទិន្នន័យ',
-        'view_workflow' => 'មើល',
+        'view_workflow' => 'មើលដំណើរការ',
         'accept' => 'ទទួលយក',
         'reject' => 'បដិសេធ',
         'close' => 'បិទ',

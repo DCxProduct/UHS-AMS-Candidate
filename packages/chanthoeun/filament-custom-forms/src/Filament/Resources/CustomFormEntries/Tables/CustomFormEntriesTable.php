@@ -319,12 +319,17 @@ class CustomFormEntriesTable
         $targetFormIds = $formId ? [(int) $formId] : [];
 
         $additionalColumns = [];
+        $hasFileUploadFields = false;
         if (!empty($targetFormIds)) {
             $fields = \Chanthoeun\FilamentCustomForms\Models\CustomFormField::query()
                 ->whereIn('custom_form_id', $targetFormIds)
                 ->whereNotIn('type', ['section', 'grid', 'fieldset', 'repeater', 'wizard', 'info'])
                 ->orderBy('sort')
                 ->get();
+
+            $hasFileUploadFields = $fields->contains(
+                fn ($field): bool => self::isDocumentFieldType((string) $field->type)
+            );
 
             $imageFieldKeys = $fields
                 ->filter(fn ($field): bool => self::isImageFieldType((string) $field->type))
@@ -348,6 +353,10 @@ class CustomFormEntriesTable
             foreach ($fields as $field) {
                 $key = (string) $field->name;
                 if (blank($key) || in_array($key, $processedKeys, true) || in_array($key, $imageFieldKeys, true)) {
+                    continue;
+                }
+
+                if (self::isDocumentFieldType((string) $field->type)) {
                     continue;
                 }
 
@@ -497,6 +506,23 @@ class CustomFormEntriesTable
             ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
             ->color('gray')
             ->toggleable(isToggledHiddenByDefault: false);
+
+        if ($hasFileUploadFields && self::currentPanelIsAdmin()) {
+            $columns[] = TextColumn::make('uploaded_files')
+                ->label(__('candidate_entrance_statistics.uploaded_files'))
+                ->badge()
+                ->color('info')
+                ->getStateUsing(function ($record): ?string {
+                    $count = count(app(CustomFormEntryFiles::class)->files($record));
+
+                    return $count > 0
+                        ? __('candidate_entrance_statistics.download_files_count', ['count' => $count])
+                        : null;
+                })
+                ->url(fn ($record): ?string => app(CustomFormEntryFiles::class)->protectedZipUrl($record))
+                ->placeholder('-')
+                ->toggleable(isToggledHiddenByDefault: false);
+        }
 
         return $columns;
     }
