@@ -13,8 +13,8 @@ return [
     'no_tracking_title' => 'មិនមានទិន្នន័យលើ Dashboard',
     'no_tracking_description' => 'មិនមានទិន្នន័យតាមដានលើ Dashboard សម្រាប់តួនាទីនេះទេ។',
 
-    'total_students' => 'និស្សិតសរុប',
-    'active_students' => 'និស្សិតសកម្ម',
+    'total_students' => 'បេក្ខជនសរុប',
+    'active_students' => 'បេក្ខជនសកម្ម',
     'national_examination_requests' => 'សំណើប្រឡងថ្នាក់ជាតិ',
     'pending_reviews' => 'រង់ចាំការពិនិត្យ',
     'total_requests' => 'សំណើសរុប',
@@ -47,7 +47,7 @@ return [
     'exam_result' => 'បេក្ខជនជាប់ប្រឡងចូលជ័យលាភី',
     'overall_progress' => 'វឌ្ឍនភាពសរុប',
 
-    'profile_description' => 'ព័ត៌មានប្រវត្តិរូបនិស្សិតរបស់អ្នក',
+    'profile_description' => 'ព័ត៌មានប្រវត្តិរូបបេក្ខជនរបស់អ្នក',
     'national_examination_description' => 'សំណើប្រឡងថ្នាក់ជាតិរបស់អ្នក',
     'exam_result_description' => 'លទ្ធផលផ្ទៀងផ្ទាត់ចុងក្រោយ',
     'workflow_progress_description' => 'វឌ្ឍនភាពតាមលំហូរការងាររបស់អ្នក',

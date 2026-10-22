@@ -68,7 +68,7 @@ return [
             'custom_forms' => 'ទម្រង់ផ្ទាល់ខ្លួន',
             'custom_form_entry' => 'ទិន្នន័យទម្រង់',
             'custom_form_entries' => 'ទិន្នន័យទម្រង់',
-            'student_dynamic_form' => 'ទម្រង់បែបបទនិស្សិត',
+            'student_dynamic_form' => 'ទម្រង់បែបបទបេក្ខជន',
             'candidate_entrance_statistics' => 'ស្ថិតិបេក្ខជនប្រឡងចូល',
             'review_applications' => 'សំណើរបេក្ខជន',
             'candidate_requested' => 'សំណើរបេក្ខជន',

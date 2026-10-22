@@ -421,7 +421,7 @@ class WorkflowDemoSeeder extends Seeder
     <h1 style="text-align: center;">ពាក្យស្នើសុំ</h1>
     <h2 style="text-align: center;">Application Review</h2>
     <hr>
-    <p><strong>លេខសម្គាល់និស្សិត៖</strong> {{ student_id }}</p>
+    <p><strong>លេខសម្គាល់បេក្ខជន៖</strong> {{ student_id }}</p>
     <p><strong>នាមត្រកូល៖</strong> {{ last_name_kh }} &nbsp;&nbsp; <strong>នាមខ្លួន៖</strong> {{ first_name_kh }}</p>
     <p><strong>Latin Name:</strong> {{ first_name_en }} {{ last_name_en }}</p>
     <p><strong>ភេទ៖</strong> {{ gender }} &nbsp;&nbsp; <strong>ថ្ងៃខែឆ្នាំកំណើត៖</strong> {{ date_of_birth }}</p>
@@ -665,7 +665,7 @@ HTML;
         }
 
         $fields = [
-            ['student_id', 'Student ID', 'text_input', true],
+            ['student_id', 'Candidate ID', 'text_input', true],
             ['first_name_kh', 'First Name', 'text_input', true],
             ['last_name_kh', 'Last Name', 'text_input', true],
             ['first_name_en', 'Latin First Name', 'text_input', true],

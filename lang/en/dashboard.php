@@ -13,8 +13,8 @@ return [
     'no_tracking_title' => 'No dashboard data',
     'no_tracking_description' => 'There is no dashboard tracking data for this role.',
 
-    'total_students' => 'Total Students',
-    'active_students' => 'Active Students',
+    'total_students' => 'Total Candidates',
+    'active_students' => 'Active Candidates',
     'national_examination_requests' => 'National Examination Requests',
     'pending_reviews' => 'Pending Reviews',
     'total_requests' => 'Total Requests',
@@ -47,7 +47,7 @@ return [
     'exam_result' => 'Passed Entrance Exam',
     'overall_progress' => 'Overall Progress',
 
-    'profile_description' => 'Your student profile information',
+    'profile_description' => 'Your candidate profile information',
     'national_examination_description' => 'Your national examination request',
     'exam_result_description' => 'Final exam verification result',
     'workflow_progress_description' => 'Your workflow completion',

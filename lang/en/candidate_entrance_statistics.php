@@ -14,8 +14,8 @@ return [
     'breadcrumb_list' => 'List',
 
     'id' => 'ID',
-    'student' => 'Student',
-    'student_id' => 'Student ID',
+    'student' => 'Candidate',
+    'student_id' => 'Candidate ID',
     'first_name_en' => 'Latin First Name',
     'last_name_en' => 'Latin Last Name',
     'first_name_kh' => 'First Name',
@@ -77,7 +77,7 @@ return [
     'notifications' => [
         'enrollment_submitted_title' => 'New Enrollment Submitted',
         'enrollment_submitted_body' => ':student submitted an enrollment application. Please review the document.',
-        'unknown_student' => 'Unknown student',
+        'unknown_student' => 'Unknown candidate',
 
         'student_accepted_title' => 'Exam Result: Passed',
         'student_accepted_body' => 'Hello :student, your exam result is Passed.',
@@ -86,9 +86,9 @@ return [
         'no_reject_note' => 'No reason provided',
 
         'admin_accept_success_title' => 'Application approved',
-        'admin_accept_success_body' => 'The student has been notified.',
+        'admin_accept_success_body' => 'The candidate has been notified.',
         'admin_reject_success_title' => 'Application rejected',
-        'admin_reject_success_body' => 'The student has been notified.',
+        'admin_reject_success_body' => 'The candidate has been notified.',
         'admin_send_back_success_title' => 'Application sent back',
         'admin_resubmitted_title' => 'Application resubmitted',
         'admin_resubmitted_body' => ':student resubmitted :form after correction. Please review again.',
