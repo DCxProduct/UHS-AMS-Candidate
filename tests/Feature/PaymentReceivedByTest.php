@@ -105,6 +105,7 @@ class PaymentReceivedByTest extends TestCase
     public function test_the_export_has_a_cashier_column(): void
     {
         [, $theirs] = $this->paymentsByBothOfficers();
+        $this->admin->forceFill(['name_latin' => 'SITHAN VIRATANA'])->save();
         $this->actingAs($this->admin);
 
         $exportRow = new ReflectionMethod(PaymentsTable::class, 'exportRow');
@@ -120,7 +121,7 @@ class PaymentReceivedByTest extends TestCase
         $footerNameRow = end($sheetRows);
         $footerLabelRow = $sheetRows[count($sheetRows) - 2];
         $footerDateRow = $sheetRows[count($sheetRows) - 3];
-        $this->assertSame('Admin User', $footerNameRow[8]);
+        $this->assertSame('SITHAN VIRATANA', $footerNameRow[8]);
         $this->assertSame('អ្នកទទួល', $footerLabelRow[1]);
         $this->assertSame('អ្នកប្រគល់', $footerLabelRow[8]);
         $this->assertStringContainsString('រាជធានីភ្នំពេញ ថ្ងៃទី ', $footerDateRow[8]);
@@ -132,7 +133,7 @@ class PaymentReceivedByTest extends TestCase
         $this->assertStringContainsString('<mergeCell ref="I17:K17"/>', $worksheetXml);
         $this->assertStringContainsString('<t>អ្នកទទួល</t>', $worksheetXml);
         $this->assertStringContainsString('<t>អ្នកប្រគល់</t>', $worksheetXml);
-        $this->assertStringContainsString('<t>Admin User</t>', $worksheetXml);
+        $this->assertStringContainsString('<t>SITHAN VIRATANA</t>', $worksheetXml);
         $this->assertStringContainsString('<rPr><b/></rPr><t xml:space="preserve">' . LocalizedDate::formalDayMonthYearParts(now())['day'] . '</t>', $worksheetXml);
 
         $pdfTemplate = new ReflectionMethod(TablePdfExporter::class, 'paymentRecordsHtml');
@@ -149,12 +150,12 @@ class PaymentReceivedByTest extends TestCase
                 ['text' => ' ឆ្នាំ '],
                 ['text' => '២០២៦', 'bold' => true],
             ],
-            'footer_name' => 'Admin User',
+            'footer_name' => 'SITHAN VIRATANA',
             'footer_receiver_text' => 'អ្នកទទួល',
         ]);
         $this->assertStringContainsString('>អ្នកទទួល</td>', $pdfHtml);
         $this->assertStringContainsString('>អ្នកប្រគល់</div>', $pdfHtml);
-        $this->assertStringContainsString('>Admin User</div>', $pdfHtml);
+        $this->assertStringContainsString('>SITHAN VIRATANA</div>', $pdfHtml);
         $this->assertStringContainsString('រាជធានីភ្នំពេញ ថ្ងៃទី <strong class="report-date-bold">២២</strong> ខែ <strong class="report-date-bold">តុលា</strong> ឆ្នាំ <strong class="report-date-bold">២០២៦</strong>', $pdfHtml);
         $this->assertStringContainsString('width: 27.272727272727%', $pdfHtml);
         $this->assertStringContainsString('font-family: khmermuol, khmerbattambang, sans-serif; font-size: 10pt; font-weight: bold;', $pdfHtml);
