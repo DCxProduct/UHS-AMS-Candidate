@@ -71,7 +71,7 @@ return [
 
         'passed' => 'Pass',
         'failed' => 'Fail',
-        'edit_result' => 'Edit',
+        'edit_result' => 'Edit Result',
     ],
 
     'notifications' => [

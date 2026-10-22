@@ -3,12 +3,16 @@
 namespace Tests\Feature;
 
 use App\Filament\Admin\Resources\CandidateEntranceStatistics\CandidateEntranceStatisticResource;
+use App\Filament\Admin\Resources\CandidateEntranceStatistics\Tables\CandidateEntranceStatisticsTable;
+use App\Filament\Admin\Resources\CandidateExitStatistics\Tables\CandidateExitStatisticsTable;
+use App\Filament\Admin\Resources\ExamResults\Tables\ExamResultsTable;
 use App\Models\CandidateExitStatistic;
 use App\Models\SystemUser;
 use App\Models\User;
 use App\Support\CandidateTypeResolver;
 use App\Support\CandidateStatisticsSynchronizer;
 use App\Support\StatisticsMenuOptions;
+use App\Support\PassedResultMenuOptions;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -171,6 +175,79 @@ class CandidateStatisticsRoutingTest extends TestCase
                 ->whereKey($entryId)
                 ->exists(),
         );
+    }
+
+    public function test_editing_passed_entrance_and_exit_results_removes_them_from_passed_menus(): void
+    {
+        $entranceForm = CustomForm::query()->create([
+            'name' => json_encode(['en' => 'Entrance Form']),
+            'slug' => 'entrance-result-edit-form',
+            'is_active' => true,
+            'statistics_menu' => StatisticsMenuOptions::ENTRANCE_EXAM_STATISTICS,
+            'passed_result_menu' => PassedResultMenuOptions::EXAM_RESULTS,
+        ]);
+        $entranceId = DB::table('custom_form_entries')->insertGetId([
+            'custom_form_id' => $entranceForm->id,
+            'review_status' => 'passed',
+            'data' => json_encode([
+                'candidate_status' => 'passed',
+                'candidate_reviewed_at' => now()->toDateTimeString(),
+            ]),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $entranceEntry = CustomFormEntry::query()->findOrFail($entranceId);
+
+        CandidateEntranceStatisticsTable::markCandidatePending($entranceEntry);
+
+        $this->assertFalse(
+            ExamResultsTable::applyPassedResultMenuFilter(
+                CustomFormEntry::query(),
+                PassedResultMenuOptions::EXAM_RESULTS,
+            )->whereKey($entranceId)->exists(),
+        );
+        $this->assertDatabaseHas('custom_form_entries', [
+            'id' => $entranceId,
+            'data->candidate_status' => 'pending',
+            'data->candidate_reviewed_at' => null,
+        ]);
+
+        $exitForm = CustomForm::query()->create([
+            'name' => json_encode(['en' => 'Exit Form']),
+            'slug' => 'exit-result-edit-form',
+            'is_active' => true,
+            'statistics_menu' => StatisticsMenuOptions::EXIT_EXAM_STATISTICS,
+            'passed_result_menu' => PassedResultMenuOptions::EXIT_EXAM_RESULTS,
+        ]);
+        $exitId = DB::table('custom_form_entries')->insertGetId([
+            'custom_form_id' => $exitForm->id,
+            'review_status' => 'passed',
+            'data' => json_encode([
+                'candidate_status' => 'passed',
+                'candidate_reviewed_at' => now()->toDateTimeString(),
+            ]),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $exitEntry = CustomFormEntry::query()->findOrFail($exitId);
+        CandidateStatisticsSynchronizer::syncPassedEntry($exitEntry);
+        $exitStatistic = CandidateExitStatistic::query()
+            ->where('custom_form_entry_id', $exitId)
+            ->firstOrFail();
+
+        CandidateExitStatisticsTable::markCandidatePending($exitStatistic);
+
+        $this->assertFalse(
+            ExamResultsTable::applyPassedResultMenuFilter(
+                CustomFormEntry::query(),
+                PassedResultMenuOptions::EXIT_EXAM_RESULTS,
+            )->whereKey($exitId)->exists(),
+        );
+        $this->assertDatabaseHas('candidate_exit_statistics', [
+            'custom_form_entry_id' => $exitId,
+            'candidate_status' => 'pending',
+            'candidate_reviewed_at' => null,
+        ]);
     }
 
     public function test_exit_assignment_moves_pending_entry_to_exit_statistics(): void

@@ -44,6 +44,7 @@ class FilamentActionPermissions
             ],
             CandidateEntranceStatisticResource::class => [
                 'passed',
+                'edit_result',
                 'pending',
                 'bulk_passed',
                 'bulk_pending',
@@ -52,6 +53,7 @@ class FilamentActionPermissions
             ],
             CandidateExitStatisticResource::class => [
                 'passed',
+                'edit_result',
                 'pending',
                 'bulk_passed',
                 'bulk_pending',
@@ -213,6 +215,7 @@ class FilamentActionPermissions
             CandidateEntranceStatisticResource::class => [
                 'viewAny',
                 'passed',
+                'edit_result',
                 'pending',
                 'bulk_passed',
                 'bulk_pending',
@@ -254,6 +257,7 @@ class FilamentActionPermissions
             CandidateExitStatisticResource::class => [
                 'viewAny',
                 'passed',
+                'edit_result',
                 'pending',
                 'bulk_passed',
                 'bulk_pending',

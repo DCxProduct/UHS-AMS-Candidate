@@ -411,7 +411,9 @@ class WorkflowStageMessagesTest extends TestCase
         $entry = $this->entry('passed', ['candidate_status' => 'passed']);
         $this->pay($entry);
 
+        $this->assertFalse(CandidateEntranceStatisticsTable::hasStudentPassedNotification($entry));
         $this->assertTrue(CandidateEntranceStatisticsTable::notifyStudentReviewResult($entry, 'passed'));
+        $this->assertTrue(CandidateEntranceStatisticsTable::hasStudentPassedNotification($entry));
 
         $this->assertSame(['Your exam is coming.'], $this->student->notifications()->get()->pluck('data.body')->all());
     }
@@ -431,11 +433,13 @@ class WorkflowStageMessagesTest extends TestCase
         $entry = $this->entry('passed', ['candidate_status' => 'passed']);
         $this->pay($entry);
 
+        $this->assertFalse(CandidateEntranceStatisticsTable::hasStudentPassedNotification($entry));
         $this->assertTrue(CandidateEntranceStatisticsTable::notifyStudentReviewResult(
             record: $entry,
             status: 'passed',
             notificationStage: WorkflowStageType::Completed,
         ));
+        $this->assertTrue(CandidateEntranceStatisticsTable::hasStudentPassedNotification($entry));
 
         $this->assertSame(['Congratulations.'], $this->student->notifications()->get()->pluck('data.body')->all());
     }

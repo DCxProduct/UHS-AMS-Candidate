@@ -194,9 +194,6 @@ class ExamResultsTable
                         $record,
                         'passed',
                         WorkflowStageType::Completed,
-                    ) && WorkflowStageMessages::canCurrentUserHandleStage(
-                        $record,
-                        self::notificationStageForRecord($record, $resultMenu),
                     ))
                     ->action(function (CustomFormEntry $record, $livewire) use ($resultMenu): void {
                         FilamentActionPermissions::abortUnlessCan(self::notificationPermissionForResultMenu($resultMenu));
@@ -223,6 +220,7 @@ class ExamResultsTable
 
                         $livewire->dispatch('$refresh');
                     }),
+
             ])
             ->defaultSort('id', 'desc');
     }

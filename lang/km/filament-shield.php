@@ -16,6 +16,7 @@ return [
         'activate_account' => 'បើកដំណើរការគណនី',
         'deactivate_account' => 'បិទដំណើរការគណនី',
         'passed' => 'ជាប់',
+        'edit_result' => 'កែប្រែលទ្ធផល',
         'pending' => 'កំពុងរង់ចាំ',
         'bulk_passed' => 'ជាប់ជាក្រុម',
         'bulk_pending' => 'រង់ចាំជាក្រុម',

@@ -16,6 +16,7 @@ return [
         'activate_account' => 'Activate Account',
         'deactivate_account' => 'Deactivate Account',
         'passed' => 'Passed',
+        'edit_result' => 'Edit Result',
         'pending' => 'Pending',
         'bulk_passed' => 'Bulk Passed',
         'bulk_pending' => 'Bulk Pending',

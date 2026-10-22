@@ -51,7 +51,7 @@ return [
         ],
     ],
     'actions' => [
-        'edit' => 'Edit',
+        'edit' => 'Edit Result',
         'edit_result' => 'Edit Result',
         'delete' => 'Delete',
         'actions' => 'Actions',

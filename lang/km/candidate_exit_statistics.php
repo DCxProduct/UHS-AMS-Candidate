@@ -51,8 +51,8 @@ return [
         ],
     ],
     'actions' => [
-        'edit' => 'កែប្រែ',
-        'edit_result' => 'កែប្រែ',
+        'edit' => 'កែប្រែលទ្ធផល',
+        'edit_result' => 'កែប្រែលទ្ធផល',
         'delete' => 'លុប',
         'actions' => 'សកម្មភាព',
     ],

@@ -72,7 +72,7 @@ return [
 
         'passed' => 'ជាប់',
         'failed' => 'ធ្លាក់',
-        'edit_result' => 'កែប្រែ',
+        'edit_result' => 'កែប្រែលទ្ធផល',
     ],
 
     'notifications' => [
