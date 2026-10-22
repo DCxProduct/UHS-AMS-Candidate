@@ -14,8 +14,8 @@ return [
     'breadcrumb_list' => 'បញ្ជី',
 
     'id' => 'លេខសម្គាល់',
-    'student' => 'និស្សិត',
-    'student_id' => 'អត្តលេខនិស្សិត',
+    'student' => 'បេក្ខជន',
+    'student_id' => 'អត្តលេខបេក្ខជន',
     'first_name_en' => 'អក្សរឡាតាំងនាមត្រកូល',
     'last_name_en' => 'អក្សរឡាតាំងនាមខ្លួន',
     'first_name_kh' => 'នាមត្រកូល',
@@ -72,13 +72,13 @@ return [
 
         'passed' => 'ជាប់',
         'failed' => 'ធ្លាក់',
-        'edit_result' => 'កែប្រែ',
+        'edit_result' => 'កែប្រែលទ្ធផល',
     ],
 
     'notifications' => [
         'enrollment_submitted_title' => 'មានការដាក់ពាក្យចុះឈ្មោះថ្មី',
-        'enrollment_submitted_body' => ':student បានដាក់ពាក្យចុះឈ្មោះ។ សូមពិនិត្យឯកសារ។',
-        'unknown_student' => 'មិនស្គាល់និស្សិត',
+        'enrollment_submitted_body' => ':student បានដាក់ពាក្យស្នើសុំបេក្ខជន។ សូមពិនិត្យឯកសារ។',
+        'unknown_student' => 'មិនស្គាល់បេក្ខជន',
 
         'student_accepted_title' => 'លទ្ធផលប្រឡង៖ ជាប់',
         'student_accepted_body' => 'សួស្តី :student, លទ្ធផលប្រឡងរបស់អ្នកគឺ ជាប់។',
@@ -87,9 +87,9 @@ return [
         'no_reject_note' => 'មិនបានបញ្ជាក់មូលហេតុ',
 
         'admin_accept_success_title' => 'បានអនុម័តពាក្យស្នើសុំ',
-        'admin_accept_success_body' => 'បានជូនដំណឹងទៅនិស្សិតរួចរាល់។',
+        'admin_accept_success_body' => 'បានជូនដំណឹងទៅបេក្ខជនរួចរាល់។',
         'admin_reject_success_title' => 'បានបដិសេធពាក្យស្នើសុំ',
-        'admin_reject_success_body' => 'បានជូនដំណឹងទៅនិស្សិតរួចរាល់។',
+        'admin_reject_success_body' => 'បានជូនដំណឹងទៅបេក្ខជនរួចរាល់។',
         'admin_send_back_success_title' => 'បានបញ្ជូនពាក្យស្នើសុំត្រឡប់',
         'admin_resubmitted_title' => 'មានការដាក់ស្នើឡើងវិញ',
         'admin_resubmitted_body' => ':student បានដាក់ស្នើ :form ឡើងវិញបន្ទាប់ពីកែតម្រូវ។ សូមពិនិត្យម្តងទៀត។',

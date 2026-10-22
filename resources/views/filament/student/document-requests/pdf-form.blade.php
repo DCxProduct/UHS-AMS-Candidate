@@ -225,7 +225,7 @@
         gap: 5px;
     }
 
-    /* Box-letter input (for Student ID) */
+    /* Box-letter input (for Candidate ID) */
     .uhs-box-letter {
         height: 30px;
         border: 1.5px solid var(--uhs-line);
@@ -839,7 +839,7 @@
 
                 <div class="uhs-id-row">
                     <div class="uhs-id-label">
-                        {!! $pair('អត្តលេខនិស្សិត', 'UHS ID') !!}
+                        {!! $pair('អត្តលេខបេក្ខជន', 'UHS ID') !!}
                     </div>
                     <input class="uhs-box-letter" type="text" maxlength="10" wire:model.blur="data.student_id">
                 </div>
@@ -852,7 +852,7 @@
                            accept="image/png,image/jpeg,image/jpg,image/webp"
                            wire:model.live="data.photo">
                     @if ($photoUrl)
-                        <img src="{{ $photoUrl }}" alt="Student Photo">
+                        <img src="{{ $photoUrl }}" alt="Candidate Photo">
                     @else
                         <div class="uhs-photo-upload-text">
                             {{ $t('រូបថត', 'Photo') }}<br>
@@ -905,7 +905,7 @@
                 </td>
             </tr>
 
-            {{-- Row 2: Name Latin | Student Type --}}
+            {{-- Row 2: Name Latin | Candidate Type --}}
             <tr>
                 <td colspan="5">
                     <div class="uhs-label">{!! $pair('ឈ្មោះជាអក្សរឡាតាំង', 'Name in Latin BLOCK LETTER') !!}</div>
@@ -914,7 +914,7 @@
                 <td colspan="3">
                     <div class="uhs-student-type-options">
                         <label class="uhs-student-type-option">
-                            <span style="font-size: 10px">{!! $pair('ប្រភេទនិស្សិត', "Student's Type") !!}</span>
+                            <span style="font-size: 10px">{!! $pair('ប្រភេទបេក្ខជន', 'Candidate Type') !!}</span>
                         </label>
                         <label class="uhs-student-type-option">
                             <input type="radio" value="scholarship" wire:model.live="data.student_type">
@@ -982,7 +982,7 @@
                     <div class="uhs-label">{!! $pair('បច្ចុប្បន្នភាព', 'Current Status') !!}</div>
                 </td>
                 <td>
-                    <div class="uhs-label">{!! $pair('និស្សិតថ្នាក់ទី', 'Year') !!}</div>
+                    <div class="uhs-label">{!! $pair('បេក្ខជនថ្នាក់ទី', 'Year') !!}</div>
                     <input class="uhs-input" type="text" style="text-align:center;" wire:model.blur="data.current_year">
                 </td>
                 <td colspan="2">
@@ -1072,8 +1072,8 @@
         {{-- Section title --}}
         <div class="uhs-section-title">
             {!! $t(
-                'សូមគោរពជូន<br>ឯកឧត្តមសាកលវិទ្យាធិការ សាកលវិទ្យាល័យវិទ្យាសាស្ត្រសុខាភិបាល<br>តាមរយះ៖ ការិយាល័យចុះឈ្មោះ នឹង លិខិតបទដ្ឋាននិស្សិត',
-                'Respectfully submitted to<br>His Excellency Rector of the University of Health Sciences<br>Through: Registration Office and Student Regulations Office'
+                'សូមគោរពជូន<br>ឯកឧត្តមសាកលវិទ្យាធិការ សាកលវិទ្យាល័យវិទ្យាសាស្ត្រសុខាភិបាល<br>តាមរយះ៖ ការិយាល័យចុះឈ្មោះ នឹង លិខិតបទដ្ឋានបេក្ខជន',
+                'Respectfully submitted to<br>His Excellency Rector of the University of Health Sciences<br>Through: Registration Office and Candidate Regulations Office'
             ) !!}
         </div>
 
@@ -1194,7 +1194,7 @@
             <div>
                 <div style="margin-top:8px; font-size:11px; text-align:center; line-height:2;">
                     បានពិនិត្យនិងបញ្ជាក់ថា<br>
-                    និស្សិតបានបំពេញត្រឹមត្រូវនិងមានឯកសារភ្ជាប់គ្រប់គ្រាន់<br>
+                    បេក្ខជនបានបំពេញត្រឹមត្រូវនិងមានឯកសារភ្ជាប់គ្រប់គ្រាន់<br>
                     <div class="uhs-signature-date-line">
                         <span>ថ្ងៃទី</span>
                         <input class="uhs-inline-input is-xs" type="text" wire:model.blur="data.received_day">
@@ -1207,7 +1207,7 @@
                 </div>
             </div>
 
-            {{-- Right: student signature --}}
+            {{-- Right: candidate signature --}}
             <div class="uhs-signature">
                 <div class="uhs-signature-date-line">
                     <span>រាជធានីភ្នំពេញ</span>
@@ -1225,7 +1225,7 @@
 
         {{-- Office section --}}
         <div class="uhs-office">
-            <div class="uhs-office-title">សូមបំពេញផ្នែកនេះនៅពេលនិស្សិតមកទទួលយកឯកសារស្នើសុំ</div>
+            <div class="uhs-office-title">សូមបំពេញផ្នែកនេះនៅពេលបេក្ខជនមកទទួលយកឯកសារស្នើសុំ</div>
 
             <div class="uhs-office-grid">
                 <div class="uhs-office-left">
@@ -1323,7 +1323,7 @@
             </tr>
             <tr>
                 <td>២</td>
-                <td class="uhs-doc-type">{!! $t('រូបថត 4x6 <small style="font-style: italic">( មានសរសេរឈ្មោះ និង អត្តលេខនិស្សិតខាងខ្នងរូបថត និង សូមអានការណែនាំអំពីរូបថតនៅខាងក្រោម )</small>', '4x6 Photo <small style="font-style: italic">(write name and UHS ID on the back; read photo instructions below)</small>') !!}</td>
+                <td class="uhs-doc-type">{!! $t('រូបថត 4x6 <small style="font-style: italic">( មានសរសេរឈ្មោះ និង អត្តលេខបេក្ខជនខាងខ្នងរូបថត និង សូមអានការណែនាំអំពីរូបថតនៅខាងក្រោម )</small>', '4x6 Photo <small style="font-style: italic">(write name and UHS ID on the back; read photo instructions below)</small>') !!}</td>
                 <td>{{ $t('៦ សន្លឹក', '6 photos') }}</td>
                 <td class="uhs-page2-shade"></td>
                 <td><span class="uhs-page2-check">✓</span></td>
@@ -1422,8 +1422,8 @@
 
         <div class="uhs-page2-footnotes">
             {!! $t(
-                'កំណត់សម្គាល់៖<br>(ក) សម្រាប់តែនិស្សិតដែលចូលរៀនដោយមិនឆ្លងកាត់ការប្រឡងថ្នាក់ជាតិប៉ុណ្ណោះ<br>(ខ) ភ្ជាប់មកមួយណាក៏បាន<br>(គ) សម្រាប់តែការសុំព្រឹត្តិបត្រពិន្ទុ ឬ អតីតនិស្សិតដែលសុំលិខិតបញ្ជាក់ការសិក្សា ប៉ុន្តែពុំមានរូបថតក្នុងប្រព័ន្ធទិន្នន័យបច្ចុប្បន្នរបស់សវស។',
-                'Notes:<br>(a) Only for students admitted without passing the national examination.<br>(b) Attach any one of the listed documents.<br>(c) Only for transcript requests or former students requesting academic confirmation when no current photo exists in the UHS database.'
+                'កំណត់សម្គាល់៖<br>(ក) សម្រាប់តែបេក្ខជនដែលចូលរៀនដោយមិនឆ្លងកាត់ការប្រឡងថ្នាក់ជាតិប៉ុណ្ណោះ<br>(ខ) ភ្ជាប់មកមួយណាក៏បាន<br>(គ) សម្រាប់តែការសុំព្រឹត្តិបត្រពិន្ទុ ឬ អតីតបេក្ខជនដែលសុំលិខិតបញ្ជាក់ការសិក្សា ប៉ុន្តែពុំមានរូបថតក្នុងប្រព័ន្ធទិន្នន័យបច្ចុប្បន្នរបស់សវស។',
+                'Notes:<br>(a) Only for candidates admitted without passing the national examination.<br>(b) Attach any one of the listed documents.<br>(c) Only for transcript requests or former candidates requesting academic confirmation when no current photo exists in the UHS database.'
             ) !!}
         </div>
 
@@ -1470,7 +1470,7 @@
             </tr>
             <tr>
                 <td>៥</td>
-                <td class="uhs-price-doc">{!! $t('សុំធ្វើបណ្ណសម្គាល់ខ្លួននិស្សិតឡើងវិញ <small>(បាត់ ឬ ខូច)</small><br><small>(បណ្ណសម្គាល់ខ្លួននិស្សិត ធ្វើជូនដោយឥតគិតថ្លៃ នៅពេលចុះឈ្មោះចូលរៀនរៀងរាល់ដើមឆ្នាំសិក្សា)</small>', 'Student ID card replacement <small>(lost or damaged)</small><br><small>(Student ID cards are issued free of charge at registration each academic year)</small>') !!}</td>
+                <td class="uhs-price-doc">{!! $t('សុំធ្វើបណ្ណសម្គាល់ខ្លួនបេក្ខជនឡើងវិញ <small>(បាត់ ឬ ខូច)</small><br><small>(បណ្ណសម្គាល់ខ្លួនបេក្ខជន ធ្វើជូនដោយឥតគិតថ្លៃ នៅពេលចុះឈ្មោះចូលរៀនរៀងរាល់ដើមឆ្នាំសិក្សា)</small>', 'Candidate ID card replacement <small>(lost or damaged)</small><br><small>(Candidate ID cards are issued free of charge at registration each academic year)</small>') !!}</td>
                 <td>{{ $t('១ ច្បាប់', '1 copy') }}</td>
                 <td colspan="2">{{ $t('១០,០០០ រៀល', '10,000 Riel') }}</td>
             </tr>

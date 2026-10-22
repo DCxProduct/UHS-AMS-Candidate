@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Resources\CandidateExitStatistics\Tables;
 
 use App\Enums\WorkflowStageType;
 use App\Filament\Admin\Resources\CandidateExitStatistics\CandidateExitStatisticResource;
+use App\Filament\Admin\Resources\CandidateEntranceStatistics\Tables\CandidateEntranceStatisticsTable;
 use App\Models\CandidateExitStatistic;
 use App\Support\AuditLogger;
 use App\Support\CandidateTypeResolver;
@@ -207,7 +208,7 @@ class CandidateExitStatisticsTable
                             ->send();
                     }),
 
-                Action::make('pending')
+                Action::make('edit_result')
                     ->label(__('candidate_exit_statistics.actions.edit'))
                     ->icon('heroicon-o-arrow-path')
                     ->color('danger')
@@ -216,11 +217,16 @@ class CandidateExitStatisticsTable
                     ->modalDescription(__('candidate_exit_statistics.pending_modal.description'))
                     ->modalSubmitActionLabel(__('candidate_exit_statistics.pending_modal.submit'))
                     ->modalCancelActionLabel(__('candidate_exit_statistics.pending_modal.cancel'))
-                    ->visible(fn (CandidateExitStatistic $record): bool => FilamentActionPermissions::canForResource(CandidateExitStatisticResource::class, 'pending')
-                        && WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::AwaitingResults)
-                        && strtolower((string) $record->candidate_status) === 'passed')
+                    ->visible(function (CandidateExitStatistic $record): bool {
+                        $entry = CustomFormEntry::query()->find($record->custom_form_entry_id);
+
+                        return FilamentActionPermissions::canForResource(CandidateExitStatisticResource::class, 'edit_result')
+                            && WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::AwaitingResults)
+                            && ($entry === null || ! CandidateEntranceStatisticsTable::hasStudentPassedNotification($entry))
+                            && strtolower((string) $record->candidate_status) === 'passed';
+                    })
                     ->action(function (CandidateExitStatistic $record): void {
-                        FilamentActionPermissions::abortUnlessCanForResource(CandidateExitStatisticResource::class, 'pending');
+                        FilamentActionPermissions::abortUnlessCanForResource(CandidateExitStatisticResource::class, 'edit_result');
 
                         self::markCandidatePending($record);
 
@@ -383,7 +389,7 @@ class CandidateExitStatisticsTable
         );
     }
 
-    protected static function markCandidatePending(CandidateExitStatistic $record): void
+    public static function markCandidatePending(CandidateExitStatistic $record): void
     {
         $oldValues = [
             'candidate_status' => $record->candidate_status,
@@ -392,13 +398,15 @@ class CandidateExitStatisticsTable
 
         $record->forceFill([
             'candidate_status' => 'pending',
+            'candidate_reviewed_at' => null,
         ])->saveQuietly();
 
         $entry = CustomFormEntry::query()->find($record->custom_form_entry_id);
 
-        if ($entry !== null && WorkflowStageMessages::hasConfiguredWorkflow($entry)) {
+        if ($entry !== null) {
             $data = is_array($entry->data) ? $entry->data : [];
             $data['candidate_status'] = 'pending';
+            $data['candidate_reviewed_at'] = null;
 
             DB::table('custom_form_entries')
                 ->where('id', $entry->getKey())

@@ -299,7 +299,7 @@ class ListExamResults extends ListRecords
 
         AuditLogger::log(
             action: 'notified',
-            description: 'Sent ' . static::getResource()::getResultModuleLabel() . ' notifications (' . $sentCount . ' students)',
+            description: 'Sent ' . static::getResource()::getResultModuleLabel() . ' notifications (' . $sentCount . ' candidates)',
             metadata: ['module' => static::getResource()::getResultModuleLabel()],
         );
 

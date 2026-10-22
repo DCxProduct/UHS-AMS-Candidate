@@ -290,8 +290,8 @@ class StudentDynamicFormPage extends Page implements HasForms
                         'custom_form_id' => $entry->custom_form_id,
                         'review_status' => $entry->review_status,
                     ],
-                    description: 'Student submitted a dynamic form entry',
-                    metadata: ['module' => 'Student Dynamic Form'],
+                    description: 'Candidate submitted a dynamic form entry',
+                    metadata: ['module' => 'Candidate Dynamic Form'],
                 );
             }
         }

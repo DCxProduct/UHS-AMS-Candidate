@@ -22,13 +22,13 @@ return [
 
     'options' => [
         'document_condition' => 'Document Handover Consent Letter',
-        'new_student_registration' => 'New Student Registration Application',
+        'new_student_registration' => 'New Candidate Registration Application',
         'des_candidate_application' => 'DES Candidate Application',
 
         'bachelor_transfer_applications' => 'Bachelor Transfer Application',
         'master_science_national_exit_exam_applications' => 'Master\'s Degree National Exit Exam Application',
         'national_entrance_exam_applications' => 'National Entrance Exam Application',
         'national_exit_exam_applications' => 'National Exit Exam Application',
-        'old_student_registrations' => 'Old Student Registration Application',
+        'old_student_registrations' => 'Returning Candidate Registration Application',
     ],
 ];

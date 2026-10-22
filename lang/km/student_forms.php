@@ -22,13 +22,13 @@ return [
 
     'options' => [
         'document_condition' => 'លិខិតយល់ព្រមប្រគល់ឯកសារ',
-        'new_student_registration' => 'ពាក្យសុំចុះឈ្មោះចូលរៀននិស្សិតថ្មី',
+        'new_student_registration' => 'ពាក្យសុំចុះឈ្មោះបេក្ខជនថ្មី',
         'des_candidate_application' => 'ពាក្យសុំជ្រើសរើសជាបេក្ខជន DES',
 
-        'bachelor_transfer_applications' => 'ពាក្យសុំផ្ទេរនិស្សិតថ្នាក់បរិញ្ញាបត្រ',
+        'bachelor_transfer_applications' => 'ពាក្យសុំផ្ទេរបេក្ខជនថ្នាក់បរិញ្ញាបត្រ',
         'master_science_national_exit_exam_applications' => 'ពាក្យសុំប្រឡងចេញថ្នាក់ជាតិ MSC',
         'national_entrance_exam_applications' => 'ពាក្យសុំប្រឡងចូលថ្នាក់ជាតិ',
         'national_exit_exam_applications' => 'ពាក្យសុំប្រឡងចេញថ្នាក់ជាតិ',
-        'old_student_registrations' => 'ពាក្យសុំចុះឈ្មោះចូលរៀននិស្សិតចាស់',
+        'old_student_registrations' => 'ពាក្យសុំចុះឈ្មោះបេក្ខជនចាស់',
     ],
 ];

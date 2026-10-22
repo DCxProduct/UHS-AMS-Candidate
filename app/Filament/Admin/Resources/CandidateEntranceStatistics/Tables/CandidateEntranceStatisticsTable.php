@@ -300,7 +300,7 @@ class CandidateEntranceStatisticsTable
                             ->send();
                     }),
 
-                Action::make('pending')
+                Action::make('edit_result')
                     ->label(__('candidate_entrance_statistics.actions.edit_result'))
                     ->icon('heroicon-o-arrow-path')
                     ->color('danger')
@@ -309,12 +309,12 @@ class CandidateEntranceStatisticsTable
                     ->modalDescription(__('candidate_entrance_statistics.pending_modal.description'))
                     ->modalSubmitActionLabel(__('candidate_entrance_statistics.pending_modal.submit'))
                     ->modalCancelActionLabel(__('candidate_entrance_statistics.pending_modal.cancel'))
-                    ->visible(fn (CustomFormEntry $record): bool => FilamentActionPermissions::canForResource(CandidateEntranceStatisticResource::class, 'pending')
+                    ->visible(fn (CustomFormEntry $record): bool => FilamentActionPermissions::canForResource(CandidateEntranceStatisticResource::class, 'edit_result')
                         && WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::AwaitingResults)
-                        && strtolower((string) data_get($record->data, 'candidate_status', 'pending')) === 'passed'
-                        && ! self::hasStudentReviewResultNotification($record, 'passed'))
+                        && ! self::hasStudentPassedNotification($record)
+                        && strtolower((string) data_get($record->data, 'candidate_status', 'pending')) === 'passed')
                     ->action(function (CustomFormEntry $record): void {
-                        FilamentActionPermissions::abortUnlessCanForResource(CandidateEntranceStatisticResource::class, 'pending');
+                        FilamentActionPermissions::abortUnlessCanForResource(CandidateEntranceStatisticResource::class, 'edit_result');
 
                         self::markCandidatePending($record);
 
@@ -385,7 +385,6 @@ class CandidateEntranceStatisticsTable
                         $records->each(function (CustomFormEntry $record) use (&$editedCount): void {
                             if (
                                 strtolower((string) data_get($record->data, 'candidate_status', 'pending')) !== 'passed'
-                                || self::hasStudentReviewResultNotification($record, 'passed')
                                 || ! WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::AwaitingResults)
                             ) {
                                 return;
@@ -891,14 +890,16 @@ class CandidateEntranceStatisticsTable
         );
     }
 
-    protected static function markCandidatePending(CustomFormEntry $record): void
+    public static function markCandidatePending(CustomFormEntry $record): void
     {
         $dataJson = self::normalizeData($record->data);
         $oldValues = [
             'candidate_status' => data_get($dataJson, 'candidate_status'),
+            'candidate_reviewed_at' => data_get($dataJson, 'candidate_reviewed_at'),
             'review_status' => $record->review_status,
         ];
         $dataJson['candidate_status'] = 'pending';
+        $dataJson['candidate_reviewed_at'] = null;
 
         DB::table('custom_form_entries')
             ->where('id', $record->id)
@@ -1054,5 +1055,11 @@ class CandidateEntranceStatisticsTable
                 ? ($notificationStage ?? WorkflowStageMessages::resultStageFor($record) ?? WorkflowStageType::AwaitingResults)
                 : WorkflowStageType::Rejected,
         );
+    }
+
+    public static function hasStudentPassedNotification(CustomFormEntry $record): bool
+    {
+        return self::hasStudentReviewResultNotification($record, 'passed', WorkflowStageType::AwaitingResults)
+            || self::hasStudentReviewResultNotification($record, 'passed', WorkflowStageType::Completed);
     }
 }

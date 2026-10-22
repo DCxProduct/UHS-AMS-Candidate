@@ -32,7 +32,7 @@
             </h2>
 
             <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                Review student enrollment applications and accept or reject documents.
+                Review candidate enrollment applications and accept or reject documents.
             </p>
 
             <a
