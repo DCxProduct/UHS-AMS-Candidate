@@ -50,7 +50,7 @@
          'entry' => 'ការបំពេញទម្រង់ :form',
          'entries' => 'ការបំពេញទម្រង់ :form ទាំងអស់',
          'action' => [
-             'create' => 'បង្កើត :name',
+             'create' => 'បង្កើតថ្មី',
              'export_data' => 'ទាញយក PDF',
          ],
          'field' => [

@@ -107,7 +107,7 @@
          'entry' => ':form Entry',
          'entries' => ':form Entries',
          'action' => [
-             'create' => 'Create :name',
+             'create' => 'Create New',
              'export_data' => 'Export Data',
          ],
          'field' => [

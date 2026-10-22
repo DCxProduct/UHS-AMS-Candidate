@@ -264,17 +264,15 @@ class CreateCustomFormEntry extends CreateRecord
                     ]);
                 }
 
-                if (app()->getLocale() === 'km') {
-                    return 'បង្កើត ' . $this->transText($customForm->name);
-                }
-
-                return 'Create ' . $this->transText($customForm->name);
+                return __('filament-custom-forms::fcf.entry.action.create', [
+                    'name' => $this->transText($customForm->name),
+                ]);
             }
         }
 
-        return app()->getLocale() === 'km'
-            ? 'បង្កើត'
-            : 'Create';
+        return __('filament-custom-forms::fcf.entry.action.create', [
+            'name' => __('filament-custom-forms::fcf.entry.single'),
+        ]);
     }
 
     public function getTitle(): string|Htmlable
