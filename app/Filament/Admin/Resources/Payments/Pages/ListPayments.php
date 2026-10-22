@@ -104,7 +104,7 @@ class ListPayments extends ListRecords
             $isTrackingDeselectedRecords,
             $deselectedRecordKeys,
         )
-            ->with(['user', 'form', 'receivedBy'])
+            ->with(['user', 'form', 'receivedBy', 'paymentType'])
             ->get();
 
         AuditLogger::log(
@@ -132,7 +132,7 @@ class ListPayments extends ListRecords
             $isTrackingDeselectedRecords,
             $deselectedRecordKeys,
         )
-            ->with(['user', 'form', 'receivedBy'])
+            ->with(['user', 'form', 'receivedBy', 'paymentType'])
             ->get();
 
         AuditLogger::log(

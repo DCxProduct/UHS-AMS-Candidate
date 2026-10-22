@@ -130,7 +130,7 @@ class PaymentReceivedByTest extends TestCase
 
         $worksheetXml = (new ReflectionMethod(PaymentsTable::class, 'worksheetXml'))
             ->invoke(null, $sheetRows, [], $sheet['options']);
-        $this->assertStringContainsString('<mergeCell ref="I17:K17"/>', $worksheetXml);
+        $this->assertStringContainsString('<mergeCell ref="I19:L19"/>', $worksheetXml);
         $this->assertStringContainsString('<t>អ្នកទទួល</t>', $worksheetXml);
         $this->assertStringContainsString('<t>អ្នកប្រគល់</t>', $worksheetXml);
         $this->assertStringContainsString('<t>SITHAN VIRATANA</t>', $worksheetXml);

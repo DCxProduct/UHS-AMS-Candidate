@@ -144,14 +144,28 @@ class TablePdfExporter
             'usd' => '0.00',
             'khr' => '0.00',
         ];
-        $summaryCells = $options['summary_cells'] ?? [
-            [__('payments.export.total_records'), (string) $summary['count']],
-            [__('payments.export.total_usd'), $summary['usd'] . ' $'],
-            [__('payments.export.total_khr'), $summary['khr'] . ' KHR'],
-        ];
-        $summaryHeadHtml = collect($summaryCells)->map(fn (array $cell): string => '<th>' . e((string) $cell[0]) . '</th>')->implode('');
-        $summaryBodyHtml = collect($summaryCells)->map(fn (array $cell): string => '<td>' . e((string) $cell[1]) . '</td>')->implode('');
-        $summaryWidth = min(58, 20 * max(1, count($summaryCells)));
+        $summaryTable = $options['summary_table'] ?? null;
+
+        if ($summaryTable) {
+            $summaryHeadHtml = collect($summaryTable['headings'] ?? [])
+                ->map(fn ($heading): string => '<th>' . e((string) $heading) . '</th>')
+                ->implode('');
+            $summaryBodyHtml = collect($summaryTable['rows'] ?? [])
+                ->map(fn (array $row): string => '<tr>' . collect($row)
+                    ->map(fn ($value): string => '<td>' . e((string) $value) . '</td>')
+                    ->implode('') . '</tr>')
+                ->implode('');
+            $summaryWidth = 60;
+        } else {
+            $summaryCells = $options['summary_cells'] ?? [
+                [__('payments.export.total_records'), (string) $summary['count']],
+                [__('payments.export.total_usd'), $summary['usd'] . ' $'],
+                [__('payments.export.total_khr'), $summary['khr'] . ' ៛'],
+            ];
+            $summaryHeadHtml = collect($summaryCells)->map(fn (array $cell): string => '<th>' . e((string) $cell[0]) . '</th>')->implode('');
+            $summaryBodyHtml = '<tr>' . collect($summaryCells)->map(fn (array $cell): string => '<td>' . e((string) $cell[1]) . '</td>')->implode('') . '</tr>';
+            $summaryWidth = min(58, 20 * max(1, count($summaryCells)));
+        }
         $footerColumnCount = max(1, count($headings));
         $footerColumn = min(max(1, (int) ($options['footer_column'] ?? $footerColumnCount)), $footerColumnCount);
         $footerSpan = min(max(1, (int) ($options['footer_span'] ?? 1)), $footerColumnCount - $footerColumn + 1);
@@ -204,6 +218,9 @@ class TablePdfExporter
         $subtitle = e((string) ($options['subtitle'] ?? ''));
         $logo = self::logoDataUri();
         $logoHtml = $logo ? '<img src="' . $logo . '" class="official-logo" alt="UHS">' : '';
+        $summaryHtml = ($options['hide_summary'] ?? false)
+            ? ''
+            : '<div class="report-footer"><table class="summary-table"><thead><tr>' . $summaryHeadHtml . '</tr></thead><tbody>' . $summaryBodyHtml . '</tbody></table></div>';
 
         return '<!doctype html>
 <html lang="km">
@@ -235,7 +252,8 @@ class TablePdfExporter
         .summary-table { border-collapse: collapse; width: ' . $summaryWidth . '%; }
         .summary-table th, .summary-table td { border: 0.5pt solid #7f8ea3; padding: 4px 6px; }
         .summary-table th { background-color: #003b95; color: #ffffff; font-weight: bold; text-align: center; }
-        .summary-table td { background-color: #f2f5fa; font-weight: bold; text-align: center; }
+        .summary-table td { background-color: #ffffff; font-weight: normal; text-align: center; }
+        .summary-table td:first-child { text-align: left; }
         .report-signature-block { font-family: khmerbattambang, sans-serif; margin-top: 22mm; text-align: center; }
         .report-signature-layout { border-collapse: collapse; table-layout: fixed; width: 100%; font-family: khmerbattambang, sans-serif; }
         .report-signature-layout td { border: 0; padding: 0; }
@@ -280,12 +298,7 @@ class TablePdfExporter
         <thead><tr>' . $headingHtml . '</tr></thead>
         <tbody>' . $rowHtml . '</tbody>
     </table>
-    <div class="report-footer">
-        <table class="summary-table">
-            <thead><tr>' . $summaryHeadHtml . '</tr></thead>
-            <tbody><tr>' . $summaryBodyHtml . '</tr></tbody>
-        </table>
-    </div>
+    ' . $summaryHtml . '
     ' . $footerText . '
 </body>
 </html>';

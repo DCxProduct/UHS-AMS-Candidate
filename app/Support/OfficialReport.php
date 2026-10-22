@@ -58,6 +58,7 @@ class OfficialReport
      * @param  array<int, array{0: string, 1: string}>  $summary  [label, value] pairs
      * @param  array<int, int|float>  $columnWidths  column number => width
      * @param  array<int, int>  $leftAlignedColumns  column numbers aligned left (names)
+     * @param  array{headings: array<int, string>, rows: array<int, array<int, string>>}|null  $summaryTable
      */
     public static function sheet(
         string $name,
@@ -73,13 +74,16 @@ class OfficialReport
         ?string $footerName = null,
         ?array $footerDateParts = null,
         ?string $footerReceiverText = null,
+        ?array $summaryTable = null,
     ): array
     {
         $lastColumn = self::columnName(count($headings));
         $headingRow = 11;
         $summaryTitleRow = $headingRow + count($dataRows) + 2;
         $summaryRow = $summaryTitleRow + 1;
-        $footerRow = $summaryRow + 2;
+        $footerRow = $summaryTable
+            ? $summaryTitleRow + count($summaryTable['rows'] ?? []) + 3
+            : $summaryRow + 2;
         $footerColumn = min(max(1, $footerColumn ?? count($headings)), count($headings));
         $footerCellColumn = self::columnName($footerColumn);
         $footerLastColumn = self::columnName(count($headings));
@@ -97,10 +101,23 @@ class OfficialReport
             }
         }
 
-        foreach (array_keys($summary) as $index) {
-            $column = self::columnName($index + 1);
-            $cellStyles[$column . $summaryTitleRow] = 7;
-            $cellStyles[$column . $summaryRow] = 13;
+        if ($summaryTable) {
+            foreach (array_keys($summaryTable['headings'] ?? []) as $index) {
+                $cellStyles[self::columnName($index + 1) . $summaryTitleRow] = 4;
+            }
+
+            foreach (array_keys($summaryTable['rows'] ?? []) as $rowIndex) {
+                foreach (array_keys($summaryTable['headings'] ?? []) as $columnIndex) {
+                    $column = $columnIndex + 1;
+                    $cellStyles[self::columnName($column) . ($summaryTitleRow + 1 + $rowIndex)] = $column === 1 ? 12 : 11;
+                }
+            }
+        } else {
+            foreach (array_keys($summary) as $index) {
+                $column = self::columnName($index + 1);
+                $cellStyles[$column . $summaryTitleRow] = 7;
+                $cellStyles[$column . $summaryRow] = 13;
+            }
         }
 
         if (filled($footerText)) {
@@ -139,8 +156,9 @@ class OfficialReport
             $headings,
             ...$dataRows,
             [],
-            array_column($summary, 0),
-            array_column($summary, 1),
+            ...($summaryTable
+                ? [$summaryTable['headings'], ...$summaryTable['rows'], []]
+                : [array_column($summary, 0), array_column($summary, 1)]),
         ];
 
         if (filled($footerText)) {
@@ -202,8 +220,10 @@ class OfficialReport
                     10 => 12,
                     $headingRow => 24,
                     ...$dataRowHeights,
-                    $summaryTitleRow => 22,
-                    $summaryRow => 22,
+                    $summaryTitleRow => 24,
+                    ...($summaryTable
+                        ? array_fill_keys(range($summaryTitleRow + 1, $summaryTitleRow + count($summaryTable['rows'])), 22)
+                        : [$summaryRow => 22]),
                     ...(filled($footerText) ? ($hasSignatureBlock
                         ? [$footerRow => 22, $footerRow + 1 => 24, $footerRow + 2 => 24]
                         : [$footerRow => 24]) : []),

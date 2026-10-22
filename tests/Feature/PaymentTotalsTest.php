@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Filament\Admin\Resources\Payments\Pages\ListPayments;
 use App\Filament\Admin\Resources\Payments\Tables\PaymentsTable;
+use App\Filament\Admin\Resources\CandidatePaymentLists\Tables\CandidatePaymentListsTable;
 use App\Models\Payment;
+use App\Models\PaymentType;
 use App\Models\Role;
 use App\Models\User;
 use App\Support\TablePdfExporter;
@@ -20,11 +22,31 @@ class PaymentTotalsTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_unpaid_application_exports_omit_the_record_count_summary(): void
+    {
+        $sheet = $this->invokeProtectedStatic(CandidatePaymentListsTable::class, 'reportSheet', [[], []]);
+        $spreadsheetRows = serialize($sheet['rows']);
+
+        $this->assertStringNotContainsString(__('payments.export.total_records'), $spreadsheetRows);
+        $this->assertSame([[], [], []], array_slice($sheet['rows'], 11));
+
+        $pdfHtml = $this->invokeProtectedStatic(TablePdfExporter::class, 'html', [
+            ['Application'],
+            [['Candidate']],
+            'Unpaid Applications',
+            [],
+            ['layout' => 'official-report', 'hide_summary' => true],
+        ]);
+
+        $this->assertStringContainsString('<td>Candidate</td>', $pdfHtml);
+        $this->assertStringNotContainsString('<table class="summary-table">', $pdfHtml);
+    }
+
     public function test_payment_table_summarizes_usd_and_khr_amounts(): void
     {
         $this->createPaymentViewer();
 
-        Payment::query()->create([
+        $firstPayment = Payment::query()->create([
             'receipt_number' => 'TOTAL-001',
             'amount_usd' => '5.00',
             'amount_kh' => '20500.00',
@@ -38,10 +60,12 @@ class PaymentTotalsTest extends TestCase
         ]);
 
         Livewire::test(ListPayments::class)
+            ->assertSeeText('5.00$')
             ->assertTableColumnSummarizerExists('amount_usd', 'amount_usd_total')
             ->assertTableColumnSummarizerExists('amount_kh', 'amount_khr_total')
             ->assertTableColumnSummarySet('amount_usd', 'amount_usd_total', 15)
-            ->assertTableColumnSummarySet('amount_kh', 'amount_khr_total', 61500);
+            ->assertTableColumnSummarySet('amount_kh', 'amount_khr_total', 61500)
+            ->assertSeeText('15.00$');
     }
 
     public function test_payment_totals_follow_table_search(): void
@@ -208,16 +232,64 @@ class PaymentTotalsTest extends TestCase
             $this->assertSame([
                 'Total',
                 'Total USD: $5.00',
-                'Total KHR: 20,500.00 KHR',
+                'Total KHR: 20,500.00 ៛',
             ], $summaryRow);
 
             $pdfHtml = $this->invokeProtectedStatic(
                 TablePdfExporter::class,
                 'html',
-                [['No', 'Amount USD', 'Amount KHR'], [['1', '5.00$', '20,500.00 KHR']], 'Payment Records', [$summaryRow]],
+                [['No', 'Amount USD', 'Amount KHR'], [['1', '5.00$', '20,500.00 ៛']], 'Payment Records', [$summaryRow]],
             );
 
-            $this->assertStringContainsString('<tfoot><tr><td>Total</td><td>Total USD: $5.00</td><td>Total KHR: 20,500.00 KHR</td></tr></tfoot>', $pdfHtml);
+            $this->assertStringContainsString('<tfoot><tr><td>Total</td><td>Total USD: $5.00</td><td>Total KHR: 20,500.00 ៛</td></tr></tfoot>', $pdfHtml);
+        } finally {
+            app()->setLocale($originalLocale);
+        }
+    }
+
+    public function test_payment_type_summary_shows_a_dash_when_a_currency_has_no_amount(): void
+    {
+        $originalLocale = app()->getLocale();
+        app()->setLocale('en');
+
+        try {
+            $cashType = new PaymentType([
+                'key' => 'cash',
+                'name_en' => 'Cash',
+                'name_kh' => 'សាច់ប្រាក់',
+                'method' => 'cash',
+            ]);
+            $bankType = new PaymentType([
+                'key' => 'aba',
+                'name_en' => 'ABA',
+                'name_kh' => 'ABA',
+                'method' => 'bank',
+            ]);
+
+            $cashPayment = new Payment([
+                'type_payment' => 'cash',
+                'amount_usd' => '25.00',
+                'amount_kh' => null,
+            ]);
+            $cashPayment->setRelation('paymentType', $cashType);
+
+            $bankPayment = new Payment([
+                'type_payment' => 'aba',
+                'amount_usd' => null,
+                'amount_kh' => '120000.00',
+            ]);
+            $bankPayment->setRelation('paymentType', $bankType);
+
+            $summary = $this->invokeProtectedStatic(
+                PaymentsTable::class,
+                'paymentTypeSummaryTable',
+                [[$cashPayment, $bankPayment]],
+            );
+
+            $this->assertSame([
+                ['Cash', '1', '25.00 $', '-'],
+                ['Bank', '1', '-', '120,000.00 ៛'],
+            ], $summary['rows']);
         } finally {
             app()->setLocale($originalLocale);
         }
@@ -272,9 +344,25 @@ class PaymentTotalsTest extends TestCase
             $user = $this->createPaymentViewer();
             $user->update(['academic_year' => '2025-2026']);
 
+            PaymentType::query()->create([
+                'key' => 'aba',
+                'name_en' => 'ABA',
+                'name_kh' => 'ABA',
+                'method' => 'bank',
+                'is_active' => true,
+            ]);
+            PaymentType::query()->create([
+                'key' => 'cash',
+                'name_en' => 'Cash',
+                'name_kh' => 'សាច់ប្រាក់',
+                'method' => 'cash',
+                'is_active' => true,
+            ]);
+
             $payment = Payment::query()->create([
                 'users_id' => $user->id,
                 'receipt_number' => 'REPORT-001',
+                'type_payment' => 'aba',
                 'amount_usd' => '5.00',
                 'amount_kh' => '20500.00',
                 'datetime_pay' => '2026-09-09',
@@ -312,6 +400,7 @@ class PaymentTotalsTest extends TestCase
                     'layout' => 'payment-records',
                     'subtitle' => 'Date: 09-Sep-2026',
                     'summary' => $summary,
+                    'summary_table' => $this->invokeProtectedStatic(PaymentsTable::class, 'paymentTypeSummaryTable', [[$payment]]),
                 ]],
             );
 
@@ -327,7 +416,11 @@ class PaymentTotalsTest extends TestCase
             $this->assertStringContainsString('data:image/png;base64,', $pdfHtml);
             $this->assertStringContainsString('REPORT-001', $pdfHtml);
             $this->assertStringContainsString('<td>5.00 $</td>', $pdfHtml);
-            $this->assertStringContainsString('Total Records', $pdfHtml);
+            $this->assertStringContainsString('<th>Payment Type</th>', $pdfHtml);
+            $this->assertStringContainsString('<th>Count</th>', $pdfHtml);
+            $this->assertStringNotContainsString('<th>Bank</th>', $pdfHtml);
+            $this->assertStringNotContainsString('<td>ABA</td>', $pdfHtml);
+            $this->assertStringContainsString('<td>Bank</td><td>1</td><td>5.00 $</td><td>20,500.00 ៛</td>', $pdfHtml);
             $this->assertStringContainsString('Date: 09-Sep-2026', $pdfHtml);
             $this->assertStringContainsString('Name Latin', $pdfHtml);
             $this->assertStringNotContainsString('Payment Status', $pdfHtml);
@@ -347,7 +440,10 @@ class PaymentTotalsTest extends TestCase
             $this->assertStringNotContainsString('Prepared by', serialize($sheet['rows']));
             $this->assertStringNotContainsString('Approved by', serialize($sheet['rows']));
             $this->assertStringNotContainsString('Summary', serialize($sheet['rows']));
-            $this->assertStringContainsString('Total Records', serialize($sheet['rows']));
+            $this->assertStringContainsString('Payment Type', serialize($sheet['rows']));
+            $this->assertStringContainsString('Cash', serialize($sheet['rows']));
+            $this->assertStringContainsString('Bank', serialize($sheet['rows']));
+            $this->assertStringNotContainsString('ABA', serialize($sheet['rows']));
             foreach (['A1:K1', 'A2:K2', 'A7:B7', 'A8:K8', 'A9:K9'] as $range) {
                 $this->assertStringContainsString('<mergeCell ref="' . $range . '"/>', $worksheetXml);
             }
@@ -363,13 +459,15 @@ class PaymentTotalsTest extends TestCase
             $this->assertStringContainsString('<c r="A8" s="2"', $worksheetXml);
             $this->assertStringContainsString('<c r="A12" s="11"', $worksheetXml);
             $this->assertStringContainsString('<c r="B12" s="12"', $worksheetXml);
-            $this->assertStringContainsString('<c r="A14" s="7"', $worksheetXml);
-            $this->assertStringContainsString('<c r="B14" s="7"', $worksheetXml);
-            $this->assertStringContainsString('<c r="C14" s="7"', $worksheetXml);
-            $this->assertStringContainsString('<c r="A15" s="13"', $worksheetXml);
+            $this->assertStringContainsString('<c r="A14" s="4"', $worksheetXml);
+            $this->assertStringContainsString('<c r="B14" s="4"', $worksheetXml);
+            $this->assertStringContainsString('<c r="C14" s="4"', $worksheetXml);
+            $this->assertStringContainsString('<c r="D14" s="4"', $worksheetXml);
+            $this->assertStringContainsString('<c r="A15" s="12"', $worksheetXml);
             $this->assertStringContainsString('<t>5.00 $</t>', $worksheetXml);
-            $this->assertStringContainsString('<c r="B15" s="13"', $worksheetXml);
-            $this->assertStringContainsString('<c r="C15" s="13"', $worksheetXml);
+            $this->assertStringContainsString('<t>20,500.00៛</t>', $worksheetXml);
+            $this->assertStringContainsString('<c r="B15" s="11"', $worksheetXml);
+            $this->assertStringContainsString('<c r="C15" s="11"', $worksheetXml);
             $this->assertStringNotContainsString('showGridLines="0"', $worksheetXml);
             $this->assertStringContainsString('orientation="landscape"', $worksheetXml);
             $this->assertStringContainsString('numberStoredAsText="1"', $worksheetXml);
@@ -378,6 +476,7 @@ class PaymentTotalsTest extends TestCase
             $this->assertStringContainsString('ព្រះរាជាណាចក្រកម្ពុជា', $worksheetXml);
             $this->assertStringContainsString('ជាតិ សាសនា ព្រះមហាក្សត្រ', $worksheetXml);
             $this->assertStringContainsString('<col min="1" max="1" width="16"', $worksheetXml);
+            $this->assertStringContainsString('<col min="4" max="4" width="16"', $worksheetXml);
             $this->assertStringContainsString('<col min="5" max="5" width="24"', $worksheetXml);
             $this->assertStringContainsString('<c r="A11" s="4"', $worksheetXml);
             $this->assertStringContainsString('width="25"', $worksheetXml);
@@ -440,8 +539,10 @@ class PaymentTotalsTest extends TestCase
 
             $this->assertStringContainsString('បញ្ជីឈ្មោះបេក្ខជនបង់លុយ', $sheet);
             $this->assertStringContainsString('ល.រ', $sheet);
-            $this->assertStringContainsString('ចំនួនសរុប', $sheet);
-            $this->assertStringContainsString('<c r="A15" s="13" t="inlineStr"><is><t>1</t>', $sheet);
+            $this->assertStringContainsString('ប្រភេទទូទាត់', $sheet);
+            $this->assertStringContainsString('សាច់ប្រាក់', $sheet);
+            $this->assertStringContainsString('ធនាគារ', $sheet);
+            $this->assertStringContainsString('<c r="B16" s="11" t="inlineStr"><is><t>1</t>', $sheet);
             $this->assertStringNotContainsString('Payment Records', $sheet);
             $this->assertSame('en', app()->getLocale());
 

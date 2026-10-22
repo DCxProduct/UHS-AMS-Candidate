@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Resources\Payments\Schemas;
 use App\Filament\Admin\Resources\CandidatePaymentLists\CandidatePaymentListResource;
 use App\Filament\Admin\Resources\CandidateLists\CandidateListResource;
 use App\Models\ExchangeRate;
+use App\Models\Payment;
 use App\Models\PaymentType;
 use App\Models\SystemUser;
 use App\Models\User;
@@ -71,14 +72,37 @@ class PaymentForm
                                         'unique' => __('payments.validation.receipt_number_unique'),
                                     ]),
 
-                                Select::make('type_payment')
+                                Select::make('payment_method')
                                     ->label(__('payments.fields.type_payment'))
                                     ->placeholder(__('payments.placeholders.type_payment'))
-                                    ->options(fn (): array => PaymentType::activeOptions())
+                                    ->options(fn (): array => PaymentType::activeMethodOptions())
+                                    ->native(false)
+                                    ->live()
+                                    ->required()
+                                    ->afterStateHydrated(function (Select $component, mixed $state, ?Payment $record): void {
+                                        if ($record && blank($state)) {
+                                            $component->state($record->payment_method_key);
+                                        }
+                                    })
+                                    ->afterStateUpdated(function (mixed $state, callable $set): void {
+                                        $set('type_payment', $state === 'cash'
+                                            ? PaymentType::activeKeyForMethod('cash')
+                                            : null);
+                                    })
+                                    ->validationMessages([
+                                        'required' => __('payments.validation.type_payment_required'),
+                                    ]),
+
+                                Select::make('type_payment')
+                                    ->label(__('payments.fields.bank'))
+                                    ->placeholder(__('payments.placeholders.bank'))
+                                    ->options(fn (): array => PaymentType::activeOptionsForMethod('bank'))
                                     ->native(false)
                                     ->searchable()
                                     ->preload()
-                                    ->required()
+                                    ->visible(fn (callable $get): bool => $get('payment_method') === 'bank')
+                                    ->required(fn (callable $get): bool => $get('payment_method') === 'bank')
+                                    ->dehydrated()
                                     ->validationMessages([
                                         'required' => __('payments.validation.type_payment_required'),
                                     ]),
@@ -100,26 +124,21 @@ class PaymentForm
 
                                 TextInput::make('amount_kh')
                                     ->label(__('payments.fields.amount_kh'))
-                                    ->markAsRequired()
                                     ->placeholder(__('payments.placeholders.amount_kh'))
-                                    ->suffix('KHR')
+                                    ->suffix('៛')
                                     ->mask(RawJs::make('$money($input)'))
                                     ->inputMode('decimal')
                                     ->required()
-                                    ->rules(PaymentValidation::amountKhRules())
+                                    ->rules(PaymentValidation::amountKhRules(required: false))
                                     ->live(onBlur: true)
                                     ->afterStateHydrated(function (TextInput $component, mixed $state): void {
                                         $component->state(self::normalizeKhrAmount($state));
                                     })
-                                    ->afterStateUpdated(function ($state, $set, $get): void {
+                                    ->afterStateUpdated(function ($state, $set): void {
                                         $normalized = self::normalizeKhrAmount($state);
                                         $set('amount_kh', $normalized);
-                                        self::syncUsdFromKhr($get, $set);
                                     })
-                                    ->dehydrateStateUsing(fn (mixed $state): ?string => self::dehydrateKhrAmount($state))
-                                    ->validationMessages([
-                                        'required' => __('payments.validation.amount_kh_required'),
-                                    ]),
+                                    ->dehydrateStateUsing(fn (mixed $state): ?string => self::dehydrateKhrAmount($state)),
 
                                 TextInput::make('amount_usd')
                                     ->label(__('payments.fields.amount_usd'))
@@ -131,10 +150,9 @@ class PaymentForm
                                     ->afterStateHydrated(function (TextInput $component, mixed $state): void {
                                         $component->state(self::normalizeUsdAmount($state));
                                     })
-                                    ->afterStateUpdated(function ($state, $set, $get): void {
+                                    ->afterStateUpdated(function ($state, $set): void {
                                         $normalized = self::normalizeUsdAmount($state);
                                         $set('amount_usd', $normalized);
-                                        self::syncKhrFromUsd($get, $set);
                                     })
                                     ->dehydrateStateUsing(fn (mixed $state): ?string => self::normalizeUsdAmount($state))
                                     ->nullable(),
@@ -154,7 +172,7 @@ class PaymentForm
                             ->content(function ($get): string {
                                 $rate = self::normalizeExchangeRate($get('exchange_rate')) ?? self::defaultExchangeRate();
 
-                                return sprintf('1 USD = %s KHR', $rate);
+                                return sprintf('1 USD = %s ៛', $rate);
                             }),
 
                         Textarea::make('description')
@@ -253,46 +271,6 @@ class PaymentForm
         }
 
         return number_format((float) $normalized, 2, '.', '');
-    }
-
-    protected static function syncKhrFromUsd(callable $get, callable $set): void
-    {
-        $usdAmount = self::normalizeUsdAmount($get('amount_usd'));
-        $rate = self::normalizeExchangeRate($get('exchange_rate'));
-
-        if (blank($usdAmount) || blank($rate) || ! is_numeric($usdAmount) || ! is_numeric($rate) || (float) $rate <= 0) {
-            return;
-        }
-
-        $set('amount_kh', self::normalizeKhrAmount((float) $usdAmount * (float) $rate));
-    }
-
-    protected static function syncUsdFromKhr(callable $get, callable $set): void
-    {
-        $khrAmount = self::dehydrateKhrAmount($get('amount_kh'));
-        $rate = self::normalizeExchangeRate($get('exchange_rate'));
-
-        if (blank($khrAmount) || blank($rate) || ! is_numeric($khrAmount) || ! is_numeric($rate) || (float) $rate <= 0) {
-            return;
-        }
-
-        $set('amount_usd', self::normalizeUsdAmount((float) $khrAmount / (float) $rate));
-    }
-
-    protected static function syncAmountsFromRate(callable $get, callable $set): void
-    {
-        $usdAmount = self::normalizeUsdAmount($get('amount_usd'));
-        $khrAmount = self::dehydrateKhrAmount($get('amount_kh'));
-
-        if (filled($usdAmount) && is_numeric($usdAmount)) {
-            self::syncKhrFromUsd($get, $set);
-
-            return;
-        }
-
-        if (filled($khrAmount) && is_numeric($khrAmount)) {
-            self::syncUsdFromKhr($get, $set);
-        }
     }
 
     protected static function candidateUserOptions(bool $restrictToUnpaidApplications = false): array

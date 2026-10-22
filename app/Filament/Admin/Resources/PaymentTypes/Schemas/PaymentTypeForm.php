@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\PaymentTypes\Schemas;
 
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -48,6 +49,16 @@ class PaymentTypeForm
                                         'required' => __('payment_types.validation.key_required'),
                                         'unique' => __('payment_types.validation.key_unique'),
                                         'regex' => __('payment_types.validation.key_format'),
+                                    ]),
+
+                                Select::make('method')
+                                    ->label(__('payment_types.fields.method'))
+                                    ->options(__('payment_types.options.methods'))
+                                    ->required()
+                                    ->native(false)
+                                    ->placeholder(__('payment_types.placeholders.method'))
+                                    ->validationMessages([
+                                        'required' => __('payment_types.validation.method_required'),
                                     ]),
 
                                 TextInput::make('name_en')

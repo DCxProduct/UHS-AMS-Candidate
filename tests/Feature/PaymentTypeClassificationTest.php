@@ -1,0 +1,99 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Filament\Admin\Resources\PaymentTypes\Pages\CreatePaymentType;
+use App\Filament\Admin\Resources\PaymentTypes\Pages\ListPaymentTypes;
+use App\Filament\Admin\Resources\Payments\Pages\ListPayments;
+use App\Models\Payment;
+use App\Models\PaymentType;
+use App\Models\Role;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
+use Livewire\Livewire;
+use Tests\TestCase;
+
+class PaymentTypeClassificationTest extends TestCase
+{
+    use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Role::query()->create(['name' => 'admin', 'guard_name' => 'web']);
+        $admin = User::query()->create([
+            'registration_type' => 'admin',
+            'name' => 'Payment Admin',
+            'username' => 'payment_admin',
+            'email' => 'payment-admin@example.test',
+            'date_of_birth' => '2000-01-01',
+            'password' => Hash::make('password'),
+            'is_active' => true,
+        ]);
+        $admin->assignRole('admin');
+        $this->actingAs($admin);
+    }
+
+    public function test_payment_type_can_be_marked_as_cash_or_bank(): void
+    {
+        Livewire::test(CreatePaymentType::class)
+            ->fillForm([
+                'key' => 'aba',
+                'name_en' => 'ABA',
+                'name_kh' => 'ABA',
+                'method' => 'bank',
+                'is_active' => true,
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $bankType = PaymentType::query()->where('key', 'aba')->sole();
+        $this->assertSame('bank', $bankType->method);
+
+        Livewire::test(ListPaymentTypes::class)
+            ->assertTableColumnExists('localized_method')
+            ->assertTableColumnStateSet('localized_method', __('payment_types.options.methods.bank'), $bankType);
+    }
+
+    public function test_payment_records_show_cash_or_bank_and_bank_name_separately(): void
+    {
+        $bank = PaymentType::query()->create([
+            'key' => 'aba',
+            'name_en' => 'ABA',
+            'name_kh' => 'ABA',
+            'method' => 'bank',
+            'is_active' => true,
+        ]);
+        $cash = PaymentType::query()->create([
+            'key' => 'cash',
+            'name_en' => 'Cash',
+            'name_kh' => 'សាច់ប្រាក់',
+            'method' => 'cash',
+            'is_active' => true,
+        ]);
+
+        $this->assertSame([
+            'bank' => __('payment_types.options.methods.bank'),
+            'cash' => __('payment_types.options.methods.cash'),
+        ], PaymentType::activeMethodOptions());
+        $this->assertSame(['aba' => 'ABA'], PaymentType::activeOptionsForMethod('bank'));
+        $this->assertSame(['cash' => $cash->localized_name], PaymentType::activeOptionsForMethod('cash'));
+        $this->assertSame('cash', PaymentType::activeKeyForMethod('cash'));
+
+        $bankPayment = new Payment(['type_payment' => 'aba']);
+        $bankPayment->setRelation('paymentType', $bank);
+        $cashPayment = new Payment(['type_payment' => 'cash']);
+        $cashPayment->setRelation('paymentType', $cash);
+
+        $this->assertSame(__('payment_types.options.methods.bank'), $bankPayment->payment_method_label);
+        $this->assertSame('ABA', $bankPayment->bank_name);
+        $this->assertSame(__('payment_types.options.methods.cash'), $cashPayment->payment_method_label);
+        $this->assertSame($cash->localized_name, $cashPayment->bank_name);
+
+        Livewire::test(ListPayments::class)
+            ->assertTableColumnExists('type_payment')
+            ->assertTableColumnExists('bank_name');
+    }
+}

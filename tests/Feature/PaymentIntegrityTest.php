@@ -22,6 +22,18 @@ class PaymentIntegrityTest extends TestCase
         ]);
     }
 
+    public function test_model_accepts_usd_amount_without_khr_amount(): void
+    {
+        $payment = Payment::query()->create([
+            'receipt_number' => 'USD-ONLY-001',
+            'amount_usd' => '29.27',
+            'amount_kh' => null,
+        ]);
+
+        $this->assertSame('29.27', $payment->amount_usd);
+        $this->assertNull($payment->amount_kh);
+    }
+
     public function test_database_rejects_duplicate_receipt_number(): void
     {
         Payment::query()->create([

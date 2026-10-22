@@ -450,9 +450,9 @@ HTML;
         $now = now();
 
         $paymentTypes = [
-            ['key' => 'cash', 'name_en' => 'Cash', 'name_kh' => 'សាច់ប្រាក់', 'display_order' => 1],
-            ['key' => 'ftb', 'name_en' => 'FTB', 'name_kh' => 'FTB', 'display_order' => 2],
-            ['key' => 'acleda', 'name_en' => 'Acleda', 'name_kh' => 'Acleda', 'display_order' => 3],
+            ['key' => 'cash', 'name_en' => 'Cash', 'name_kh' => 'សាច់ប្រាក់', 'method' => 'cash', 'display_order' => 1],
+            ['key' => 'ftb', 'name_en' => 'FTB', 'name_kh' => 'FTB', 'method' => 'bank', 'display_order' => 2],
+            ['key' => 'acleda', 'name_en' => 'Acleda', 'name_kh' => 'Acleda', 'method' => 'bank', 'display_order' => 3],
         ];
 
         DB::table('payment_types')
