@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Resources\Payments\Pages;
 
 use App\Filament\Admin\Resources\Payments\PaymentResource;
 use App\Models\Payment;
+use App\Models\PaymentType;
 use App\Services\CandidatePaymentRecorder;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Contracts\Support\Htmlable;
@@ -18,6 +19,11 @@ class CreatePayment extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
+        if (($data['payment_method'] ?? null) === 'cash') {
+            $data['type_payment'] = PaymentType::activeKeyForMethod('cash');
+        }
+
+        unset($data['payment_method']);
         $data['status_payt'] = 'paid';
         $data['status'] ??= true;
 

@@ -107,7 +107,7 @@ class CandidatePaymentListsTable
             self::reportTitle(),
             $headings,
             $rows,
-            [[__('payments.export.total_records'), (string) count($rows)]],
+            [],
             $columnWidths,
             $leftAlignedColumns,
         );
@@ -129,7 +129,7 @@ class CandidatePaymentListsTable
                 [
                     'layout' => 'official-report',
                     'subtitle' => OfficialReport::subtitle(),
-                    'summary_cells' => [[__('payments.export.total_records'), (string) count($rows)]],
+                    'hide_summary' => true,
                     'filename' => OfficialReport::filename(self::reportTitle(), 'pdf'),
                     'filename_fallback' => OfficialReport::filename(self::reportTitle(), 'pdf', 'unpaid-applications'),
                 ],
@@ -321,14 +321,32 @@ class CandidatePaymentListsTable
                                     'unique' => __('payments.validation.receipt_number_unique'),
                                 ]),
 
-                            Select::make('type_payment')
+                            Select::make('payment_method')
                                 ->label(__('payments.fields.type_payment'))
                                 ->placeholder(__('payments.placeholders.type_payment'))
-                                ->options(fn (): array => PaymentType::activeOptions())
+                                ->options(fn (): array => PaymentType::activeMethodOptions())
+                                ->native(false)
+                                ->live()
+                                ->required()
+                                ->afterStateUpdated(function (mixed $state, callable $set): void {
+                                    $set('type_payment', $state === 'cash'
+                                        ? PaymentType::activeKeyForMethod('cash')
+                                        : null);
+                                })
+                                ->validationMessages([
+                                    'required' => __('payments.validation.type_payment_required'),
+                                ]),
+
+                            Select::make('type_payment')
+                                ->label(__('payments.fields.bank'))
+                                ->placeholder(__('payments.placeholders.bank'))
+                                ->options(fn (): array => PaymentType::activeOptionsForMethod('bank'))
                                 ->native(false)
                                 ->searchable()
                                 ->preload()
-                                ->required()
+                                ->visible(fn (callable $get): bool => $get('payment_method') === 'bank')
+                                ->required(fn (callable $get): bool => $get('payment_method') === 'bank')
+                                ->dehydrated()
                                 ->validationMessages([
                                     'required' => __('payments.validation.type_payment_required'),
                                 ]),
@@ -350,10 +368,10 @@ class CandidatePaymentListsTable
                             TextInput::make('amount_kh')
                                 ->label(__('payments.fields.amount_kh'))
                                 ->placeholder(__('payments.placeholders.amount_kh'))
-                                ->suffix('KHR')
+                                ->suffix('៛')
                                 ->mask(RawJs::make('$money($input)'))
                                 ->inputMode('decimal')
-                                ->rules(PaymentValidation::amountKhRules())
+                                ->rules(PaymentValidation::amountKhRules(required: false))
                                 ->rule(static function (): \Closure {
                                     return static function (string $attribute, mixed $value, \Closure $fail): void {
                                         if ($value === null || trim((string) $value) === '') {
@@ -369,15 +387,10 @@ class CandidatePaymentListsTable
                                 ->afterStateHydrated(function (TextInput $component, mixed $state): void {
                                     $component->state(self::normalizeKhrAmount($state));
                                 })
-                                ->afterStateUpdated(function (mixed $state, callable $set, callable $get): void {
+                                ->afterStateUpdated(function (mixed $state, callable $set): void {
                                     $set('amount_kh', self::normalizeKhrAmount($state));
-                                    self::syncUsdFromKhr($get, $set);
                                 })
-                                ->dehydrateStateUsing(fn (mixed $state): ?string => self::dehydrateKhrAmount($state))
-                                ->required()
-                                ->validationMessages([
-                                    'required' => __('payments.validation.amount_kh_required'),
-                                ]),
+                                ->dehydrateStateUsing(fn (mixed $state): ?string => self::dehydrateKhrAmount($state)),
 
                             TextInput::make('amount_usd')
                                 ->label(__('payments.fields.amount_usd'))
@@ -389,9 +402,8 @@ class CandidatePaymentListsTable
                                 ->afterStateHydrated(function (TextInput $component, mixed $state): void {
                                     $component->state(self::normalizeUsdAmount($state));
                                 })
-                                ->afterStateUpdated(function (mixed $state, callable $set, callable $get): void {
+                                ->afterStateUpdated(function (mixed $state, callable $set): void {
                                     $set('amount_usd', self::normalizeUsdAmount($state));
-                                    self::syncKhrFromUsd($get, $set);
                                 })
                                 ->dehydrateStateUsing(fn (mixed $state): ?string => self::normalizeUsdAmount($state)),
                         ]),
@@ -402,7 +414,7 @@ class CandidatePaymentListsTable
                             ->content(function (callable $get): string {
                                 $rate = self::normalizeExchangeRate($get('exchange_rate')) ?? self::defaultExchangeRate();
 
-                                return sprintf('1 USD = %s KHR', $rate);
+                                return sprintf('1 USD = %s ៛', $rate);
                             }),
 
                         Textarea::make('description')
@@ -417,7 +429,9 @@ class CandidatePaymentListsTable
                             'users_id' => self::ownerId($record),
                             'form_id' => $record->custom_form_id,
                             'receipt_number' => $data['receipt_number'],
-                            'type_payment' => $data['type_payment'],
+                            'type_payment' => ($data['payment_method'] ?? null) === 'cash'
+                                ? PaymentType::activeKeyForMethod('cash')
+                                : ($data['type_payment'] ?? null),
                             'status_payt' => 'paid',
                             'amount_usd' => $data['amount_usd'] ?? null,
                             'amount_kh' => $data['amount_kh'] ?? null,
@@ -788,30 +802,6 @@ class CandidatePaymentListsTable
         }
 
         return number_format((float) $normalized, 2, '.', '');
-    }
-
-    protected static function syncKhrFromUsd(callable $get, callable $set): void
-    {
-        $usdAmount = self::normalizeUsdAmount($get('amount_usd'));
-        $rate = self::normalizeExchangeRate($get('exchange_rate'));
-
-        if (blank($usdAmount) || blank($rate) || ! is_numeric($usdAmount) || ! is_numeric($rate) || (float) $rate <= 0) {
-            return;
-        }
-
-        $set('amount_kh', self::normalizeKhrAmount((float) $usdAmount * (float) $rate));
-    }
-
-    protected static function syncUsdFromKhr(callable $get, callable $set): void
-    {
-        $khrAmount = self::dehydrateKhrAmount($get('amount_kh'));
-        $rate = self::normalizeExchangeRate($get('exchange_rate'));
-
-        if (blank($khrAmount) || blank($rate) || ! is_numeric($khrAmount) || ! is_numeric($rate) || (float) $rate <= 0) {
-            return;
-        }
-
-        $set('amount_usd', self::normalizeUsdAmount((float) $khrAmount / (float) $rate));
     }
 
     protected static function ownerId(UnpaidApplication $record): ?int

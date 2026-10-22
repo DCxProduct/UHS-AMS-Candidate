@@ -80,6 +80,34 @@ class Payment extends Model
         return $this->belongsTo(User::class, 'received_by');
     }
 
+    public function paymentType(): BelongsTo
+    {
+        return $this->belongsTo(PaymentType::class, 'type_payment', 'key');
+    }
+
+    public function getPaymentMethodLabelAttribute(): string
+    {
+        if (blank($this->type_payment)) {
+            return '-';
+        }
+
+        return $this->paymentType?->localized_method ?? PaymentType::localizedMethodFor($this->type_payment);
+    }
+
+    public function getPaymentMethodKeyAttribute(): string
+    {
+        return $this->paymentType?->method ?? PaymentType::methodForKey($this->type_payment);
+    }
+
+    public function getBankNameAttribute(): string
+    {
+        if (blank($this->type_payment)) {
+            return '-';
+        }
+
+        return $this->paymentType?->localized_name ?? PaymentType::localizedLabelFor($this->type_payment);
+    }
+
     public function form(): BelongsTo
     {
         return $this->belongsTo(CustomForm::class, 'form_id');

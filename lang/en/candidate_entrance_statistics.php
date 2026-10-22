@@ -25,6 +25,8 @@ return [
     'review_note_placeholder' => 'Enter reject reason or review note',
     'reviewed_at' => 'Reviewed At',
     'submitted_at' => 'Submitted At',
+    'uploaded_files' => 'Uploaded Files',
+    'download_files_count' => 'Download :count',
 
     'details_title' => 'Application Details',
     'application_information' => 'Application Information',
@@ -62,7 +64,7 @@ return [
     'actions' => [
         'view_details' => 'View Details',
         'view_data' => 'View Data',
-        'view_workflow' => 'View',
+        'view_workflow' => 'View Process',
         'accept' => 'Accept',
         'reject' => 'Reject',
         'close' => 'Close',

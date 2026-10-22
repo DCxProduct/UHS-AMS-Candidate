@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Resources\Payments\Pages;
 
 use App\Filament\Admin\Resources\Payments\PaymentResource;
 use App\Models\Payment;
+use App\Models\PaymentType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\QueryException;
 use Filament\Resources\Pages\EditRecord;
@@ -16,6 +17,12 @@ class EditPayment extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
+        if (($data['payment_method'] ?? null) === 'cash') {
+            $data['type_payment'] = PaymentType::activeKeyForMethod('cash');
+        }
+
+        unset($data['payment_method']);
+
         if (! Schema::hasColumn('payments', 'exchange_rate')) {
             unset($data['exchange_rate']);
         }

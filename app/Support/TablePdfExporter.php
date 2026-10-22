@@ -144,25 +144,83 @@ class TablePdfExporter
             'usd' => '0.00',
             'khr' => '0.00',
         ];
-        $summaryCells = $options['summary_cells'] ?? [
-            [__('payments.export.total_records'), (string) $summary['count']],
-            [__('payments.export.total_usd'), $summary['usd'] . ' $'],
-            [__('payments.export.total_khr'), $summary['khr'] . ' KHR'],
-        ];
-        $summaryHeadHtml = collect($summaryCells)->map(fn (array $cell): string => '<th>' . e((string) $cell[0]) . '</th>')->implode('');
-        $summaryBodyHtml = collect($summaryCells)->map(fn (array $cell): string => '<td>' . e((string) $cell[1]) . '</td>')->implode('');
-        $summaryWidth = min(58, 20 * max(1, count($summaryCells)));
+        $summaryTable = $options['summary_table'] ?? null;
+
+        if ($summaryTable) {
+            $summaryHeadHtml = collect($summaryTable['headings'] ?? [])
+                ->map(fn ($heading): string => '<th>' . e((string) $heading) . '</th>')
+                ->implode('');
+            $summaryBodyHtml = collect($summaryTable['rows'] ?? [])
+                ->map(fn (array $row): string => '<tr>' . collect($row)
+                    ->map(fn ($value): string => '<td>' . e((string) $value) . '</td>')
+                    ->implode('') . '</tr>')
+                ->implode('');
+            $summaryWidth = 60;
+        } else {
+            $summaryCells = $options['summary_cells'] ?? [
+                [__('payments.export.total_records'), (string) $summary['count']],
+                [__('payments.export.total_usd'), $summary['usd'] . ' $'],
+                [__('payments.export.total_khr'), $summary['khr'] . ' ៛'],
+            ];
+            $summaryHeadHtml = collect($summaryCells)->map(fn (array $cell): string => '<th>' . e((string) $cell[0]) . '</th>')->implode('');
+            $summaryBodyHtml = '<tr>' . collect($summaryCells)->map(fn (array $cell): string => '<td>' . e((string) $cell[1]) . '</td>')->implode('') . '</tr>';
+            $summaryWidth = min(58, 20 * max(1, count($summaryCells)));
+        }
         $footerColumnCount = max(1, count($headings));
         $footerColumn = min(max(1, (int) ($options['footer_column'] ?? $footerColumnCount)), $footerColumnCount);
-        $footerColumnWidth = 100 / $footerColumnCount;
-        $footerOffset = ($footerColumn - 1) * $footerColumnWidth;
-        $footerText = filled($options['footer_text'] ?? null)
-            ? '<div class="report-signature" style="width: ' . $footerColumnWidth . '%; margin-left: ' . $footerOffset . '%;">' . e((string) $options['footer_text']) . '</div>'
-            : '';
+        $footerSpan = min(max(1, (int) ($options['footer_span'] ?? 1)), $footerColumnCount - $footerColumn + 1);
+        $footerColumnWidth = (100 / $footerColumnCount) * $footerSpan;
+        $footerOffset = ($footerColumn - 1) * (100 / $footerColumnCount);
+        $footerDateHtml = collect($options['footer_date_parts'] ?? [])
+            ->map(fn (array $part): string => ($part['bold'] ?? false)
+                ? '<strong class="report-date-bold">' . e((string) ($part['text'] ?? '')) . '</strong>'
+                : e((string) ($part['text'] ?? '')))
+            ->implode('');
+
+        if ($footerDateHtml === '' && filled($options['footer_date'] ?? null)) {
+            $footerDateHtml = e((string) $options['footer_date']);
+        }
+
+        $footerText = '';
+
+        if (filled($options['footer_text'] ?? null)) {
+            $signatureDate = $footerDateHtml !== ''
+                ? '<div class="report-signature-date">' . $footerDateHtml . '</div>'
+                : '';
+            $signatureName = filled($options['footer_name'] ?? null)
+                ? '<div class="report-signature-name">' . e((string) $options['footer_name']) . '</div>'
+                : '';
+
+            if (filled($options['footer_receiver_text'] ?? null)) {
+                $receiverWidth = min(30, $footerOffset);
+                $signatureOffset = max(0, $footerOffset - $receiverWidth);
+                $signatureWidth = max(0, 100 - $footerOffset);
+                $receiverText = e((string) $options['footer_receiver_text']);
+
+                $footerText = '<table class="report-signature-layout" style="margin-top: 22mm;">'
+                    . '<tr>'
+                    . '<td class="report-receiver-cell" rowspan="3" style="width: ' . $receiverWidth . '%;">' . $receiverText . '</td>'
+                    . '<td style="width: ' . $signatureOffset . '%;"></td>'
+                    . '<td class="report-signature-date-cell" style="width: ' . $signatureWidth . '%;">' . $signatureDate . '</td>'
+                    . '</tr>'
+                    . '<tr><td></td><td class="report-signature-label-cell"><div class="report-signature-label">' . e((string) $options['footer_text']) . '</div></td></tr>'
+                    . '<tr><td></td><td class="report-signature-name-cell"><div class="report-signature-name">' . $signatureName . '</div></td></tr>'
+                    . '</table>';
+            } else {
+                $footerText = '<div class="report-signature-block" style="width: ' . $footerColumnWidth . '%; margin-left: ' . $footerOffset . '%;">'
+                    . $signatureDate
+                    . '<div class="report-signature-label">' . e((string) $options['footer_text']) . '</div>'
+                    . $signatureName
+                    . '</div>';
+            }
+        }
         $documentTitle = e(filled($title) ? (string) $title : 'Payment Records');
         $subtitle = e((string) ($options['subtitle'] ?? ''));
         $logo = self::logoDataUri();
         $logoHtml = $logo ? '<img src="' . $logo . '" class="official-logo" alt="UHS">' : '';
+        $summaryHtml = ($options['hide_summary'] ?? false)
+            ? ''
+            : '<div class="report-footer"><table class="summary-table"><thead><tr>' . $summaryHeadHtml . '</tr></thead><tbody>' . $summaryBodyHtml . '</tbody></table></div>';
 
         return '<!doctype html>
 <html lang="km">
@@ -194,8 +252,21 @@ class TablePdfExporter
         .summary-table { border-collapse: collapse; width: ' . $summaryWidth . '%; }
         .summary-table th, .summary-table td { border: 0.5pt solid #7f8ea3; padding: 4px 6px; }
         .summary-table th { background-color: #003b95; color: #ffffff; font-weight: bold; text-align: center; }
-        .summary-table td { background-color: #f2f5fa; font-weight: bold; text-align: center; }
-        .report-signature { font-family: khmermuol, khmerbattambang, sans-serif; font-size: 10pt; font-weight: bold; margin-top: 32mm; text-align: center; }
+        .summary-table td { background-color: #ffffff; font-weight: normal; text-align: center; }
+        .summary-table td:first-child { text-align: left; }
+        .report-signature-block { font-family: khmerbattambang, sans-serif; margin-top: 22mm; text-align: center; }
+        .report-signature-layout { border-collapse: collapse; table-layout: fixed; width: 100%; font-family: khmerbattambang, sans-serif; }
+        .report-signature-layout td { border: 0; padding: 0; }
+        .report-receiver-cell { font-family: khmermuol, khmerbattambang, sans-serif; font-size: 10pt; font-weight: bold; text-align: center; vertical-align: middle; }
+        .report-signature-date-cell, .report-signature-label-cell, .report-signature-name-cell { text-align: center; }
+        .report-signature-date-cell { height: 5mm; vertical-align: top; }
+        .report-signature-label-cell { height: 19mm; vertical-align: top; }
+        .report-signature-label-cell .report-signature-label { margin-bottom: 0; }
+        .report-signature-name-cell { vertical-align: top; }
+        .report-signature-date { font-size: 9pt; margin-bottom: 3mm; }
+        .report-date-bold { font-family: khmermuol, khmerbattambang, sans-serif; font-weight: bold; }
+        .report-signature-label { font-family: khmermuol, khmerbattambang, sans-serif; font-size: 10pt; font-weight: bold; margin-bottom: 14mm; }
+        .report-signature-name { font-size: 10pt; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -227,12 +298,7 @@ class TablePdfExporter
         <thead><tr>' . $headingHtml . '</tr></thead>
         <tbody>' . $rowHtml . '</tbody>
     </table>
-    <div class="report-footer">
-        <table class="summary-table">
-            <thead><tr>' . $summaryHeadHtml . '</tr></thead>
-            <tbody><tr>' . $summaryBodyHtml . '</tr></tbody>
-        </table>
-    </div>
+    ' . $summaryHtml . '
     ' . $footerText . '
 </body>
 </html>';

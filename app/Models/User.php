@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Models\Contracts\HasAvatar;
+use Filament\Models\Contracts\HasName;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -15,7 +16,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Spatie\Permission\Traits\HasRoles;
 
-class User extends Authenticatable implements FilamentUser, HasAvatar
+class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
 {
     use Notifiable;
     use SoftDeletes;
@@ -122,6 +123,11 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
         }
 
         return Storage::disk('public')->url($avatar);
+    }
+
+    public function getFilamentName(): string
+    {
+        return $this->name_latin ?: $this->name ?: $this->username ?: $this->email ?: 'User';
     }
 
     public function studentUser(): HasOne

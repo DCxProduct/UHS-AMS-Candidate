@@ -33,6 +33,12 @@ class PaymentTypesTable
                     ->getStateUsing(fn (PaymentType $record): string => $record->localized_name)
                     ->searchable(['name_en', 'name_kh']),
 
+                TextColumn::make('localized_method')
+                    ->label(__('payment_types.table.method'))
+                    ->getStateUsing(fn (PaymentType $record): string => $record->localized_method)
+                    ->badge()
+                    ->color(fn (PaymentType $record): string => $record->method === 'bank' ? 'info' : 'success'),
+
                 TextColumn::make('name_en')
                     ->label(__('payment_types.table.name_en'))
                     ->searchable()

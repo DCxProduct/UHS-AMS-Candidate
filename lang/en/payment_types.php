@@ -11,6 +11,7 @@ return [
         'name' => 'Name',
         'name_en' => 'Name English',
         'name_kh' => 'Name Khmer',
+        'method' => 'Type',
         'display_order' => 'Display Order',
         'is_active' => 'Active',
     ],
@@ -21,6 +22,7 @@ return [
         'name' => 'Name',
         'name_en' => 'Name English',
         'name_kh' => 'Name Khmer',
+        'method' => 'Type',
         'display_order' => 'Display Order',
         'is_active' => 'Active',
         'created_at' => 'Created At',
@@ -31,6 +33,7 @@ return [
         'key' => 'Enter payment type key',
         'name_en' => 'Enter English name',
         'name_kh' => 'Enter Khmer name',
+        'method' => 'Select cash or bank',
         'display_order' => 'Enter display order',
     ],
 
@@ -44,6 +47,14 @@ return [
         'key_format' => 'The key may contain only lowercase letters, numbers, underscores, and hyphens.',
         'name_en_required' => 'English name is required.',
         'name_kh_required' => 'Khmer name is required.',
+        'method_required' => 'Choose whether this payment type is cash or bank.',
+    ],
+
+    'options' => [
+        'methods' => [
+            'cash' => 'Cash',
+            'bank' => 'Bank',
+        ],
     ],
 
     'actions' => [

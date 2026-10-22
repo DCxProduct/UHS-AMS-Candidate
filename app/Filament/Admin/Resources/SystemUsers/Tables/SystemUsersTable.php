@@ -50,6 +50,23 @@ class SystemUsersTable
                     ->alignCenter()
                     ->width('60px'),
 
+                TextColumn::make('full_name_latin')
+                    ->label(__('system_users.fields.full_name_latin'))
+                    ->getStateUsing(fn (SystemUser $record): string => collect([
+                        $record->first_name_latin,
+                        $record->last_name_latin,
+                    ])->filter(fn ($part): bool => filled($part))->implode(' '))
+                    ->placeholder('-')
+                    ->searchable(query: fn ($query, string $search) => $query->where(function ($query) use ($search): void {
+                        $query
+                            ->where('first_name_latin', 'like', '%' . $search . '%')
+                            ->orWhere('last_name_latin', 'like', '%' . $search . '%');
+                    }))
+                    ->sortable(query: fn ($query, string $direction) => $query
+                        ->orderBy('first_name_latin', $direction)
+                        ->orderBy('last_name_latin', $direction)),
+
+
                 TextColumn::make('email')
                     ->label(__('system_users.fields.email'))
                     ->placeholder('-')

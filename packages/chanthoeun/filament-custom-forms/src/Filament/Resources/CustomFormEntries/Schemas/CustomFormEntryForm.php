@@ -451,7 +451,7 @@ class CustomFormEntryForm
                                 )
                                 ->getDownloadableFileUrlUsing(
                                     fn (string $file, ?CustomFormEntry $record = null): ?string => $record
-                                        ? app(CustomFormEntryFiles::class)->protectedUrl($record, $file)
+                                        ? app(CustomFormEntryFiles::class)->protectedZipUrl($record)
                                         : null
                                 );
                         }

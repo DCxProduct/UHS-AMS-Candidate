@@ -30,6 +30,8 @@ class SystemUser extends Authenticatable implements CanResetPasswordContract, Fi
 
     protected $fillable = [
         'name',
+        'first_name_latin',
+        'last_name_latin',
         'username',
         'email',
         'phone',
@@ -166,7 +168,9 @@ class SystemUser extends Authenticatable implements CanResetPasswordContract, Fi
             'registration_type' => $this->getLoginRegistrationType(),
             'academic_year' => $loginUser->academic_year,
             'name' => $this->name ?: $this->username ?: $this->email ?: 'System User',
-            'name_latin' => $loginUser->name_latin,
+            'name_latin' => collect([$this->first_name_latin, $this->last_name_latin])
+                ->filter(fn ($part): bool => filled($part))
+                ->implode(' ') ?: null,
             'username' => $this->username,
             'email' => $this->email,
             'phone' => $this->phone,
@@ -342,6 +346,7 @@ class SystemUser extends Authenticatable implements CanResetPasswordContract, Fi
 
                 $systemUser->fill([
                     'name' => $loginUser->name ?: $loginUser->username ?: $loginUser->email ?: 'System User',
+                    ...static::splitLatinName($loginUser->name_latin),
                     'username' => $loginUser->username,
                     'email' => $loginUser->email,
                     'phone' => $loginUser->phone,
@@ -378,9 +383,24 @@ class SystemUser extends Authenticatable implements CanResetPasswordContract, Fi
         return [];
     }
 
+    protected static function splitLatinName(?string $name): array
+    {
+        $parts = preg_split('/\s+/', trim((string) $name), 2, PREG_SPLIT_NO_EMPTY) ?: [];
+
+        return [
+            'first_name_latin' => $parts[0] ?? null,
+            'last_name_latin' => $parts[1] ?? null,
+        ];
+    }
+
     public function getFilamentName(): string
     {
-        return $this->name
+        $latinName = collect([$this->first_name_latin, $this->last_name_latin])
+            ->filter(fn ($part): bool => filled($part))
+            ->implode(' ');
+
+        return $latinName
+            ?: $this->name
             ?: $this->username
                 ?: $this->email
                     ?: 'System User';

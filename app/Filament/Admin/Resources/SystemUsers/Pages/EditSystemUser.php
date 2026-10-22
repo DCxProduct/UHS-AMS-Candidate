@@ -57,6 +57,11 @@ class EditSystemUser extends EditRecord
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
+        $latinName = trim((string) ($this->record->findLinkedLoginUser()?->name_latin ?? ''));
+        $latinNameParts = preg_split('/\s+/', $latinName, 2, PREG_SPLIT_NO_EMPTY) ?: [];
+        $data['first_name_latin'] ??= $this->record->first_name_latin ?: ($latinNameParts[0] ?? null);
+        $data['last_name_latin'] ??= $this->record->last_name_latin ?: ($latinNameParts[1] ?? null);
+
         $roles = $data['roles'] ?? [];
 
         if (is_string($roles)) {

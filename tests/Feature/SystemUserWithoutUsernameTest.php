@@ -54,10 +54,15 @@ class SystemUserWithoutUsernameTest extends TestCase
     {
         Livewire::test(CreateSystemUser::class)
             ->assertFormFieldDoesNotExist('username')
-            ->assertFormFieldExists('phone');
+            ->assertFormFieldExists('phone')
+            ->assertFormFieldExists('first_name_latin')
+            ->assertFormFieldExists('last_name_latin');
         Livewire::test(ListSystemUsers::class)
             ->assertTableColumnDoesNotExist('username')
-            ->assertTableColumnExists('phone');
+            ->assertTableColumnExists('phone')
+            ->assertTableColumnExists('full_name_latin')
+            ->assertTableColumnDoesNotExist('first_name_latin')
+            ->assertTableColumnDoesNotExist('last_name_latin');
     }
 
     public function test_creating_a_staff_account_makes_the_username_and_its_login_works(): void
@@ -65,6 +70,8 @@ class SystemUserWithoutUsernameTest extends TestCase
         Livewire::test(CreateSystemUser::class)
             ->fillForm([
                 'email' => 'newstaff@example.test',
+                'first_name_latin' => 'sithan',
+                'last_name_latin' => 'viratana',
                 'phone' => '010999100',
                 'candidate_type' => array_key_first(UserTypeOptions::systemOptions()),
                 'password' => 'Password123!',
@@ -77,7 +84,14 @@ class SystemUserWithoutUsernameTest extends TestCase
         $staff = SystemUser::query()->where('email', 'newstaff@example.test')->sole();
         $this->assertSame('newstaff', $staff->username);
         $this->assertSame('newstaff', $staff->name);
+        $this->assertSame('SITHAN', $staff->first_name_latin);
+        $this->assertSame('VIRATANA', $staff->last_name_latin);
         $this->assertTrue(User::query()->where('username', 'newstaff')->where('email', 'newstaff@example.test')->exists());
+        $this->assertSame('SITHAN VIRATANA', User::query()->where('username', 'newstaff')->sole()->name_latin);
+        $this->assertSame('SITHAN VIRATANA', User::query()->where('username', 'newstaff')->sole()->getFilamentName());
+
+        Livewire::test(ListSystemUsers::class)
+            ->assertTableColumnStateSet('full_name_latin', 'SITHAN VIRATANA', $staff);
     }
 
     public function test_editing_keeps_the_saved_username_and_name(): void
@@ -102,5 +116,36 @@ class SystemUserWithoutUsernameTest extends TestCase
         $this->assertSame('regofficer', $staff->username);
         $this->assertSame('regofficer', $staff->name);
         $this->assertSame('reg.officer@example.test', $staff->email);
+    }
+
+    public function test_edit_form_loads_existing_login_latin_name_and_saves_changes(): void
+    {
+        $staff = SystemUser::query()->forceCreate([
+            'name' => 'registrar',
+            'username' => 'registrar',
+            'email' => 'registrar@example.test',
+            'phone' => '010999003',
+            'password' => Hash::make('password'),
+            'roles' => ['registrar_officer'],
+            'is_active' => true,
+        ]);
+        $staff->syncLoginUser();
+        $staff->findLinkedLoginUser()->forceFill(['name_latin' => 'DARA SOK'])->save();
+
+        Livewire::test(EditSystemUser::class, ['record' => $staff->getRouteKey()])
+            ->assertFormFieldExists('first_name_latin')
+            ->assertFormFieldExists('last_name_latin')
+            ->assertFormSet([
+                'first_name_latin' => 'DARA',
+                'last_name_latin' => 'SOK',
+            ])
+            ->fillForm([
+                'first_name_latin' => 'SOK',
+                'last_name_latin' => 'DARA',
+            ])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertSame('SOK DARA', $staff->findLinkedLoginUser()->fresh()->name_latin);
     }
 }

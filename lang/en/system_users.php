@@ -15,6 +15,9 @@ return [
     'fields' => [
         'no' => 'No',
         'name' => 'Name',
+        'first_name_latin' => 'First Name',
+        'last_name_latin' => 'Last Name',
+        'full_name_latin' => 'Full Name',
         'email' => 'Email Address',
         'phone' => 'Phone Number',
         'username' => 'Username',
@@ -31,6 +34,8 @@ return [
 
     'placeholders' => [
         'name' => 'Enter name',
+        'first_name_latin' => 'Enter first name in Latin',
+        'last_name_latin' => 'Enter last name in Latin',
         'email' => 'Enter email address',
         'phone' => 'Enter phone number',
         'username' => 'Enter username',

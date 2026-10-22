@@ -31,7 +31,7 @@ class PaymentsTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with('receivedBy'))
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['receivedBy', 'paymentType']))
             ->selectable()
             ->recordAction(null)
             ->recordUrl(null)
@@ -102,23 +102,29 @@ class PaymentsTable
                 TextColumn::make('exchange_rate')
                     ->label(__('payments.table.exchange_rate'))
                     ->badge()
-                    ->formatStateUsing(fn ($state): string => blank($state) ? '-' : number_format((float) $state, 2) . ' KHR')
+                    ->formatStateUsing(fn ($state): string => blank($state) ? '-' : number_format((float) $state, 2) . ' ៛')
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('type_payment')
                     ->label(__('payments.table.type_payment'))
-                    ->badge()
-                    ->formatStateUsing(fn (?string $state): string => PaymentType::localizedLabelFor($state))
-                    ->color('info')
+                    ->alignCenter()
+                    ->getStateUsing(fn (Payment $record): string => $record->payment_method_label)
+                    ->toggleable(isToggledHiddenByDefault: false),
+
+                TextColumn::make('bank_name')
+                    ->label(__('payments.table.bank'))
+                    ->getStateUsing(fn (Payment $record): string => $record->bank_name)
+                    ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('amount_usd')
                     ->label(__('payments.table.amount_usd'))
-                    ->money('USD')
+                    ->formatStateUsing(fn ($state): string => blank($state) ? '-' : number_format((float) $state, 2) . '$')
                     ->summarize(
                         Sum::make('amount_usd_total')
                             ->label(__('payments.summary.total_usd'))
-                            ->money('USD')
+                            ->numeric(2)
+                            ->suffix('$')
                             ->extraAttributes(['class' => 'payment-total-summary']),
                     )
                     ->alignCenter()
@@ -126,12 +132,12 @@ class PaymentsTable
 
                 TextColumn::make('amount_kh')
                     ->label(__('payments.table.amount_kh'))
-                    ->formatStateUsing(fn ($state): string => blank($state) ? '-' : number_format((float) $state, 2) . ' KHR')
+                    ->formatStateUsing(fn ($state): string => blank($state) ? '-' : number_format((float) $state, 2) . ' ៛')
                     ->summarize(
                         Sum::make('amount_khr_total')
                             ->label(__('payments.summary.total_khr'))
                             ->numeric(2)
-                            ->suffix(' KHR')
+                            ->suffix(' ៛')
                             ->extraAttributes(['class' => 'payment-total-summary']),
                     )
                     ->alignCenter()
@@ -475,7 +481,7 @@ class PaymentsTable
             ->filter()
             ->unique()
             ->sortBy(fn (string $value): float => (float) $value)
-            ->mapWithKeys(fn (string $value): array => [$value => number_format((float) $value, 0) . ' KHR'])
+            ->mapWithKeys(fn (string $value): array => [$value => number_format((float) $value, 0) . ' ៛'])
             ->toArray();
     }
 
@@ -538,7 +544,7 @@ class PaymentsTable
             ],
             'type_payment' => [
                 'label' => __('payments.export.columns.type_payment'),
-                'value' => fn (Payment $record): string => PaymentType::localizedLabelFor($record->type_payment),
+                'value' => fn (Payment $record): string => $record->payment_method_label,
             ],
             'amount_usd' => [
                 'label' => __('payments.export.columns.amount_usd'),
@@ -546,7 +552,7 @@ class PaymentsTable
             ],
             'amount_kh' => [
                 'label' => __('payments.export.columns.amount_kh'),
-                'value' => fn (Payment $record): string => blank($record->amount_kh) ? '-' : number_format((float) $record->amount_kh, 2) . ' KHR',
+                'value' => fn (Payment $record): string => blank($record->amount_kh) ? '-' : number_format((float) $record->amount_kh, 2) . ' ៛',
             ],
         ];
     }
@@ -602,29 +608,127 @@ class PaymentsTable
         ];
     }
 
+    protected static function paymentTypeSummaryTable(iterable $records): array
+    {
+        $totals = [
+            'cash' => ['count' => 0, 'usd' => 0.0, 'usd_count' => 0, 'khr' => 0.0, 'khr_count' => 0],
+            'bank' => ['count' => 0, 'usd' => 0.0, 'usd_count' => 0, 'khr' => 0.0, 'khr_count' => 0],
+        ];
+
+        foreach ($records as $record) {
+            if (! $record instanceof Payment) {
+                continue;
+            }
+
+            $method = $record->payment_method_key;
+            $totals[$method]['count']++;
+
+            if (filled($record->amount_usd)) {
+                $totals[$method]['usd'] += (float) $record->amount_usd;
+                $totals[$method]['usd_count']++;
+            }
+
+            if (filled($record->amount_kh)) {
+                $totals[$method]['khr'] += (float) $record->amount_kh;
+                $totals[$method]['khr_count']++;
+            }
+        }
+
+        return [
+            'headings' => [
+                __('payments.export.summary.payment_type'),
+                __('payments.export.summary.count'),
+                __('payments.export.summary.usd'),
+                __('payments.export.summary.khr'),
+            ],
+            'rows' => collect(['cash', 'bank'])
+                ->map(fn (string $method): array => [
+                    __('payment_types.options.methods.' . $method),
+                    (string) $totals[$method]['count'],
+                    $totals[$method]['usd_count'] > 0 ? number_format($totals[$method]['usd'], 2) . ' $' : '-',
+                    $totals[$method]['khr_count'] > 0 ? number_format($totals[$method]['khr'], 2) . ' ៛' : '-',
+                ])
+                ->all(),
+        ];
+    }
+
     protected static function reportSubtitle(): string
     {
         return OfficialReport::subtitle();
+    }
+
+    protected static function exportingUserName(): string
+    {
+        $user = auth()->user();
+
+        return (string) ($user?->name_latin ?: $user?->name ?: '');
+    }
+
+    protected static function reportFooterDateParts(): array
+    {
+        $date = LocalizedDate::formalDayMonthYearParts(now());
+
+        if (! $date) {
+            return [];
+        }
+
+        return [
+            ['text' => __('payments.export.footer.location')],
+            ['text' => __('payments.export.footer.day_prefix')],
+            ['text' => $date['day'], 'bold' => true],
+            ['text' => __('payments.export.footer.month_prefix')],
+            ['text' => $date['month'], 'bold' => true],
+            ['text' => __('payments.export.footer.year_prefix')],
+            ['text' => $date['year'], 'bold' => true],
+        ];
+    }
+
+    protected static function reportFooterDateText(): string
+    {
+        return collect(self::reportFooterDateParts())
+            ->pluck('text')
+            ->implode('');
     }
 
     protected static function reportSheet(iterable $records): array
     {
         $records = collect($records);
         $summary = self::reportSummary($records);
+        $rows = self::reportRows($records);
+        $rows = array_map(
+            fn (array $row): array => array_map(
+                fn (string $value): string => str_replace(' ៛', '៛', $value),
+                $row,
+            ),
+            $rows,
+        );
+        $summaryTable = self::paymentTypeSummaryTable($records);
+        $summaryTable['rows'] = array_map(
+            fn (array $row): array => array_map(
+                fn (string $value): string => str_replace(' ៛', '៛', $value),
+                $row,
+            ),
+            $summaryTable['rows'],
+        );
 
         return OfficialReport::sheet(
             'Payment Records',
             __('payments.export.title'),
             self::reportHeadings(),
-            self::reportRows($records),
+            $rows,
             [
                 [__('payments.export.total_records'), $summary['count']],
                 [__('payments.export.total_usd'), $summary['usd'] . ' $'],
-                [__('payments.export.total_khr'), $summary['khr'] . ' KHR'],
+                [__('payments.export.total_khr'), $summary['khr'] . ' ៛'],
             ],
-            [1 => 16, 2 => 25, 3 => 25, 4 => 10, 5 => 24, 6 => 16, 7 => 16, 8 => 16, 9 => 16, 10 => 14, 11 => 16],
-            footerText: __('payments.export.columns.received_by'),
+            [1 => 16, 2 => 25, 3 => 25, 4 => 16, 5 => 24, 6 => 16, 7 => 16, 8 => 16, 9 => 16, 10 => 14, 11 => 16],
+            footerText: __('payments.export.footer.handed_over_by'),
             footerColumn: 9,
+            footerDateText: self::reportFooterDateText(),
+            footerDateParts: self::reportFooterDateParts(),
+            footerName: self::exportingUserName(),
+            footerReceiverText: __('payments.export.footer.received_by'),
+            summaryTable: $summaryTable,
         );
     }
 
@@ -671,8 +775,13 @@ class PaymentsTable
                 'layout' => 'payment-records',
                 'subtitle' => self::reportSubtitle(),
                 'summary' => self::reportSummary($records),
-                'footer_text' => __('payments.export.columns.received_by'),
+                'summary_table' => self::paymentTypeSummaryTable($records),
+                'footer_text' => __('payments.export.footer.handed_over_by'),
                 'footer_column' => 9,
+                'footer_span' => 3,
+                'footer_date_parts' => self::reportFooterDateParts(),
+                'footer_name' => self::exportingUserName(),
+                'footer_receiver_text' => __('payments.export.footer.received_by'),
                 'filename' => OfficialReport::filename(__('payments.export.title'), 'pdf'),
                 'filename_fallback' => OfficialReport::filename(__('payments.export.title'), 'pdf', 'payment-records'),
             ],
@@ -770,7 +879,7 @@ class PaymentsTable
             ->map(fn (string $columnKey): string => match ($columnKey) {
                 'row_number' => __('payments.summary.total'),
                 'amount_usd' => __('payments.summary.total_usd').': $'.number_format($totalUsd, 2),
-                'amount_kh' => __('payments.summary.total_khr').': '.number_format($totalKhr, 2).' KHR',
+                'amount_kh' => __('payments.summary.total_khr').': '.number_format($totalKhr, 2).' ៛',
                 default => '',
             })
             ->values()
@@ -843,7 +952,7 @@ class PaymentsTable
             'type_payment' => [
                 'label' => __('payments.table.type_payment'),
                 'field_key' => 'type_payment',
-                'value' => fn (Payment $record): string => PaymentType::localizedLabelFor($record->type_payment),
+                'value' => fn (Payment $record): string => $record->payment_method_label,
                 'clean' => fn (Payment $record): string => blank($record->type_payment) ? '-' : (string) $record->type_payment,
             ],
             'status_payt' => [
@@ -861,7 +970,7 @@ class PaymentsTable
             'amount_kh' => [
                 'label' => __('payments.table.amount_kh'),
                 'field_key' => 'amount_kh',
-                'value' => fn (Payment $record): string => blank($record->amount_kh) ? '-' : number_format((float) $record->amount_kh, 2) . ' KHR',
+                'value' => fn (Payment $record): string => blank($record->amount_kh) ? '-' : number_format((float) $record->amount_kh, 2) . ' ៛',
                 'clean' => fn (Payment $record): string => blank($record->amount_kh) ? '-' : (string) $record->amount_kh,
             ],
             'datetime_pay' => [
