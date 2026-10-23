@@ -327,6 +327,7 @@ return [
             'last_name_en' => 'Latin Last Name',
             'first_name_en' => 'Latin First Name',
             'no' => 'No',
+            'candidate_id' => 'Candidate ID',
             'major' => 'Major',
             'gender' => 'Gender',
             'phone_number' => 'Phone Number',

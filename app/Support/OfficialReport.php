@@ -26,10 +26,10 @@ class OfficialReport
         }
     }
 
-    public static function subtitle(): string
+    public static function subtitle(mixed $reportDate = null): string
     {
         return __('payments.export.generated_at', [
-            'date' => LocalizedDate::dayMonthYear(now()),
+            'date' => LocalizedDate::dayMonthYear($reportDate ?? now()),
         ]);
     }
 
@@ -75,6 +75,7 @@ class OfficialReport
         ?array $footerDateParts = null,
         ?string $footerReceiverText = null,
         ?array $summaryTable = null,
+        ?string $subtitle = null,
     ): array
     {
         $lastColumn = self::columnName(count($headings));
@@ -151,7 +152,7 @@ class OfficialReport
             [],
             [__('payments.export.university')],
             [$title],
-            [self::subtitle()],
+            [$subtitle ?? self::subtitle()],
             [],
             $headings,
             ...$dataRows,

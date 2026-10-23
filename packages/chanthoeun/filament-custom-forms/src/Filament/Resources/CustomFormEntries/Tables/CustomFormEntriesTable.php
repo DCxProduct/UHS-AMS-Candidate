@@ -8,6 +8,7 @@ use App\Enums\WorkflowStageType;
 use App\Models\Major;
 use App\Models\Payment;
 use App\Models\WorkflowNotification;
+use App\Services\CandidateIdGenerator;
 use App\Support\AuditLogger;
 use App\Support\CaseInsensitiveSearch;
 use App\Support\CustomFormEntryFiles;
@@ -427,6 +428,12 @@ class CustomFormEntriesTable
                 ->formatStateUsing(fn ($state): string => LocalizedNumber::digits($state))
                 ->alignCenter()
                 ->width('60px'),
+
+            TextColumn::make('candidate_id')
+                ->label(__('app.custom_form_entry_ui.labels.candidate_id'))
+                ->searchable()
+                ->placeholder('-')
+                ->toggleable(isToggledHiddenByDefault: false),
 
             // 2. First Name
             TextColumn::make('data.first_name_kh')
@@ -1185,16 +1192,20 @@ class CustomFormEntriesTable
                             $data['candidate_status'] = 'pending';
                             $data['registration_status'] = 'approved';
 
-                            DB::table('custom_form_entries')
-                                ->where('id', $record->id)
-                                ->update([
-                                    'review_status' => 'approved',
-                                    'review_note' => null,
-                                    'reviewed_by' => auth()->id(),
-                                    'reviewed_at' => now(),
-                                    'updated_at' => now(),
-                                    'data' => json_encode($data),
-                                ]);
+                            DB::transaction(function () use ($record, $data): void {
+                                app(CandidateIdGenerator::class)->assignToEntry($record);
+
+                                DB::table('custom_form_entries')
+                                    ->where('id', $record->id)
+                                    ->update([
+                                        'review_status' => 'approved',
+                                        'review_note' => null,
+                                        'reviewed_by' => auth()->id(),
+                                        'reviewed_at' => now(),
+                                        'updated_at' => now(),
+                                        'data' => json_encode($data),
+                                    ]);
+                            });
 
                             $record->refresh();
 
@@ -1397,16 +1408,20 @@ class CustomFormEntriesTable
                     $data['candidate_status'] = 'pending';
                     $data['registration_status'] = 'approved';
 
-                    DB::table('custom_form_entries')
-                        ->where('id', $record->id)
-                        ->update([
-                            'review_status' => 'approved',
-                            'review_note' => null,
-                            'reviewed_by' => auth()->id(),
-                            'reviewed_at' => now(),
-                            'updated_at' => now(),
-                            'data' => json_encode($data),
-                        ]);
+                    DB::transaction(function () use ($record, $data): void {
+                        app(CandidateIdGenerator::class)->assignToEntry($record);
+
+                        DB::table('custom_form_entries')
+                            ->where('id', $record->id)
+                            ->update([
+                                'review_status' => 'approved',
+                                'review_note' => null,
+                                'reviewed_by' => auth()->id(),
+                                'reviewed_at' => now(),
+                                'updated_at' => now(),
+                                'data' => json_encode($data),
+                            ]);
+                    });
 
                     $record->refresh();
 

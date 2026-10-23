@@ -429,11 +429,13 @@ class RolesAndPermissionsSeeder extends Seeder
                     'ViewAny:UnpaidApplication',
                     'Pay:UnpaidApplication',
                     'DownloadExcel:UnpaidApplication',
+                    'DownloadPdf:UnpaidApplication',
                     'ClearData:UnpaidApplication',
                     'ViewAny:Payment',
                     'Update:Payment',
                     'ViewSlip:Payment',
                     'DownloadExcel:Payment',
+                    'DownloadPdf:Payment',
                     'ClearData:Payment',
                 ])
                 ->get()
