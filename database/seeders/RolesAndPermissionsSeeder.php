@@ -250,7 +250,7 @@ class RolesAndPermissionsSeeder extends Seeder
                     'ViewAny:MefInvoiceCode',
                     'Create:MefInvoiceCode',
                     'Update:MefInvoiceCode',
-                    'DownloadExcel:MefInvoiceCode',
+                    'ImportExcel:MefInvoiceCode',
                     'ViewAny:UserType',
                     'Create:UserType',
                     'Update:UserType',
@@ -367,7 +367,7 @@ class RolesAndPermissionsSeeder extends Seeder
                     'Create:MefInvoiceCode',
                     'Update:MefInvoiceCode',
                     'Delete:MefInvoiceCode',
-                    'DownloadExcel:MefInvoiceCode',
+                    'ImportExcel:MefInvoiceCode',
                     'ViewAny:UserType',
                     'Create:UserType',
                     'Update:UserType',
@@ -520,7 +520,7 @@ class RolesAndPermissionsSeeder extends Seeder
                     'Create:MefInvoiceCode',
                     'Update:MefInvoiceCode',
                     'Delete:MefInvoiceCode',
-                    'DownloadExcel:MefInvoiceCode',
+                    'ImportExcel:MefInvoiceCode',
                     'ViewAny:UserType',
                     'Create:UserType',
                     'Update:UserType',
@@ -591,7 +591,7 @@ class RolesAndPermissionsSeeder extends Seeder
                     'Create:MefInvoiceCode',
                     'Update:MefInvoiceCode',
                     'Delete:MefInvoiceCode',
-                    'DownloadExcel:MefInvoiceCode',
+                    'ImportExcel:MefInvoiceCode',
                 ])
                 ->get()
         );

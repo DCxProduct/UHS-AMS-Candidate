@@ -124,8 +124,17 @@ class MefInvoiceCodeImportTest extends TestCase
         $this->assertNull(MefInvoiceCode::resolveReceiptNumber('  '));
     }
 
-    public function test_export_excel_permission_is_registered_for_the_resource(): void
+    public function test_import_excel_permission_is_registered_and_export_permission_is_removed(): void
     {
-        $this->assertContains('DownloadExcel:MefInvoiceCode', FilamentActionPermissions::all());
+        $this->assertContains('ImportExcel:MefInvoiceCode', FilamentActionPermissions::all());
+        $this->assertNotContains('DownloadExcel:MefInvoiceCode', FilamentActionPermissions::all());
+        $this->assertDatabaseHas('permissions', [
+            'name' => 'ImportExcel:MefInvoiceCode',
+            'guard_name' => 'web',
+        ]);
+        $this->assertDatabaseMissing('permissions', [
+            'name' => 'DownloadExcel:MefInvoiceCode',
+            'guard_name' => 'web',
+        ]);
     }
 }

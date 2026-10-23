@@ -35,7 +35,7 @@ class FilamentActionPermissions
                 'clear_data',
             ],
             MefInvoiceCodeResource::class => [
-                'download_excel',
+                'import_excel',
             ],
             CandidatePaymentListResource::class => [
                 'pay',
