@@ -24,6 +24,7 @@ return [
     'exchange_rates' => 'អត្រាប្តូរប្រាក់',
     'users' => 'បញ្ជីបេក្ខជន',
     'payment_types' => 'ប្រភេទការទូទាត់',
+    'mef_invoice_codes' => 'កូដ MEF និងលេខវិក្កយបត្រ',
     'system_users' => 'អ្នកប្រើប្រាស់ប្រព័ន្ធ',
 
     'forms' => [

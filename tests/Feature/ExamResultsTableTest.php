@@ -26,6 +26,11 @@ class ExamResultsTableTest extends TestCase
         $this->assertSame('VAN', $definitions['last_name_latin']['value']($record));
     }
 
+    public function test_candidate_id_is_not_in_exam_result_exports(): void
+    {
+        $this->assertArrayNotHasKey('candidate_id', $this->exportDefinitions());
+    }
+
     public function test_latin_name_columns_fall_back_to_the_legacy_combined_name(): void
     {
         $record = new CustomFormEntry;

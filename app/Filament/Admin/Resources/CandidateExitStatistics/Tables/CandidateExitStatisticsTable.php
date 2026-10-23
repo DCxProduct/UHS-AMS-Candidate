@@ -42,6 +42,7 @@ class CandidateExitStatisticsTable
                 true,
             ))
             ->defaultSort('id', 'desc')
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with('customFormEntry:id,candidate_id'))
             ->recordUrl(null)
             ->recordAction(null)
             ->columns([
@@ -51,6 +52,11 @@ class CandidateExitStatisticsTable
                     ->formatStateUsing(fn ($state): string => LocalizedNumber::digits($state))
                     ->alignCenter()
                     ->width('60px'),
+
+                TextColumn::make('candidate_id')
+                    ->label(__('candidate_entrance_statistics.student_id'))
+                    ->getStateUsing(fn (CandidateExitStatistic $record): string => (string) ($record->customFormEntry?->candidate_id ?? '-'))
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('form_type')
                     ->label(__('candidate_exit_statistics.fields.form_type'))
@@ -485,6 +491,12 @@ class CandidateExitStatisticsTable
                 'field_key' => 'row_number',
                 'value' => fn (CandidateExitStatistic $record, int $rowNumber): string => (string) $rowNumber,
                 'clean' => fn (CandidateExitStatistic $record, int $rowNumber): string => (string) $rowNumber,
+            ],
+            'candidate_id' => [
+                'label' => __('candidate_entrance_statistics.student_id'),
+                'field_key' => 'candidate_id',
+                'value' => fn (CandidateExitStatistic $record): string => (string) ($record->customFormEntry?->candidate_id ?? ''),
+                'clean' => fn (CandidateExitStatistic $record): string => (string) ($record->customFormEntry?->candidate_id ?? ''),
             ],
             'form_type' => [
                 'label' => __('candidate_exit_statistics.fields.form_type'),

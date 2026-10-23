@@ -32,7 +32,7 @@ class PaymentsTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['receivedBy', 'paymentType']))
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['receivedBy', 'paymentType', 'customFormEntry']))
             ->selectable()
             ->recordAction(null)
             ->recordUrl(null)
@@ -46,6 +46,11 @@ class PaymentsTable
                     ->formatStateUsing(fn ($state): string => LocalizedNumber::digits($state))
                     ->alignCenter()
                     ->width('60px')
+                    ->toggleable(isToggledHiddenByDefault: false),
+
+                TextColumn::make('candidate_id')
+                    ->label(__('candidate_entrance_statistics.student_id'))
+                    ->getStateUsing(fn (Payment $record): string => self::candidateId($record))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('form.display_name')
@@ -274,7 +279,7 @@ class PaymentsTable
     protected static function matchedEntry(Payment $record): ?CustomFormEntry
     {
         if (Schema::hasColumn('payments', 'custom_form_entry_id') && filled($record->custom_form_entry_id)) {
-            return CustomFormEntry::query()->find($record->custom_form_entry_id);
+            return $record->customFormEntry;
         }
 
         if (blank($record->users_id) || blank($record->form_id)) {
@@ -310,6 +315,13 @@ class PaymentsTable
         }
 
         return blank($value) ? '-' : (string) $value;
+    }
+
+    protected static function candidateId(Payment $record): string
+    {
+        $candidateId = self::matchedEntry($record)?->candidate_id;
+
+        return blank($candidateId) ? '-' : (string) $candidateId;
     }
 
     protected static function khmerName(Payment $record): string
@@ -901,6 +913,12 @@ class PaymentsTable
                 'field_key' => 'row_number',
                 'value' => fn (Payment $record, int $rowNumber): string => (string) $rowNumber,
                 'clean' => fn (Payment $record, int $rowNumber): string => (string) $rowNumber,
+            ],
+            'candidate_id' => [
+                'label' => __('candidate_entrance_statistics.student_id'),
+                'field_key' => 'candidate_id',
+                'value' => fn (Payment $record): string => self::candidateId($record),
+                'clean' => fn (Payment $record): string => self::candidateId($record),
             ],
             'form.display_name' => [
                 'label' => __('payments.table.form'),

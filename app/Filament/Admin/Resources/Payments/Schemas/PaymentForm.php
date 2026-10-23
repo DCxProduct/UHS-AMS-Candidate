@@ -2,9 +2,10 @@
 
 namespace App\Filament\Admin\Resources\Payments\Schemas;
 
-use App\Filament\Admin\Resources\CandidatePaymentLists\CandidatePaymentListResource;
 use App\Filament\Admin\Resources\CandidateLists\CandidateListResource;
+use App\Filament\Admin\Resources\CandidatePaymentLists\CandidatePaymentListResource;
 use App\Models\ExchangeRate;
+use App\Models\MefInvoiceCode;
 use App\Models\Payment;
 use App\Models\PaymentType;
 use App\Models\SystemUser;
@@ -18,10 +19,10 @@ use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Support\RawJs;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Filament\Support\RawJs;
 use Illuminate\Support\Facades\Schema as DatabaseSchema;
 use Illuminate\Validation\Rule;
 
@@ -58,10 +59,19 @@ class PaymentForm
                                 TextInput::make('receipt_number')
                                     ->label(__('payments.fields.receipt_number'))
                                     ->placeholder(__('payments.placeholders.receipt_number'))
+                                    ->helperText(__('payments.help.receipt_mef_lookup'))
                                     ->required()
                                     ->maxLength(255)
-                                    ->dehydrateStateUsing(fn (mixed $state): ?string => filled($state) ? trim((string) $state) : null)
-                                    ->rules(fn (?\App\Models\Payment $record): array => [
+                                    ->live(onBlur: true)
+                                    ->afterStateUpdated(function (mixed $state, callable $set): void {
+                                        $receiptNumber = MefInvoiceCode::resolveReceiptNumber($state);
+
+                                        if ($receiptNumber !== null && $receiptNumber !== trim((string) $state)) {
+                                            $set('receipt_number', $receiptNumber);
+                                        }
+                                    })
+                                    ->dehydrateStateUsing(fn (mixed $state): ?string => MefInvoiceCode::resolveReceiptNumber($state))
+                                    ->rules(fn (?Payment $record): array => [
                                         'required',
                                         'string',
                                         'max:255',

@@ -50,6 +50,12 @@ class ExamResultsTable
                     ->alignCenter()
                     ->toggleable(isToggledHiddenByDefault: true),
 
+                TextColumn::make('candidate_id')
+                    ->label(__('candidate_entrance_statistics.student_id'))
+                    ->getStateUsing(fn (CustomFormEntry $record): string => self::candidateId($record))
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: false),
+
                 TextColumn::make('seat_number')
                     ->label(__('exam_results.seat_number'))
                     ->getStateUsing(fn ($record): string => self::entryValue($record, 'seat_number', self::entryValue($record, 'list_number', $record->creator?->seat_number)))
@@ -495,6 +501,11 @@ class ExamResultsTable
                 ),
             ],
         ];
+    }
+
+    protected static function candidateId(CustomFormEntry $record): string
+    {
+        return (string) ($record->candidate_id ?: $record->creator?->candidate_id ?: '');
     }
 
     protected static function contentTypesXml(array $sheets): string

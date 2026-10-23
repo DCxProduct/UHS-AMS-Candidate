@@ -41,10 +41,13 @@ class MajorForm
                         ->dehydrateStateUsing(fn ($state): string => strtoupper(trim((string) $state))),
                     TextInput::make('name_kh')
                         ->label(__('majors.fields.name_kh'))
+                        ->placeholder(__('majors.fields.name_kh_placeholder'))
+                        ->required()
                         ->maxLength(255),
                     TextInput::make('name_en')
                         ->label(__('majors.fields.name_en'))
-                        ->required()
+                        ->placeholder(__('majors.fields.name_en_placeholder'))
+                        ->nullable()
                         ->maxLength(255),
                     Select::make('degreeLevels')
                         ->label(__('majors.fields.degree_levels'))

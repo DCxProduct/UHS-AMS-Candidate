@@ -11,6 +11,7 @@ use App\Filament\Admin\Resources\CandidateSubmitPopupSettings\CandidateSubmitPop
 use App\Filament\Admin\Resources\ExamResults\ExamResultResource;
 use App\Filament\Admin\Resources\ExchangeRates\ExchangeRateResource;
 use App\Filament\Admin\Resources\ExitExamResults\ExitExamResultResource;
+use App\Filament\Admin\Resources\MefInvoiceCodes\MefInvoiceCodeResource;
 use App\Filament\Admin\Resources\MessagingSettings\MessagingSettingResource;
 use App\Filament\Admin\Resources\Payments\PaymentResource;
 use App\Filament\Admin\Resources\SystemUsers\SystemUserResource;
@@ -32,6 +33,9 @@ class FilamentActionPermissions
                 'download_excel',
                 'download_pdf',
                 'clear_data',
+            ],
+            MefInvoiceCodeResource::class => [
+                'download_excel',
             ],
             CandidatePaymentListResource::class => [
                 'pay',

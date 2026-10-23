@@ -47,6 +47,7 @@ return [
 
     'help' => [
         'exchange_rate' => 'Managed from the Exchange Rates menu.',
+        'receipt_mef_lookup' => 'Enter a MEF Code to fill in its matching Invoice Code automatically.',
     ],
 
     'table' => [
