@@ -152,6 +152,11 @@ class CandidatePaymentListsTable
                     ->width('60px')
                     ->toggleable(isToggledHiddenByDefault: false),
 
+                TextColumn::make('candidate_id')
+                    ->label(__('candidate_entrance_statistics.student_id'))
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: false),
+
                 TextColumn::make('form_name')
                     ->label(__('candidate_payment_lists.columns.application_form_type'))
                     ->badge()
@@ -285,6 +290,7 @@ class CandidatePaymentListsTable
                         'users_id' => self::ownerId($record),
                         'form_id' => $record->custom_form_id,
                         'candidate_name' => self::candidateDisplayName($record),
+                        'candidate_id' => filled($record->candidate_id) ? (string) $record->candidate_id : '-',
                         'exchange_rate' => self::defaultExchangeRate(),
                         'datetime_pay' => now()->toDateString(),
                         'status' => true,
@@ -304,12 +310,18 @@ class CandidatePaymentListsTable
                                 ->disabled()
                                 ->dehydrated(false),
 
+                            TextInput::make('candidate_id')
+                                ->label(__('app.custom_form_entry_ui.labels.candidate_id'))
+                                ->disabled()
+                                ->dehydrated(false),
+
                             TextInput::make('receipt_number')
                                 ->label(__('payments.fields.receipt_number'))
                                 ->placeholder(__('payments.placeholders.receipt_number'))
                                 ->required()
                                 ->maxLength(255)
                                 ->dehydrateStateUsing(fn (mixed $state): ?string => filled($state) ? trim((string) $state) : null)
+                                ->columnSpanFull()
                                 ->rules([
                                     'required',
                                     'string',
@@ -510,6 +522,10 @@ class CandidatePaymentListsTable
                 'label' => __('candidate_payment_lists.columns.no'),
                 'field_key' => 'row_number',
             ],
+            'candidate_id' => [
+                'label' => __('candidate_entrance_statistics.student_id'),
+                'field_key' => 'candidate_id',
+            ],
             'form_name' => [
                 'label' => __('candidate_payment_lists.columns.application_form_type'),
                 'field_key' => 'form_name',
@@ -575,6 +591,7 @@ class CandidatePaymentListsTable
     {
         $values = [
             'row_number' => LocalizedNumber::digits($rowNumber),
+            'candidate_id' => (string) ($record->candidate_id ?? ''),
             'form_name' => self::localizedFormName($record->customForm?->name),
             'name_khmer' => self::khmerName($record),
             'name_latin' => self::latinName($record),
@@ -601,6 +618,7 @@ class CandidatePaymentListsTable
     {
         $values = [
             'row_number' => (string) $rowNumber,
+            'candidate_id' => (string) ($record->candidate_id ?? ''),
             'form_name' => (string) $record->custom_form_id,
             'name_khmer' => trim((string) data_get($record->data, 'full_name_kh')) ?: self::khmerName($record),
             'name_latin' => trim((string) data_get($record->data, 'full_name_en')) ?: self::latinName($record),

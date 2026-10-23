@@ -76,6 +76,11 @@ class CandidateEntranceStatisticsTable
                     ->alignCenter()
                     ->toggleable(isToggledHiddenByDefault: false),
 
+                TextColumn::make('candidate_id')
+                    ->label(__('candidate_entrance_statistics.student_id'))
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: false),
+
                 TextColumn::make('form_type')
                     ->label(__('candidate_entrance_statistics.form_type'))
                     ->getStateUsing(fn (CustomFormEntry $record): string => self::recordFormTypeLabel($record))
@@ -573,6 +578,12 @@ class CandidateEntranceStatisticsTable
                 'field_key' => 'row_number',
                 'value' => fn (CustomFormEntry $record, int $rowNumber): string => (string) $rowNumber,
                 'clean' => fn (CustomFormEntry $record, int $rowNumber): string => (string) $rowNumber,
+            ],
+            'candidate_id' => [
+                'label' => __('candidate_entrance_statistics.student_id'),
+                'field_key' => 'candidate_id',
+                'value' => fn (CustomFormEntry $record): string => (string) ($record->candidate_id ?? ''),
+                'clean' => fn (CustomFormEntry $record): string => (string) ($record->candidate_id ?? ''),
             ],
             'form_type' => [
                 'label' => __('candidate_entrance_statistics.form_type'),

@@ -99,6 +99,25 @@ class MajorConfigurationTest extends TestCase
         $this->assertSame('majors', MajorResource::getSlug());
     }
 
+    public function test_major_can_be_saved_with_only_its_khmer_name(): void
+    {
+        $major = Major::query()->create([
+            'key' => 'khmer_only_major',
+            'abbreviation' => 'KHM',
+            'name_en' => null,
+            'name_kh' => 'មុខវិជ្ជាថ្មី',
+            'is_active' => true,
+        ]);
+
+        $this->assertNull($major->fresh()->name_en);
+        $this->assertSame('មុខវិជ្ជាថ្មី', $major->fresh()->localized_name);
+        $this->assertDatabaseHas('majors', [
+            'id' => $major->getKey(),
+            'name_en' => null,
+            'name_kh' => 'មុខវិជ្ជាថ្មី',
+        ]);
+    }
+
     public function test_document_renderer_displays_a_major_name_instead_of_its_numeric_id(): void
     {
         app()->setLocale('km');
