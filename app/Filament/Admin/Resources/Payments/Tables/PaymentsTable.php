@@ -548,10 +548,6 @@ class PaymentsTable
                 'label' => __('payments.export.columns.date_of_birth'),
                 'value' => fn (Payment $record): string => self::dateOfBirth($record),
             ],
-            'academic_year' => [
-                'label' => __('payments.export.columns.academic_year'),
-                'value' => fn (Payment $record): string => self::academicYear($record),
-            ],
             'datetime_pay' => [
                 'label' => __('payments.export.columns.datetime_pay'),
                 'value' => fn (Payment $record): string => LocalizedDate::dayMonthYear($record->datetime_pay),
@@ -559,10 +555,6 @@ class PaymentsTable
             'receipt_number' => [
                 'label' => __('payments.export.columns.receipt_number'),
                 'value' => fn (Payment $record): string => blank($record->receipt_number) ? '-' : (string) $record->receipt_number,
-            ],
-            'type_payment' => [
-                'label' => __('payments.export.columns.type_payment'),
-                'value' => fn (Payment $record): string => $record->payment_method_label,
             ],
             'amount_usd' => [
                 'label' => __('payments.export.columns.amount_usd'),
@@ -572,17 +564,11 @@ class PaymentsTable
                 'label' => __('payments.export.columns.amount_kh'),
                 'value' => fn (Payment $record): string => blank($record->amount_kh) ? '-' : number_format((float) $record->amount_kh, 2) . ' ៛',
             ],
+            'type_payment' => [
+                'label' => __('payments.export.columns.type_payment'),
+                'value' => fn (Payment $record): string => $record->payment_method_label,
+            ],
         ];
-    }
-
-    protected static function academicYear(Payment $record): string
-    {
-        $entry = self::matchedEntry($record);
-
-        return FormEntryData::academicYearLabel(
-            $entry?->data,
-            $record->user?->academic_year ?: '-',
-        );
     }
 
     protected static function reportHeadings(): array
@@ -729,7 +715,7 @@ class PaymentsTable
             $summaryTable['rows'],
         );
 
-        return OfficialReport::sheet(
+        $sheet = OfficialReport::sheet(
             'Payment Records',
             __('payments.export.title'),
             self::reportHeadings(),
@@ -739,7 +725,7 @@ class PaymentsTable
                 [__('payments.export.total_usd'), $summary['usd'] . ' $'],
                 [__('payments.export.total_khr'), $summary['khr'] . ' ៛'],
             ],
-            [1 => 16, 2 => 25, 3 => 25, 4 => 16, 5 => 24, 6 => 16, 7 => 16, 8 => 16, 9 => 16, 10 => 14, 11 => 16],
+            [1 => 8, 2 => 21, 3 => 29, 4 => 18, 5 => 24, 6 => 24, 7 => 16, 8 => 14, 9 => 22, 10 => 20],
             footerText: __('payments.export.footer.handed_over_by'),
             footerColumn: 9,
             footerDateText: self::reportFooterDateText($reportDate),
@@ -749,6 +735,14 @@ class PaymentsTable
             summaryTable: $summaryTable,
             subtitle: self::reportSubtitle($reportDate),
         );
+
+        $dateOfBirthColumn = array_search(__('payments.export.columns.date_of_birth'), self::reportHeadings(), true);
+
+        if ($dateOfBirthColumn !== false) {
+            $sheet['options']['cellStyles'][OfficialReport::columnName($dateOfBirthColumn + 1) . '11'] = 7;
+        }
+
+        return $sheet;
     }
 
     public static function downloadExcel(iterable $records, ?array $columnKeys = null, mixed $reportDate = null)
@@ -792,12 +786,15 @@ class PaymentsTable
             [],
             [
                 'layout' => 'payment-records',
+                'orientation' => 'P',
+                'table_font_size' => '7pt',
                 'subtitle' => self::reportSubtitle($reportDate),
                 'summary' => self::reportSummary($records),
                 'summary_table' => self::paymentTypeSummaryTable($records),
                 'footer_text' => __('payments.export.footer.handed_over_by'),
-                'footer_column' => 9,
-                'footer_span' => 3,
+                'footer_column' => 6,
+                'footer_span' => 6,
+                'column_widths' => ['7mm', '19mm', '29mm', '18mm', '22mm', '24mm', '16mm', '13.5mm', '22mm', '23.5mm'],
                 'footer_date_parts' => self::reportFooterDateParts($reportDate),
                 'footer_name' => self::exportingUserName(),
                 'footer_receiver_text' => __('payments.export.footer.received_by'),
@@ -974,12 +971,6 @@ class PaymentsTable
                 'value' => fn (Payment $record): string => filled($record->payment_slip_path) ? __('payments.actions.view_slip') : '-',
                 'clean' => fn (Payment $record): string => blank($record->payment_slip_path) ? '-' : (string) $record->payment_slip_path,
             ],
-            'type_payment' => [
-                'label' => __('payments.table.type_payment'),
-                'field_key' => 'type_payment',
-                'value' => fn (Payment $record): string => $record->payment_method_label,
-                'clean' => fn (Payment $record): string => blank($record->type_payment) ? '-' : (string) $record->type_payment,
-            ],
             'status_payt' => [
                 'label' => __('payments.table.status_payt'),
                 'field_key' => 'status_payt',
@@ -997,6 +988,12 @@ class PaymentsTable
                 'field_key' => 'amount_kh',
                 'value' => fn (Payment $record): string => blank($record->amount_kh) ? '-' : number_format((float) $record->amount_kh, 2) . ' ៛',
                 'clean' => fn (Payment $record): string => blank($record->amount_kh) ? '-' : (string) $record->amount_kh,
+            ],
+            'type_payment' => [
+                'label' => __('payments.table.type_payment'),
+                'field_key' => 'type_payment',
+                'value' => fn (Payment $record): string => $record->payment_method_label,
+                'clean' => fn (Payment $record): string => blank($record->type_payment) ? '-' : (string) $record->type_payment,
             ],
             'datetime_pay' => [
                 'label' => __('payments.table.datetime_pay'),

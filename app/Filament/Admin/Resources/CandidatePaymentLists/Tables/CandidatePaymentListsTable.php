@@ -85,11 +85,8 @@ class CandidatePaymentListsTable
             'name_khmer' => 25,
             'name_latin' => 25,
             'gender' => 10,
-            'phone_number' => 16,
-            'date_of_birth' => 16,
+            'date_of_birth' => 24,
             'major' => 25,
-            'academic_year' => 14,
-            'status_payt' => 18,
         ];
         $leftAligned = ['form_name', 'name_khmer', 'name_latin', 'major'];
         $columnWidths = [];
@@ -103,7 +100,7 @@ class CandidatePaymentListsTable
             }
         }
 
-        return OfficialReport::sheet(
+        $sheet = OfficialReport::sheet(
             'Unpaid Applications',
             self::reportTitle(),
             $headings,
@@ -112,6 +109,14 @@ class CandidatePaymentListsTable
             $columnWidths,
             $leftAlignedColumns,
         );
+
+        $dateOfBirthColumn = array_search('date_of_birth', $columnKeys, true);
+
+        if ($dateOfBirthColumn !== false) {
+            $sheet['options']['cellStyles'][OfficialReport::columnName($dateOfBirthColumn + 1) . '11'] = 7;
+        }
+
+        return $sheet;
     }
 
     public static function downloadPdf(iterable $records, ?array $columnKeys = null)
@@ -129,6 +134,7 @@ class CandidatePaymentListsTable
                 [],
                 [
                     'layout' => 'official-report',
+                    'orientation' => 'P',
                     'subtitle' => OfficialReport::subtitle(),
                     'hide_summary' => true,
                     'filename' => OfficialReport::filename(self::reportTitle(), 'pdf'),
@@ -208,13 +214,6 @@ class CandidatePaymentListsTable
                     ->getStateUsing(fn (UnpaidApplication $record): string => self::majorLabel($record))
                     ->badge()
                     ->searchable(query: fn (Builder $query, string $search): Builder => FormEntryData::applyJsonLikeFilter($query, FormEntryData::majorKeys(), $search))
-                    ->toggleable(isToggledHiddenByDefault: false),
-
-                TextColumn::make('academic_year')
-                    ->label(__('candidate_payment_lists.columns.academic_year'))
-                    ->getStateUsing(fn (UnpaidApplication $record): string => FormEntryData::academicYearLabel(
-                        ['academic_year' => self::entryValue($record, 'academic_year', $record->creator?->academic_year)]
-                    ))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('status_payt')
@@ -552,10 +551,6 @@ class CandidatePaymentListsTable
                 'label' => __('candidate_payment_lists.columns.gender'),
                 'field_key' => 'gender',
             ],
-            'phone_number' => [
-                'label' => __('candidate_payment_lists.columns.phone_number'),
-                'field_key' => 'phone_number',
-            ],
             'date_of_birth' => [
                 'label' => __('candidate_payment_lists.columns.date_of_birth'),
                 'field_key' => 'date_of_birth',
@@ -563,14 +558,6 @@ class CandidatePaymentListsTable
             'major' => [
                 'label' => __('candidate_payment_lists.columns.major'),
                 'field_key' => 'major',
-            ],
-            'academic_year' => [
-                'label' => __('candidate_payment_lists.columns.academic_year'),
-                'field_key' => 'academic_year',
-            ],
-            'status_payt' => [
-                'label' => __('candidate_payment_lists.columns.payment_status'),
-                'field_key' => 'status_payt',
             ],
         ];
     }
@@ -606,15 +593,8 @@ class CandidatePaymentListsTable
             'name_khmer' => self::khmerName($record),
             'name_latin' => self::latinName($record),
             'gender' => self::genderLabel(self::entryValue($record, 'gender')),
-            'phone_number' => self::entryValue($record, 'phone_number', $record->creator?->phone),
             'date_of_birth' => self::dateOfBirth($record),
             'major' => FormEntryData::majorLabel($record->data),
-            'academic_year' => FormEntryData::academicYearLabel(
-                ['academic_year' => self::entryValue($record, 'academic_year', $record->creator?->academic_year)]
-            ),
-            'status_payt' => strtolower(self::paymentStatus($record)) === 'paid'
-                ? __('payments.options.status_payt.paid')
-                : __('payments.options.status_payt.unpaid'),
         ];
 
         return collect($columnKeys)
@@ -633,11 +613,8 @@ class CandidatePaymentListsTable
             'name_khmer' => trim((string) data_get($record->data, 'full_name_kh')) ?: self::khmerName($record),
             'name_latin' => trim((string) data_get($record->data, 'full_name_en')) ?: self::latinName($record),
             'gender' => self::entryValue($record, 'gender'),
-            'phone_number' => self::entryValue($record, 'phone_number', $record->creator?->phone),
             'date_of_birth' => self::entryValue($record, 'date_of_birth', $record->creator?->date_of_birth),
             'major' => (string) FormEntryData::firstFilled($record->data, FormEntryData::majorKeys(), '-'),
-            'academic_year' => self::entryValue($record, 'academic_year', $record->creator?->academic_year),
-            'status_payt' => strtolower(self::paymentStatus($record)),
         ];
 
         return collect($columnKeys)
