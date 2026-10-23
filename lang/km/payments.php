@@ -47,6 +47,7 @@ return [
 
     'help' => [
         'exchange_rate' => 'កំណត់ពីម៉ឺនុយអត្រាប្តូរប្រាក់។',
+        'receipt_mef_lookup' => 'បញ្ចូល MEF Code ដើម្បីបំពេញ Invoice Code ដែលត្រូវគ្នាដោយស្វ័យប្រវត្តិ។',
     ],
 
     'table' => [

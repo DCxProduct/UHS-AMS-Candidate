@@ -24,6 +24,7 @@ return [
     'exchange_rates' => 'Exchange Rates',
     'users' => 'Candidate Lists',
     'payment_types' => 'Payment Types',
+    'mef_invoice_codes' => 'MEF & Invoice Code',
     'system_users' => 'System Users',
 
     'forms' => [
