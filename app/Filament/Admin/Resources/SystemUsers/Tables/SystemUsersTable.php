@@ -50,6 +50,22 @@ class SystemUsersTable
                     ->alignCenter()
                     ->width('60px'),
 
+                TextColumn::make('full_name_kh')
+                    ->label(__('system_users.fields.full_name_kh'))
+                    ->getStateUsing(fn (SystemUser $record): string => collect([
+                        $record->first_name_kh,
+                        $record->last_name_kh,
+                    ])->filter(fn ($part): bool => filled($part))->implode(' '))
+                    ->placeholder('-')
+                    ->searchable(query: fn ($query, string $search) => $query->where(function ($query) use ($search): void {
+                        $query
+                            ->where('first_name_kh', 'like', '%' . $search . '%')
+                            ->orWhere('last_name_kh', 'like', '%' . $search . '%');
+                    }))
+                    ->sortable(query: fn ($query, string $direction) => $query
+                        ->orderBy('first_name_kh', $direction)
+                        ->orderBy('last_name_kh', $direction)),
+
                 TextColumn::make('full_name_latin')
                     ->label(__('system_users.fields.full_name_latin'))
                     ->getStateUsing(fn (SystemUser $record): string => collect([

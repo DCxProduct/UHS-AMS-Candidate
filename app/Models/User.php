@@ -26,6 +26,8 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
         'registration_type',
         'academic_year',
         'name',
+        'first_name_kh',
+        'last_name_kh',
         'name_latin',
         'username',
         'email',
@@ -127,7 +129,20 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
 
     public function getFilamentName(): string
     {
-        return $this->name_latin ?: $this->name ?: $this->username ?: $this->email ?: 'User';
+        $khmerName = collect([$this->first_name_kh, $this->last_name_kh])
+            ->filter(fn ($part): bool => filled($part))
+            ->implode(' ');
+
+        if (filled($khmerName)) {
+            return $khmerName;
+        }
+
+        $linkedSystemUser = $this->linkedSystemUser();
+        $linkedKhmerName = collect([$linkedSystemUser?->first_name_kh, $linkedSystemUser?->last_name_kh])
+            ->filter(fn ($part): bool => filled($part))
+            ->implode(' ');
+
+        return $linkedKhmerName ?: $this->name_latin ?: $this->name ?: $this->username ?: $this->email ?: 'User';
     }
 
     public function studentUser(): HasOne

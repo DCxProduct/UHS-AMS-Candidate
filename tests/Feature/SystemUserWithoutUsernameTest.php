@@ -55,11 +55,14 @@ class SystemUserWithoutUsernameTest extends TestCase
         Livewire::test(CreateSystemUser::class)
             ->assertFormFieldDoesNotExist('username')
             ->assertFormFieldExists('phone')
+            ->assertFormFieldExists('first_name_kh')
+            ->assertFormFieldExists('last_name_kh')
             ->assertFormFieldExists('first_name_latin')
             ->assertFormFieldExists('last_name_latin');
         Livewire::test(ListSystemUsers::class)
             ->assertTableColumnDoesNotExist('username')
             ->assertTableColumnExists('phone')
+            ->assertTableColumnExists('full_name_kh')
             ->assertTableColumnExists('full_name_latin')
             ->assertTableColumnDoesNotExist('first_name_latin')
             ->assertTableColumnDoesNotExist('last_name_latin');
@@ -70,6 +73,8 @@ class SystemUserWithoutUsernameTest extends TestCase
         Livewire::test(CreateSystemUser::class)
             ->fillForm([
                 'email' => 'newstaff@example.test',
+                'first_name_kh' => 'ដារា',
+                'last_name_kh' => 'សុខ',
                 'first_name_latin' => 'sithan',
                 'last_name_latin' => 'viratana',
                 'phone' => '010999100',
@@ -84,13 +89,16 @@ class SystemUserWithoutUsernameTest extends TestCase
         $staff = SystemUser::query()->where('email', 'newstaff@example.test')->sole();
         $this->assertSame('newstaff', $staff->username);
         $this->assertSame('newstaff', $staff->name);
+        $this->assertSame('ដារា', $staff->first_name_kh);
+        $this->assertSame('សុខ', $staff->last_name_kh);
         $this->assertSame('SITHAN', $staff->first_name_latin);
         $this->assertSame('VIRATANA', $staff->last_name_latin);
         $this->assertTrue(User::query()->where('username', 'newstaff')->where('email', 'newstaff@example.test')->exists());
         $this->assertSame('SITHAN VIRATANA', User::query()->where('username', 'newstaff')->sole()->name_latin);
-        $this->assertSame('SITHAN VIRATANA', User::query()->where('username', 'newstaff')->sole()->getFilamentName());
+        $this->assertSame('ដារា សុខ', User::query()->where('username', 'newstaff')->sole()->getFilamentName());
 
         Livewire::test(ListSystemUsers::class)
+            ->assertTableColumnStateSet('full_name_kh', 'ដារា សុខ', $staff)
             ->assertTableColumnStateSet('full_name_latin', 'SITHAN VIRATANA', $staff);
     }
 

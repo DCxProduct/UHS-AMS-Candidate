@@ -30,6 +30,8 @@ class SystemUser extends Authenticatable implements CanResetPasswordContract, Fi
 
     protected $fillable = [
         'name',
+        'first_name_kh',
+        'last_name_kh',
         'first_name_latin',
         'last_name_latin',
         'username',
@@ -168,6 +170,8 @@ class SystemUser extends Authenticatable implements CanResetPasswordContract, Fi
             'registration_type' => $this->getLoginRegistrationType(),
             'academic_year' => $loginUser->academic_year,
             'name' => $this->name ?: $this->username ?: $this->email ?: 'System User',
+            'first_name_kh' => $this->first_name_kh,
+            'last_name_kh' => $this->last_name_kh,
             'name_latin' => collect([$this->first_name_latin, $this->last_name_latin])
                 ->filter(fn ($part): bool => filled($part))
                 ->implode(' ') ?: null,
@@ -395,11 +399,16 @@ class SystemUser extends Authenticatable implements CanResetPasswordContract, Fi
 
     public function getFilamentName(): string
     {
+        $khmerName = collect([$this->first_name_kh, $this->last_name_kh])
+            ->filter(fn ($part): bool => filled($part))
+            ->implode(' ');
+
         $latinName = collect([$this->first_name_latin, $this->last_name_latin])
             ->filter(fn ($part): bool => filled($part))
             ->implode(' ');
 
-        return $latinName
+        return $khmerName
+            ?: $latinName
             ?: $this->name
             ?: $this->username
                 ?: $this->email

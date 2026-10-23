@@ -49,8 +49,11 @@ class MyProfile extends Page implements HasForms
         /** @var User $user */
         $user = Auth::user();
         $nameParts = CandidateDisplayName::partsFor($user);
+        $systemUser = $user->linkedSystemUser();
 
         $this->form->fill([
+            'first_name_kh' => $user->first_name_kh ?: $systemUser?->first_name_kh,
+            'last_name_kh' => $user->last_name_kh ?: $systemUser?->last_name_kh,
             'first_name_en' => $nameParts['first_name_en'],
             'last_name_en' => $nameParts['last_name_en'],
             'email' => $user->email,
@@ -72,19 +75,27 @@ class MyProfile extends Page implements HasForms
                     ->description(__('student_profile.profile_information_description'))
                     ->schema([
                         Grid::make(12)->schema([
+                            TextInput::make('first_name_kh')
+                                ->label(__('student_profile.first_name_kh'))
+                                ->placeholder(__('student_profile.enter_first_name_kh'))
+                                ->maxLength(100)
+                                ->columnSpan(6),
+
+                            TextInput::make('last_name_kh')
+                                ->label(__('student_profile.last_name_kh'))
+                                ->placeholder(__('student_profile.enter_last_name_kh'))
+                                ->maxLength(100)
+                                ->columnSpan(6),
+
                             TextInput::make('first_name_en')
                                 ->label(__('student_profile.first_name_latin'))
                                 ->placeholder(__('student_profile.enter_first_name_latin'))
-                                ->required()
+                                ->nullable()
                                 ->maxLength(100)
-                                ->rules([
-                                    'required',
-                                    'string',
-                                    'max:100',
-                                    "regex:/^[A-Za-z][A-Za-z .'-]*$/",
-                                ])
+                                ->rules(fn (?string $state): array => filled($state)
+                                    ? ['string', 'max:100', "regex:/^[A-Za-z][A-Za-z .'-]*$/"]
+                                    : [])
                                 ->validationMessages([
-                                    'required' => __('student_profile.first_name_latin_required'),
                                     'regex' => __('student_profile.latin_name_regex'),
                                 ])
                                 ->dehydrateStateUsing(fn (?string $state): string => self::normalizeLatinNamePart($state))
@@ -93,16 +104,12 @@ class MyProfile extends Page implements HasForms
                             TextInput::make('last_name_en')
                                 ->label(__('student_profile.last_name_latin'))
                                 ->placeholder(__('student_profile.enter_last_name_latin'))
-                                ->required()
+                                ->nullable()
                                 ->maxLength(100)
-                                ->rules([
-                                    'required',
-                                    'string',
-                                    'max:100',
-                                    "regex:/^[A-Za-z][A-Za-z .'-]*$/",
-                                ])
+                                ->rules(fn (?string $state): array => filled($state)
+                                    ? ['string', 'max:100', "regex:/^[A-Za-z][A-Za-z .'-]*$/"]
+                                    : [])
                                 ->validationMessages([
-                                    'required' => __('student_profile.last_name_latin_required'),
                                     'regex' => __('student_profile.latin_name_regex'),
                                 ])
                                 ->dehydrateStateUsing(fn (?string $state): string => self::normalizeLatinNamePart($state))
@@ -184,6 +191,8 @@ class MyProfile extends Page implements HasForms
 
         $payload = [
             'name' => $fullName ?: $user->name,
+            'first_name_kh' => trim((string) ($data['first_name_kh'] ?? '')) ?: null,
+            'last_name_kh' => trim((string) ($data['last_name_kh'] ?? '')) ?: null,
             'name_latin' => $fullName ?: $user->name_latin,
             'email' => $data['email'] ?? $user->email,
             'phone' => $data['phone'] ?? null,
@@ -200,6 +209,8 @@ class MyProfile extends Page implements HasForms
 
         $user->linkedSystemUser()?->update([
             'name' => $payload['name'],
+            'first_name_kh' => $payload['first_name_kh'],
+            'last_name_kh' => $payload['last_name_kh'],
         ]);
 
         $freshUser = $user->fresh();
@@ -208,6 +219,8 @@ class MyProfile extends Page implements HasForms
         Auth::setUser($freshUser);
 
         $this->form->fill([
+            'first_name_kh' => $freshUser->first_name_kh,
+            'last_name_kh' => $freshUser->last_name_kh,
             'first_name_en' => $nameParts['first_name_en'],
             'last_name_en' => $nameParts['last_name_en'],
             'email' => $freshUser->email,
