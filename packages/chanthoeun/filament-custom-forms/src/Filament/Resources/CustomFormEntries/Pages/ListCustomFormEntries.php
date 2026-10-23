@@ -329,6 +329,10 @@ class ListCustomFormEntries extends ListRecords
             $deselectedRecordKeys,
         )->delete();
 
+        if ($this->activeFormId) {
+            app(\App\Services\CandidateIdGenerator::class)->resetFormSequenceIfEmpty($this->activeFormId);
+        }
+
         $this->selectedTableRecords = [];
         $this->deselectedTableRecords = [];
         $this->isTrackingDeselectedTableRecords = false;
