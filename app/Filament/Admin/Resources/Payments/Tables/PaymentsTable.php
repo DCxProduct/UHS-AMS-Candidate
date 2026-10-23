@@ -665,7 +665,7 @@ class PaymentsTable
     {
         $user = auth()->user();
 
-        return (string) ($user?->name_latin ?: $user?->name ?: '');
+        return (string) ($user?->getFilamentName() ?? '');
     }
 
     protected static function reportFooterDateParts(mixed $reportDate = null): array

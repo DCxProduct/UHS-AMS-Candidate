@@ -161,6 +161,27 @@ class PaymentReceivedByTest extends TestCase
         $this->assertStringContainsString('font-family: khmermuol, khmerbattambang, sans-serif; font-size: 10pt; font-weight: bold;', $pdfHtml);
     }
 
+    public function test_payment_report_handed_over_name_prefers_khmer_and_falls_back_to_latin(): void
+    {
+        $this->admin->forceFill([
+            'name_latin' => 'SYSTEM ADMIN',
+            'first_name_kh' => 'ប្រព័ន្ធ',
+            'last_name_kh' => 'អ្នកគ្រប់គ្រង',
+        ])->save();
+        $this->actingAs($this->admin);
+
+        $exportingUserName = new ReflectionMethod(PaymentsTable::class, 'exportingUserName');
+
+        $this->assertSame('ប្រព័ន្ធ អ្នកគ្រប់គ្រង', $exportingUserName->invoke(null));
+
+        $this->admin->forceFill([
+            'first_name_kh' => null,
+            'last_name_kh' => null,
+        ])->save();
+
+        $this->assertSame('SYSTEM ADMIN', $exportingUserName->invoke(null));
+    }
+
     /**
      * @return array{0: Payment, 1: Payment}
      */
