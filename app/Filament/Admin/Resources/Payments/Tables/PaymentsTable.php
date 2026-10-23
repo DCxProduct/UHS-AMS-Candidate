@@ -16,6 +16,7 @@ use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
@@ -213,7 +214,9 @@ class PaymentsTable
                             ->displayFormat('d-M-Y')
                             ->native(false)
                             ->closeOnDateSelection()
-                            ->maxDate(now())
+                            ->maxDate(fn (Get $get) => filled($get('to_date'))
+                                ? Carbon::parse($get('to_date'))
+                                : now())
                             ->live(),
 
                         DatePicker::make('to_date')
@@ -223,6 +226,9 @@ class PaymentsTable
                             ->displayFormat('d-M-Y')
                             ->native(false)
                             ->closeOnDateSelection()
+                            ->minDate(fn (Get $get) => filled($get('from_date'))
+                                ? Carbon::parse($get('from_date'))
+                                : null)
                             ->maxDate(now())
                             ->live(),
                     ])
@@ -652,9 +658,9 @@ class PaymentsTable
         ];
     }
 
-    protected static function reportSubtitle(): string
+    protected static function reportSubtitle(mixed $reportDate = null): string
     {
-        return OfficialReport::subtitle();
+        return OfficialReport::subtitle($reportDate);
     }
 
     protected static function exportingUserName(): string
@@ -664,9 +670,9 @@ class PaymentsTable
         return (string) ($user?->name_latin ?: $user?->name ?: '');
     }
 
-    protected static function reportFooterDateParts(): array
+    protected static function reportFooterDateParts(mixed $reportDate = null): array
     {
-        $date = LocalizedDate::formalDayMonthYearParts(now());
+        $date = LocalizedDate::formalDayMonthYearParts($reportDate ?? now());
 
         if (! $date) {
             return [];
@@ -683,14 +689,14 @@ class PaymentsTable
         ];
     }
 
-    protected static function reportFooterDateText(): string
+    protected static function reportFooterDateText(mixed $reportDate = null): string
     {
-        return collect(self::reportFooterDateParts())
+        return collect(self::reportFooterDateParts($reportDate))
             ->pluck('text')
             ->implode('');
     }
 
-    protected static function reportSheet(iterable $records): array
+    protected static function reportSheet(iterable $records, mixed $reportDate = null): array
     {
         $records = collect($records);
         $summary = self::reportSummary($records);
@@ -724,33 +730,34 @@ class PaymentsTable
             [1 => 16, 2 => 25, 3 => 25, 4 => 16, 5 => 24, 6 => 16, 7 => 16, 8 => 16, 9 => 16, 10 => 14, 11 => 16],
             footerText: __('payments.export.footer.handed_over_by'),
             footerColumn: 9,
-            footerDateText: self::reportFooterDateText(),
-            footerDateParts: self::reportFooterDateParts(),
+            footerDateText: self::reportFooterDateText($reportDate),
+            footerDateParts: self::reportFooterDateParts($reportDate),
             footerName: self::exportingUserName(),
             footerReceiverText: __('payments.export.footer.received_by'),
             summaryTable: $summaryTable,
+            subtitle: self::reportSubtitle($reportDate),
         );
     }
 
-    public static function downloadExcel(iterable $records, ?array $columnKeys = null)
+    public static function downloadExcel(iterable $records, ?array $columnKeys = null, mixed $reportDate = null)
     {
-        return OfficialReport::inKhmer(fn () => self::buildExcelDownload($records, $columnKeys));
+        return OfficialReport::inKhmer(fn () => self::buildExcelDownload($records, $columnKeys, $reportDate));
     }
 
-    public static function downloadPdf(iterable $records, ?array $columnKeys = null)
+    public static function downloadPdf(iterable $records, ?array $columnKeys = null, mixed $reportDate = null)
     {
-        return OfficialReport::inKhmer(fn () => self::buildPdfDownload($records));
+        return OfficialReport::inKhmer(fn () => self::buildPdfDownload($records, $reportDate));
     }
 
 
-    protected static function buildExcelDownload(iterable $records, ?array $columnKeys = null)
+    protected static function buildExcelDownload(iterable $records, ?array $columnKeys = null, mixed $reportDate = null)
     {
         $path = storage_path('app/' . uniqid('payment-records-', true) . '.xlsx');
         $records = collect($records);
         $columnKeys ??= array_keys(self::exportColumnDefinitions());
 
         self::writeXlsx($path, [
-            self::reportSheet($records),
+            self::reportSheet($records, $reportDate),
             [
                 'name' => 'Database Export',
                 'rows' => self::cleanDataRows($records, $columnKeys),
@@ -760,7 +767,7 @@ class PaymentsTable
         return OfficialReport::excelDownload($path, __('payments.export.title'), 'payment-records');
     }
 
-    protected static function buildPdfDownload(iterable $records)
+    protected static function buildPdfDownload(iterable $records, mixed $reportDate = null)
     {
         $records = collect($records);
         $rows = self::reportRows($records);
@@ -773,13 +780,13 @@ class PaymentsTable
             [],
             [
                 'layout' => 'payment-records',
-                'subtitle' => self::reportSubtitle(),
+                'subtitle' => self::reportSubtitle($reportDate),
                 'summary' => self::reportSummary($records),
                 'summary_table' => self::paymentTypeSummaryTable($records),
                 'footer_text' => __('payments.export.footer.handed_over_by'),
                 'footer_column' => 9,
                 'footer_span' => 3,
-                'footer_date_parts' => self::reportFooterDateParts(),
+                'footer_date_parts' => self::reportFooterDateParts($reportDate),
                 'footer_name' => self::exportingUserName(),
                 'footer_receiver_text' => __('payments.export.footer.received_by'),
                 'filename' => OfficialReport::filename(__('payments.export.title'), 'pdf'),

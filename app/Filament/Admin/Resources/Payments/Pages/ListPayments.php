@@ -13,6 +13,19 @@ class ListPayments extends ListRecords
 {
     protected static string $resource = PaymentResource::class;
 
+    public function mount(): void
+    {
+        parent::mount();
+
+        $today = today()->toDateString();
+        $this->tableFilters = array_replace_recursive($this->tableFilters ?? [], [
+            'payment_filters' => [
+                'from_date' => $today,
+                'to_date' => $today,
+            ],
+        ]);
+    }
+
     protected function getHeaderActions(): array
     {
         return [
@@ -116,6 +129,7 @@ class ListPayments extends ListRecords
         return PaymentsTable::downloadExcel(
             $records,
             $this->visibleExportColumnKeys(),
+            $this->exportReportDate(),
         );
     }
 
@@ -144,7 +158,17 @@ class ListPayments extends ListRecords
         return PaymentsTable::downloadPdf(
             $records,
             $this->visibleExportColumnKeys(),
+            $this->exportReportDate(),
         );
+    }
+
+    protected function exportReportDate(): string
+    {
+        $filters = $this->getTableFilterState('payment_filters') ?? [];
+
+        return (string) (filled($filters['to_date'] ?? null)
+            ? $filters['to_date']
+            : (filled($filters['from_date'] ?? null) ? $filters['from_date'] : now()->toDateString()));
     }
 
     public function clearDataFromTableSelection(

@@ -165,6 +165,11 @@ class PaymentTotalsTest extends TestCase
             ->all();
 
         $this->assertSame(['DATE-019', 'DATE-021', 'DATE-023'], $exportAndClearRecords);
+
+        $component
+            ->set('tableFilters.payment_filters.from_date', '2026-10-21')
+            ->set('tableFilters.payment_filters.to_date', '2026-10-19')
+            ->assertCanNotSeeTableRecords([$beforeRange, $startDate, $today, $endDate, $afterRange]);
     }
 
     public function test_payment_total_labels_are_localized(): void
@@ -530,12 +535,17 @@ class PaymentTotalsTest extends TestCase
             $this->travelTo(now()->setDate(2026, 10, 19));
             $expectedName = rawurlencode('បញ្ជីឈ្មោះបេក្ខជនបង់លុយ 19-10-2026');
 
-            $response = PaymentsTable::downloadExcel([$payment->load('user')]);
+            $response = PaymentsTable::downloadExcel([$payment->load('user')], null, '2026-10-22');
             $this->assertStringContainsString("filename*=utf-8''" . $expectedName . '.xlsx', $response->headers->get('Content-Disposition'));
             $zip = new \ZipArchive();
             $this->assertTrue($zip->open($response->getFile()->getPathname()) === true);
             $sheet = $zip->getFromName('xl/worksheets/sheet1.xml');
             $zip->close();
+
+            $this->assertStringContainsString('កាលបរិច្ឆេទ៖ ២២-តុលា-២០២៦', $sheet);
+            preg_match_all('/<t(?:\s[^>]*)?>(.*?)<\/t>/s', $sheet, $textNodes);
+            $sheetText = implode('', array_map('html_entity_decode', $textNodes[1]));
+            $this->assertStringContainsString('រាជធានីភ្នំពេញ ថ្ងៃទី ២២ ខែ តុលា ឆ្នាំ ២០២៦', $sheetText);
 
             $this->assertStringContainsString('បញ្ជីឈ្មោះបេក្ខជនបង់លុយ', $sheet);
             $this->assertStringContainsString('ល.រ', $sheet);
@@ -550,10 +560,13 @@ class PaymentTotalsTest extends TestCase
                 ->once()
                 ->withArgs(fn (string $html): bool => str_contains($html, 'បញ្ជីឈ្មោះបេក្ខជនបង់លុយ')
                     && str_contains($html, 'ល.រ')
+                    && str_contains($html, 'កាលបរិច្ឆេទ៖ ២២-តុលា-២០២៦')
+                    && str_contains($html, 'រាជធានីភ្នំពេញ ថ្ងៃទី ')
+                    && str_contains($html, '<strong class="report-date-bold">២២</strong> ខែ <strong class="report-date-bold">តុលា</strong> ឆ្នាំ <strong class="report-date-bold">២០២៦</strong>')
                     && ! str_contains($html, 'Payment Records'))
                 ->andReturn(\Mockery::mock(['output' => '%PDF']));
 
-            $pdfResponse = PaymentsTable::downloadPdf([$payment]);
+            $pdfResponse = PaymentsTable::downloadPdf([$payment], null, '2026-10-22');
             $this->assertStringContainsString("filename*=utf-8''" . $expectedName . '.pdf', $pdfResponse->headers->get('Content-Disposition'));
             $this->assertSame('en', app()->getLocale());
         } finally {
@@ -573,10 +586,15 @@ class PaymentTotalsTest extends TestCase
         Pdf::shouldReceive('loadHTML')
             ->once()
             ->withArgs(fn (string $html): bool => str_contains($html, __('payments.export.columns.no'))
+                && str_contains($html, 'កាលបរិច្ឆេទ៖ ២២-តុលា-២០២៦')
+                && str_contains($html, 'រាជធានីភ្នំពេញ ថ្ងៃទី ')
+                && str_contains($html, '<strong class="report-date-bold">២២</strong> ខែ <strong class="report-date-bold">តុលា</strong> ឆ្នាំ <strong class="report-date-bold">២០២៦</strong>')
                 && ! str_contains($html, __('payments.table.status_payt')))
             ->andReturn(\Mockery::mock(['output' => '%PDF']));
 
         Livewire::test(ListPayments::class)
+            ->set('tableFilters.payment_filters.from_date', '2026-10-22')
+            ->set('tableFilters.payment_filters.to_date', '2026-10-22')
             ->call('downloadPdfFromTableSelection');
     }
 
