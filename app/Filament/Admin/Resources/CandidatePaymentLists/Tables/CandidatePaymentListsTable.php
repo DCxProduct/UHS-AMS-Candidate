@@ -9,6 +9,7 @@ use App\Models\MefInvoiceCode;
 use App\Models\Payment;
 use App\Models\PaymentType;
 use App\Models\UnpaidApplication;
+use App\Rules\ValidMefInvoiceReceipt;
 use App\Services\CandidatePaymentRecorder;
 use App\Support\CaseInsensitiveSearch;
 use App\Support\FilamentActionPermissions;
@@ -39,7 +40,6 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\HtmlString;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class CandidatePaymentListsTable
@@ -336,7 +336,7 @@ class CandidatePaymentListsTable
                                     'required',
                                     'string',
                                     'max:255',
-                                    Rule::unique('payments', 'receipt_number'),
+                                    new ValidMefInvoiceReceipt,
                                 ])
                                 ->validationMessages([
                                     'required' => __('payments.validation.receipt_number_required'),

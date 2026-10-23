@@ -29,8 +29,16 @@ class MefInvoiceCode extends Model
 
         $receiptNumber = trim((string) $value);
 
-        return static::query()
+        $invoiceCode = static::query()
             ->where('mef_code', $receiptNumber)
-            ->value('invoice_code') ?? $receiptNumber;
+            ->value('invoice_code');
+
+        if ($invoiceCode !== null) {
+            return $invoiceCode;
+        }
+
+        return static::query()
+            ->where('invoice_code', $receiptNumber)
+            ->value('invoice_code');
     }
 }

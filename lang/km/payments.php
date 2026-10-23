@@ -144,6 +144,7 @@ return [
         'user_required' => 'សូមជ្រើសរើសអ្នកប្រើប្រាស់។',
         'form_required' => 'សូមជ្រើសរើសប្រភេទទម្រង់ពាក្យស្នើសុំ។',
         'receipt_number_required' => 'សូមបញ្ចូលលេខបង្កាន់ដៃ។',
+        'receipt_number_mef_invalid' => 'សូមបញ្ចូលលេខកូដ MEF ត្រឹមត្រូវដែលមានលេខកូដវិក្កយបត្រត្រូវគ្នា។',
         'receipt_number_unique' => 'លេខបង្កាន់ដៃនេះត្រូវបានប្រើរួចហើយ។',
         'payment_slip_required' => 'សូមផ្ទុកបង្កាន់ដៃបង់ប្រាក់។',
         'type_payment_required' => 'សូមជ្រើសរើសប្រភេទទូទាត់។',

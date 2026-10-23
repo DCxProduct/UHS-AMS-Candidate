@@ -120,7 +120,7 @@ class MefInvoiceCodeImportTest extends TestCase
         ]);
 
         $this->assertSame('120--11979482', MefInvoiceCode::resolveReceiptNumber('MEF19011963910'));
-        $this->assertSame('UNKNOWN-RECEIPT', MefInvoiceCode::resolveReceiptNumber(' UNKNOWN-RECEIPT '));
+        $this->assertNull(MefInvoiceCode::resolveReceiptNumber(' UNKNOWN-RECEIPT '));
         $this->assertNull(MefInvoiceCode::resolveReceiptNumber('  '));
     }
 

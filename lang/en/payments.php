@@ -144,6 +144,7 @@ return [
         'user_required' => 'User is required.',
         'form_required' => 'Application form type is required.',
         'receipt_number_required' => 'Receipt is required.',
+        'receipt_number_mef_invalid' => 'Enter a valid MEF code that matches an invoice code.',
         'receipt_number_unique' => 'This receipt number has already been used.',
         'payment_slip_required' => 'Payment receipt is required.',
         'type_payment_required' => 'Payment type is required.',
