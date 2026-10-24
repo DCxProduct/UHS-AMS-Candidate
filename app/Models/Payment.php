@@ -105,7 +105,13 @@ class Payment extends Model
             return '-';
         }
 
-        return $this->paymentType?->localized_name ?? PaymentType::localizedLabelFor($this->type_payment);
+        $paymentType = $this->paymentType;
+
+        if ($paymentType?->method === 'bank') {
+            return (string) ($paymentType->abbreviation ?: $paymentType->localized_name);
+        }
+
+        return $paymentType?->localized_name ?? PaymentType::localizedLabelFor($this->type_payment);
     }
 
     public function form(): BelongsTo

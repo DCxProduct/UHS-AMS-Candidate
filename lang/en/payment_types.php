@@ -8,6 +8,7 @@ return [
 
     'fields' => [
         'key' => 'Key',
+        'abbreviation' => 'Abbreviation',
         'name' => 'Name',
         'name_en' => 'Name English',
         'name_kh' => 'Name Khmer',
@@ -19,6 +20,7 @@ return [
     'table' => [
         'no' => 'No',
         'key' => 'Key',
+        'abbreviation' => 'Abbreviation',
         'name' => 'Name',
         'name_en' => 'Name English',
         'name_kh' => 'Name Khmer',
@@ -31,6 +33,7 @@ return [
 
     'placeholders' => [
         'key' => 'Enter payment type key',
+        'abbreviation' => 'Enter abbreviation',
         'name_en' => 'Enter English name',
         'name_kh' => 'Enter Khmer name',
         'method' => 'Select cash or bank',
@@ -45,6 +48,7 @@ return [
         'key_required' => 'Payment type key is required.',
         'key_unique' => 'This payment type key already exists.',
         'key_format' => 'The key may contain only lowercase letters, numbers, underscores, and hyphens.',
+        'abbreviation_required' => 'Payment type abbreviation is required.',
         'name_en_required' => 'English name is required.',
         'name_kh_required' => 'Khmer name is required.',
         'method_required' => 'Choose whether this payment type is cash or bank.',

@@ -28,6 +28,11 @@ class PaymentTypesTable
                     ->alignCenter()
                     ->width('60px'),
 
+                TextColumn::make('abbreviation')
+                    ->label(__('payment_types.table.abbreviation'))
+                    ->placeholder('-')
+                    ->searchable(),
+
                 TextColumn::make('localized_name')
                     ->label(__('payment_types.table.name'))
                     ->getStateUsing(fn (PaymentType $record): string => $record->localized_name)
