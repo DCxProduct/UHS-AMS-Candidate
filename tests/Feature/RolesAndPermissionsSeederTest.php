@@ -3,7 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Role;
-use BezhanSalleh\FilamentShield\Resources\Roles\RoleResource as ShieldRoleResource;
+use BezhanSalleh\FilamentShield\Facades\FilamentShield;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
@@ -51,6 +51,8 @@ class RolesAndPermissionsSeederTest extends TestCase
             'Delete:DegreeLevel',
             'ViewAny:Major',
             'Delete:Major',
+            'ViewAny:MefInvoiceCode',
+            'Delete:MefInvoiceCode',
             'ViewAny:UserType',
             'Delete:UserType',
             'ViewAny:CandidateList',
@@ -85,6 +87,7 @@ class RolesAndPermissionsSeederTest extends TestCase
             'ViewAny:ClosingDate',
             'ViewAny:DegreeLevel',
             'ViewAny:Major',
+            'ViewAny:MefInvoiceCode',
             'ViewAny:UserType',
             'ViewAny:CandidateList',
             'ViewAny:CandidateExitStatistic',
@@ -106,6 +109,7 @@ class RolesAndPermissionsSeederTest extends TestCase
             'DownloadExcel:CustomFormEntry',
             'ClearData:CustomFormEntry',
             'EditReviewNote:CustomFormEntry',
+            'OriginalApplicationReceived:CustomFormEntry',
             'ViewPdf:CustomFormEntry',
             'Accepted:CustomFormEntry',
             'Reject:CustomFormEntry',
@@ -166,6 +170,10 @@ class RolesAndPermissionsSeederTest extends TestCase
             'Update:PaymentType',
             'ViewAny:ExchangeRate',
             'Update:ExchangeRate',
+            'ViewAny:MefInvoiceCode',
+            'Create:MefInvoiceCode',
+            'Update:MefInvoiceCode',
+            'ImportExcel:MefInvoiceCode',
             'ViewAny:CandidateSubmitPopupSetting',
             'Update:CandidateSubmitPopupSetting',
         ];
@@ -179,6 +187,7 @@ class RolesAndPermissionsSeederTest extends TestCase
             'DownloadExcel:CustomFormEntry',
             'ClearData:CustomFormEntry',
             'EditReviewNote:CustomFormEntry',
+            'OriginalApplicationReceived:CustomFormEntry',
             'ViewPdf:CustomFormEntry',
             'Accepted:CustomFormEntry',
             'Reject:CustomFormEntry',
@@ -231,6 +240,11 @@ class RolesAndPermissionsSeederTest extends TestCase
             'Create:Major',
             'Update:Major',
             'Delete:Major',
+            'ViewAny:MefInvoiceCode',
+            'Create:MefInvoiceCode',
+            'Update:MefInvoiceCode',
+            'Delete:MefInvoiceCode',
+            'ImportExcel:MefInvoiceCode',
             'ViewAny:UserType',
             'Create:UserType',
             'Update:UserType',
@@ -291,6 +305,7 @@ class RolesAndPermissionsSeederTest extends TestCase
             'ClearData:Payment',
         ];
         $cashierOfficerPermissions = [
+            'ViewAny:CustomFormEntry',
             'ViewAny:UnpaidApplication',
             'Pay:UnpaidApplication',
             'DownloadExcel:UnpaidApplication',
@@ -298,10 +313,20 @@ class RolesAndPermissionsSeederTest extends TestCase
             'ClearData:UnpaidApplication',
             'ViewAny:Payment',
             'Update:Payment',
-            'ViewSlip:Payment',
             'DownloadExcel:Payment',
             'DownloadPdf:Payment',
             'ClearData:Payment',
+            'ViewAny:PaymentType',
+            'Create:PaymentType',
+            'Update:PaymentType',
+            'Delete:PaymentType',
+            'ViewAny:ExchangeRate',
+            'Update:ExchangeRate',
+            'ViewAny:MefInvoiceCode',
+            'Create:MefInvoiceCode',
+            'Update:MefInvoiceCode',
+            'Delete:MefInvoiceCode',
+            'ImportExcel:MefInvoiceCode',
         ];
         $registrarManagerPermissions = [
             'ViewAny:CustomFormEntry',
@@ -313,6 +338,7 @@ class RolesAndPermissionsSeederTest extends TestCase
             'DownloadExcel:CustomFormEntry',
             'ClearData:CustomFormEntry',
             'EditReviewNote:CustomFormEntry',
+            'OriginalApplicationReceived:CustomFormEntry',
             'ViewPdf:CustomFormEntry',
             'Accepted:CustomFormEntry',
             'Reject:CustomFormEntry',
@@ -363,6 +389,11 @@ class RolesAndPermissionsSeederTest extends TestCase
             'Create:Major',
             'Update:Major',
             'Delete:Major',
+            'ViewAny:MefInvoiceCode',
+            'Create:MefInvoiceCode',
+            'Update:MefInvoiceCode',
+            'Delete:MefInvoiceCode',
+            'ImportExcel:MefInvoiceCode',
             'ViewAny:UserType',
             'Create:UserType',
             'Update:UserType',
@@ -386,6 +417,7 @@ class RolesAndPermissionsSeederTest extends TestCase
             'DownloadExcel:CustomFormEntry',
             'ClearData:CustomFormEntry',
             'EditReviewNote:CustomFormEntry',
+            'OriginalApplicationReceived:CustomFormEntry',
             'ViewPdf:CustomFormEntry',
             'Accepted:CustomFormEntry',
             'Reject:CustomFormEntry',
@@ -393,6 +425,7 @@ class RolesAndPermissionsSeederTest extends TestCase
             'DownloadPdf:CustomFormEntry',
             'ViewAny:CandidateEntranceStatistic',
             'Passed:CandidateEntranceStatistic',
+            'EditResult:CandidateEntranceStatistic',
             'Pending:CandidateEntranceStatistic',
             'BulkPassed:CandidateEntranceStatistic',
             'BulkPending:CandidateEntranceStatistic',
@@ -400,6 +433,7 @@ class RolesAndPermissionsSeederTest extends TestCase
             'ClearData:CandidateEntranceStatistic',
             'ViewAny:CandidateExitStatistic',
             'Passed:CandidateExitStatistic',
+            'EditResult:CandidateExitStatistic',
             'Pending:CandidateExitStatistic',
             'BulkPassed:CandidateExitStatistic',
             'BulkPending:CandidateExitStatistic',
@@ -415,14 +449,60 @@ class RolesAndPermissionsSeederTest extends TestCase
             'NotifyAllStudents:ExitExamResult',
             'DownloadExcel:ExitExamResult',
             'ClearData:ExitExamResult',
+            'ViewAny:CustomForm',
+            'Create:CustomForm',
+            'Update:CustomForm',
+            'Delete:CustomForm',
+            'EditTemplate:CustomForm',
+            'ViewAny:DocumentTemplate',
+            'Update:DocumentTemplate',
+            'Delete:DocumentTemplate',
+            'PreviewPdf:DocumentTemplate',
+            'ViewAny:WorkflowNotification',
+            'Create:WorkflowNotification',
+            'Update:WorkflowNotification',
+            'Delete:WorkflowNotification',
+            'ViewAny:EmailTemplate',
+            'Create:EmailTemplate',
+            'Update:EmailTemplate',
+            'Delete:EmailTemplate',
+            'ViewAny:SmsTemplate',
+            'Create:SmsTemplate',
+            'Update:SmsTemplate',
+            'Delete:SmsTemplate',
+            'ViewAny:GeoLocation',
+            'Create:GeoLocation',
+            'Update:GeoLocation',
+            'Delete:GeoLocation',
             'ViewAny:ClosingDate',
             'Create:ClosingDate',
             'Update:ClosingDate',
             'Delete:ClosingDate',
+            'ViewAny:DegreeLevel',
+            'Create:DegreeLevel',
+            'Update:DegreeLevel',
+            'Delete:DegreeLevel',
             'ViewAny:Major',
             'Create:Major',
             'Update:Major',
             'Delete:Major',
+            'ViewAny:MefInvoiceCode',
+            'Create:MefInvoiceCode',
+            'Update:MefInvoiceCode',
+            'Delete:MefInvoiceCode',
+            'ImportExcel:MefInvoiceCode',
+            'ViewAny:UserType',
+            'Create:UserType',
+            'Update:UserType',
+            'Delete:UserType',
+            'ViewAny:CandidateList',
+            'Create:CandidateList',
+            'Update:CandidateList',
+            'Delete:CandidateList',
+            'ViewAny:CandidateSubmitPopupSetting',
+            'Create:CandidateSubmitPopupSetting',
+            'Update:CandidateSubmitPopupSetting',
+            'Delete:CandidateSubmitPopupSetting',
         ];
 
         foreach (array_unique([
@@ -451,8 +531,7 @@ class RolesAndPermissionsSeederTest extends TestCase
             ->firstOrFail();
         $expectedAdminPermissions = Permission::query()
             ->where('guard_name', 'web')
-            ->whereIn('name', ShieldRoleResource::manageablePermissionNames())
-            ->where('name', '!=', 'Create:CustomFormEntry')
+            ->whereIn('name', FilamentShield::getEntitiesPermissions())
             ->pluck('name')
             ->sort()
             ->values()
@@ -463,7 +542,7 @@ class RolesAndPermissionsSeederTest extends TestCase
             $admin->permissions->pluck('name')->sort()->values()->all(),
         );
         $this->assertTrue($admin->permissions->contains('name', 'Rejected:CustomFormEntry'));
-        $this->assertFalse($admin->permissions->contains('name', 'Create:CustomFormEntry'));
+        $this->assertTrue($admin->permissions->contains('name', 'Create:CustomFormEntry'));
 
         $roles = [
             'data_entry' => ['Data Entry', 'អ្នកបញ្ចូលទិន្នន័យ'],
@@ -543,8 +622,8 @@ class RolesAndPermissionsSeederTest extends TestCase
                     collect($cashierOfficerPermissions)->sort()->values()->all(),
                     $role->permissions->pluck('name')->sort()->values()->all(),
                 );
-                $this->assertFalse($role->permissions->contains('name', 'ViewAny:PaymentType'));
-                $this->assertFalse($role->permissions->contains('name', 'Update:ExchangeRate'));
+                $this->assertTrue($role->permissions->contains('name', 'ViewAny:PaymentType'));
+                $this->assertTrue($role->permissions->contains('name', 'Update:ExchangeRate'));
                 $this->assertFalse($role->permissions->contains('name', 'Create:Payment'));
             } elseif ($name === 'registrar_manager') {
                 $this->assertSame(
@@ -559,9 +638,9 @@ class RolesAndPermissionsSeederTest extends TestCase
                     collect($registrarOfficerPermissions)->sort()->values()->all(),
                     $role->permissions->pluck('name')->sort()->values()->all(),
                 );
-                $this->assertFalse($role->permissions->contains('name', 'ViewAny:CustomForm'));
+                $this->assertTrue($role->permissions->contains('name', 'ViewAny:CustomForm'));
                 $this->assertFalse($role->permissions->contains('name', 'ViewAny:PaymentType'));
-                $this->assertFalse($role->permissions->contains('name', 'ViewAny:CandidateList'));
+                $this->assertTrue($role->permissions->contains('name', 'ViewAny:CandidateList'));
             } else {
                 $this->assertCount(0, $role->permissions);
             }

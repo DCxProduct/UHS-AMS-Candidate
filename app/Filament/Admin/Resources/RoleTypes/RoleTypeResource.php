@@ -23,7 +23,7 @@ class RoleTypeResource extends Resource
 
     protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-identification';
 
-    protected static ?int $navigationSort = 12;
+    protected static ?int $navigationSort = 13;
 
     public static function getNavigationLabel(): string
     {

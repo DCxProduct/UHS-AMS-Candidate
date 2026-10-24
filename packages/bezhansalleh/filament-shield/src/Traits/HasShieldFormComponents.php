@@ -83,20 +83,21 @@ trait HasShieldFormComponents
             'DegreeLevel' => 16,
             'PaymentType' => 17,
             'ExchangeRate' => 18,
-            'CandidateSubmitPopupSetting' => 19,
-            'MessagingSetting' => 20,
-            'UserType' => 21,
-            'CandidateType' => 21,
-            'CandidateList' => 22,
-            'SystemUser' => 23,
-            'RoleType' => 24,
-            'Role' => 24,
-            'AuditLog' => 25,
+            'MefInvoiceCode' => 19,
+            'CandidateSubmitPopupSetting' => 20,
+            'MessagingSetting' => 21,
+            'UserType' => 22,
+            'CandidateType' => 22,
+            'CandidateList' => 23,
+            'SystemUser' => 24,
+            'RoleType' => 25,
+            'Role' => 26,
+            'AuditLog' => 27,
         ];
 
         $resourceOrder = [
-            'CandidateTypeResource' => 21,
-            'RoleResource' => 24,
+            'CandidateTypeResource' => 22,
+            'RoleResource' => 26,
         ];
 
         $resourceBaseName = class_basename((string) ($entity['resourceFqcn'] ?? ''));

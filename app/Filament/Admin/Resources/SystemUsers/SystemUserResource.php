@@ -42,7 +42,7 @@ class SystemUserResource extends Resource
 
     public static function getNavigationSort(): ?int
     {
-        return 11;
+        return 12;
     }
 
     public static function getModelLabel(): string

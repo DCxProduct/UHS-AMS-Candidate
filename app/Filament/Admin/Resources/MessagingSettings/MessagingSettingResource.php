@@ -24,7 +24,7 @@ class MessagingSettingResource extends Resource
 
     protected static string | BackedEnum | null $navigationIcon = Heroicon::OutlinedKey;
 
-    protected static ?int $navigationSort = 8;
+    protected static ?int $navigationSort = 9;
 
     public static function getNavigationLabel(): string
     {
@@ -38,7 +38,7 @@ class MessagingSettingResource extends Resource
 
     public static function getNavigationSort(): ?int
     {
-        return 8;
+        return 9;
     }
 
     public static function getModelLabel(): string
