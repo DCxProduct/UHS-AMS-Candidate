@@ -140,6 +140,14 @@ class RoleResource extends Resource
             return [];
         }
 
+        $activeForms = CustomForm::query()
+            ->where('slug', '!=', CustomForm::PROFILE_SLUG)
+            ->where('is_active', true)
+            ->orderBy('display_order')
+            ->orderBy('id')
+            ->get(['id', 'name']);
+        $activeFormIds = $activeForms->pluck('id')->map(fn ($id): int => (int) $id)->all();
+
         return [
             Toggle::make('restrict_custom_form_access')
                 ->label(__('system_users.role_menu.restrict_custom_form_access'))
@@ -149,13 +157,13 @@ class RoleResource extends Resource
 
             CheckboxList::make('allowed_custom_form_ids')
                 ->label(__('system_users.role_menu.allowed_candidate_forms'))
-                ->options(fn (): array => CustomForm::query()
-                    ->where('slug', '!=', CustomForm::PROFILE_SLUG)
-                    ->orderBy('display_order')
-                    ->orderBy('id')
-                    ->get()
+                ->options($activeForms
                     ->mapWithKeys(fn (CustomForm $form): array => [$form->id => $form->display_name])
                     ->all())
+                ->dehydrateStateUsing(fn (?array $state): array => array_values(array_intersect(
+                    array_map('intval', $state ?? []),
+                    $activeFormIds,
+                )))
                 ->columns(2)
                 ->searchable()
                 ->visible(fn (Get $get): bool => $get('role_type_key') === 'staff' && (bool) $get('restrict_custom_form_access'))
