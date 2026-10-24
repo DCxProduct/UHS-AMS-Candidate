@@ -27,6 +27,18 @@ class SystemUserForm
                             'md' => 2,
                         ])
                             ->schema([
+                                TextInput::make('first_name_kh')
+                                    ->label(__('system_users.fields.first_name_kh'))
+                                    ->maxLength(75)
+                                    ->placeholder(__('system_users.placeholders.first_name_kh'))
+                                    ->dehydrateStateUsing(fn ($state): ?string => blank($state) ? null : trim((string) $state)),
+
+                                TextInput::make('last_name_kh')
+                                    ->label(__('system_users.fields.last_name_kh'))
+                                    ->maxLength(75)
+                                    ->placeholder(__('system_users.placeholders.last_name_kh'))
+                                    ->dehydrateStateUsing(fn ($state): ?string => blank($state) ? null : trim((string) $state)),
+
                                 TextInput::make('first_name_latin')
                                     ->label(__('system_users.fields.first_name_latin'))
                                     ->maxLength(75)

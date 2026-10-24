@@ -2,21 +2,25 @@
 
 namespace App\Filament\Admin\Resources\Payments\Tables;
 
-use App\Models\PaymentType;
 use App\Filament\Admin\Resources\Payments\PaymentResource;
 use App\Models\Payment;
+use App\Models\PaymentType;
 use App\Models\User;
-use App\Support\FormEntryData;
 use App\Support\CaseInsensitiveSearch;
+use App\Support\FormEntryData;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
 use App\Support\OfficialReport;
 use App\Support\TablePdfExporter;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
+use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\ViewField;
+use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Support\Enums\VerticalAlignment;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
@@ -26,9 +30,19 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\HtmlString;
+use Livewire\Component;
 
 class PaymentsTable
 {
+    public static function isValidReportTimeRange(?string $fromTime, ?string $toTime): bool
+    {
+        if (blank($fromTime) || blank($toTime)) {
+            return false;
+        }
+
+        return Carbon::parse($fromTime)->format('H:i') <= Carbon::parse($toTime)->format('H:i');
+    }
+
     public static function configure(Table $table): Table
     {
         return $table
@@ -108,7 +122,7 @@ class PaymentsTable
                 TextColumn::make('exchange_rate')
                     ->label(__('payments.table.exchange_rate'))
                     ->badge()
-                    ->formatStateUsing(fn ($state): string => blank($state) ? '-' : number_format((float) $state, 2) . ' ៛')
+                    ->formatStateUsing(fn ($state): string => blank($state) ? '-' : number_format((float) $state, 2).' ៛')
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('type_payment')
@@ -125,7 +139,7 @@ class PaymentsTable
 
                 TextColumn::make('amount_usd')
                     ->label(__('payments.table.amount_usd'))
-                    ->formatStateUsing(fn ($state): string => blank($state) ? '-' : number_format((float) $state, 2) . '$')
+                    ->formatStateUsing(fn ($state): string => blank($state) ? '-' : number_format((float) $state, 2).'$')
                     ->summarize(
                         Sum::make('amount_usd_total')
                             ->label(__('payments.summary.total_usd'))
@@ -138,7 +152,7 @@ class PaymentsTable
 
                 TextColumn::make('amount_kh')
                     ->label(__('payments.table.amount_kh'))
-                    ->formatStateUsing(fn ($state): string => blank($state) ? '-' : number_format((float) $state, 2) . ' ៛')
+                    ->formatStateUsing(fn ($state): string => blank($state) ? '-' : number_format((float) $state, 2).' ៛')
                     ->summarize(
                         Sum::make('amount_khr_total')
                             ->label(__('payments.summary.total_khr'))
@@ -153,7 +167,7 @@ class PaymentsTable
                     ->label(__('payments.table.status_payt'))
                     ->badge()
                     ->alignCenter()
-                    ->formatStateUsing(fn (?string $state): string => __('payments.options.status_payt.' . strtolower((string) $state)))
+                    ->formatStateUsing(fn (?string $state): string => __('payments.options.status_payt.'.strtolower((string) $state)))
                     ->color(fn (?string $state): string => match (strtolower((string) $state)) {
                         'paid' => 'success',
                         'return' => 'danger',
@@ -166,13 +180,12 @@ class PaymentsTable
                     ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
                     ->toggleable(isToggledHiddenByDefault: false),
 
-
                 TextColumn::make('received_by')
                     ->label(__('payments.table.received_by'))
                     ->getStateUsing(fn (Payment $record): string => self::receiverName($record))
                     ->toggleable(isToggledHiddenByDefault: false),
 
-                ])
+            ])
             ->filters([
                 Filter::make('payment_filters')
                     ->label(new HtmlString('&nbsp;'))
@@ -184,7 +197,6 @@ class PaymentsTable
                             ->native(false)
                             ->searchable()
                             ->live(),
-
                         Select::make('receipt_number')
                             ->label(__('payments.table.receipt_number'))
                             ->placeholder(__('payments.placeholders.receipt_number'))
@@ -236,6 +248,33 @@ class PaymentsTable
                                 : null)
                             ->maxDate(now())
                             ->live(),
+
+                        ViewField::make('from_time')
+                            ->view('filament.admin.fields.bounded-time-picker')
+                            ->label(__('payments.table.from_time'))
+                            ->live(),
+
+                        ViewField::make('to_time')
+                            ->view('filament.admin.fields.bounded-time-picker')
+                            ->label(__('payments.table.to_time'))
+                            ->live(),
+
+                        Actions::make([
+                            Action::make('save_report_times')
+                                ->label(__('payments.actions.save_times'))
+                                ->color('primary')
+                                ->disabled(fn (Get $get): bool => ! self::isValidReportTimeRange(
+                                    $get('from_time'),
+                                    $get('to_time'),
+                                ))
+                                ->action(fn (Component $livewire) => $livewire->saveReportTimes()),
+                            Action::make('reset_report_times')
+                                ->label(__('payments.actions.reset_times'))
+                                ->color('gray')
+                                ->outlined()
+                                ->action(fn (Component $livewire) => $livewire->resetReportTimes()),
+                        ])->verticalAlignment(VerticalAlignment::End),
+
                     ])
                     ->columns(3)
                     ->columnSpanFull()
@@ -486,7 +525,7 @@ class PaymentsTable
             ->filter()
             ->unique()
             ->sortBy(fn (string $value): float => (float) $value)
-            ->mapWithKeys(fn (string $value): array => [$value => number_format((float) $value, 2) . '$'])
+            ->mapWithKeys(fn (string $value): array => [$value => number_format((float) $value, 2).'$'])
             ->toArray();
     }
 
@@ -499,7 +538,7 @@ class PaymentsTable
             ->filter()
             ->unique()
             ->sortBy(fn (string $value): float => (float) $value)
-            ->mapWithKeys(fn (string $value): array => [$value => number_format((float) $value, 0) . ' ៛'])
+            ->mapWithKeys(fn (string $value): array => [$value => number_format((float) $value, 0).' ៛'])
             ->toArray();
     }
 
@@ -521,7 +560,7 @@ class PaymentsTable
             ->filter()
             ->unique()
             ->sort()
-            ->mapWithKeys(fn (string $value): array => [$value => __('payments.options.status_payt.' . $value)])
+            ->mapWithKeys(fn (string $value): array => [$value => __('payments.options.status_payt.'.$value)])
             ->toArray();
     }
 
@@ -548,10 +587,6 @@ class PaymentsTable
                 'label' => __('payments.export.columns.date_of_birth'),
                 'value' => fn (Payment $record): string => self::dateOfBirth($record),
             ],
-            'academic_year' => [
-                'label' => __('payments.export.columns.academic_year'),
-                'value' => fn (Payment $record): string => self::academicYear($record),
-            ],
             'datetime_pay' => [
                 'label' => __('payments.export.columns.datetime_pay'),
                 'value' => fn (Payment $record): string => LocalizedDate::dayMonthYear($record->datetime_pay),
@@ -560,29 +595,19 @@ class PaymentsTable
                 'label' => __('payments.export.columns.receipt_number'),
                 'value' => fn (Payment $record): string => blank($record->receipt_number) ? '-' : (string) $record->receipt_number,
             ],
+            'amount_usd' => [
+                'label' => __('payments.export.columns.amount_usd'),
+                'value' => fn (Payment $record): string => blank($record->amount_usd) ? '-' : number_format((float) $record->amount_usd, 2).' $',
+            ],
+            'amount_kh' => [
+                'label' => __('payments.export.columns.amount_kh'),
+                'value' => fn (Payment $record): string => blank($record->amount_kh) ? '-' : number_format((float) $record->amount_kh, 2).' ៛',
+            ],
             'type_payment' => [
                 'label' => __('payments.export.columns.type_payment'),
                 'value' => fn (Payment $record): string => $record->payment_method_label,
             ],
-            'amount_usd' => [
-                'label' => __('payments.export.columns.amount_usd'),
-                'value' => fn (Payment $record): string => blank($record->amount_usd) ? '-' : number_format((float) $record->amount_usd, 2) . ' $',
-            ],
-            'amount_kh' => [
-                'label' => __('payments.export.columns.amount_kh'),
-                'value' => fn (Payment $record): string => blank($record->amount_kh) ? '-' : number_format((float) $record->amount_kh, 2) . ' ៛',
-            ],
         ];
-    }
-
-    protected static function academicYear(Payment $record): string
-    {
-        $entry = self::matchedEntry($record);
-
-        return FormEntryData::academicYearLabel(
-            $entry?->data,
-            $record->user?->academic_year ?: '-',
-        );
     }
 
     protected static function reportHeadings(): array
@@ -661,25 +686,29 @@ class PaymentsTable
             ],
             'rows' => collect(['cash', 'bank'])
                 ->map(fn (string $method): array => [
-                    __('payment_types.options.methods.' . $method),
+                    __('payment_types.options.methods.'.$method),
                     (string) $totals[$method]['count'],
-                    $totals[$method]['usd_count'] > 0 ? number_format($totals[$method]['usd'], 2) . ' $' : '-',
-                    $totals[$method]['khr_count'] > 0 ? number_format($totals[$method]['khr'], 2) . ' ៛' : '-',
+                    $totals[$method]['usd_count'] > 0 ? number_format($totals[$method]['usd'], 2).' $' : '-',
+                    $totals[$method]['khr_count'] > 0 ? number_format($totals[$method]['khr'], 2).' ៛' : '-',
                 ])
                 ->all(),
         ];
     }
 
-    protected static function reportSubtitle(mixed $reportDate = null): string
+    protected static function reportSubtitle(mixed $reportDate = null, ?string $reportTimeRange = null): string
     {
-        return OfficialReport::subtitle($reportDate);
+        $subtitle = OfficialReport::subtitle($reportDate);
+
+        return filled($reportTimeRange)
+            ? $subtitle.__('payments.export.time_range', ['time' => $reportTimeRange])
+            : $subtitle;
     }
 
     protected static function exportingUserName(): string
     {
         $user = auth()->user();
 
-        return (string) ($user?->name_latin ?: $user?->name ?: '');
+        return (string) ($user?->getFilamentName() ?? '');
     }
 
     protected static function reportFooterDateParts(mixed $reportDate = null): array
@@ -708,7 +737,7 @@ class PaymentsTable
             ->implode('');
     }
 
-    protected static function reportSheet(iterable $records, mixed $reportDate = null): array
+    protected static function reportSheet(iterable $records, mixed $reportDate = null, ?string $reportTimeRange = null): array
     {
         $records = collect($records);
         $summary = self::reportSummary($records);
@@ -729,17 +758,17 @@ class PaymentsTable
             $summaryTable['rows'],
         );
 
-        return OfficialReport::sheet(
+        $sheet = OfficialReport::sheet(
             'Payment Records',
             __('payments.export.title'),
             self::reportHeadings(),
             $rows,
             [
                 [__('payments.export.total_records'), $summary['count']],
-                [__('payments.export.total_usd'), $summary['usd'] . ' $'],
-                [__('payments.export.total_khr'), $summary['khr'] . ' ៛'],
+                [__('payments.export.total_usd'), $summary['usd'].' $'],
+                [__('payments.export.total_khr'), $summary['khr'].' ៛'],
             ],
-            [1 => 16, 2 => 25, 3 => 25, 4 => 16, 5 => 24, 6 => 16, 7 => 16, 8 => 16, 9 => 16, 10 => 14, 11 => 16],
+            [1 => 8, 2 => 21, 3 => 29, 4 => 18, 5 => 24, 6 => 24, 7 => 16, 8 => 14, 9 => 22, 10 => 20],
             footerText: __('payments.export.footer.handed_over_by'),
             footerColumn: 9,
             footerDateText: self::reportFooterDateText($reportDate),
@@ -747,29 +776,36 @@ class PaymentsTable
             footerName: self::exportingUserName(),
             footerReceiverText: __('payments.export.footer.received_by'),
             summaryTable: $summaryTable,
-            subtitle: self::reportSubtitle($reportDate),
+            subtitle: self::reportSubtitle($reportDate, $reportTimeRange),
         );
+
+        $dateOfBirthColumn = array_search(__('payments.export.columns.date_of_birth'), self::reportHeadings(), true);
+
+        if ($dateOfBirthColumn !== false) {
+            $sheet['options']['cellStyles'][OfficialReport::columnName($dateOfBirthColumn + 1).'11'] = 7;
+        }
+
+        return $sheet;
     }
 
-    public static function downloadExcel(iterable $records, ?array $columnKeys = null, mixed $reportDate = null)
+    public static function downloadExcel(iterable $records, ?array $columnKeys = null, mixed $reportDate = null, ?string $reportTimeRange = null)
     {
-        return OfficialReport::inKhmer(fn () => self::buildExcelDownload($records, $columnKeys, $reportDate));
+        return OfficialReport::inKhmer(fn () => self::buildExcelDownload($records, $columnKeys, $reportDate, $reportTimeRange));
     }
 
-    public static function downloadPdf(iterable $records, ?array $columnKeys = null, mixed $reportDate = null)
+    public static function downloadPdf(iterable $records, ?array $columnKeys = null, mixed $reportDate = null, ?string $reportTimeRange = null)
     {
-        return OfficialReport::inKhmer(fn () => self::buildPdfDownload($records, $reportDate));
+        return OfficialReport::inKhmer(fn () => self::buildPdfDownload($records, $reportDate, $reportTimeRange));
     }
 
-
-    protected static function buildExcelDownload(iterable $records, ?array $columnKeys = null, mixed $reportDate = null)
+    protected static function buildExcelDownload(iterable $records, ?array $columnKeys = null, mixed $reportDate = null, ?string $reportTimeRange = null)
     {
-        $path = storage_path('app/' . uniqid('payment-records-', true) . '.xlsx');
+        $path = storage_path('app/'.uniqid('payment-records-', true).'.xlsx');
         $records = collect($records);
         $columnKeys ??= array_keys(self::exportColumnDefinitions());
 
         self::writeXlsx($path, [
-            self::reportSheet($records, $reportDate),
+            self::reportSheet($records, $reportDate, $reportTimeRange),
             [
                 'name' => 'Database Export',
                 'rows' => self::cleanDataRows($records, $columnKeys),
@@ -779,7 +815,7 @@ class PaymentsTable
         return OfficialReport::excelDownload($path, __('payments.export.title'), 'payment-records');
     }
 
-    protected static function buildPdfDownload(iterable $records, mixed $reportDate = null)
+    protected static function buildPdfDownload(iterable $records, mixed $reportDate = null, ?string $reportTimeRange = null)
     {
         $records = collect($records);
         $rows = self::reportRows($records);
@@ -792,12 +828,15 @@ class PaymentsTable
             [],
             [
                 'layout' => 'payment-records',
-                'subtitle' => self::reportSubtitle($reportDate),
+                'orientation' => 'P',
+                'table_font_size' => '7pt',
+                'subtitle' => self::reportSubtitle($reportDate, $reportTimeRange),
                 'summary' => self::reportSummary($records),
                 'summary_table' => self::paymentTypeSummaryTable($records),
                 'footer_text' => __('payments.export.footer.handed_over_by'),
-                'footer_column' => 9,
-                'footer_span' => 3,
+                'footer_column' => 6,
+                'footer_span' => 6,
+                'column_widths' => ['7mm', '19mm', '29mm', '18mm', '22mm', '24mm', '16mm', '13.5mm', '22mm', '23.5mm'],
                 'footer_date_parts' => self::reportFooterDateParts($reportDate),
                 'footer_name' => self::exportingUserName(),
                 'footer_receiver_text' => __('payments.export.footer.received_by'),
@@ -806,7 +845,6 @@ class PaymentsTable
             ],
         );
     }
-
 
     protected static function excelRows(iterable $records, ?array $columnKeys = null): array
     {
@@ -840,8 +878,6 @@ class PaymentsTable
 
         return $rows;
     }
-
-
 
     protected static function excelHeadings(array $columnKeys): array
     {
@@ -974,29 +1010,29 @@ class PaymentsTable
                 'value' => fn (Payment $record): string => filled($record->payment_slip_path) ? __('payments.actions.view_slip') : '-',
                 'clean' => fn (Payment $record): string => blank($record->payment_slip_path) ? '-' : (string) $record->payment_slip_path,
             ],
-            'type_payment' => [
-                'label' => __('payments.table.type_payment'),
-                'field_key' => 'type_payment',
-                'value' => fn (Payment $record): string => $record->payment_method_label,
-                'clean' => fn (Payment $record): string => blank($record->type_payment) ? '-' : (string) $record->type_payment,
-            ],
             'status_payt' => [
                 'label' => __('payments.table.status_payt'),
                 'field_key' => 'status_payt',
-                'value' => fn (Payment $record): string => __('payments.options.status_payt.' . strtolower((string) $record->status_payt)),
+                'value' => fn (Payment $record): string => __('payments.options.status_payt.'.strtolower((string) $record->status_payt)),
                 'clean' => fn (Payment $record): string => blank($record->status_payt) ? '-' : (string) $record->status_payt,
             ],
             'amount_usd' => [
                 'label' => __('payments.table.amount_usd'),
                 'field_key' => 'amount_usd',
-                'value' => fn (Payment $record): string => blank($record->amount_usd) ? '-' : number_format((float) $record->amount_usd, 2) . '$',
+                'value' => fn (Payment $record): string => blank($record->amount_usd) ? '-' : number_format((float) $record->amount_usd, 2).'$',
                 'clean' => fn (Payment $record): string => blank($record->amount_usd) ? '-' : (string) $record->amount_usd,
             ],
             'amount_kh' => [
                 'label' => __('payments.table.amount_kh'),
                 'field_key' => 'amount_kh',
-                'value' => fn (Payment $record): string => blank($record->amount_kh) ? '-' : number_format((float) $record->amount_kh, 2) . ' ៛',
+                'value' => fn (Payment $record): string => blank($record->amount_kh) ? '-' : number_format((float) $record->amount_kh, 2).' ៛',
                 'clean' => fn (Payment $record): string => blank($record->amount_kh) ? '-' : (string) $record->amount_kh,
+            ],
+            'type_payment' => [
+                'label' => __('payments.table.type_payment'),
+                'field_key' => 'type_payment',
+                'value' => fn (Payment $record): string => $record->payment_method_label,
+                'clean' => fn (Payment $record): string => blank($record->type_payment) ? '-' : (string) $record->type_payment,
             ],
             'datetime_pay' => [
                 'label' => __('payments.table.datetime_pay'),

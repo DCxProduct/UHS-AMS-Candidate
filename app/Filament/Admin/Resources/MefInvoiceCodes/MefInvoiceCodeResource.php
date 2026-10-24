@@ -23,7 +23,7 @@ class MefInvoiceCodeResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-qr-code';
 
-    protected static ?int $navigationSort = 70;
+    protected static ?int $navigationSort = 7;
 
     public static function getNavigationLabel(): string
     {

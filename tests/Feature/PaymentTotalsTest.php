@@ -2,15 +2,18 @@
 
 namespace Tests\Feature;
 
+use App\Filament\Admin\Resources\CandidatePaymentLists\Tables\CandidatePaymentListsTable;
 use App\Filament\Admin\Resources\Payments\Pages\ListPayments;
 use App\Filament\Admin\Resources\Payments\Tables\PaymentsTable;
-use App\Filament\Admin\Resources\CandidatePaymentLists\Tables\CandidatePaymentListsTable;
 use App\Models\Payment;
 use App\Models\PaymentType;
 use App\Models\Role;
 use App\Models\User;
+use App\Support\OfficialReport;
 use App\Support\TablePdfExporter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Livewire\Livewire;
 use Mccarlosen\LaravelMpdf\Facades\LaravelMpdf as Pdf;
@@ -24,11 +27,34 @@ class PaymentTotalsTest extends TestCase
 
     public function test_unpaid_application_exports_omit_the_record_count_summary(): void
     {
-        $sheet = $this->invokeProtectedStatic(CandidatePaymentListsTable::class, 'reportSheet', [[], []]);
+        $exportColumns = $this->invokeProtectedStatic(CandidatePaymentListsTable::class, 'exportColumnDefinitions', []);
+        $reportColumnKeys = array_keys($exportColumns);
+        $sheet = $this->invokeProtectedStatic(CandidatePaymentListsTable::class, 'reportSheet', [[], $reportColumnKeys]);
         $spreadsheetRows = serialize($sheet['rows']);
 
         $this->assertStringNotContainsString(__('payments.export.total_records'), $spreadsheetRows);
-        $this->assertSame([[], [], []], array_slice($sheet['rows'], 11));
+        $this->assertStringNotContainsString(__('candidate_payment_lists.columns.academic_year'), $spreadsheetRows);
+        $this->assertStringNotContainsString(__('candidate_payment_lists.columns.phone_number'), $spreadsheetRows);
+        $this->assertStringNotContainsString(__('candidate_payment_lists.columns.payment_status'), $spreadsheetRows);
+        $this->assertContains(__('candidate_payment_lists.columns.date_of_birth'), $sheet['rows'][10]);
+        $this->assertArrayNotHasKey('academic_year', $exportColumns);
+        $this->assertArrayNotHasKey('phone_number', $exportColumns);
+        $this->assertArrayNotHasKey('status_payt', $exportColumns);
+
+        $dateOfBirthColumn = array_search('date_of_birth', $reportColumnKeys, true);
+        $this->assertSame(
+            7,
+            $sheet['options']['cellStyles'][OfficialReport::columnName($dateOfBirthColumn + 1).'11'],
+        );
+
+        $pdfRows = $this->invokeProtectedStatic(CandidatePaymentListsTable::class, 'excelRows', [[], null]);
+        $this->assertNotContains(__('candidate_payment_lists.columns.academic_year'), $pdfRows[0]);
+        $this->assertNotContains(__('candidate_payment_lists.columns.phone_number'), $pdfRows[0]);
+        $this->assertNotContains(__('candidate_payment_lists.columns.payment_status'), $pdfRows[0]);
+
+        $cleanRows = $this->invokeProtectedStatic(CandidatePaymentListsTable::class, 'cleanDataRows', [[], $reportColumnKeys]);
+        $this->assertNotContains('phone_number', $cleanRows[0]);
+        $this->assertNotContains('status_payt', $cleanRows[0]);
 
         $pdfHtml = $this->invokeProtectedStatic(TablePdfExporter::class, 'html', [
             ['Application'],
@@ -170,6 +196,202 @@ class PaymentTotalsTest extends TestCase
             ->set('tableFilters.payment_filters.from_date', '2026-10-21')
             ->set('tableFilters.payment_filters.to_date', '2026-10-19')
             ->assertCanNotSeeTableRecords([$beforeRange, $startDate, $today, $endDate, $afterRange]);
+    }
+
+    public function test_payment_report_time_fields_do_not_filter_rows_and_format_the_export_subtitle(): void
+    {
+        $this->travelTo(now()->setDate(2026, 10, 24)->setTime(18, 0));
+        $this->createPaymentViewer();
+
+        $early = Payment::query()->create([
+            'receipt_number' => 'REPORT-TIME-EARLY',
+            'amount_usd' => '1.00',
+            'datetime_pay' => '2026-10-24 06:00:00',
+        ]);
+        $late = Payment::query()->create([
+            'receipt_number' => 'REPORT-TIME-LATE',
+            'amount_usd' => '2.00',
+            'datetime_pay' => '2026-10-24 22:00:00',
+        ]);
+
+        $component = Livewire::test(ListPayments::class)
+            ->set('tableFilters.payment_filters.from_time', '08:00')
+            ->set('tableFilters.payment_filters.to_time', '21:00')
+            ->assertCanSeeTableRecords([$early, $late]);
+
+        $timeRange = $this->invokeProtected($component->instance(), 'exportReportTimeRange');
+        $subtitle = $this->invokeProtectedStatic(PaymentsTable::class, 'reportSubtitle', [
+            '2026-10-24',
+            $timeRange,
+        ]);
+
+        $this->assertNull($timeRange);
+        $this->assertSame('គិតត្រឹមថ្ងៃទី៖ ២៤-តុលា-២០២៦', $subtitle);
+
+        $savedTimesKey = 'payments.report_times.'.auth()->id();
+        $this->assertFalse(Cache::has($savedTimesKey));
+
+        $component->call('saveReportTimes');
+
+        $timeRange = $this->invokeProtected($component->instance(), 'exportReportTimeRange');
+        $subtitle = $this->invokeProtectedStatic(PaymentsTable::class, 'reportSubtitle', [
+            '2026-10-24',
+            $timeRange,
+        ]);
+
+        $this->assertSame('០៨:០០ ព្រឹក - ២១:០០ ល្ងាច', $timeRange);
+        $this->assertSame('គិតត្រឹមថ្ងៃទី៖ ២៤-តុលា-២០២៦ ម៉ោង ០៨:០០ ព្រឹក - ២១:០០ ល្ងាច', $subtitle);
+
+        $component
+            ->set('tableFilters.payment_filters.from_time', null)
+            ->set('tableFilters.payment_filters.to_time', null)
+            ->assertCanSeeTableRecords([$early, $late]);
+
+        Livewire::test(ListPayments::class)
+            ->assertSet('tableFilters.payment_filters.from_time', '08:00')
+            ->assertSet('tableFilters.payment_filters.to_time', '21:00');
+
+        $savedTimes = Cache::get($savedTimesKey);
+        $savedAt = $savedTimes['saved_at'] ?? null;
+        $this->assertNotNull($savedAt);
+        $this->assertTrue($savedTimes['saved_manually']);
+        $this->assertFalse(session()->has($savedTimesKey));
+
+        Carbon::setTestNow(Carbon::createFromTimestamp($savedAt + 86400));
+
+        try {
+            Livewire::test(ListPayments::class)
+                ->assertSet('tableFilters.payment_filters.from_time', null)
+                ->assertSet('tableFilters.payment_filters.to_time', null);
+
+            $this->assertFalse(Cache::has($savedTimesKey));
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_payment_exports_include_only_the_manually_saved_time_range(): void
+    {
+        $this->createPaymentViewer();
+
+        $component = Livewire::test(ListPayments::class)
+            ->set('tableFilters.payment_filters.from_time', '08:00')
+            ->set('tableFilters.payment_filters.to_time', '16:00');
+
+        $timeRange = $this->invokeProtected($component->instance(), 'exportReportTimeRange');
+
+        $this->assertNull($timeRange);
+
+        $component
+            ->set('tableFilters.payment_filters.from_time', '09:00')
+            ->set('tableFilters.payment_filters.to_time', '17:00')
+            ->call('saveReportTimes');
+
+        $timeRange = $this->invokeProtected($component->instance(), 'exportReportTimeRange');
+
+        $this->assertSame('០៩:០០ ព្រឹក - ១៧:០០ ល្ងាច', $timeRange);
+
+        $component
+            ->set('tableFilters.payment_filters.from_time', '10:00')
+            ->set('tableFilters.payment_filters.to_time', '18:00');
+
+        $this->assertSame(
+            '០៩:០០ ព្រឹក - ១៧:០០ ល្ងាច',
+            $this->invokeProtected($component->instance(), 'exportReportTimeRange'),
+        );
+    }
+
+    public function test_payment_report_time_range_rejects_an_end_time_before_the_start_time(): void
+    {
+        $user = $this->createPaymentViewer();
+        $savedTimesKey = 'payments.report_times.'.$user->id;
+        Cache::forget($savedTimesKey);
+
+        $this->assertFalse(PaymentsTable::isValidReportTimeRange('16:00', '15:00'));
+        $this->assertTrue(PaymentsTable::isValidReportTimeRange('16:00', '16:00'));
+        $this->assertTrue(PaymentsTable::isValidReportTimeRange('08:00', '21:00'));
+
+        Livewire::test(ListPayments::class)
+            ->set('tableFilters.payment_filters.from_time', '16:00')
+            ->set('tableFilters.payment_filters.to_time', '15:00')
+            ->call('saveReportTimes');
+
+        $this->assertFalse(Cache::has($savedTimesKey));
+    }
+
+    public function test_payment_report_discards_a_previously_saved_invalid_time_range(): void
+    {
+        $user = $this->createPaymentViewer();
+        $savedTimesKey = 'payments.report_times.'.$user->id;
+        Cache::put($savedTimesKey, [
+            'from_time' => '16:00',
+            'to_time' => '15:00',
+            'saved_at' => now()->timestamp,
+        ], now()->addDay());
+
+        Livewire::test(ListPayments::class)
+            ->assertSet('tableFilters.payment_filters.from_time', null)
+            ->assertSet('tableFilters.payment_filters.to_time', null);
+
+        $this->assertFalse(Cache::has($savedTimesKey));
+    }
+
+    public function test_payment_report_does_not_restore_times_from_the_old_auto_saved_cache(): void
+    {
+        $user = $this->createPaymentViewer();
+        $savedTimesKey = 'payments.report_times.'.$user->id;
+        Cache::put($savedTimesKey, [
+            'from_time' => '09:00',
+            'to_time' => '16:00',
+            'saved_at' => now()->timestamp,
+        ], now()->addDay());
+
+        Livewire::test(ListPayments::class)
+            ->assertSet('tableFilters.payment_filters.from_time', null)
+            ->assertSet('tableFilters.payment_filters.to_time', null);
+
+        $this->assertFalse(Cache::has($savedTimesKey));
+    }
+
+    public function test_payment_report_clears_unsaved_times_from_the_filters_url_on_a_fresh_visit(): void
+    {
+        $this->createPaymentViewer();
+
+        Livewire::withQueryParams([
+            'filters' => [
+                'payment_filters' => [
+                    'from_time' => '09:00',
+                    'to_time' => '16:00',
+                ],
+            ],
+        ])->test(ListPayments::class)
+            ->assertSet('tableFilters.payment_filters.from_time', null)
+            ->assertSet('tableFilters.payment_filters.to_time', null);
+    }
+
+    public function test_resetting_payment_report_times_clears_only_the_time_filters_and_saved_range(): void
+    {
+        $user = $this->createPaymentViewer();
+        $savedTimesKey = 'payments.report_times.'.$user->id;
+        Cache::put($savedTimesKey, [
+            'from_time' => '08:00',
+            'to_time' => '21:00',
+            'saved_at' => now()->timestamp,
+            'saved_manually' => true,
+        ], now()->addDay());
+
+        Livewire::test(ListPayments::class)
+            ->set('tableFilters.payment_filters.from_date', '2026-10-20')
+            ->set('tableFilters.payment_filters.to_date', '2026-10-24')
+            ->set('tableFilters.payment_filters.from_time', '08:00')
+            ->set('tableFilters.payment_filters.to_time', '21:00')
+            ->call('resetReportTimes')
+            ->assertSet('tableFilters.payment_filters.from_time', null)
+            ->assertSet('tableFilters.payment_filters.to_time', null)
+            ->assertSet('tableFilters.payment_filters.from_date', '2026-10-20')
+            ->assertSet('tableFilters.payment_filters.to_date', '2026-10-24');
+
+        $this->assertFalse(Cache::has($savedTimesKey));
     }
 
     public function test_payment_total_labels_are_localized(): void
@@ -376,8 +598,13 @@ class PaymentTotalsTest extends TestCase
             $payment->load('user');
 
             $headings = $this->invokeProtectedStatic(PaymentsTable::class, 'reportHeadings', []);
+            $reportDefinitions = $this->invokeProtectedStatic(PaymentsTable::class, 'reportColumnDefinitions', []);
+            $exportDefinitions = $this->invokeProtectedStatic(PaymentsTable::class, 'exportColumnDefinitions', []);
             $rows = $this->invokeProtectedStatic(PaymentsTable::class, 'reportRows', [[$payment]]);
             $summary = $this->invokeProtectedStatic(PaymentsTable::class, 'reportSummary', [[$payment]]);
+
+            $this->assertArrayNotHasKey('academic_year', $reportDefinitions);
+            $this->assertSame(array_search('amount_kh', array_keys($exportDefinitions), true) + 1, array_search('type_payment', array_keys($exportDefinitions), true));
 
             $this->assertSame([
                 'No',
@@ -385,17 +612,16 @@ class PaymentTotalsTest extends TestCase
                 'Name Latin',
                 'Gender',
                 'Date of Birth',
-                'Academic Year',
                 'Payment Date',
                 'Receipt',
-                'Payment Type',
                 'USD',
                 'KHR',
+                'Payment Type',
             ], $headings);
             $this->assertSame('Payment Viewer', $rows[0][1]);
             $this->assertSame('PAYMENT VIEWER', $rows[0][2]);
-            $this->assertSame('2025-2026', $rows[0][5]);
-            $this->assertSame('REPORT-001', $rows[0][7]);
+            $this->assertSame('09-Sep-2026', $rows[0][5]);
+            $this->assertSame('REPORT-001', $rows[0][6]);
             $this->assertSame(['count' => '1', 'usd' => '5.00', 'khr' => '20,500.00'], $summary);
 
             $pdfHtml = $this->invokeProtectedStatic(
@@ -422,6 +648,9 @@ class PaymentTotalsTest extends TestCase
             $this->assertStringContainsString('REPORT-001', $pdfHtml);
             $this->assertStringContainsString('<td>5.00 $</td>', $pdfHtml);
             $this->assertStringContainsString('<th>Payment Type</th>', $pdfHtml);
+            $this->assertStringContainsString('<th>KHR</th><th>Payment Type</th>', $pdfHtml);
+            $this->assertStringNotContainsString('<th>Academic Year</th>', $pdfHtml);
+            $this->assertStringContainsString('<th style="white-space: nowrap; font-size: 7pt">Date of Birth</th>', $pdfHtml);
             $this->assertStringContainsString('<th>Count</th>', $pdfHtml);
             $this->assertStringNotContainsString('<th>Bank</th>', $pdfHtml);
             $this->assertStringNotContainsString('<td>ABA</td>', $pdfHtml);
@@ -449,8 +678,8 @@ class PaymentTotalsTest extends TestCase
             $this->assertStringContainsString('Cash', serialize($sheet['rows']));
             $this->assertStringContainsString('Bank', serialize($sheet['rows']));
             $this->assertStringNotContainsString('ABA', serialize($sheet['rows']));
-            foreach (['A1:K1', 'A2:K2', 'A7:B7', 'A8:K8', 'A9:K9'] as $range) {
-                $this->assertStringContainsString('<mergeCell ref="' . $range . '"/>', $worksheetXml);
+            foreach (['A1:J1', 'A2:J2', 'A7:B7', 'A8:J8', 'A9:J9'] as $range) {
+                $this->assertStringContainsString('<mergeCell ref="'.$range.'"/>', $worksheetXml);
             }
             $this->assertStringContainsString('xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"', $worksheetXml);
             $this->assertStringContainsString('<drawing r:id="rId1"/>', $worksheetXml);
@@ -477,14 +706,15 @@ class PaymentTotalsTest extends TestCase
             $this->assertStringContainsString('orientation="landscape"', $worksheetXml);
             $this->assertStringContainsString('numberStoredAsText="1"', $worksheetXml);
             $this->assertStringContainsString('<c r="A11" s="4"', $worksheetXml);
+            $this->assertStringContainsString('<c r="E11" s="7"', $worksheetXml);
             $this->assertStringContainsString('សាកលវិទ្យាល័យវិទ្យាសាស្ត្រសុខាភិបាល', $worksheetXml);
             $this->assertStringContainsString('ព្រះរាជាណាចក្រកម្ពុជា', $worksheetXml);
             $this->assertStringContainsString('ជាតិ សាសនា ព្រះមហាក្សត្រ', $worksheetXml);
-            $this->assertStringContainsString('<col min="1" max="1" width="16"', $worksheetXml);
-            $this->assertStringContainsString('<col min="4" max="4" width="16"', $worksheetXml);
+            $this->assertStringContainsString('<col min="1" max="1" width="8"', $worksheetXml);
+            $this->assertStringContainsString('<col min="4" max="4" width="18"', $worksheetXml);
             $this->assertStringContainsString('<col min="5" max="5" width="24"', $worksheetXml);
             $this->assertStringContainsString('<c r="A11" s="4"', $worksheetXml);
-            $this->assertStringContainsString('width="25"', $worksheetXml);
+            $this->assertStringContainsString('width="29"', $worksheetXml);
 
             $stylesXml = $this->invokeProtectedStatic(PaymentsTable::class, 'stylesXml', []);
             $this->assertStringContainsString('<name val="Khmer OS Battambang"/>', $stylesXml);
@@ -503,7 +733,7 @@ class PaymentTotalsTest extends TestCase
 
             $this->invokeProtectedStatic(PaymentsTable::class, 'writeXlsx', [$path, [$sheet]]);
 
-            $zip = new \ZipArchive();
+            $zip = new \ZipArchive;
             $this->assertTrue($zip->open($path) === true);
             $this->assertNotFalse($zip->locateName('xl/media/image1.png'));
             $this->assertNotFalse($zip->locateName('xl/drawings/drawing1.xml'));
@@ -536,13 +766,13 @@ class PaymentTotalsTest extends TestCase
             $expectedName = rawurlencode('បញ្ជីឈ្មោះបេក្ខជនបង់លុយ 19-10-2026');
 
             $response = PaymentsTable::downloadExcel([$payment->load('user')], null, '2026-10-22');
-            $this->assertStringContainsString("filename*=utf-8''" . $expectedName . '.xlsx', $response->headers->get('Content-Disposition'));
-            $zip = new \ZipArchive();
+            $this->assertStringContainsString("filename*=utf-8''".$expectedName.'.xlsx', $response->headers->get('Content-Disposition'));
+            $zip = new \ZipArchive;
             $this->assertTrue($zip->open($response->getFile()->getPathname()) === true);
             $sheet = $zip->getFromName('xl/worksheets/sheet1.xml');
             $zip->close();
 
-            $this->assertStringContainsString('កាលបរិច្ឆេទ៖ ២២-តុលា-២០២៦', $sheet);
+            $this->assertStringContainsString('គិតត្រឹមថ្ងៃទី៖ ២២-តុលា-២០២៦', $sheet);
             preg_match_all('/<t(?:\s[^>]*)?>(.*?)<\/t>/s', $sheet, $textNodes);
             $sheetText = implode('', array_map('html_entity_decode', $textNodes[1]));
             $this->assertStringContainsString('រាជធានីភ្នំពេញ ថ្ងៃទី ២២ ខែ តុលា ឆ្នាំ ២០២៦', $sheetText);
@@ -558,16 +788,25 @@ class PaymentTotalsTest extends TestCase
 
             Pdf::shouldReceive('loadHTML')
                 ->once()
-                ->withArgs(fn (string $html): bool => str_contains($html, 'បញ្ជីឈ្មោះបេក្ខជនបង់លុយ')
+                ->withArgs(fn (string $html, array $pdfOptions): bool => $pdfOptions['format'] === 'A4'
+                    && $pdfOptions['orientation'] === 'P'
+                    && str_contains($html, 'បញ្ជីឈ្មោះបេក្ខជនបង់លុយ')
+                    && str_contains($html, '<th style="width: 18mm">ភេទ</th>')
+                    && str_contains($html, '<th style="width: 22mm; white-space: nowrap; font-size: 7pt">ថ្ងៃខែឆ្នាំកំណើត</th>')
+                    && str_contains($html, '<th style="width: 22mm; white-space: nowrap; font-size: 7pt">ថ្ងៃខែឆ្នាំកំណើត</th>')
+                    && str_contains($html, '.compact-table th, .compact-table td { font-size: 7pt; }')
+                    && str_contains($html, '<table class="data-table compact-table">')
+                    && str_contains($html, '<table class="summary-table compact-table">')
+                    && str_contains($html, 'nth-child(4), .data-table td:nth-child(4) { white-space: nowrap; }')
                     && str_contains($html, 'ល.រ')
-                    && str_contains($html, 'កាលបរិច្ឆេទ៖ ២២-តុលា-២០២៦')
+                    && str_contains($html, 'គិតត្រឹមថ្ងៃទី៖ ២២-តុលា-២០២៦')
                     && str_contains($html, 'រាជធានីភ្នំពេញ ថ្ងៃទី ')
                     && str_contains($html, '<strong class="report-date-bold">២២</strong> ខែ <strong class="report-date-bold">តុលា</strong> ឆ្នាំ <strong class="report-date-bold">២០២៦</strong>')
                     && ! str_contains($html, 'Payment Records'))
                 ->andReturn(\Mockery::mock(['output' => '%PDF']));
 
             $pdfResponse = PaymentsTable::downloadPdf([$payment], null, '2026-10-22');
-            $this->assertStringContainsString("filename*=utf-8''" . $expectedName . '.pdf', $pdfResponse->headers->get('Content-Disposition'));
+            $this->assertStringContainsString("filename*=utf-8''".$expectedName.'.pdf', $pdfResponse->headers->get('Content-Disposition'));
             $this->assertSame('en', app()->getLocale());
         } finally {
             app()->setLocale($originalLocale);
@@ -586,7 +825,7 @@ class PaymentTotalsTest extends TestCase
         Pdf::shouldReceive('loadHTML')
             ->once()
             ->withArgs(fn (string $html): bool => str_contains($html, __('payments.export.columns.no'))
-                && str_contains($html, 'កាលបរិច្ឆេទ៖ ២២-តុលា-២០២៦')
+                && str_contains($html, 'គិតត្រឹមថ្ងៃទី៖ ២២-តុលា-២០២៦')
                 && str_contains($html, 'រាជធានីភ្នំពេញ ថ្ងៃទី ')
                 && str_contains($html, '<strong class="report-date-bold">២២</strong> ខែ <strong class="report-date-bold">តុលា</strong> ឆ្នាំ <strong class="report-date-bold">២០២៦</strong>')
                 && ! str_contains($html, __('payments.table.status_payt')))
@@ -598,11 +837,33 @@ class PaymentTotalsTest extends TestCase
             ->call('downloadPdfFromTableSelection');
     }
 
+    public function test_payment_records_and_unpaid_application_pdfs_use_a4_portrait(): void
+    {
+        Pdf::shouldReceive('loadHTML')
+            ->twice()
+            ->withArgs(fn (string $html, array $pdfOptions): bool => $pdfOptions['format'] === 'A4'
+                && $pdfOptions['orientation'] === 'P'
+                && str_contains($html, 'white-space: nowrap; font-size: 7pt')
+                && ! str_contains($html, 'ឆ្នាំសិក្សា'))
+            ->andReturn(\Mockery::mock(['output' => '%PDF']));
+
+        CandidatePaymentListsTable::downloadPdf([]);
+        PaymentsTable::downloadPdf([]);
+    }
+
     private function invokeProtectedStatic(string $class, string $method, array $arguments): mixed
     {
         $reflection = new ReflectionMethod($class, $method);
 
         return $reflection->invokeArgs(null, $arguments);
+    }
+
+    private function invokeProtected(object $object, string $method, array $arguments = []): mixed
+    {
+        $reflection = new ReflectionMethod($object, $method);
+        $reflection->setAccessible(true);
+
+        return $reflection->invokeArgs($object, $arguments);
     }
 
     private function createPaymentViewer(): User

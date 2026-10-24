@@ -10,6 +10,7 @@ use App\Models\Payment;
 use App\Models\PaymentType;
 use App\Models\SystemUser;
 use App\Models\User;
+use App\Rules\ValidMefInvoiceReceipt;
 use App\Support\PaymentValidation;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
@@ -24,7 +25,6 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\RawJs;
 use Illuminate\Support\Facades\Schema as DatabaseSchema;
-use Illuminate\Validation\Rule;
 
 class PaymentForm
 {
@@ -70,12 +70,17 @@ class PaymentForm
                                             $set('receipt_number', $receiptNumber);
                                         }
                                     })
-                                    ->dehydrateStateUsing(fn (mixed $state): ?string => MefInvoiceCode::resolveReceiptNumber($state))
+                                    ->dehydrateStateUsing(fn (mixed $state, ?Payment $record): ?string => $record && trim((string) $state) === $record->receipt_number
+                                        ? $record->receipt_number
+                                        : MefInvoiceCode::resolveReceiptNumber($state))
                                     ->rules(fn (?Payment $record): array => [
                                         'required',
                                         'string',
                                         'max:255',
-                                        Rule::unique('payments', 'receipt_number')->ignore($record?->getKey()),
+                                        new ValidMefInvoiceReceipt(
+                                            $record?->getKey(),
+                                            $record?->receipt_number,
+                                        ),
                                     ])
                                     ->validationMessages([
                                         'required' => __('payments.validation.receipt_number_required'),

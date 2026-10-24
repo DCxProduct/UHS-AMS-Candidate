@@ -51,32 +51,34 @@ class PaymentTypeForm
                                         'regex' => __('payment_types.validation.key_format'),
                                     ]),
 
-                                Select::make('method')
-                                    ->label(__('payment_types.fields.method'))
-                                    ->options(__('payment_types.options.methods'))
+                                TextInput::make('abbreviation')
+                                    ->label(__('payment_types.fields.abbreviation'))
+                                    ->placeholder(__('payment_types.placeholders.abbreviation'))
                                     ->required()
-                                    ->native(false)
-                                    ->placeholder(__('payment_types.placeholders.method'))
+                                    ->maxLength(100)
                                     ->validationMessages([
-                                        'required' => __('payment_types.validation.method_required'),
+                                        'required' => __('payment_types.validation.abbreviation_required'),
                                     ]),
 
                                 TextInput::make('name_en')
                                     ->label(__('payment_types.fields.name_en'))
                                     ->placeholder(__('payment_types.placeholders.name_en'))
-                                    ->required()
-                                    ->maxLength(255)
-                                    ->validationMessages([
-                                        'required' => __('payment_types.validation.name_en_required'),
-                                    ]),
+                                    ->maxLength(255),
 
                                 TextInput::make('name_kh')
                                     ->label(__('payment_types.fields.name_kh'))
                                     ->placeholder(__('payment_types.placeholders.name_kh'))
+                                    ->maxLength(255),
+
+                                Select::make('method')
+                                    ->label(__('payment_types.fields.method'))
+                                    ->options(__('payment_types.options.methods'))
                                     ->required()
-                                    ->maxLength(255)
+                                    ->native(false)
+                                    ->columnSpanFull()
+                                    ->placeholder(__('payment_types.placeholders.method'))
                                     ->validationMessages([
-                                        'required' => __('payment_types.validation.name_kh_required'),
+                                        'required' => __('payment_types.validation.method_required'),
                                     ]),
 
                                 Toggle::make('is_active')

@@ -20,7 +20,7 @@ class TablePdfExporter
 
         $pdf = Pdf::loadHTML($html, [
             'format' => 'A4',
-            'orientation' => 'L',
+            'orientation' => $options['orientation'] ?? 'L',
             'autoScriptToLang' => true,
             'autoLangToFont' => false,
             'default_font' => 'khmerbattambang',
@@ -125,14 +125,40 @@ class TablePdfExporter
 
     protected static function paymentRecordsHtml(array $headings, iterable $rows, ?string $title, array $options): string
     {
+        $columnWidths = $options['column_widths'] ?? [];
+        $columnWidthStyle = fn (int $index): string => isset($columnWidths[$index])
+            ? ' style="width: ' . e((string) $columnWidths[$index]) . '"'
+            : '';
+        $dateOfBirthHeadings = [
+            __('payments.export.columns.date_of_birth'),
+            __('candidate_payment_lists.columns.date_of_birth'),
+            'ថ្ងៃខែឆ្នាំកំណើត',
+            'Date of Birth',
+        ];
+
         $headingHtml = collect($headings)
-            ->map(fn ($heading): string => '<th>' . e((string) $heading) . '</th>')
+            ->map(function ($heading, $index) use ($columnWidths, $dateOfBirthHeadings): string {
+                $styles = [];
+
+                if (isset($columnWidths[$index])) {
+                    $styles[] = 'width: ' . e((string) $columnWidths[$index]);
+                }
+
+                if (in_array((string) $heading, $dateOfBirthHeadings, true)) {
+                    $styles[] = 'white-space: nowrap';
+                    $styles[] = 'font-size: 7pt';
+                }
+
+                $styleAttribute = $styles === [] ? '' : ' style="' . implode('; ', $styles) . '"';
+
+                return '<th' . $styleAttribute . '>' . e((string) $heading) . '</th>';
+            })
             ->implode('');
 
         $rowHtml = collect($rows)
-            ->map(function (array $row): string {
+            ->map(function (array $row) use ($columnWidthStyle): string {
                 $cells = collect($row)
-                    ->map(fn ($value): string => '<td>' . e((string) $value) . '</td>')
+                    ->map(fn ($value, $index): string => '<td' . $columnWidthStyle((int) $index) . '>' . e((string) $value) . '</td>')
                     ->implode('');
 
                 return '<tr>' . $cells . '</tr>';
@@ -145,6 +171,7 @@ class TablePdfExporter
             'khr' => '0.00',
         ];
         $summaryTable = $options['summary_table'] ?? null;
+        $tableFontClass = ($options['table_font_size'] ?? null) === '7pt' ? ' compact-table' : '';
 
         if ($summaryTable) {
             $summaryHeadHtml = collect($summaryTable['headings'] ?? [])
@@ -176,7 +203,6 @@ class TablePdfExporter
                 ? '<strong class="report-date-bold">' . e((string) ($part['text'] ?? '')) . '</strong>'
                 : e((string) ($part['text'] ?? '')))
             ->implode('');
-
         if ($footerDateHtml === '' && filled($options['footer_date'] ?? null)) {
             $footerDateHtml = e((string) $options['footer_date']);
         }
@@ -220,7 +246,7 @@ class TablePdfExporter
         $logoHtml = $logo ? '<img src="' . $logo . '" class="official-logo" alt="UHS">' : '';
         $summaryHtml = ($options['hide_summary'] ?? false)
             ? ''
-            : '<div class="report-footer"><table class="summary-table"><thead><tr>' . $summaryHeadHtml . '</tr></thead><tbody>' . $summaryBodyHtml . '</tbody></table></div>';
+            : '<div class="report-footer"><table class="summary-table' . $tableFontClass . '"><thead><tr>' . $summaryHeadHtml . '</tr></thead><tbody>' . $summaryBodyHtml . '</tbody></table></div>';
 
         return '<!doctype html>
 <html lang="km">
@@ -245,8 +271,10 @@ class TablePdfExporter
         .report-subtitle { color: #374151; font-size: 10pt; margin: 2px 0 0; }
         .data-table { border-collapse: collapse; width: 100%; table-layout: fixed; }
         .data-table th, .data-table td { border: 0.5pt solid #7f8ea3; padding: 3px 4px; vertical-align: middle; word-wrap: break-word; }
+        .compact-table th, .compact-table td { font-size: 7pt; }
         .data-table th { background-color: #003b95; color: #ffffff; font-weight: bold; text-align: center; }
         .data-table td { text-align: center; }
+        .data-table th:nth-child(4), .data-table td:nth-child(4) { white-space: nowrap; }
         .data-table th:nth-child(2), .data-table td:nth-child(2), .data-table th:nth-child(3), .data-table td:nth-child(3) { text-align: left; }
         .report-footer { margin-top: 12px; width: 100%; }
         .summary-table { border-collapse: collapse; width: ' . $summaryWidth . '%; }
@@ -294,7 +322,7 @@ class TablePdfExporter
         <div class="report-title' . (preg_match('/\p{Khmer}/u', (string) $title) ? '' : ' report-title-latin') . '">' . $documentTitle . '</div>
         <div class="report-subtitle">' . $subtitle . '</div>
     </div>
-    <table class="data-table">
+    <table class="data-table' . $tableFontClass . '">
         <thead><tr>' . $headingHtml . '</tr></thead>
         <tbody>' . $rowHtml . '</tbody>
     </table>

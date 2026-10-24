@@ -4,7 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Role;
 use App\Models\User;
-use BezhanSalleh\FilamentShield\Resources\Roles\RoleResource as ShieldRoleResource;
+use BezhanSalleh\FilamentShield\Facades\FilamentShield;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Hash;
@@ -105,16 +105,9 @@ class RolesAndPermissionsSeeder extends Seeder
         $registrarOfficer = $systemAdminRoles['registrar_officer'];
         $candidate = $userRoles['candidate'];
 
-        $adminExcludedPermissions = [
-            'Create:CustomFormEntry',
-        ];
-
-        $manageablePermissionNames = ShieldRoleResource::manageablePermissionNames();
-
         $adminPermissions = Permission::query()
             ->where('guard_name', 'web')
-            ->whereIn('name', $manageablePermissionNames)
-            ->whereNotIn('name', $adminExcludedPermissions)
+            ->whereIn('name', FilamentShield::getEntitiesPermissions())
             ->get();
 
         $admin->syncPermissions($adminPermissions);
@@ -250,7 +243,7 @@ class RolesAndPermissionsSeeder extends Seeder
                     'ViewAny:MefInvoiceCode',
                     'Create:MefInvoiceCode',
                     'Update:MefInvoiceCode',
-                    'DownloadExcel:MefInvoiceCode',
+                    'ImportExcel:MefInvoiceCode',
                     'ViewAny:UserType',
                     'Create:UserType',
                     'Update:UserType',
@@ -367,7 +360,7 @@ class RolesAndPermissionsSeeder extends Seeder
                     'Create:MefInvoiceCode',
                     'Update:MefInvoiceCode',
                     'Delete:MefInvoiceCode',
-                    'DownloadExcel:MefInvoiceCode',
+                    'ImportExcel:MefInvoiceCode',
                     'ViewAny:UserType',
                     'Create:UserType',
                     'Update:UserType',
@@ -438,6 +431,7 @@ class RolesAndPermissionsSeeder extends Seeder
             Permission::query()
                 ->where('guard_name', 'web')
                 ->whereIn('name', [
+                    'ViewAny:CustomFormEntry',
                     'ViewAny:UnpaidApplication',
                     'Pay:UnpaidApplication',
                     'DownloadExcel:UnpaidApplication',
@@ -445,10 +439,20 @@ class RolesAndPermissionsSeeder extends Seeder
                     'ClearData:UnpaidApplication',
                     'ViewAny:Payment',
                     'Update:Payment',
-                    'ViewSlip:Payment',
                     'DownloadExcel:Payment',
                     'DownloadPdf:Payment',
                     'ClearData:Payment',
+                    'ViewAny:PaymentType',
+                    'Create:PaymentType',
+                    'Update:PaymentType',
+                    'Delete:PaymentType',
+                    'ViewAny:ExchangeRate',
+                    'Update:ExchangeRate',
+                    'ViewAny:MefInvoiceCode',
+                    'Create:MefInvoiceCode',
+                    'Update:MefInvoiceCode',
+                    'Delete:MefInvoiceCode',
+                    'ImportExcel:MefInvoiceCode',
                 ])
                 ->get()
         );
@@ -520,7 +524,7 @@ class RolesAndPermissionsSeeder extends Seeder
                     'Create:MefInvoiceCode',
                     'Update:MefInvoiceCode',
                     'Delete:MefInvoiceCode',
-                    'DownloadExcel:MefInvoiceCode',
+                    'ImportExcel:MefInvoiceCode',
                     'ViewAny:UserType',
                     'Create:UserType',
                     'Update:UserType',
@@ -557,6 +561,7 @@ class RolesAndPermissionsSeeder extends Seeder
                     'DownloadPdf:CustomFormEntry',
                     'ViewAny:CandidateEntranceStatistic',
                     'Passed:CandidateEntranceStatistic',
+                    'EditResult:CandidateEntranceStatistic',
                     'Pending:CandidateEntranceStatistic',
                     'BulkPassed:CandidateEntranceStatistic',
                     'BulkPending:CandidateEntranceStatistic',
@@ -564,6 +569,7 @@ class RolesAndPermissionsSeeder extends Seeder
                     'ClearData:CandidateEntranceStatistic',
                     'ViewAny:CandidateExitStatistic',
                     'Passed:CandidateExitStatistic',
+                    'EditResult:CandidateExitStatistic',
                     'Pending:CandidateExitStatistic',
                     'BulkPassed:CandidateExitStatistic',
                     'BulkPending:CandidateExitStatistic',
@@ -579,10 +585,39 @@ class RolesAndPermissionsSeeder extends Seeder
                     'NotifyAllStudents:ExitExamResult',
                     'DownloadExcel:ExitExamResult',
                     'ClearData:ExitExamResult',
+                    'ViewAny:CustomForm',
+                    'Create:CustomForm',
+                    'Update:CustomForm',
+                    'Delete:CustomForm',
+                    'EditTemplate:CustomForm',
+                    'ViewAny:DocumentTemplate',
+                    'Update:DocumentTemplate',
+                    'Delete:DocumentTemplate',
+                    'PreviewPdf:DocumentTemplate',
+                    'ViewAny:WorkflowNotification',
+                    'Create:WorkflowNotification',
+                    'Update:WorkflowNotification',
+                    'Delete:WorkflowNotification',
+                    'ViewAny:EmailTemplate',
+                    'Create:EmailTemplate',
+                    'Update:EmailTemplate',
+                    'Delete:EmailTemplate',
+                    'ViewAny:SmsTemplate',
+                    'Create:SmsTemplate',
+                    'Update:SmsTemplate',
+                    'Delete:SmsTemplate',
+                    'ViewAny:GeoLocation',
+                    'Create:GeoLocation',
+                    'Update:GeoLocation',
+                    'Delete:GeoLocation',
                     'ViewAny:ClosingDate',
                     'Create:ClosingDate',
                     'Update:ClosingDate',
                     'Delete:ClosingDate',
+                    'ViewAny:DegreeLevel',
+                    'Create:DegreeLevel',
+                    'Update:DegreeLevel',
+                    'Delete:DegreeLevel',
                     'ViewAny:Major',
                     'Create:Major',
                     'Update:Major',
@@ -591,7 +626,19 @@ class RolesAndPermissionsSeeder extends Seeder
                     'Create:MefInvoiceCode',
                     'Update:MefInvoiceCode',
                     'Delete:MefInvoiceCode',
-                    'DownloadExcel:MefInvoiceCode',
+                    'ImportExcel:MefInvoiceCode',
+                    'ViewAny:UserType',
+                    'Create:UserType',
+                    'Update:UserType',
+                    'Delete:UserType',
+                    'ViewAny:CandidateList',
+                    'Create:CandidateList',
+                    'Update:CandidateList',
+                    'Delete:CandidateList',
+                    'ViewAny:CandidateSubmitPopupSetting',
+                    'Create:CandidateSubmitPopupSetting',
+                    'Update:CandidateSubmitPopupSetting',
+                    'Delete:CandidateSubmitPopupSetting',
                 ])
                 ->get()
         );

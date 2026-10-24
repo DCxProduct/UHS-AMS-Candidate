@@ -75,7 +75,7 @@ class AppPanelProvider extends PanelProvider
                 FilamentShieldPlugin::make()
                     ->registerNavigation(true)
                     ->navigationGroup(fn (): string => __('navigation.groups.settings'))
-                    ->navigationSort(13),
+                    ->navigationSort(14),
                 CustomFormPlugin::make()
                     ->navigationGroup('Form Builder')
                     ->navigationFormIcon('heroicon-o-document-duplicate')

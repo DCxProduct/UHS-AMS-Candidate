@@ -8,6 +8,7 @@ class PaymentType extends Model
 {
     protected $fillable = [
         'key',
+        'abbreviation',
         'name_en',
         'name_kh',
         'method',
@@ -53,7 +54,9 @@ class PaymentType extends Model
             ->where('method', $method)
             ->get()
             ->mapWithKeys(fn (self $paymentType): array => [
-                $paymentType->key => $paymentType->localized_name,
+                $paymentType->key => $method === 'bank'
+                    ? ($paymentType->abbreviation ?: $paymentType->localized_name)
+                    : $paymentType->localized_name,
             ])
             ->toArray();
     }
@@ -123,7 +126,7 @@ class PaymentType extends Model
         $paymentType = static::query()->whereRaw('LOWER(key) = ?', [strtolower(trim((string) $key))])->first();
 
         return $paymentType && $paymentType->method === 'bank'
-            ? $paymentType->localized_name
+            ? ($paymentType->abbreviation ?: $paymentType->localized_name)
             : '-';
     }
 }

@@ -41,6 +41,7 @@ class PaymentTypeClassificationTest extends TestCase
         Livewire::test(CreatePaymentType::class)
             ->fillForm([
                 'key' => 'aba',
+                'abbreviation' => 'ABA',
                 'name_en' => 'ABA',
                 'name_kh' => 'ABA',
                 'method' => 'bank',
@@ -51,18 +52,53 @@ class PaymentTypeClassificationTest extends TestCase
 
         $bankType = PaymentType::query()->where('key', 'aba')->sole();
         $this->assertSame('bank', $bankType->method);
+        $this->assertSame('ABA', $bankType->abbreviation);
 
         Livewire::test(ListPaymentTypes::class)
             ->assertTableColumnExists('localized_method')
+            ->assertTableColumnExists('abbreviation')
+            ->assertTableColumnStateSet('abbreviation', 'ABA', $bankType)
             ->assertTableColumnStateSet('localized_method', __('payment_types.options.methods.bank'), $bankType);
+    }
+
+    public function test_payment_type_requires_abbreviation_but_allows_missing_names(): void
+    {
+        Livewire::test(CreatePaymentType::class)
+            ->fillForm([
+                'key' => 'wire',
+                'name_en' => null,
+                'name_kh' => null,
+                'method' => 'bank',
+                'is_active' => true,
+            ])
+            ->call('create')
+            ->assertHasFormErrors(['abbreviation' => 'required']);
+
+        Livewire::test(CreatePaymentType::class)
+            ->fillForm([
+                'key' => 'wire',
+                'abbreviation' => 'WIRE',
+                'name_en' => null,
+                'name_kh' => null,
+                'method' => 'bank',
+                'is_active' => true,
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $paymentType = PaymentType::query()->where('key', 'wire')->sole();
+        $this->assertSame('WIRE', $paymentType->abbreviation);
+        $this->assertNull($paymentType->name_en);
+        $this->assertNull($paymentType->name_kh);
     }
 
     public function test_payment_records_show_cash_or_bank_and_bank_name_separately(): void
     {
         $bank = PaymentType::query()->create([
             'key' => 'aba',
-            'name_en' => 'ABA',
-            'name_kh' => 'ABA',
+            'abbreviation' => 'ABA',
+            'name_en' => 'ABA Bank Cambodia',
+            'name_kh' => 'ធនាគារ ABA កម្ពុជា',
             'method' => 'bank',
             'is_active' => true,
         ]);
