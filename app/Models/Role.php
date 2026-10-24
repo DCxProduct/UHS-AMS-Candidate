@@ -13,7 +13,17 @@ class Role extends SpatieRole
         'name_kh',
         'role_type_key',
         'guard_name',
+        'restrict_custom_form_access',
+        'allowed_custom_form_ids',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'restrict_custom_form_access' => 'boolean',
+            'allowed_custom_form_ids' => 'array',
+        ];
+    }
 
     protected $appends = [
         'localized_name',

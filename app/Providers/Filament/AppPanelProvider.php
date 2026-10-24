@@ -14,6 +14,7 @@ use App\Http\Middleware\SecurityHeaders;
 use App\Models\ClosingDate;
 use App\Models\SystemUser;
 use App\Support\ClosingDateWorkflow;
+use App\Support\DashboardUserAccess;
 use App\Support\UserTypeOptions;
 use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use BezhanSalleh\LanguageSwitch\Http\Middleware\SwitchLanguageLocale;
@@ -140,31 +141,7 @@ class AppPanelProvider extends PanelProvider
                     ->visible(fn (): bool => MyProfile::canAccess()),
             ])
 
-            ->navigationGroups([
-                NavigationGroup::make()
-                    ->label(fn (): string => __('navigation.groups.form_entry'))
-                    ->collapsible(),
-
-                NavigationGroup::make()
-                    ->label(fn (): string => __('navigation.groups.cashier'))
-                    ->collapsible(),
-
-                NavigationGroup::make()
-                    ->label(fn (): string => __('navigation.groups.candidates'))
-                    ->collapsible(),
-
-                NavigationGroup::make()
-                    ->label(fn (): string => __('navigation.groups.form_builder'))
-                    ->collapsible(),
-
-                NavigationGroup::make()
-                    ->label(fn (): string => __('navigation.groups.settings'))
-                    ->collapsible(),
-
-                NavigationGroup::make()
-                    ->label(fn (): string => __('audit_logs.activity_navigation_label'))
-                    ->collapsible(),
-            ])
+            ->navigationGroups($this->navigationGroups())
 
             ->navigationItems([
                 NavigationItem::make('sync')
@@ -195,6 +172,42 @@ class AppPanelProvider extends PanelProvider
                 CheckUserActive::class,
                 Authenticate::class,
             ], isPersistent: true);
+    }
+
+    /**
+     * Keep cashier workflows at the top for cashier roles while preserving
+     * the default navigation order for everyone else.
+     *
+     * @return array<int, NavigationGroup>
+     */
+    protected function navigationGroups(): array
+    {
+        $groups = [
+            'form_entry' => NavigationGroup::make()
+                ->label(fn (): string => __('navigation.groups.form_entry'))
+                ->collapsible(),
+            'cashier' => NavigationGroup::make()
+                ->label(fn (): string => __('navigation.groups.cashier'))
+                ->collapsible(),
+            'candidates' => NavigationGroup::make()
+                ->label(fn (): string => __('navigation.groups.candidates'))
+                ->collapsible(),
+            'form_builder' => NavigationGroup::make()
+                ->label(fn (): string => __('navigation.groups.form_builder'))
+                ->collapsible(),
+            'settings' => NavigationGroup::make()
+                ->label(fn (): string => __('navigation.groups.settings'))
+                ->collapsible(),
+            'activity' => NavigationGroup::make()
+                ->label(fn (): string => __('audit_logs.activity_navigation_label'))
+                ->collapsible(),
+        ];
+
+        $order = DashboardUserAccess::isCashier(auth()->user())
+            ? ['cashier', 'form_entry', 'settings', 'candidates', 'form_builder', 'activity']
+            : ['form_entry', 'cashier', 'candidates', 'form_builder', 'settings', 'activity'];
+
+        return array_map(fn (string $key): NavigationGroup => $groups[$key], $order);
     }
 
     protected function getDynamicStudentFormNavigationItems(): array

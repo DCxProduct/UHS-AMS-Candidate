@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Support\CustomFormRoleAccess;
 use App\Support\StaffRoles;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
@@ -29,11 +30,14 @@ class AdminSidebarFormsTable extends TableWidget
 
     public function table(Table $table): Table
     {
+        $allowedFormIds = CustomFormRoleAccess::allowedFormIds(auth()->user());
+
         return $table
             ->query(
                 CustomForm::query()
                     ->withCount('entries')
                     ->where('slug', '!=', 'profile')
+                    ->when($allowedFormIds !== null, fn ($query) => $query->whereIn('id', $allowedFormIds))
                     ->orderBy('display_order')
                     ->orderBy('id')
             )

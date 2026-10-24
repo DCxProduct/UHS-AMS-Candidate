@@ -4,6 +4,7 @@ namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries;
 
 use App\Models\ClosingDate;
 use App\Support\ClosingDateWorkflow;
+use App\Support\CustomFormRoleAccess;
 use App\Support\UserTypeOptions;
 use BackedEnum;
 use BezhanSalleh\FilamentShield\Facades\FilamentShield;
@@ -143,6 +144,12 @@ class CustomFormEntryResource extends Resource
     public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
     {
         $query = parent::getEloquentQuery();
+
+        $allowedFormIds = CustomFormRoleAccess::allowedFormIds(auth()->user());
+
+        if ($allowedFormIds !== null) {
+            $query->whereIn('custom_form_id', $allowedFormIds);
+        }
 
         if (static::currentUserIsStudent()) {
             $userId = auth()->id();
@@ -535,6 +542,10 @@ class CustomFormEntryResource extends Resource
 
     public static function canCurrentUserAccessForm(CustomForm $form): bool
     {
+        if (CustomFormRoleAccess::canAccessForm(auth()->user(), $form->id) === false) {
+            return false;
+        }
+
         if (static::currentUserCanAccessAdminResource()) {
             return true;
         }

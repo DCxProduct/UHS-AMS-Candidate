@@ -4,19 +4,31 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
-use App\Support\UserTypeOptions;
 use App\Models\SystemUser;
-use Illuminate\Foundation\Auth\User as AuthUser;
+use App\Support\CustomFormRoleAccess;
+use App\Support\UserTypeOptions;
+use Chanthoeun\FilamentCustomForms\Models\CustomFormAuthorization;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Illuminate\Auth\Access\HandlesAuthorization;
+use Illuminate\Foundation\Auth\User as AuthUser;
 
 class CustomFormEntryPolicy
 {
     use HandlesAuthorization;
-    
+
     protected function check(AuthUser $authUser, string $permission, ?CustomFormEntry $entry = null): bool
     {
-        $customCheck = \Chanthoeun\FilamentCustomForms\Models\CustomFormAuthorization::checkPermission($authUser, $permission, null, $entry);
+        $formId = $entry?->custom_form_id
+            ?? request()->input('tableFilters.custom_form_id.value')
+            ?? data_get(request()->query('tableFilters'), 'custom_form_id.value')
+            ?? request()->query('form_id')
+            ?? request()->input('custom_form_id');
+
+        if (CustomFormRoleAccess::canAccessForm($authUser, $formId) === false) {
+            return false;
+        }
+
+        $customCheck = CustomFormAuthorization::checkPermission($authUser, $permission, null, $entry);
 
         if ($customCheck !== null) {
             return $customCheck;
@@ -139,5 +151,4 @@ class CustomFormEntryPolicy
     {
         return $this->check($authUser, 'reorder');
     }
-
 }

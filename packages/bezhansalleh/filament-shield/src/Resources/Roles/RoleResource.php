@@ -17,12 +17,15 @@ use BezhanSalleh\FilamentShield\Resources\Roles\Pages\ViewRole;
 use BezhanSalleh\FilamentShield\Support\Utils;
 use BezhanSalleh\FilamentShield\Traits\HasShieldFormComponents;
 use BezhanSalleh\PluginEssentials\Concerns\Resource as Essentials;
+use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Facades\Filament;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Panel;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Grid;
@@ -117,7 +120,6 @@ class RoleResource extends Resource
                                     ->visible(fn (): bool => static::shield()->isCentralApp() && Utils::isTenancyEnabled())
                                     ->dehydrated(fn (): bool => static::shield()->isCentralApp() && Utils::isTenancyEnabled()),
                                 static::getSelectAllFormComponent(),
-
                             ])
                             ->columns([
                                 'sm' => 2,
@@ -128,6 +130,37 @@ class RoleResource extends Resource
                     ->columnSpanFull(),
                 static::getShieldFormComponents(),
             ]);
+    }
+
+    protected static function getResourceEntityAdditionalComponents(array $entity): array
+    {
+        $model = class_basename((string) ($entity['modelFqcn'] ?? $entity['model'] ?? ''));
+
+        if ($model !== 'CustomFormEntry') {
+            return [];
+        }
+
+        return [
+            Toggle::make('restrict_custom_form_access')
+                ->label(__('system_users.role_menu.restrict_custom_form_access'))
+                ->live()
+                ->visible(fn (Get $get): bool => $get('role_type_key') === 'staff')
+                ->columnSpanFull(),
+
+            CheckboxList::make('allowed_custom_form_ids')
+                ->label(__('system_users.role_menu.allowed_candidate_forms'))
+                ->options(fn (): array => CustomForm::query()
+                    ->where('slug', '!=', CustomForm::PROFILE_SLUG)
+                    ->orderBy('display_order')
+                    ->orderBy('id')
+                    ->get()
+                    ->mapWithKeys(fn (CustomForm $form): array => [$form->id => $form->display_name])
+                    ->all())
+                ->columns(2)
+                ->searchable()
+                ->visible(fn (Get $get): bool => $get('role_type_key') === 'staff' && (bool) $get('restrict_custom_form_access'))
+                ->columnSpanFull(),
+        ];
     }
 
     #[Override]
