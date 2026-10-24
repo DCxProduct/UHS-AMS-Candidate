@@ -262,7 +262,6 @@ class PaymentsTable
                         Actions::make([
                             Action::make('save_report_times')
                                 ->label(__('payments.actions.save_times'))
-                                ->icon('heroicon-o-bookmark')
                                 ->color('primary')
                                 ->disabled(fn (Get $get): bool => ! self::isValidReportTimeRange(
                                     $get('from_time'),
@@ -271,7 +270,6 @@ class PaymentsTable
                                 ->action(fn (Component $livewire) => $livewire->saveReportTimes()),
                             Action::make('reset_report_times')
                                 ->label(__('payments.actions.reset_times'))
-                                ->icon('heroicon-o-arrow-path')
                                 ->color('gray')
                                 ->outlined()
                                 ->action(fn (Component $livewire) => $livewire->resetReportTimes()),
