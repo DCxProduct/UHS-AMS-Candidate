@@ -88,7 +88,11 @@
             x-on:click="open = ! open"
             x-bind:aria-expanded="open"
         >
-            <span x-bind:class="{ 'text-gray-400 dark:text-gray-500': ! time }" x-text="displayText"></span>
+            <span
+                style="color: #9ca3af;"
+                x-bind:style="time ? 'color: #111827;' : 'color: #9ca3af;'"
+                x-text="displayText"
+            ></span>
             <svg width="20" height="20" style="width: 20px; height: 20px; flex: none; color: #9ca3af;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
                 <circle cx="12" cy="12" r="9" />
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 7.5v5l3 1.5" />
