@@ -110,6 +110,8 @@ return [
         'label_en_help_staff' => 'Examples: Admin, Cashier, Finance, Registrar.',
         'name_kh_help_user' => 'Examples: បេក្ខជន, អនុបណ្ឌិត, បរិញ្ញាបត្ររង.',
         'name_kh_help_staff' => 'Examples: អ្នកគ្រប់គ្រង, បេឡាករ, ហិរញ្ញវត្ថុ, ការិយាល័យចុះបញ្ជី.',
+        'restrict_custom_form_access' => 'Restrict Candidate Application access',
+        'allowed_candidate_forms' => 'Allowed Candidate Applications',
         'options' => [
             'user' => 'User',
             'staff' => 'Staff',

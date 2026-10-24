@@ -50,15 +50,23 @@ trait HasShieldFormComponents
                         : $entity['model']
                 );
 
+                $sectionSchema = [
+                    static::getCheckBoxListComponentForResource($entity),
+                    ...static::getResourceEntityAdditionalComponents($entity),
+                ];
+
                 return Section::make($sectionLabel)
                     ->compact()
-                    ->schema([
-                        static::getCheckBoxListComponentForResource($entity),
-                    ])
+                    ->schema($sectionSchema)
                     ->columnSpan(static::shield()->getSectionColumnSpan())
                     ->collapsible();
             })
             ->toArray();
+    }
+
+    protected static function getResourceEntityAdditionalComponents(array $entity): array
+    {
+        return [];
     }
 
     protected static function getResourceEntitySort(array $entity): int
@@ -253,7 +261,7 @@ trait HasShieldFormComponents
             ]);
     }
 
-    public static function getCheckboxListFormComponent(string $name, array $options, bool $searchable = true, array | int | string | null $columns = null, array | int | string | null $columnSpan = null): Component
+    public static function getCheckboxListFormComponent(string $name, array $options, bool $searchable = true, array|int|string|null $columns = null, array|int|string|null $columnSpan = null): Component
     {
         return CheckboxList::make($name)
             ->hiddenLabel()

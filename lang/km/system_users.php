@@ -111,6 +111,8 @@ return [
         'label_en_help_staff' => 'ឧទាហរណ៍៖ Admin, Cashier, Finance, Registrar។',
         'name_kh_help_user' => 'ឧទាហរណ៍៖ បេក្ខជន, អនុបណ្ឌិត, បរិញ្ញាបត្ររង។',
         'name_kh_help_staff' => 'ឧទាហរណ៍៖ អ្នកគ្រប់គ្រង, បេឡាករ, ហិរញ្ញវត្ថុ, ការិយាល័យចុះបញ្ជី។',
+        'restrict_custom_form_access' => 'កំណត់សិទ្ធិចូលប្រើពាក្យស្នើសុំបេក្ខជន',
+        'allowed_candidate_forms' => 'ទម្រង់ពាក្យស្នើសុំដែលអនុញ្ញាត',
         'options' => [
             'user' => 'អ្នកប្រើប្រាស់',
             'staff' => 'បុគ្គលិក',
