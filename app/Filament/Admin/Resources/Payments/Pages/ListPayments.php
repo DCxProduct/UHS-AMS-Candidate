@@ -6,8 +6,12 @@ use App\Filament\Admin\Resources\Payments\PaymentResource;
 use App\Filament\Admin\Resources\Payments\Tables\PaymentsTable;
 use App\Support\AuditLogger;
 use App\Support\FilamentActionPermissions;
+use App\Support\LocalizedNumber;
 use Filament\Actions\Action;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 
 class ListPayments extends ListRecords
 {
@@ -18,10 +22,35 @@ class ListPayments extends ListRecords
         parent::mount();
 
         $today = today()->toDateString();
+        $rememberedTimes = [];
+
+        if (auth()->id()) {
+            $cacheKey = 'payments.report_times.'.auth()->id();
+            $savedTimes = Cache::get($cacheKey, []);
+            $savedAt = (int) ($savedTimes['saved_at'] ?? 0);
+
+            if (
+                ($savedTimes['saved_manually'] ?? false) === true &&
+                filled($savedTimes['from_time'] ?? null) &&
+                filled($savedTimes['to_time'] ?? null) &&
+                PaymentsTable::isValidReportTimeRange($savedTimes['from_time'], $savedTimes['to_time']) &&
+                $savedAt > now()->subDay()->timestamp &&
+                $savedAt <= now()->timestamp
+            ) {
+                $rememberedTimes = [
+                    'from_time' => $savedTimes['from_time'],
+                    'to_time' => $savedTimes['to_time'],
+                ];
+            } elseif (Cache::has($cacheKey)) {
+                Cache::forget($cacheKey);
+            }
+        }
         $this->tableFilters = array_replace_recursive($this->tableFilters ?? [], [
             'payment_filters' => [
                 'from_date' => $today,
                 'to_date' => $today,
+                'from_time' => $rememberedTimes['from_time'] ?? null,
+                'to_time' => $rememberedTimes['to_time'] ?? null,
             ],
         ]);
     }
@@ -108,8 +137,7 @@ class ListPayments extends ListRecords
         array $selectedRecordKeys = [],
         bool $isTrackingDeselectedRecords = false,
         array $deselectedRecordKeys = [],
-    )
-    {
+    ) {
         FilamentActionPermissions::abortUnlessCanForResource(PaymentResource::class, 'download_excel');
 
         $records = $this->selectedOrFilteredQuery(
@@ -122,7 +150,7 @@ class ListPayments extends ListRecords
 
         AuditLogger::log(
             action: 'downloaded',
-            description: 'Downloaded Payments Excel (' . $records->count() . ' records)',
+            description: 'Downloaded Payments Excel ('.$records->count().' records)',
             metadata: ['module' => 'Payments'],
         );
 
@@ -130,6 +158,7 @@ class ListPayments extends ListRecords
             $records,
             $this->visibleExportColumnKeys(),
             $this->exportReportDate(),
+            $this->exportReportTimeRange(),
         );
     }
 
@@ -137,8 +166,7 @@ class ListPayments extends ListRecords
         array $selectedRecordKeys = [],
         bool $isTrackingDeselectedRecords = false,
         array $deselectedRecordKeys = [],
-    )
-    {
+    ) {
         FilamentActionPermissions::abortUnlessCanForResource(PaymentResource::class, 'download_pdf');
 
         $records = $this->selectedOrFilteredQuery(
@@ -151,7 +179,7 @@ class ListPayments extends ListRecords
 
         AuditLogger::log(
             action: 'downloaded',
-            description: 'Downloaded Payments PDF (' . $records->count() . ' records)',
+            description: 'Downloaded Payments PDF ('.$records->count().' records)',
             metadata: ['module' => 'Payments'],
         );
 
@@ -159,6 +187,7 @@ class ListPayments extends ListRecords
             $records,
             $this->visibleExportColumnKeys(),
             $this->exportReportDate(),
+            $this->exportReportTimeRange(),
         );
     }
 
@@ -169,6 +198,94 @@ class ListPayments extends ListRecords
         return (string) (filled($filters['to_date'] ?? null)
             ? $filters['to_date']
             : (filled($filters['from_date'] ?? null) ? $filters['from_date'] : now()->toDateString()));
+    }
+
+    protected function exportReportTimeRange(): ?string
+    {
+        if (! auth()->id()) {
+            return null;
+        }
+
+        $savedTimes = Cache::get('payments.report_times.'.auth()->id(), []);
+        $savedAt = (int) ($savedTimes['saved_at'] ?? 0);
+        $fromTime = $savedTimes['from_time'] ?? null;
+        $toTime = $savedTimes['to_time'] ?? null;
+
+        if (
+            ($savedTimes['saved_manually'] ?? false) !== true ||
+            $savedAt <= now()->subDay()->timestamp ||
+            $savedAt > now()->timestamp ||
+            blank($fromTime) ||
+            blank($toTime) ||
+            ! PaymentsTable::isValidReportTimeRange($fromTime, $toTime)
+        ) {
+            return null;
+        }
+
+        return collect([$fromTime, $toTime])
+            ->map(function (string $time): string {
+                $parsedTime = Carbon::parse($time);
+                $period = $parsedTime->format('A') === 'AM' ? 'am' : 'pm';
+
+                return LocalizedNumber::digits($parsedTime->format('H:i')).' '.__('payments.export.time_periods.'.$period);
+            })
+            ->implode(' - ');
+    }
+
+    public function saveReportTimes(): void
+    {
+        $filters = $this->getTableFilterState('payment_filters') ?? [];
+        $fromTime = $filters['from_time'] ?? null;
+        $toTime = $filters['to_time'] ?? null;
+
+        if (blank($fromTime) || blank($toTime) || ! auth()->id()) {
+            Notification::make()
+                ->title(__('payments.actions.time_pair_required'))
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        if (! PaymentsTable::isValidReportTimeRange($fromTime, $toTime)) {
+            Notification::make()
+                ->title(__('payments.actions.time_range_invalid'))
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        Cache::put('payments.report_times.'.auth()->id(), [
+            'from_time' => $fromTime,
+            'to_time' => $toTime,
+            'saved_at' => now()->timestamp,
+            'saved_manually' => true,
+        ], now()->addDay());
+
+        Notification::make()
+            ->title(__('payments.actions.times_saved'))
+            ->success()
+            ->send();
+    }
+
+    public function resetReportTimes(): void
+    {
+        $this->tableFilters = array_replace_recursive($this->tableFilters ?? [], [
+            'payment_filters' => [
+                'from_time' => null,
+                'to_time' => null,
+            ],
+        ]);
+
+        if (auth()->id()) {
+            Cache::forget('payments.report_times.'.auth()->id());
+        }
+
+        Notification::make()
+            ->title(__('payments.actions.times_reset'))
+            ->success()
+            ->send();
     }
 
     public function clearDataFromTableSelection(
@@ -189,7 +306,7 @@ class ListPayments extends ListRecords
 
         AuditLogger::log(
             action: 'cleared',
-            description: 'Cleared Payments data (' . $count . ' records)',
+            description: 'Cleared Payments data ('.$count.' records)',
             metadata: ['module' => 'Payments'],
         );
 
