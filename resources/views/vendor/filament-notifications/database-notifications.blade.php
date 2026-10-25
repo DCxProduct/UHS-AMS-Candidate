@@ -160,4 +160,6 @@
             </x-filament::button>
         </x-slot>
     </x-filament::modal>
+
+    <x-filament-actions::modals />
 </div>

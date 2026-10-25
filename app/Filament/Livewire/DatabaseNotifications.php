@@ -7,6 +7,7 @@ use Filament\Actions\Action;
 use Filament\Livewire\DatabaseNotifications as FilamentDatabaseNotifications;
 use App\Support\FilamentActionPermissions;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
+use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Tables\CustomFormEntriesTable;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\On;
@@ -43,6 +44,8 @@ class DatabaseNotifications extends FilamentDatabaseNotifications
             abort(404);
         }
 
+        $this->resolveReviewEntry((string) $entryId);
+
         $this->resubmissionNotificationId = (string) $notification->getKey();
         $this->resubmissionEntryId = (string) $entryId;
         $this->resubmissionReviewNote = trim((string) data_get($notification->data, 'viewData.registrar_review_note', ''));
@@ -54,10 +57,7 @@ class DatabaseNotifications extends FilamentDatabaseNotifications
     #[On('open-resubmission-review-for-entry')]
     public function openResubmissionReviewForEntry(string $entryId): void
     {
-        abort_unless(CustomFormEntryResource::currentUserCanManageForms(), 403);
-        FilamentActionPermissions::abortUnlessCanForResource(CustomFormEntryResource::class, 'view_pdf');
-
-        $entry = CustomFormEntry::query()->findOrFail($entryId);
+        $entry = $this->resolveReviewEntry($entryId);
 
         $this->resubmissionNotificationId = null;
         $this->resubmissionEntryId = (string) $entry->getKey();
@@ -66,7 +66,7 @@ class DatabaseNotifications extends FilamentDatabaseNotifications
         $this->dispatch('close-modal', id: 'database-notifications');
 
         if (blank($this->resubmissionReviewNote)) {
-            $this->dispatch('open-entry-review-modal', entryId: (string) $entry->getKey());
+            $this->openEntryReviewModal((string) $entry->getKey());
 
             return;
         }
@@ -85,22 +85,44 @@ class DatabaseNotifications extends FilamentDatabaseNotifications
             if (blank($entryId) || (string) $entryId !== $this->resubmissionEntryId) {
                 abort(404);
             }
-
-            $this->getNotificationsQuery()
-                ->whereKey($notification->getKey())
-                ->update(['read_at' => now()]);
         } else {
-            abort_unless(CustomFormEntryResource::currentUserCanManageForms(), 403);
-            FilamentActionPermissions::abortUnlessCanForResource(CustomFormEntryResource::class, 'view_pdf');
             $entryId = $this->resubmissionEntryId;
         }
 
         abort_if(blank($entryId), 404);
 
-        $entry = CustomFormEntry::query()->findOrFail($entryId);
+        $this->openEntryReviewModal((string) $entryId);
+
+        if (isset($notification)) {
+            $this->getNotificationsQuery()
+                ->whereKey($notification->getKey())
+                ->update(['read_at' => now()]);
+        }
+    }
+
+    #[On('open-entry-review-modal')]
+    public function openEntryReviewModal(string $entryId): void
+    {
+        $entry = $this->resolveReviewEntry($entryId);
 
         $this->dispatch('close-modal', id: 'resubmission-review-note-modal');
         $this->dispatch('close-modal', id: 'database-notifications');
-        $this->dispatch('open-entry-review-modal', entryId: (string) $entry->getKey());
+
+        $this->cacheAction($this->applicationReviewAction());
+        $this->replaceMountedAction('applicationReview', ['entryId' => (string) $entry->getKey()]);
+    }
+
+    public function applicationReviewAction(): Action
+    {
+        return CustomFormEntriesTable::reviewApplicationAction('applicationReview')
+            ->record(fn (array $arguments): CustomFormEntry => $this->resolveReviewEntry((string) ($arguments['entryId'] ?? '')));
+    }
+
+    protected function resolveReviewEntry(string $entryId): CustomFormEntry
+    {
+        abort_unless(CustomFormEntryResource::currentUserCanManageForms(), 403);
+        FilamentActionPermissions::abortUnlessCanForResource(CustomFormEntryResource::class, 'view_pdf');
+
+        return CustomFormEntryResource::getEloquentQuery()->findOrFail($entryId);
     }
 }

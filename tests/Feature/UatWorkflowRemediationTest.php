@@ -12,6 +12,7 @@ use App\Services\CandidatePaymentRecorder;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Pages\EditCustomFormEntry;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
+use Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Filament\Schemas\Components\Wizard;
@@ -81,6 +82,19 @@ class UatWorkflowRemediationTest extends TestCase
         return $entry;
     }
 
+    private function reviewableEntry(User $candidate): CustomFormEntry
+    {
+        $entry = $this->entry($candidate, status: 'pending');
+        DocumentTemplate::create([
+            'name' => 'QA Review Template',
+            'type' => 'custom_form_'.$entry->custom_form_id,
+            'custom_form_id' => $entry->custom_form_id,
+            'content' => '<p>Application review</p>',
+        ]);
+
+        return $entry;
+    }
+
     public static function wizardSizes(): array
     {
         return [[1], [2], [4]];
@@ -119,7 +133,7 @@ class UatWorkflowRemediationTest extends TestCase
         $this->assertSame('approved', $entry->fresh()->review_status);
     }
 
-    public function test_confirming_resubmission_opens_the_original_pdf_review_action(): void
+    public function test_the_table_keeps_the_original_pdf_review_action(): void
     {
         $candidate = $this->user('candidate');
         $admin = $this->user('admin');
@@ -127,10 +141,10 @@ class UatWorkflowRemediationTest extends TestCase
             Permission::findOrCreate('ViewAny:CustomFormEntry', 'web'),
             Permission::findOrCreate('ViewPdf:CustomFormEntry', 'web'),
         );
-        $entry = $this->entry($candidate, status: 'pending');
+        $entry = $this->reviewableEntry($candidate);
 
         $component = Livewire::actingAs($admin)->test(ListCustomFormEntries::class)
-            ->call('openEntryReviewModal', (string) $entry->getKey());
+            ->call('mountTableAction', 'view_template_pdf_modal', (string) $entry->getKey());
 
         $this->assertSame(
             'view_template_pdf_modal',
@@ -143,11 +157,12 @@ class UatWorkflowRemediationTest extends TestCase
         $candidate = $this->user('candidate');
         $admin = $this->user('admin');
         $admin->givePermissionTo(Permission::findOrCreate('ViewPdf:CustomFormEntry', 'web'));
-        $entry = $this->entry($candidate, status: 'pending');
+        $entry = $this->reviewableEntry($candidate);
 
         Livewire::actingAs($admin)->test(DatabaseNotifications::class)
             ->call('openResubmissionReviewForEntry', (string) $entry->getKey())
-            ->assertDispatched('open-entry-review-modal', entryId: (string) $entry->getKey())
+            ->assertActionMounted('applicationReview')
+            ->assertNoRedirect()
             ->assertNotDispatched('open-modal');
     }
 
@@ -156,17 +171,161 @@ class UatWorkflowRemediationTest extends TestCase
         $candidate = $this->user('candidate');
         $admin = $this->user('admin');
         $admin->givePermissionTo(Permission::findOrCreate('ViewPdf:CustomFormEntry', 'web'));
-        $entry = $this->entry($candidate, status: 'pending');
+        $entry = $this->reviewableEntry($candidate);
         $entry->forceFill(['review_note' => 'Please correct the supporting documents.'])->save();
 
         $component = Livewire::actingAs($admin)->test(DatabaseNotifications::class)
             ->call('openResubmissionReviewForEntry', (string) $entry->getKey())
             ->assertSet('resubmissionReviewNote', 'Please correct the supporting documents.')
             ->assertDispatched('open-modal', id: 'resubmission-review-note-modal')
-            ->assertNotDispatched('open-entry-review-modal');
+            ->assertActionNotMounted('applicationReview');
 
         $component->call('confirmResubmissionReview')
-            ->assertDispatched('open-entry-review-modal', entryId: (string) $entry->getKey());
+            ->assertActionMounted('applicationReview')
+            ->assertNoRedirect();
+    }
+
+    public static function notificationReviewOrigins(): array
+    {
+        return [
+            'dashboard' => ['dashboard'],
+            'settings page' => ['settings'],
+            'another form' => ['another-form'],
+        ];
+    }
+
+    #[DataProvider('notificationReviewOrigins')]
+    public function test_notification_confirmation_opens_the_original_review_from_any_page(string $origin): void
+    {
+        $candidate = $this->user('candidate');
+        $admin = $this->user('admin');
+        foreach (['ViewAny', 'ViewPdf', 'Accepted', 'Rejected', 'Reject'] as $action) {
+            $admin->givePermissionTo(Permission::findOrCreate($action.':CustomFormEntry', 'web'));
+        }
+        $entry = $this->reviewableEntry($candidate);
+        $otherEntry = $this->reviewableEntry($candidate);
+        $query = $origin === 'another-form' ? ['form_id' => $otherEntry->custom_form_id] : [];
+        $referer = match ($origin) {
+            'another-form' => '/custom-form-entries?form_id='.$otherEntry->custom_form_id,
+            'settings' => '/system-users',
+            default => '/dashboard',
+        };
+        $notification = $admin->notifications()->create([
+            'id' => (string) str()->uuid(),
+            'type' => 'test-resubmission',
+            'data' => [
+                'format' => 'filament',
+                'viewData' => [
+                    'resubmission_entry_id' => (string) $entry->getKey(),
+                    'registrar_review_note' => 'Correct the supporting documents.',
+                ],
+            ],
+        ]);
+
+        $component = Livewire::actingAs($admin)->withQueryParams($query)
+            ->withHeaders(['Referer' => url($referer)])
+            ->test(DatabaseNotifications::class)
+            ->call('openResubmissionReview', (string) $notification->getKey())
+            ->assertDispatched('open-modal', id: 'resubmission-review-note-modal')
+            ->call('confirmResubmissionReview')
+            ->assertActionMounted('applicationReview')
+            ->assertNoRedirect()
+            ->assertDispatched('close-modal', id: 'database-notifications')
+            ->assertDispatched('close-modal', id: 'resubmission-review-note-modal');
+
+        $action = $component->instance()->getMountedAction();
+        $modalHtml = $component->effects['partials']['action-modals'] ?? $component->html();
+        $this->assertStringContainsString(
+            route('admin.custom-form-entries.pdf-inline', ['entry' => $entry->getKey()]),
+            $modalHtml,
+        );
+        $this->assertTrue($action->getRecord()->is($entry));
+        $this->assertSame([
+            'approve_from_view', 'reject_from_view', 'reject_final_from_view',
+        ], array_keys($action->getVisibleModalFooterActions()));
+        $this->assertSame(['success', 'warning', 'danger'], array_map(
+            fn ($button) => $button->getColor(),
+            array_values($action->getVisibleModalFooterActions()),
+        ));
+        $this->assertNotNull($notification->fresh()->read_at);
+    }
+
+    public static function globalReviewDecisions(): array
+    {
+        return [
+            'approve' => ['approve_from_view', 'Accepted', 'approved', 'approved'],
+            'send back' => ['reject_from_view', 'Rejected', 'rejected', 'rejected'],
+            'reject' => ['reject_final_from_view', 'Reject', 'failed', 'final_rejected'],
+        ];
+    }
+
+    #[DataProvider('globalReviewDecisions')]
+    public function test_global_review_buttons_keep_their_original_logic_and_target_the_selected_entry(
+        string $button,
+        string $permission,
+        string $expectedStatus,
+        string $auditAction,
+    ): void {
+        $candidate = $this->user('candidate');
+        $admin = $this->user('admin');
+        foreach (['ViewAny', 'ViewPdf', $permission] as $action) {
+            $admin->givePermissionTo(Permission::findOrCreate($action.':CustomFormEntry', 'web'));
+        }
+        $firstEntry = $this->reviewableEntry($candidate);
+        $selectedEntry = $this->reviewableEntry($candidate);
+
+        Livewire::actingAs($admin)->test(DatabaseNotifications::class)
+            ->call('openEntryReviewModal', (string) $firstEntry->getKey())
+            ->call('openEntryReviewModal', (string) $selectedEntry->getKey())
+            ->assertActionMounted('applicationReview')
+            ->callAction($button, ['review_note' => 'QA decision comment'])
+            ->assertHasNoErrors();
+
+        $selectedEntry->refresh();
+        $this->assertSame($expectedStatus, $selectedEntry->review_status);
+        $this->assertSame($expectedStatus, $selectedEntry->data['registration_status']);
+        $this->assertSame($admin->id, (int) $selectedEntry->reviewed_by);
+        $this->assertSame($expectedStatus === 'approved' ? null : 'QA decision comment', $selectedEntry->review_note);
+        $this->assertSame('pending', $firstEntry->fresh()->review_status);
+        $this->assertDatabaseHas('audit_logs', [
+            'actor_id' => $admin->id,
+            'action' => $auditAction,
+            'module' => 'Custom Form Entries',
+            'new_values->review_status' => $expectedStatus,
+        ]);
+    }
+
+    public function test_global_review_preserves_role_form_restrictions(): void
+    {
+        $candidate = $this->user('candidate');
+        $reviewer = $this->user('limited_reviewer');
+        foreach (['ViewAny', 'ViewPdf'] as $action) {
+            $reviewer->givePermissionTo(Permission::findOrCreate($action.':CustomFormEntry', 'web'));
+        }
+        $allowedEntry = $this->reviewableEntry($candidate);
+        $deniedEntry = $this->reviewableEntry($candidate);
+        \App\Models\Role::where('name', 'limited_reviewer')->firstOrFail()->forceFill([
+            'restrict_custom_form_access' => true,
+            'allowed_custom_form_ids' => [$allowedEntry->custom_form_id],
+        ])->save();
+
+        Livewire::actingAs($reviewer)->test(DatabaseNotifications::class)
+            ->call('openEntryReviewModal', (string) $allowedEntry->getKey())
+            ->assertActionMounted('applicationReview')
+            ->call('openEntryReviewModal', (string) $deniedEntry->getKey())
+            ->assertNotFound();
+    }
+
+    public function test_global_review_still_requires_pdf_permission(): void
+    {
+        $candidate = $this->user('candidate');
+        $reviewer = $this->user('reviewer');
+        $reviewer->givePermissionTo(Permission::findOrCreate('ViewAny:CustomFormEntry', 'web'));
+        $entry = $this->reviewableEntry($candidate);
+
+        Livewire::actingAs($reviewer)->test(DatabaseNotifications::class)
+            ->call('openEntryReviewModal', (string) $entry->getKey())
+            ->assertForbidden();
     }
 
     public function test_candidate_cannot_edit_another_candidates_returned_entry(): void
