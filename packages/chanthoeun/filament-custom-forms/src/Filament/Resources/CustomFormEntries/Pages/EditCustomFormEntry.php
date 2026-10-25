@@ -415,6 +415,10 @@ class EditCustomFormEntry extends EditRecord
                     ))
                     ->icon('heroicon-o-arrow-path')
                     ->iconColor('warning')
+                    ->viewData([
+                        'resubmission_entry_id' => (string) $entry->getKey(),
+                        'registrar_review_note' => (string) ($entry->review_note ?? ''),
+                    ])
                     ->sendToDatabase($admin);
             }
         } catch (Throwable $e) {
