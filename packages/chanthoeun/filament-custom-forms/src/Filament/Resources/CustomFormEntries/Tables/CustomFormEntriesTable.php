@@ -1146,6 +1146,22 @@ class CustomFormEntriesTable
                 ->label(__('candidate_entrance_statistics.view_pdf'))
                 ->icon('heroicon-o-eye')
                 ->color('info')
+                ->action(function ($record, $livewire): void {
+                    FilamentActionPermissions::abortUnlessCanForResource(CustomFormEntryResource::class, 'view_pdf');
+                    $livewire->dispatch('open-resubmission-review-for-entry', entryId: (string) $record->getKey());
+                })
+                ->visible(fn ($record): bool =>
+                    self::currentPanelIsAdmin()
+                    && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'view_pdf')
+                    && ! self::isProfileForm($record->custom_form_id)
+                    && in_array(self::entryStatus($record), ['pending', 'failed'], true)
+                    && self::hasDocumentTemplate($record)
+                );
+
+            $actions[] = Action::make('view_template_pdf_modal')
+                ->label(__('candidate_entrance_statistics.view_pdf'))
+                ->icon('heroicon-o-eye')
+                ->color('info')
                 ->modalHeading(__('candidate_entrance_statistics.view_application_review'))
                 ->modalWidth('7xl')
                 ->modalSubmitAction(false)
@@ -1376,6 +1392,7 @@ class CustomFormEntriesTable
                         ...$downloadActions,
                     ];
                 })
+                ->extraAttributes(['style' => 'display: none;'])
                 ->visible(fn ($record): bool =>
                     self::currentPanelIsAdmin()
                     && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'view_pdf')

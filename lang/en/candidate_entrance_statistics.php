@@ -68,6 +68,7 @@ return [
         'accept' => 'Accept',
         'reject' => 'Reject',
         'close' => 'Close',
+        'ok' => 'OK',
 
         'passed' => 'Pass',
         'failed' => 'Fail',
@@ -92,6 +93,7 @@ return [
         'admin_send_back_success_title' => 'Application sent back',
         'admin_resubmitted_title' => 'Application resubmitted',
         'admin_resubmitted_body' => ':student resubmitted :form after correction. Please review again.',
+        'no_review_note' => 'No review comment was provided.',
 
 
         'admin_passed_success_title' => 'Application Passed',

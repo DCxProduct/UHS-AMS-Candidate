@@ -13,12 +13,32 @@ use Filament\Actions\Action;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\Schema;
+use Livewire\Attributes\On;
 
 class ListCustomFormEntries extends ListRecords
 {
     protected static string $resource = CustomFormEntryResource::class;
 
     public ?int $activeFormId = null;
+
+    /**
+     * Open the existing table review modal after a resubmission note is confirmed.
+     * This keeps its original footer actions and button styling.
+     */
+    #[On('open-entry-review-modal')]
+    public function openEntryReviewModal(string $entryId): void
+    {
+        abort_unless(CustomFormEntryResource::currentUserCanManageForms(), 403);
+        FilamentActionPermissions::abortUnlessCanForResource(CustomFormEntryResource::class, 'view_pdf');
+
+        $entry = CustomFormEntry::query()->findOrFail($entryId);
+
+        if ($this->activeFormId && (int) $entry->custom_form_id !== $this->activeFormId) {
+            abort(404);
+        }
+
+        $this->mountTableAction('view_template_pdf_modal', (string) $entry->getKey());
+    }
 
     public function mount(): void
     {

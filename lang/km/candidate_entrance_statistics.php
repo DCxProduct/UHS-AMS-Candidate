@@ -68,6 +68,7 @@ return [
         'accept' => 'ទទួលយក',
         'reject' => 'បដិសេធ',
         'close' => 'បិទ',
+        'ok' => 'យល់ព្រម',
 
 
         'passed' => 'ជាប់',
@@ -93,6 +94,7 @@ return [
         'admin_send_back_success_title' => 'បានបញ្ជូនពាក្យស្នើសុំត្រឡប់',
         'admin_resubmitted_title' => 'មានការដាក់ស្នើឡើងវិញ',
         'admin_resubmitted_body' => ':student បានដាក់ស្នើ :form ឡើងវិញបន្ទាប់ពីកែតម្រូវ។ សូមពិនិត្យម្តងទៀត។',
+        'no_review_note' => 'មិនមានមតិយោបល់ពីអ្នកពិនិត្យទេ។',
 
 
         'admin_passed_success_title' => 'ពាក្យស្នើសុំបានជាប់',

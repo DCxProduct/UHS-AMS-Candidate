@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Filament\Admin\Resources\DegreeLevels\Pages\CreateDegreeLevel;
 use App\Filament\Admin\Resources\DegreeLevels\Pages\EditDegreeLevel;
+use App\Filament\Livewire\DatabaseNotifications;
 use App\Models\DegreeLevel;
 use App\Models\Payment;
 use App\Models\User;
@@ -26,6 +27,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use ReflectionMethod;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Pages\ListCustomFormEntries;
 use Tests\TestCase;
 
 class UatWorkflowRemediationTest extends TestCase
@@ -115,6 +117,56 @@ class UatWorkflowRemediationTest extends TestCase
         $this->assertSame($candidate->id, $entry->created_by);
         $this->actingAs($admin)->post('/admin/custom-form-entries/'.$entry->id.'/approve')->assertRedirect();
         $this->assertSame('approved', $entry->fresh()->review_status);
+    }
+
+    public function test_confirming_resubmission_opens_the_original_pdf_review_action(): void
+    {
+        $candidate = $this->user('candidate');
+        $admin = $this->user('admin');
+        $admin->givePermissionTo(
+            Permission::findOrCreate('ViewAny:CustomFormEntry', 'web'),
+            Permission::findOrCreate('ViewPdf:CustomFormEntry', 'web'),
+        );
+        $entry = $this->entry($candidate, status: 'pending');
+
+        $component = Livewire::actingAs($admin)->test(ListCustomFormEntries::class)
+            ->call('openEntryReviewModal', (string) $entry->getKey());
+
+        $this->assertSame(
+            'view_template_pdf_modal',
+            $component->instance()->getMountedTableAction()?->getName(),
+        );
+    }
+
+    public function test_checking_a_new_application_without_a_comment_opens_review_directly(): void
+    {
+        $candidate = $this->user('candidate');
+        $admin = $this->user('admin');
+        $admin->givePermissionTo(Permission::findOrCreate('ViewPdf:CustomFormEntry', 'web'));
+        $entry = $this->entry($candidate, status: 'pending');
+
+        Livewire::actingAs($admin)->test(DatabaseNotifications::class)
+            ->call('openResubmissionReviewForEntry', (string) $entry->getKey())
+            ->assertDispatched('open-entry-review-modal', entryId: (string) $entry->getKey())
+            ->assertNotDispatched('open-modal');
+    }
+
+    public function test_checking_an_application_with_a_comment_requires_acknowledgement_before_review(): void
+    {
+        $candidate = $this->user('candidate');
+        $admin = $this->user('admin');
+        $admin->givePermissionTo(Permission::findOrCreate('ViewPdf:CustomFormEntry', 'web'));
+        $entry = $this->entry($candidate, status: 'pending');
+        $entry->forceFill(['review_note' => 'Please correct the supporting documents.'])->save();
+
+        $component = Livewire::actingAs($admin)->test(DatabaseNotifications::class)
+            ->call('openResubmissionReviewForEntry', (string) $entry->getKey())
+            ->assertSet('resubmissionReviewNote', 'Please correct the supporting documents.')
+            ->assertDispatched('open-modal', id: 'resubmission-review-note-modal')
+            ->assertNotDispatched('open-entry-review-modal');
+
+        $component->call('confirmResubmissionReview')
+            ->assertDispatched('open-entry-review-modal', entryId: (string) $entry->getKey());
     }
 
     public function test_candidate_cannot_edit_another_candidates_returned_entry(): void
