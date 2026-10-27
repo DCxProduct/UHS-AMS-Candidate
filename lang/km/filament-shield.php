@@ -10,6 +10,7 @@ return [
         'delete' => 'លុប',
         'view_slip' => 'មើលបង្កាន់ដៃ',
         'download_excel' => 'ទាញយក Excel',
+        'import_excel' => 'នាំចូល Excel',
         'clear_data' => 'សម្អាតទិន្នន័យ',
         'original_application_received' => 'បានទទួលពាក្យច្បាប់ដើម',
         'pay' => 'បង់ប្រាក់',

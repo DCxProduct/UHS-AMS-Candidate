@@ -53,6 +53,7 @@ class RolesAndPermissionsSeederTest extends TestCase
             'Delete:Major',
             'ViewAny:MefInvoiceCode',
             'Delete:MefInvoiceCode',
+            'ClearData:MefInvoiceCode',
             'ViewAny:UserType',
             'Delete:UserType',
             'ViewAny:CandidateList',
@@ -244,6 +245,7 @@ class RolesAndPermissionsSeederTest extends TestCase
             'Create:MefInvoiceCode',
             'Update:MefInvoiceCode',
             'Delete:MefInvoiceCode',
+            'ClearData:MefInvoiceCode',
             'ImportExcel:MefInvoiceCode',
             'ViewAny:UserType',
             'Create:UserType',
@@ -287,23 +289,6 @@ class RolesAndPermissionsSeederTest extends TestCase
             'ViewAny:AuditLog',
             'ClearData:AuditLog',
         ];
-        $cashierManagerPermissions = [
-            'ViewAny:PaymentType',
-            'Create:PaymentType',
-            'Update:PaymentType',
-            'Delete:PaymentType',
-            'ViewAny:ExchangeRate',
-            'Update:ExchangeRate',
-            'ViewAny:PaymentStatusList',
-            'Pay:PaymentStatusList',
-            'DownloadExcel:PaymentStatusList',
-            'ClearData:PaymentStatusList',
-            'ViewAny:Payment',
-            'Update:Payment',
-            'ViewSlip:Payment',
-            'DownloadExcel:Payment',
-            'ClearData:Payment',
-        ];
         $cashierOfficerPermissions = [
             'ViewAny:PaymentStatusList',
             'Pay:PaymentStatusList',
@@ -325,8 +310,10 @@ class RolesAndPermissionsSeederTest extends TestCase
             'Create:MefInvoiceCode',
             'Update:MefInvoiceCode',
             'Delete:MefInvoiceCode',
+            'ClearData:MefInvoiceCode',
             'ImportExcel:MefInvoiceCode',
         ];
+        $cashierManagerPermissions = $cashierOfficerPermissions;
         $registrarManagerPermissions = [
             'ViewAny:CustomFormEntry',
             'Create:CustomFormEntry',
@@ -392,6 +379,7 @@ class RolesAndPermissionsSeederTest extends TestCase
             'Create:MefInvoiceCode',
             'Update:MefInvoiceCode',
             'Delete:MefInvoiceCode',
+            'ClearData:MefInvoiceCode',
             'ImportExcel:MefInvoiceCode',
             'ViewAny:UserType',
             'Create:UserType',
@@ -489,6 +477,7 @@ class RolesAndPermissionsSeederTest extends TestCase
             'Create:MefInvoiceCode',
             'Update:MefInvoiceCode',
             'Delete:MefInvoiceCode',
+            'ClearData:MefInvoiceCode',
             'ImportExcel:MefInvoiceCode',
             'ViewAny:UserType',
             'Create:UserType',
@@ -523,6 +512,11 @@ class RolesAndPermissionsSeederTest extends TestCase
         $existingCashierOfficer = Role::findOrCreate('cashier_officer', 'web');
         $existingCashierOfficer->givePermissionTo('ViewAny:CustomFormEntry');
         $this->assertTrue($existingCashierOfficer->hasPermissionTo('ViewAny:CustomFormEntry'));
+        $existingCashierManager = Role::findOrCreate('cashier_manager', 'web');
+        $existingCashierManager->givePermissionTo([
+            Permission::findOrCreate('ViewSlip:Payment', 'web'),
+            Permission::findOrCreate('ViewAny:CustomFormEntry', 'web'),
+        ]);
 
         Artisan::shouldReceive('call')->once()->andReturn(0);
 
@@ -546,6 +540,7 @@ class RolesAndPermissionsSeederTest extends TestCase
         );
         $this->assertTrue($admin->permissions->contains('name', 'Rejected:CustomFormEntry'));
         $this->assertTrue($admin->permissions->contains('name', 'Create:CustomFormEntry'));
+        $this->assertTrue($admin->permissions->contains('name', 'ClearData:MefInvoiceCode'));
 
         $roles = [
             'data_entry' => ['Data Entry', 'អ្នកបញ្ចូលទិន្នន័យ'],
@@ -567,6 +562,11 @@ class RolesAndPermissionsSeederTest extends TestCase
             $this->assertSame('staff', $role->role_type_key);
             $this->assertSame($labelEn, $role->label_en);
             $this->assertSame($labelKh, $role->name_kh);
+            $this->assertSame(
+                in_array($name, ['delete', 'crud', 'cashier_manager', 'cashier_officer', 'registrar_manager', 'registrar_officer'], true),
+                $role->permissions->contains('name', 'ClearData:MefInvoiceCode'),
+                'Unexpected MEF clear-data grant for '.$name,
+            );
 
             if ($name === 'delete') {
                 $this->assertSame(
@@ -620,6 +620,8 @@ class RolesAndPermissionsSeederTest extends TestCase
                 $this->assertFalse($role->permissions->contains('name', 'Create:Payment'));
                 $this->assertFalse($role->permissions->contains('name', 'Delete:Payment'));
                 $this->assertFalse($role->permissions->contains('name', 'Update:PaymentStatusList'));
+                $this->assertFalse($role->permissions->contains('name', 'ViewSlip:Payment'));
+                $this->assertFalse($role->permissions->contains(fn ($permission): bool => str_ends_with($permission->name, ':CustomFormEntry')));
             } elseif ($name === 'cashier_officer') {
                 $this->assertSame(
                     collect($cashierOfficerPermissions)->sort()->values()->all(),
@@ -661,6 +663,10 @@ class RolesAndPermissionsSeederTest extends TestCase
         $this->assertSame(
             collect($cashierOfficerPermissions)->sort()->values()->all(),
             Role::findByName('cashier_officer', 'web')->permissions->pluck('name')->sort()->values()->all(),
+        );
+        $this->assertSame(
+            Role::findByName('cashier_officer', 'web')->permissions->pluck('name')->sort()->values()->all(),
+            Role::findByName('cashier_manager', 'web')->permissions->pluck('name')->sort()->values()->all(),
         );
     }
 }
