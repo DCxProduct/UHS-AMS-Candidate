@@ -140,6 +140,7 @@ class RolesAndPermissionsSeeder extends Seeder
                     'Delete:Major',
                     'ViewAny:MefInvoiceCode',
                     'Delete:MefInvoiceCode',
+                    'ClearData:MefInvoiceCode',
                     'ViewAny:UserType',
                     'Delete:UserType',
                     'ViewAny:CandidateList',
@@ -360,6 +361,7 @@ class RolesAndPermissionsSeeder extends Seeder
                     'Create:MefInvoiceCode',
                     'Update:MefInvoiceCode',
                     'Delete:MefInvoiceCode',
+                    'ClearData:MefInvoiceCode',
                     'ImportExcel:MefInvoiceCode',
                     'ViewAny:UserType',
                     'Create:UserType',
@@ -405,56 +407,36 @@ class RolesAndPermissionsSeeder extends Seeder
                 ])
                 ->get()
         );
-        $cashierManager->syncPermissions(
-            Permission::query()
-                ->where('guard_name', 'web')
-                ->whereIn('name', [
-                    'ViewAny:PaymentType',
-                    'Create:PaymentType',
-                    'Update:PaymentType',
-                    'Delete:PaymentType',
-                    'ViewAny:ExchangeRate',
-                    'Update:ExchangeRate',
-                    'ViewAny:PaymentStatusList',
-                    'Pay:PaymentStatusList',
-                    'DownloadExcel:PaymentStatusList',
-                    'ClearData:PaymentStatusList',
-                    'ViewAny:Payment',
-                    'Update:Payment',
-                    'ViewSlip:Payment',
-                    'DownloadExcel:Payment',
-                    'ClearData:Payment',
-                ])
-                ->get()
-        );
-        $cashierOfficer->syncPermissions(
-            Permission::query()
-                ->where('guard_name', 'web')
-                ->whereIn('name', [
-                    'ViewAny:PaymentStatusList',
-                    'Pay:PaymentStatusList',
-                    'DownloadExcel:PaymentStatusList',
-                    'DownloadPdf:PaymentStatusList',
-                    'ClearData:PaymentStatusList',
-                    'ViewAny:Payment',
-                    'Update:Payment',
-                    'DownloadExcel:Payment',
-                    'DownloadPdf:Payment',
-                    'ClearData:Payment',
-                    'ViewAny:PaymentType',
-                    'Create:PaymentType',
-                    'Update:PaymentType',
-                    'Delete:PaymentType',
-                    'ViewAny:ExchangeRate',
-                    'Update:ExchangeRate',
-                    'ViewAny:MefInvoiceCode',
-                    'Create:MefInvoiceCode',
-                    'Update:MefInvoiceCode',
-                    'Delete:MefInvoiceCode',
-                    'ImportExcel:MefInvoiceCode',
-                ])
-                ->get()
-        );
+        $cashierPermissions = Permission::query()
+            ->where('guard_name', 'web')
+            ->whereIn('name', [
+                'ViewAny:PaymentStatusList',
+                'Pay:PaymentStatusList',
+                'DownloadExcel:PaymentStatusList',
+                'DownloadPdf:PaymentStatusList',
+                'ClearData:PaymentStatusList',
+                'ViewAny:Payment',
+                'Update:Payment',
+                'DownloadExcel:Payment',
+                'DownloadPdf:Payment',
+                'ClearData:Payment',
+                'ViewAny:PaymentType',
+                'Create:PaymentType',
+                'Update:PaymentType',
+                'Delete:PaymentType',
+                'ViewAny:ExchangeRate',
+                'Update:ExchangeRate',
+                'ViewAny:MefInvoiceCode',
+                'Create:MefInvoiceCode',
+                'Update:MefInvoiceCode',
+                'Delete:MefInvoiceCode',
+                'ClearData:MefInvoiceCode',
+                'ImportExcel:MefInvoiceCode',
+            ])
+            ->get();
+
+        $cashierManager->syncPermissions($cashierPermissions);
+        $cashierOfficer->syncPermissions($cashierPermissions);
         $registrarManager->syncPermissions(
             Permission::query()
                 ->where('guard_name', 'web')
@@ -523,6 +505,7 @@ class RolesAndPermissionsSeeder extends Seeder
                     'Create:MefInvoiceCode',
                     'Update:MefInvoiceCode',
                     'Delete:MefInvoiceCode',
+                    'ClearData:MefInvoiceCode',
                     'ImportExcel:MefInvoiceCode',
                     'ViewAny:UserType',
                     'Create:UserType',
@@ -625,6 +608,7 @@ class RolesAndPermissionsSeeder extends Seeder
                     'Create:MefInvoiceCode',
                     'Update:MefInvoiceCode',
                     'Delete:MefInvoiceCode',
+                    'ClearData:MefInvoiceCode',
                     'ImportExcel:MefInvoiceCode',
                     'ViewAny:UserType',
                     'Create:UserType',

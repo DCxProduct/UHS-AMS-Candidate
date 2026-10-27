@@ -2,6 +2,8 @@
 
 namespace App\Filament\Admin\Resources\MefInvoiceCodes\Tables;
 
+use App\Filament\Admin\Resources\MefInvoiceCodes\MefInvoiceCodeResource;
+use App\Support\FilamentActionPermissions;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
 use Filament\Actions\ActionGroup;
@@ -15,6 +17,7 @@ class MefInvoiceCodesTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->selectable(fn (): bool => FilamentActionPermissions::canForResource(MefInvoiceCodeResource::class, 'clear_data'))
             ->searchPlaceholder(__('mef_invoice_codes.search'))
             ->defaultSort('id', 'desc')
             ->columns([
