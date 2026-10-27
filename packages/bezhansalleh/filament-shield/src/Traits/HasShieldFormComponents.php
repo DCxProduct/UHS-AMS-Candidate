@@ -337,7 +337,7 @@ trait HasShieldFormComponents
         /** @phpstan-ignore-next-line */
         $entitiesStates = collect($livewire->form->getFlatComponents())
             ->reduce(function (mixed $counts, Component $component) {
-                if ($component instanceof CheckboxList) {
+                if ($component instanceof CheckboxList && $component->getName() !== 'allowed_custom_form_ids') {
                     //  $component->callAfterStateHydrated();
                     $counts[$component->getName()] = count(array_keys($component->getOptions())) === count(collect($component->getState())->values()->unique()->toArray());
                 }
@@ -356,7 +356,7 @@ trait HasShieldFormComponents
     {
         /** @phpstan-ignore-next-line */
         $entitiesComponents = collect($livewire->form->getFlatComponents())
-            ->filter(fn (Component $component): bool => $component instanceof CheckboxList);
+            ->filter(fn (Component $component): bool => $component instanceof CheckboxList && $component->getName() !== 'allowed_custom_form_ids');
 
         if ($state) {
             $entitiesComponents

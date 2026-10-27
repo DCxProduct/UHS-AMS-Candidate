@@ -160,6 +160,9 @@ class RoleResource extends Resource
                 ->options($activeForms
                     ->mapWithKeys(fn (CustomForm $form): array => [$form->id => $form->display_name])
                     ->all())
+                ->afterStateHydrated(fn (CheckboxList $component, ?array $state) => $component->state(
+                    array_map('intval', array_values(array_intersect($state ?? [], $activeFormIds)))
+                ))
                 ->dehydrateStateUsing(fn (?array $state): array => array_values(array_intersect(
                     array_map('intval', $state ?? []),
                     $activeFormIds,
