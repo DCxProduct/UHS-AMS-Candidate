@@ -38,7 +38,7 @@ return [
             'file_type' => 'Upload an .xlsx or .csv file.',
             'cannot_read' => 'The uploaded file could not be read.',
             'invalid_excel' => 'The Excel file is invalid or cannot be read.',
-            'headers' => 'The first row must contain the columns: no, MEF Code, Invoice Code.',
+            'headers' => 'The first row must contain MEF Code and Invoice Code (or mef_code and invoice_code). The no column is optional.',
             'no_rows' => 'No code records were found in the file.',
             'incomplete_row' => 'Both MEF Code and Invoice Code are required on row :row.',
             'invalid_invoice_code' => 'Invoice Code on row :row must contain numbers and symbols only.',

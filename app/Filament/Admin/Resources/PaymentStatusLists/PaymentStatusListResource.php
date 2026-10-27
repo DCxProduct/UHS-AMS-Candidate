@@ -71,6 +71,16 @@ class PaymentStatusListResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
+        return static::getPaymentApplicationsQuery(includeCleared: false);
+    }
+
+    public static function getDashboardEloquentQuery(): Builder
+    {
+        return static::getPaymentApplicationsQuery(includeCleared: true);
+    }
+
+    protected static function getPaymentApplicationsQuery(bool $includeCleared): Builder
+    {
         $configuredPaymentFormIds = WorkflowNotification::formIdsWithStage(WorkflowStageType::Payment);
         $assignedWorkflowFormIds = WorkflowNotification::assignedFormIds();
         $paymentFormsQuery = CustomForm::query()->where('slug', '!=', 'profile');
@@ -106,12 +116,14 @@ class PaymentStatusListResource extends Resource
                     ->orWhereIn('review_status', ['approved', 'accepted', 'passed'])
                     ->orWhereIn('data->registration_status', ['approved', 'accepted', 'passed']);
             })
-            ->where(function (Builder $query): void {
-                $query->whereNull('data->' . static::HIDDEN_FLAG)
-                    ->orWhere('data->' . static::HIDDEN_FLAG, false)
-                    ->orWhere('data->' . static::HIDDEN_FLAG, 'false')
-                    ->orWhere('data->' . static::HIDDEN_FLAG, 0)
-                    ->orWhere('data->' . static::HIDDEN_FLAG, '0');
+            ->when(! $includeCleared, function (Builder $query): void {
+                $query->where(function (Builder $query): void {
+                    $query->whereNull('data->' . static::HIDDEN_FLAG)
+                        ->orWhere('data->' . static::HIDDEN_FLAG, false)
+                        ->orWhere('data->' . static::HIDDEN_FLAG, 'false')
+                        ->orWhere('data->' . static::HIDDEN_FLAG, 0)
+                        ->orWhere('data->' . static::HIDDEN_FLAG, '0');
+                });
             })
             ->latest('id');
 
@@ -138,9 +150,13 @@ class PaymentStatusListResource extends Resource
         return $query;
     }
 
-    public static function getUnpaidEloquentQuery(): Builder
+    public static function getUnpaidEloquentQuery(bool $includeCleared = false): Builder
     {
-        return static::getEloquentQuery()
+        $query = $includeCleared
+            ? static::getDashboardEloquentQuery()
+            : static::getEloquentQuery();
+
+        return $query
             ->whereNotExists(function (QueryBuilder $subQuery): void {
                 $subQuery->selectRaw('1')
                     ->from('payments')

@@ -305,7 +305,6 @@ class RolesAndPermissionsSeederTest extends TestCase
             'ClearData:Payment',
         ];
         $cashierOfficerPermissions = [
-            'ViewAny:CustomFormEntry',
             'ViewAny:PaymentStatusList',
             'Pay:PaymentStatusList',
             'DownloadExcel:PaymentStatusList',
@@ -521,6 +520,10 @@ class RolesAndPermissionsSeederTest extends TestCase
             ]);
         }
 
+        $existingCashierOfficer = Role::findOrCreate('cashier_officer', 'web');
+        $existingCashierOfficer->givePermissionTo('ViewAny:CustomFormEntry');
+        $this->assertTrue($existingCashierOfficer->hasPermissionTo('ViewAny:CustomFormEntry'));
+
         Artisan::shouldReceive('call')->once()->andReturn(0);
 
         (new RolesAndPermissionsSeeder)->run();
@@ -625,6 +628,7 @@ class RolesAndPermissionsSeederTest extends TestCase
                 $this->assertTrue($role->permissions->contains('name', 'ViewAny:PaymentType'));
                 $this->assertTrue($role->permissions->contains('name', 'Update:ExchangeRate'));
                 $this->assertFalse($role->permissions->contains('name', 'Create:Payment'));
+                $this->assertFalse($role->permissions->contains(fn ($permission): bool => str_ends_with($permission->name, ':CustomFormEntry')));
             } elseif ($name === 'registrar_manager') {
                 $this->assertSame(
                     collect($registrarManagerPermissions)->sort()->values()->all(),
@@ -653,6 +657,10 @@ class RolesAndPermissionsSeederTest extends TestCase
         $this->assertSame(
             count($roles),
             Role::query()->whereIn('name', array_keys($roles))->count(),
+        );
+        $this->assertSame(
+            collect($cashierOfficerPermissions)->sort()->values()->all(),
+            Role::findByName('cashier_officer', 'web')->permissions->pluck('name')->sort()->values()->all(),
         );
     }
 }
