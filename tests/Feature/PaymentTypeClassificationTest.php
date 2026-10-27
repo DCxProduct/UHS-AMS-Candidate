@@ -126,10 +126,20 @@ class PaymentTypeClassificationTest extends TestCase
         $this->assertSame(__('payment_types.options.methods.bank'), $bankPayment->payment_method_label);
         $this->assertSame('ABA', $bankPayment->bank_name);
         $this->assertSame(__('payment_types.options.methods.cash'), $cashPayment->payment_method_label);
-        $this->assertSame($cash->localized_name, $cashPayment->bank_name);
+        $this->assertSame('-', $cashPayment->bank_name);
+
+        foreach ([$bankPayment, $cashPayment] as $index => $payment) {
+            $payment->fill([
+                'receipt_number' => 'BANK-COLUMN-'.$index,
+                'amount_usd' => 5,
+                'datetime_pay' => now(),
+            ])->save();
+        }
 
         Livewire::test(ListPayments::class)
             ->assertTableColumnExists('type_payment')
-            ->assertTableColumnExists('bank_name');
+            ->assertTableColumnExists('bank_name')
+            ->assertTableColumnStateSet('bank_name', '-', $cashPayment)
+            ->assertTableColumnStateSet('bank_name', 'ABA', $bankPayment);
     }
 }

@@ -61,7 +61,7 @@ class PaymentStatusListVisibilityTest extends TestCase
         $this->assertSame('2', PaymentStatusListResource::getNavigationBadge());
         $stats = (new ReflectionMethod(CashierStatsOverview::class, 'getStats'))->invoke(new CashierStatsOverview);
         $this->assertSame('2', $stats[0]->getValue());
-        $this->assertSame('1', $stats[3]->getValue());
+        $this->assertSame('1', $stats[2]->getValue());
         $query = new ReflectionMethod(ListPaymentStatusLists::class, 'selectedOrFilteredQuery');
         $this->assertEqualsCanonicalizing(
             [$paid->getKey(), $unpaid->getKey()],
@@ -76,7 +76,7 @@ class PaymentStatusListVisibilityTest extends TestCase
         $this->assertSame('2', PaymentStatusListResource::getNavigationBadge());
         $stats = (new ReflectionMethod(CashierStatsOverview::class, 'getStats'))->invoke(new CashierStatsOverview);
         $this->assertSame('2', $stats[0]->getValue());
-        $this->assertSame('0', $stats[3]->getValue());
+        $this->assertSame('0', $stats[2]->getValue());
     }
 
     public function test_existing_eligibility_and_hidden_application_rules_still_apply(): void
