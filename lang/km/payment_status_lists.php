@@ -1,9 +1,9 @@
 <?php
 
 return [
-    'navigation_label' => 'ពាក្យស្នើសុំមិនទាន់បង់ប្រាក់',
-    'resource_label' => 'ពាក្យស្នើសុំមិនទាន់បង់ប្រាក់',
-    'resource_plural_label' => 'ពាក្យស្នើសុំមិនទាន់បង់ប្រាក់',
+    'navigation_label' => 'បញ្ជីស្ថានភាពបង់ប្រាក់',
+    'resource_label' => 'បញ្ជីស្ថានភាពបង់ប្រាក់',
+    'resource_plural_label' => 'បញ្ជីស្ថានភាពបង់ប្រាក់',
     'download_excel' => 'ទាញយក Excel',
     'download_pdf' => 'ទាញយក PDF',
     'no_records_to_export' => 'គ្មានទិន្នន័យសម្រាប់ទាញយកទេ។',
@@ -21,5 +21,12 @@ return [
     ],
     'filters' => [
         'payment_type' => 'ប្រភេទបង់ប្រាក់',
+        'all_statuses' => 'ស្ថានភាពបង់ប្រាក់ទាំងអស់',
+    ],
+    'summary' => [
+        'heading' => 'សរុបពាក្យស្នើសុំតាមតម្រង',
+        'total' => 'ពាក្យស្នើសុំសរុប',
+        'paid' => 'បានបង់ប្រាក់',
+        'unpaid' => 'មិនទាន់បង់ប្រាក់',
     ],
 ];

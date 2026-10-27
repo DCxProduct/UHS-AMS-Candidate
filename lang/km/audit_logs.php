@@ -72,8 +72,11 @@ return [
             'candidate_entrance_statistics' => 'ស្ថិតិបេក្ខជនប្រឡងចូល',
             'review_applications' => 'សំណើរបេក្ខជន',
             'candidate_requested' => 'សំណើរបេក្ខជន',
-            'unpaid_application' => 'ពាក្យសុំមិនទាន់បង់ប្រាក់',
-            'unpaid_applications' => 'ពាក្យសុំមិនទាន់បង់ប្រាក់',
+            'payment_status_list' => 'បញ្ជីស្ថានភាពបង់ប្រាក់',
+            'payment_status_lists' => 'បញ្ជីស្ថានភាពបង់ប្រាក់',
+            // Compatibility labels for historical audit records.
+            'unpaid_application' => 'បញ្ជីស្ថានភាពបង់ប្រាក់',
+            'unpaid_applications' => 'បញ្ជីស្ថានភាពបង់ប្រាក់',
             'exam_result' => 'បេក្ខជនជាប់ប្រឡងចូលជ័យលាភី',
             'exam_results' => 'បេក្ខជនជាប់ប្រឡងចូលជ័យលាភី',
             'exit_exam_result' => 'បេក្ខជនជាប់ប្រឡងចេញជ័យលាភី',

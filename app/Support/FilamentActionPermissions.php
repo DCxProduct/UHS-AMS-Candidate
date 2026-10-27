@@ -6,7 +6,7 @@ use App\Filament\Admin\Resources\AuditLogs\AuditLogResource;
 use App\Filament\Admin\Resources\CandidateEntranceStatistics\CandidateEntranceStatisticResource;
 use App\Filament\Admin\Resources\CandidateExitStatistics\CandidateExitStatisticResource;
 use App\Filament\Admin\Resources\CandidateLists\CandidateListResource;
-use App\Filament\Admin\Resources\CandidatePaymentLists\CandidatePaymentListResource;
+use App\Filament\Admin\Resources\PaymentStatusLists\PaymentStatusListResource;
 use App\Filament\Admin\Resources\CandidateSubmitPopupSettings\CandidateSubmitPopupSettingResource;
 use App\Filament\Admin\Resources\ExamResults\ExamResultResource;
 use App\Filament\Admin\Resources\ExchangeRates\ExchangeRateResource;
@@ -37,7 +37,7 @@ class FilamentActionPermissions
             MefInvoiceCodeResource::class => [
                 'import_excel',
             ],
-            CandidatePaymentListResource::class => [
+            PaymentStatusListResource::class => [
                 'pay',
                 'download_excel',
                 'download_pdf',
@@ -202,7 +202,7 @@ class FilamentActionPermissions
     protected static function resourcePermissions(): array
     {
         return [
-            CandidatePaymentListResource::class => [
+            PaymentStatusListResource::class => [
                 'viewAny',
                 'pay',
                 'download_excel',

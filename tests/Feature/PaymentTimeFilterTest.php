@@ -49,6 +49,7 @@ class PaymentTimeFilterTest extends TestCase
         $afterDate = $this->payment('AFTER-DATE', '2026-10-28 10:00:00');
 
         $component = Livewire::test(ListPayments::class)
+            ->set('tableFilters.payment_filters.received_by', null)
             ->set('tableFilters.payment_filters.from_time', '08:00')
             ->set('tableFilters.payment_filters.to_time', '17:00')
             ->assertCanSeeTableRecords([$start, $middle, $end])
@@ -83,6 +84,7 @@ class PaymentTimeFilterTest extends TestCase
         $late = $this->payment('LATE', '2026-10-27 22:00:00');
 
         Livewire::test(ListPayments::class)
+            ->set('tableFilters.payment_filters.received_by', null)
             ->set('tableFilters.payment_filters.from_time', '12:00')
             ->assertCanSeeTableRecords([$middle, $late])
             ->assertCanNotSeeTableRecords([$early])
@@ -106,6 +108,7 @@ class PaymentTimeFilterTest extends TestCase
         $afterEnd = $this->payment('AFTER-END', '2026-10-27 09:01:00');
 
         $component = Livewire::test(ListPayments::class)
+            ->set('tableFilters.payment_filters.received_by', null)
             ->set('tableFilters.payment_filters.from_date', '2026-10-25')
             ->set('tableFilters.payment_filters.to_date', '2026-10-27')
             ->set('tableFilters.payment_filters.from_time', '18:00')
@@ -132,6 +135,7 @@ class PaymentTimeFilterTest extends TestCase
         $afterEnd = $this->payment('AFTER-END', '2026-10-26 20:00:00');
 
         Livewire::test(ListPayments::class)
+            ->set('tableFilters.payment_filters.received_by', null)
             ->set('tableFilters.payment_filters.from_date', '2026-10-25')
             ->set('tableFilters.payment_filters.to_date', '2026-10-26')
             ->set('tableFilters.payment_filters.from_time', '08:00')
@@ -153,6 +157,7 @@ class PaymentTimeFilterTest extends TestCase
         $lastMinute = $this->payment('LAST-MINUTE', '2026-10-27 23:59:59');
 
         Livewire::test(ListPayments::class)
+            ->set('tableFilters.payment_filters.received_by', null)
             ->set('tableFilters.payment_filters.from_time', '08:15')
             ->set('tableFilters.payment_filters.to_time', '08:15')
             ->assertCanSeeTableRecords([$start, $end])
@@ -167,6 +172,7 @@ class PaymentTimeFilterTest extends TestCase
         $payment = $this->payment('VALID-RECORD', '2026-10-27 12:00:00');
 
         Livewire::test(ListPayments::class)
+            ->set('tableFilters.payment_filters.received_by', null)
             ->set('tableFilters.payment_filters.from_time', '16:00')
             ->set('tableFilters.payment_filters.to_time', '15:00')
             ->assertCanNotSeeTableRecords([$payment])
@@ -188,6 +194,7 @@ class PaymentTimeFilterTest extends TestCase
         $explicitLate = $this->payment('EXPLICIT-LATE', '2026-10-27 17:00:00');
 
         $component = Livewire::test(ListPayments::class)
+            ->set('tableFilters.payment_filters.received_by', null)
             ->set('tableFilters.payment_filters.from_time', '04:00')
             ->set('tableFilters.payment_filters.to_time', '16:16')
             ->assertCanSeeTableRecords([$legacy])
@@ -209,6 +216,7 @@ class PaymentTimeFilterTest extends TestCase
         $explicit = $this->payment('EXPLICIT-CLOCK', '2026-10-27 08:00:00');
 
         Livewire::test(ListPayments::class)
+            ->set('tableFilters.payment_filters.received_by', null)
             ->set('tableFilters.payment_filters.from_time', '10:00')
             ->set('tableFilters.payment_filters.to_time', '11:00')
             ->assertCanNotSeeTableRecords([$olderDate, $explicit])

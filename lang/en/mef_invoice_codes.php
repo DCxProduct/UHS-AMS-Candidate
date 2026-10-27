@@ -7,6 +7,7 @@ return [
     'search' => 'Search MEF or invoice codes',
     'form' => [
         'section_title' => 'Code Information',
+        'mef_code_placeholder' => 'Example: MEF1',
     ],
     'fields' => [
         'mef_code' => 'MEF Code',

@@ -347,7 +347,7 @@ return [
         ],
         'actions' => [
             'edit_form' => 'កែប្រែពាក្យស្នើសុំ',
-            'go_to_payment_lists' => 'ទៅកាន់ពាក្យស្នើសុំមិនទាន់បង់ប្រាក់',
+            'go_to_payment_status_lists' => 'ទៅកាន់បញ្ជីស្ថានភាពបង់ប្រាក់',
         ],
         'notifications' => [
             'application' => 'ពាក្យស្នើសុំ',

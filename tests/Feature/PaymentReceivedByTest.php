@@ -69,36 +69,52 @@ class PaymentReceivedByTest extends TestCase
 
         $this->assertEqualsCanonicalizing([$mine->id, $theirs->id], PaymentResource::getEloquentQuery()->pluck('id')->all());
         $receiverOptions = (new ReflectionMethod(PaymentsTable::class, 'dynamicReceiverOptions'))->invoke(null);
-        $this->assertSame(__('payments.options.all_cashiers'), $receiverOptions['all']);
+        $this->assertArrayNotHasKey('all', $receiverOptions);
         $this->assertArrayHasKey((string) $this->officerA->id, $receiverOptions);
         $this->assertArrayHasKey((string) $this->officerB->id, $receiverOptions);
 
         Livewire::test(ListPayments::class)
             ->assertTableFilterExists('payment_filters')
+            ->assertSet('tableFilters.payment_filters.received_by', fn ($value): bool => (string) $value === (string) $this->officerA->id)
             ->assertCanSeeTableRecords([$mine])
             ->assertCanNotSeeTableRecords([$theirs])
             ->assertTableColumnSummarySet('amount_usd', 'amount_usd_total', 5)
-            ->set('tableFilters.payment_filters.received_by', 'all')
+            ->set('tableFilters.payment_filters.received_by', null)
+            ->assertCanSeeTableRecords([$mine, $theirs])
+            ->assertTableColumnSummarySet('amount_usd', 'amount_usd_total', 15)
+            ->set('tableFilters.payment_filters.received_by', (string) $this->officerA->id)
+            ->assertCanSeeTableRecords([$mine])
+            ->assertCanNotSeeTableRecords([$theirs])
+            ->set('tableFilters.payment_filters.received_by', '')
             ->assertCanSeeTableRecords([$mine, $theirs])
             ->assertTableColumnSummarySet('amount_usd', 'amount_usd_total', 15);
     }
 
-    public function test_admin_and_cashier_manager_see_all_and_can_filter_by_cashier(): void
+    public function test_admin_and_cashier_manager_default_to_their_own_payments_and_can_clear_or_filter_by_cashier(): void
     {
         [$mine, $theirs] = $this->paymentsByBothOfficers();
 
         foreach ([$this->admin, $this->manager] as $user) {
             $this->actingAs($user);
 
+            $receiverOptions = (new ReflectionMethod(PaymentsTable::class, 'dynamicReceiverOptions'))->invoke(null);
+            $this->assertArrayHasKey((string) $user->id, $receiverOptions);
+
             Livewire::test(ListPayments::class)
                 ->assertTableColumnExists('received_by')
+                ->assertSet('tableFilters.payment_filters.received_by', fn ($value): bool => (string) $value === (string) $user->id)
+                ->assertCanNotSeeTableRecords([$mine, $theirs])
+                ->set('tableFilters.payment_filters.received_by', null)
                 ->assertTableColumnStateSet('received_by', 'Officer B', $theirs)
                 ->assertCanSeeTableRecords([$mine, $theirs])
                 ->assertTableColumnSummarySet('amount_usd', 'amount_usd_total', 15)
                 ->set('tableFilters.payment_filters.received_by', (string) $this->officerB->id)
                 ->assertCanSeeTableRecords([$theirs])
                 ->assertCanNotSeeTableRecords([$mine])
-                ->assertTableColumnSummarySet('amount_usd', 'amount_usd_total', 10);
+                ->assertTableColumnSummarySet('amount_usd', 'amount_usd_total', 10)
+                ->set('tableFilters.payment_filters.received_by', '')
+                ->assertCanSeeTableRecords([$mine, $theirs])
+                ->assertTableColumnSummarySet('amount_usd', 'amount_usd_total', 15);
         }
     }
 

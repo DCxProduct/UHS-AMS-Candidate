@@ -221,40 +221,6 @@ class PaymentsTable
                 Filter::make('payment_filters')
                     ->label(new HtmlString('&nbsp;'))
                     ->schema([
-                        Select::make('form_id')
-                            ->label(__('payments.table.form'))
-                            ->placeholder(__('payments.placeholders.form'))
-                            ->options(fn (): array => self::dynamicFormOptions())
-                            ->native(false)
-                            ->searchable()
-                            ->live(),
-                        Select::make('receipt_number')
-                            ->label(__('payments.table.receipt_number'))
-                            ->placeholder(__('payments.placeholders.receipt_number'))
-                            ->options(fn (): array => self::dynamicReceiptOptions())
-                            ->native(false)
-                            ->searchable()
-                            ->live(),
-
-                        Select::make('major')
-                            ->label(__('payments.table.major'))
-                            ->placeholder(__('payments.placeholders.major'))
-                            ->options(fn (): array => self::dynamicMajorOptions())
-                            ->native(false)
-                            ->searchable()
-                            ->live(),
-
-                        Select::make('received_by')
-                            ->label(__('payments.table.received_by'))
-                            ->placeholder(__('payments.placeholders.received_by'))
-                            ->options(fn (): array => self::dynamicReceiverOptions())
-                            ->default(fn (): ?string => PaymentResource::showsOnlyOwnReceivedPayments() && auth()->check()
-                                ? (string) auth()->id()
-                                : null)
-                            ->native(false)
-                            ->searchable()
-                            ->live(),
-
                         DatePicker::make('from_date')
                             ->label(__('payments.table.from_date'))
                             ->placeholder(__('payments.placeholders.from_date'))
@@ -289,8 +255,43 @@ class PaymentsTable
                             ->view('filament.admin.fields.bounded-time-picker')
                             ->label(__('payments.table.to_time'))
                             ->live(),
+
+                        Select::make('received_by')
+                            ->label(__('payments.table.received_by'))
+                            ->placeholder(__('payments.placeholders.received_by'))
+                            ->options(fn (): array => self::dynamicReceiverOptions())
+                            ->default(fn (): ?string => auth()->check() ? (string) auth()->id() : null)
+                            ->native(false)
+                            ->searchable()
+                            ->live(),
+
+                        Select::make('major')
+                            ->label(__('payments.table.major'))
+                            ->placeholder(__('payments.placeholders.major'))
+                            ->options(fn (): array => self::dynamicMajorOptions())
+                            ->native(false)
+                            ->searchable()
+                            ->live(),
+
+                        Select::make('form_id')
+                            ->label(__('payments.table.form'))
+                            ->placeholder(__('payments.placeholders.form'))
+                            ->options(fn (): array => self::dynamicFormOptions())
+                            ->native(false)
+                            ->searchable()
+                            ->live(),
+
+                        Select::make('receipt_number')
+                            ->label(__('payments.table.receipt_number'))
+                            ->placeholder(__('payments.placeholders.receipt_number'))
+                            ->options(fn (): array => self::dynamicReceiptOptions())
+                            ->native(false)
+                            ->searchable()
+                            ->live(),
+
+
                     ])
-                    ->columns(3)
+                    ->columns(4)
                     ->columnSpanFull()
                     ->query(function (Builder $query, array $data): Builder {
                         $fromTime = self::normalizeReportTime($data['from_time'] ?? null);
@@ -509,7 +510,7 @@ class PaymentsTable
             ->map(fn (mixed $id): string => (string) $id)
             ->all();
 
-        if (PaymentResource::showsOnlyOwnReceivedPayments() && auth()->check()) {
+        if (auth()->check()) {
             $receiverIds[] = (string) auth()->id();
         }
 
@@ -520,7 +521,7 @@ class PaymentsTable
             ->mapWithKeys(fn (User $user): array => [(string) $user->id => (string) ($user->name ?: $user->username)])
             ->toArray();
 
-        return ['all' => __('payments.options.all_cashiers')] + $cashiers;
+        return $cashiers;
     }
 
     protected static function dynamicFormOptions(): array

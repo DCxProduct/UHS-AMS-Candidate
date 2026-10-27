@@ -30,8 +30,8 @@ class RolesAndPermissionsSeederTest extends TestCase
         $deletePermissions = [
             'ViewAny:CustomFormEntry',
             'Delete:CustomFormEntry',
-            'ViewAny:UnpaidApplication',
-            'ClearData:UnpaidApplication',
+            'ViewAny:PaymentStatusList',
+            'ClearData:PaymentStatusList',
             'ViewAny:Payment',
             'ClearData:Payment',
             'ViewAny:CandidateEntranceStatistic',
@@ -76,7 +76,7 @@ class RolesAndPermissionsSeederTest extends TestCase
         ];
         $viewerPermissions = [
             'ViewAny:CustomFormEntry',
-            'ViewAny:UnpaidApplication',
+            'ViewAny:PaymentStatusList',
             'ViewAny:Payment',
             'ViewAny:CandidateEntranceStatistic',
             'ViewAny:ExamResult',
@@ -115,9 +115,9 @@ class RolesAndPermissionsSeederTest extends TestCase
             'Reject:CustomFormEntry',
             'Rejected:CustomFormEntry',
             'DownloadPdf:CustomFormEntry',
-            'ViewAny:UnpaidApplication',
-            'Pay:UnpaidApplication',
-            'DownloadExcel:UnpaidApplication',
+            'ViewAny:PaymentStatusList',
+            'Pay:PaymentStatusList',
+            'DownloadExcel:PaymentStatusList',
             'ViewAny:Payment',
             'Update:Payment',
             'ViewSlip:Payment',
@@ -193,10 +193,10 @@ class RolesAndPermissionsSeederTest extends TestCase
             'Reject:CustomFormEntry',
             'Rejected:CustomFormEntry',
             'DownloadPdf:CustomFormEntry',
-            'ViewAny:UnpaidApplication',
-            'Pay:UnpaidApplication',
-            'DownloadExcel:UnpaidApplication',
-            'ClearData:UnpaidApplication',
+            'ViewAny:PaymentStatusList',
+            'Pay:PaymentStatusList',
+            'DownloadExcel:PaymentStatusList',
+            'ClearData:PaymentStatusList',
             'ViewAny:Payment',
             'Update:Payment',
             'ViewSlip:Payment',
@@ -294,10 +294,10 @@ class RolesAndPermissionsSeederTest extends TestCase
             'Delete:PaymentType',
             'ViewAny:ExchangeRate',
             'Update:ExchangeRate',
-            'ViewAny:UnpaidApplication',
-            'Pay:UnpaidApplication',
-            'DownloadExcel:UnpaidApplication',
-            'ClearData:UnpaidApplication',
+            'ViewAny:PaymentStatusList',
+            'Pay:PaymentStatusList',
+            'DownloadExcel:PaymentStatusList',
+            'ClearData:PaymentStatusList',
             'ViewAny:Payment',
             'Update:Payment',
             'ViewSlip:Payment',
@@ -306,11 +306,11 @@ class RolesAndPermissionsSeederTest extends TestCase
         ];
         $cashierOfficerPermissions = [
             'ViewAny:CustomFormEntry',
-            'ViewAny:UnpaidApplication',
-            'Pay:UnpaidApplication',
-            'DownloadExcel:UnpaidApplication',
-            'DownloadPdf:UnpaidApplication',
-            'ClearData:UnpaidApplication',
+            'ViewAny:PaymentStatusList',
+            'Pay:PaymentStatusList',
+            'DownloadExcel:PaymentStatusList',
+            'DownloadPdf:PaymentStatusList',
+            'ClearData:PaymentStatusList',
             'ViewAny:Payment',
             'Update:Payment',
             'DownloadExcel:Payment',
@@ -572,7 +572,7 @@ class RolesAndPermissionsSeederTest extends TestCase
                 );
                 $this->assertFalse($role->permissions->contains('name', 'Create:Payment'));
                 $this->assertFalse($role->permissions->contains('name', 'Update:Payment'));
-                $this->assertFalse($role->permissions->contains('name', 'Pay:UnpaidApplication'));
+                $this->assertFalse($role->permissions->contains('name', 'Pay:PaymentStatusList'));
                 $this->assertFalse($role->permissions->contains('name', 'Update:PaymentType'));
                 $this->assertFalse($role->permissions->contains('name', 'Create:GeoLocation'));
                 $this->assertFalse($role->permissions->contains('name', 'Update:GeoLocation'));
@@ -616,7 +616,7 @@ class RolesAndPermissionsSeederTest extends TestCase
                 );
                 $this->assertFalse($role->permissions->contains('name', 'Create:Payment'));
                 $this->assertFalse($role->permissions->contains('name', 'Delete:Payment'));
-                $this->assertFalse($role->permissions->contains('name', 'Update:UnpaidApplication'));
+                $this->assertFalse($role->permissions->contains('name', 'Update:PaymentStatusList'));
             } elseif ($name === 'cashier_officer') {
                 $this->assertSame(
                     collect($cashierOfficerPermissions)->sort()->values()->all(),

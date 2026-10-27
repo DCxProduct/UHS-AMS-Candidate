@@ -7,6 +7,7 @@ return [
     'search' => 'ស្វែងរកកូដ MEF ឬលេខវិក្កយបត្រ',
     'form' => [
         'section_title' => 'ព័ត៌មានកូដ',
+        'mef_code_placeholder' => 'ឧទាហរណ៍៖ MEF1',
     ],
     'fields' => [
         'mef_code' => 'កូដ MEF',

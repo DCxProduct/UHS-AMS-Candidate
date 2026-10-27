@@ -8,6 +8,9 @@ use BezhanSalleh\LanguageSwitch\LanguageSwitch;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AdminEntryPdfReviewController;
 use App\Http\Controllers\ProtectedFileController;
+use App\Filament\Admin\Resources\PaymentStatusLists\PaymentStatusListResource;
+use App\Http\Middleware\CheckUserActive;
+use Illuminate\Http\Request;
 
 Route::get('/', function () {
     return redirect('/login');
@@ -43,6 +46,24 @@ Route::get('/language/{locale}', function (string $locale) {
 
 
 Route::middleware(['web', 'auth'])->group(function () {
+    foreach (['index' => '', 'create' => '/create'] as $page => $suffix) {
+        Route::get('/unpaid-applications'.$suffix, function (Request $request) use ($page) {
+            abort_unless($page === 'create' ? PaymentStatusListResource::canCreate() : PaymentStatusListResource::canViewAny(), 403);
+
+            $parameters = $request->query();
+
+            foreach (['filters', 'tableFilters'] as $key) {
+                if (isset($parameters[$key]['candidate_payment_list_filters'])) {
+                    $parameters[$key]['payment_status_list_filters'] ??= $parameters[$key]['candidate_payment_list_filters'];
+                    unset($parameters[$key]['candidate_payment_list_filters']);
+                }
+            }
+
+            return redirect()->to(PaymentStatusListResource::getUrl($page, $parameters, panel: 'app'), 301);
+        })->middleware(CheckUserActive::class)
+            ->name('filament.app.resources.unpaid-applications.'.$page);
+    }
+
     Route::get('/protected/payment-slips/{payment}', [ProtectedFileController::class, 'paymentSlip'])
         ->name('protected.payment-slip');
 

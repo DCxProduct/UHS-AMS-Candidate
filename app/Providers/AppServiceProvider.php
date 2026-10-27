@@ -20,7 +20,7 @@ use App\Models\PaymentType;
 use App\Models\Role;
 use App\Models\RoleType;
 use App\Models\SystemUser;
-use App\Models\UnpaidApplication;
+use App\Models\PaymentStatusList;
 use App\Models\User;
 use App\Models\UserType;
 use App\Observers\AuditLogObserver;
@@ -220,7 +220,7 @@ class AppServiceProvider extends ServiceProvider
             CandidateEntranceStatistic::class,
             ExamResult::class,
             ExitExamResult::class,
-            UnpaidApplication::class,
+            PaymentStatusList::class,
             DocumentTemplate::class,
         ];
     }

@@ -1,9 +1,9 @@
 <?php
 
 return [
-    'navigation_label' => 'Unpaid Applications',
-    'resource_label' => 'Unpaid Application',
-    'resource_plural_label' => 'Unpaid Applications',
+    'navigation_label' => 'Payment Status List',
+    'resource_label' => 'Payment Status List',
+    'resource_plural_label' => 'Payment Status List',
     'download_excel' => 'Download Excel',
     'download_pdf' => 'Download PDF',
     'no_records_to_export' => 'No records to export.',
@@ -21,5 +21,12 @@ return [
     ],
     'filters' => [
         'payment_type' => 'Payment Type',
+        'all_statuses' => 'All payment statuses',
+    ],
+    'summary' => [
+        'heading' => 'Summary of filtered applications',
+        'total' => 'Total applications',
+        'paid' => 'Paid',
+        'unpaid' => 'Unpaid',
     ],
 ];

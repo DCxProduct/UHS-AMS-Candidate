@@ -4,7 +4,7 @@ namespace App\Filament\Widgets;
 
 use App\Filament\Admin\Resources\CandidateEntranceStatistics\CandidateEntranceStatisticResource;
 use App\Filament\Admin\Resources\CandidateLists\CandidateListResource;
-use App\Filament\Admin\Resources\CandidatePaymentLists\CandidatePaymentListResource;
+use App\Filament\Admin\Resources\PaymentStatusLists\PaymentStatusListResource;
 use App\Filament\Admin\Resources\CandidateTypes\CandidateTypeResource;
 use App\Filament\Admin\Resources\ClosingDates\ClosingDateResource;
 use App\Filament\Admin\Resources\DegreeLevels\DegreeLevelResource;
@@ -27,7 +27,7 @@ use Throwable;
 class AdminMenuOverview extends Widget
 {
     protected const ALLOWED_RESOURCES = [
-        CandidatePaymentListResource::class,
+        PaymentStatusListResource::class,
         PaymentResource::class,
         CandidateEntranceStatisticResource::class,
         ExamResultResource::class,
@@ -36,7 +36,7 @@ class AdminMenuOverview extends Widget
     ];
 
     protected const SIDEBAR_ORDER = [
-        CandidatePaymentListResource::class => 1,
+        PaymentStatusListResource::class => 1,
         PaymentResource::class => 2,
         CandidateEntranceStatisticResource::class => 3,
         ExamResultResource::class => 4,
@@ -211,7 +211,7 @@ class AdminMenuOverview extends Widget
         return match ($resourceClass) {
             CandidateEntranceStatisticResource::class => 'sky',
             ExamResultResource::class => 'violet',
-            CandidatePaymentListResource::class => 'lime',
+            PaymentStatusListResource::class => 'lime',
             PaymentResource::class => 'teal',
             ExitExamResultResource::class => 'indigo',
             ClosingDateResource::class => 'slate',
@@ -224,7 +224,7 @@ class AdminMenuOverview extends Widget
         return match ($resourceClass) {
             CandidateEntranceStatisticResource::class => __('dashboard.candidate_entrance_statistics_description'),
             ExamResultResource::class => __('dashboard.exam_results_description'),
-            CandidatePaymentListResource::class => __('dashboard.payment_lists_description'),
+            PaymentStatusListResource::class => __('dashboard.payment_status_lists_description'),
             PaymentResource::class => __('dashboard.payment_records_description'),
             ExitExamResultResource::class => __('dashboard.exit_exam_results_description'),
             ClosingDateResource::class => __('dashboard.closing_dates_description'),

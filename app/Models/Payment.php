@@ -101,7 +101,7 @@ class Payment extends Model
 
     public function getBankNameAttribute(): string
     {
-        if (blank($this->type_payment)) {
+        if (blank($this->type_payment) || $this->payment_method_key === 'cash') {
             return '-';
         }
 

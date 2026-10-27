@@ -131,7 +131,7 @@ class TablePdfExporter
             : '';
         $dateOfBirthHeadings = [
             __('payments.export.columns.date_of_birth'),
-            __('candidate_payment_lists.columns.date_of_birth'),
+            __('payment_status_lists.columns.date_of_birth'),
             'ថ្ងៃខែឆ្នាំកំណើត',
             'Date of Birth',
         ];

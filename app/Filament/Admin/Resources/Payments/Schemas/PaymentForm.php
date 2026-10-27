@@ -3,7 +3,7 @@
 namespace App\Filament\Admin\Resources\Payments\Schemas;
 
 use App\Filament\Admin\Resources\CandidateLists\CandidateListResource;
-use App\Filament\Admin\Resources\CandidatePaymentLists\CandidatePaymentListResource;
+use App\Filament\Admin\Resources\PaymentStatusLists\PaymentStatusListResource;
 use App\Models\ExchangeRate;
 use App\Models\MefInvoiceCode;
 use App\Models\Payment;
@@ -28,7 +28,7 @@ use Illuminate\Support\Facades\Schema as DatabaseSchema;
 
 class PaymentForm
 {
-    public static function configure(Schema $schema, bool $restrictToUnpaidApplications = false): Schema
+    public static function configure(Schema $schema, bool $onlyUnpaid = false): Schema
     {
         return $schema
             ->columns(1)
@@ -43,8 +43,8 @@ class PaymentForm
                                 Select::make('users_id')
                                     ->label(__('payments.fields.user'))
                                     ->placeholder(__('payments.placeholders.user'))
-                                    ->options(fn (): array => self::candidateUserOptions($restrictToUnpaidApplications))
-                                    ->default(fn (): ?int => self::defaultUserId($restrictToUnpaidApplications))
+                                    ->options(fn (): array => self::candidateUserOptions($onlyUnpaid))
+                                    ->default(fn (): ?int => self::defaultUserId($onlyUnpaid))
                                     ->searchable()
                                     ->native(false)
                                     ->preload()
@@ -54,7 +54,7 @@ class PaymentForm
                                     ]),
 
                                 Hidden::make('form_id')
-                                    ->default(fn (): ?int => self::defaultFormId($restrictToUnpaidApplications)),
+                                    ->default(fn (): ?int => self::defaultFormId($onlyUnpaid)),
 
                                 TextInput::make('receipt_number')
                                     ->label(__('payments.fields.receipt_number'))
@@ -288,10 +288,10 @@ class PaymentForm
         return number_format((float) $normalized, 2, '.', '');
     }
 
-    protected static function candidateUserOptions(bool $restrictToUnpaidApplications = false): array
+    protected static function candidateUserOptions(bool $onlyUnpaid = false): array
     {
-        if ($restrictToUnpaidApplications) {
-            return static::unpaidApplicationUserOptions();
+        if ($onlyUnpaid) {
+            return static::unpaidCandidateOptions();
         }
 
         return CandidateListResource::getEloquentQuery()
@@ -311,10 +311,10 @@ class PaymentForm
             ->toArray();
     }
 
-    protected static function formOptions(bool $restrictToUnpaidApplications = false): array
+    protected static function formOptions(bool $onlyUnpaid = false): array
     {
-        if ($restrictToUnpaidApplications) {
-            return static::unpaidApplicationFormOptions();
+        if ($onlyUnpaid) {
+            return static::unpaidFormOptions();
         }
 
         return CustomForm::query()
@@ -328,11 +328,11 @@ class PaymentForm
             ->toArray();
     }
 
-    protected static function defaultUserId(bool $restrictToUnpaidApplications = false): ?int
+    protected static function defaultUserId(bool $onlyUnpaid = false): ?int
     {
         $requested = request()->integer('users_id') ?: null;
 
-        if (! $restrictToUnpaidApplications) {
+        if (! $onlyUnpaid) {
             return $requested;
         }
 
@@ -345,11 +345,11 @@ class PaymentForm
         return count($options) === 1 ? (int) array_key_first($options) : $requested;
     }
 
-    protected static function defaultFormId(bool $restrictToUnpaidApplications = false): ?int
+    protected static function defaultFormId(bool $onlyUnpaid = false): ?int
     {
         $requested = request()->integer('form_id') ?: null;
 
-        if (! $restrictToUnpaidApplications) {
+        if (! $onlyUnpaid) {
             return $requested;
         }
 
@@ -471,9 +471,9 @@ class PaymentForm
         return null;
     }
 
-    protected static function unpaidApplicationUserOptions(): array
+    protected static function unpaidCandidateOptions(): array
     {
-        return CandidatePaymentListResource::getEloquentQuery()
+        return PaymentStatusListResource::getUnpaidEloquentQuery()
             ->with(['creator'])
             ->get()
             ->map(function ($record): array {
@@ -496,9 +496,9 @@ class PaymentForm
             ->toArray();
     }
 
-    protected static function unpaidApplicationFormOptions(): array
+    protected static function unpaidFormOptions(): array
     {
-        return CandidatePaymentListResource::getEloquentQuery()
+        return PaymentStatusListResource::getUnpaidEloquentQuery()
             ->with(['customForm'])
             ->get()
             ->filter(fn ($record): bool => filled($record->custom_form_id) && $record->customForm !== null)
