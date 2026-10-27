@@ -27,8 +27,16 @@ class ListPayments extends ListRecords
             Cache::forget('payments.report_times.'.auth()->id());
         }
 
+        // This page fills the filter state before Filament applies field defaults.
+        $receiverFilters = $this->tableFilters['payment_filters'] ?? [];
+
+        if (! array_key_exists('received_by', $receiverFilters)) {
+            $receiverFilters['received_by'] = auth()->check() ? (string) auth()->id() : null;
+        }
+
         $this->tableFilters = array_replace_recursive($this->tableFilters ?? [], [
             'payment_filters' => [
+                'received_by' => $receiverFilters['received_by'],
                 'from_date' => $today,
                 'to_date' => $today,
                 'from_time' => null,

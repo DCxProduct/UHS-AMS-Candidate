@@ -2,7 +2,7 @@
 
 namespace App\Filament\Widgets;
 
-use App\Filament\Admin\Resources\CandidatePaymentLists\CandidatePaymentListResource;
+use App\Filament\Admin\Resources\PaymentStatusLists\PaymentStatusListResource;
 use App\Filament\Admin\Resources\Payments\PaymentResource;
 use App\Support\StaffRoles;
 use Filament\Widgets\StatsOverviewWidget;
@@ -23,17 +23,17 @@ class CashierStatsOverview extends StatsOverviewWidget
 
     protected function getStats(): array
     {
-        $paymentLists = CandidatePaymentListResource::getEloquentQuery()->count();
+        $paymentLists = PaymentStatusListResource::getEloquentQuery()->count();
         $paymentRecords = PaymentResource::getEloquentQuery()->count();
         $paidRecords = PaymentResource::getEloquentQuery()
             ->whereRaw('LOWER(COALESCE(status_payt, \'\')) = ?', ['paid'])
             ->count();
-        $unpaidApplications = CandidatePaymentListResource::getEloquentQuery()->count();
+        $unpaidApplications = PaymentStatusListResource::getUnpaidEloquentQuery()->count();
 
         return [
-            Stat::make(__('dashboard.payment_lists'), number_format($paymentLists))
+            Stat::make(__('dashboard.payment_status_lists'), number_format($paymentLists))
                 ->icon('heroicon-m-currency-dollar')
-                ->description(__('dashboard.cashier_payment_lists_hint'))
+                ->description(__('dashboard.cashier_payment_status_lists_hint'))
                 ->color('info')
                 ->extraAttributes([
                     'class' => 'uhs-admin-stat-card uhs-admin-stat-card--primary',
@@ -55,9 +55,9 @@ class CashierStatsOverview extends StatsOverviewWidget
                     'class' => 'uhs-admin-stat-card uhs-admin-stat-card--success',
                 ]),
 
-            Stat::make(__('dashboard.unpaid_applications'), number_format($unpaidApplications))
+            Stat::make(__('dashboard.unpaid_statuses'), number_format($unpaidApplications))
                 ->icon('heroicon-m-clock')
-                ->description(__('dashboard.cashier_unpaid_applications_hint'))
+                ->description(__('dashboard.cashier_unpaid_statuses_hint'))
                 ->color('warning')
                 ->extraAttributes([
                     'class' => 'uhs-admin-stat-card uhs-admin-stat-card--warning',

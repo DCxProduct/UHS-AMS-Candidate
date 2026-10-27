@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Filament\Admin\Resources\CandidatePaymentLists\Pages;
+namespace App\Filament\Admin\Resources\PaymentStatusLists\Pages;
 
-use App\Filament\Admin\Resources\CandidatePaymentLists\CandidatePaymentListResource;
-use App\Filament\Admin\Resources\CandidatePaymentLists\Tables\CandidatePaymentListsTable;
+use App\Filament\Admin\Resources\PaymentStatusLists\PaymentStatusListResource;
+use App\Filament\Admin\Resources\PaymentStatusLists\Tables\PaymentStatusListsTable;
 use App\Support\AuditLogger;
 use App\Support\FilamentActionPermissions;
 use Filament\Actions\Action;
@@ -11,17 +11,17 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Database\Eloquent\Model;
 
-class ListCandidatePaymentLists extends ListRecords
+class ListPaymentStatusLists extends ListRecords
 {
-    protected static string $resource = CandidatePaymentListResource::class;
+    protected static string $resource = PaymentStatusListResource::class;
 
     protected function getHeaderActions(): array
     {
         return [
             Action::make('download_excel')
-                ->label(__('candidate_payment_lists.download_excel'))
+                ->label(__('payment_status_lists.download_excel'))
                 ->color('success')
-                ->visible(fn (): bool => FilamentActionPermissions::canForResource(CandidatePaymentListResource::class, 'download_excel'))
+                ->visible(fn (): bool => FilamentActionPermissions::canForResource(PaymentStatusListResource::class, 'download_excel'))
                 ->alpineClickHandler(<<<'JS'
                     const table = document.querySelector('.fi-ta');
                     const tableData = table?._x_dataStack?.find((data) => data.selectedRecords instanceof Set);
@@ -34,9 +34,9 @@ class ListCandidatePaymentLists extends ListRecords
                 JS)
                 ->action(fn () => $this->downloadExcel()),
             Action::make('download_pdf')
-                ->label(__('candidate_payment_lists.download_pdf'))
+                ->label(__('payment_status_lists.download_pdf'))
                 ->color('success')
-                ->visible(fn (): bool => FilamentActionPermissions::canForResource(CandidatePaymentListResource::class, 'download_pdf'))
+                ->visible(fn (): bool => FilamentActionPermissions::canForResource(PaymentStatusListResource::class, 'download_pdf'))
                 ->alpineClickHandler(<<<'JS'
                     const table = document.querySelector('.fi-ta');
                     const tableData = table?._x_dataStack?.find((data) => data.selectedRecords instanceof Set);
@@ -51,7 +51,7 @@ class ListCandidatePaymentLists extends ListRecords
             Action::make('clear_data')
                 ->label(__('app.clear_data'))
                 ->color('danger')
-                ->visible(fn (): bool => FilamentActionPermissions::canForResource(CandidatePaymentListResource::class, 'clear_data'))
+                ->visible(fn (): bool => FilamentActionPermissions::canForResource(PaymentStatusListResource::class, 'clear_data'))
                 ->requiresConfirmation()
                 ->modalHeading(__('app.clear_data'))
                 ->modalDescription(__('app.clear_data_confirm'))
@@ -98,7 +98,7 @@ class ListCandidatePaymentLists extends ListRecords
         bool $isTrackingDeselectedRecords = false,
         array $deselectedRecordKeys = [],
     ): void {
-        FilamentActionPermissions::abortUnlessCanForResource(CandidatePaymentListResource::class, 'clear_data');
+        FilamentActionPermissions::abortUnlessCanForResource(PaymentStatusListResource::class, 'clear_data');
 
         $this->selectedOrFilteredQuery(
             $selectedRecordKeys,
@@ -111,7 +111,7 @@ class ListCandidatePaymentLists extends ListRecords
                 $data = [];
             }
 
-            $data[CandidatePaymentListResource::HIDDEN_FLAG] = true;
+            $data[PaymentStatusListResource::HIDDEN_FLAG] = true;
 
             $record->forceFill([
                 'data' => $data,
@@ -120,8 +120,8 @@ class ListCandidatePaymentLists extends ListRecords
             AuditLogger::log(
                 action: 'cleared',
                 auditable: $record,
-                description: 'Cleared from Unpaid Applications',
-                metadata: ['module' => 'Unpaid Applications'],
+                description: 'Cleared from Payment Status List',
+                metadata: ['module' => 'Payment Status List'],
             );
         });
 
@@ -138,7 +138,7 @@ class ListCandidatePaymentLists extends ListRecords
         array $deselectedRecordKeys = [],
     )
     {
-        FilamentActionPermissions::abortUnlessCanForResource(CandidatePaymentListResource::class, 'download_excel');
+        FilamentActionPermissions::abortUnlessCanForResource(PaymentStatusListResource::class, 'download_excel');
 
         $records = $this->selectedOrFilteredQuery(
             $selectedRecordKeys,
@@ -150,11 +150,11 @@ class ListCandidatePaymentLists extends ListRecords
 
         AuditLogger::log(
             action: 'downloaded',
-            description: 'Downloaded Unpaid Applications Excel (' . $records->count() . ' records)',
-            metadata: ['module' => 'Unpaid Applications'],
+            description: 'Downloaded Payment Status List Excel (' . $records->count() . ' records)',
+            metadata: ['module' => 'Payment Status List'],
         );
 
-        return CandidatePaymentListsTable::downloadExcel(
+        return PaymentStatusListsTable::downloadExcel(
             $records,
             $this->visibleExportColumnKeys(),
         );
@@ -166,7 +166,7 @@ class ListCandidatePaymentLists extends ListRecords
         array $deselectedRecordKeys = [],
     )
     {
-        FilamentActionPermissions::abortUnlessCanForResource(CandidatePaymentListResource::class, 'download_pdf');
+        FilamentActionPermissions::abortUnlessCanForResource(PaymentStatusListResource::class, 'download_pdf');
 
         $records = $this->selectedOrFilteredQuery(
             $selectedRecordKeys,
@@ -178,7 +178,7 @@ class ListCandidatePaymentLists extends ListRecords
 
         if ($records->isEmpty()) {
             Notification::make()
-                ->title(__('candidate_payment_lists.no_records_to_export'))
+                ->title(__('payment_status_lists.no_records_to_export'))
                 ->warning()
                 ->send();
 
@@ -187,11 +187,11 @@ class ListCandidatePaymentLists extends ListRecords
 
         AuditLogger::log(
             action: 'downloaded',
-            description: 'Downloaded Unpaid Applications PDF (' . $records->count() . ' records)',
-            metadata: ['module' => 'Unpaid Applications'],
+            description: 'Downloaded Payment Status List PDF (' . $records->count() . ' records)',
+            metadata: ['module' => 'Payment Status List'],
         );
 
-        return CandidatePaymentListsTable::downloadPdf(
+        return PaymentStatusListsTable::downloadPdf(
             $records,
             $this->visibleExportColumnKeys(),
         );

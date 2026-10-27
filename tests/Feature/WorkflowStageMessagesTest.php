@@ -4,7 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\WorkflowStageType;
 use App\Filament\Admin\Resources\CandidateEntranceStatistics\Tables\CandidateEntranceStatisticsTable;
-use App\Filament\Admin\Resources\CandidatePaymentLists\CandidatePaymentListResource;
+use App\Filament\Admin\Resources\PaymentStatusLists\PaymentStatusListResource;
 use App\Models\Payment;
 use App\Models\Major;
 use App\Models\Role;
@@ -93,11 +93,12 @@ class WorkflowStageMessagesTest extends TestCase
         $this->actingAs($this->user('payment_admin', 'admin'));
 
         $this->assertTrue(WorkflowStageMessages::requiresPayment($entry));
-        $this->assertTrue(CandidatePaymentListResource::getEloquentQuery()->whereKey($entry->getKey())->exists());
+        $this->assertTrue(PaymentStatusListResource::getEloquentQuery()->whereKey($entry->getKey())->exists());
 
         $this->pay($entry);
 
-        $this->assertFalse(CandidatePaymentListResource::getEloquentQuery()->whereKey($entry->getKey())->exists());
+        $this->assertTrue(PaymentStatusListResource::getEloquentQuery()->whereKey($entry->getKey())->exists());
+        $this->assertSame(WorkflowStageType::AwaitingResults, WorkflowStageMessages::stageTypeFor($entry));
     }
 
     public function test_workflow_payment_stage_overrides_the_form_payment_toggle(): void
@@ -110,7 +111,7 @@ class WorkflowStageMessagesTest extends TestCase
         $this->actingAs($this->user('payment_admin', 'admin'));
 
         $this->assertTrue(WorkflowStageMessages::requiresPayment($entry));
-        $this->assertTrue(CandidatePaymentListResource::getEloquentQuery()->whereKey($entry->getKey())->exists());
+        $this->assertTrue(PaymentStatusListResource::getEloquentQuery()->whereKey($entry->getKey())->exists());
         $this->assertSame(WorkflowStageType::Payment, WorkflowStageMessages::stageTypeFor($entry));
     }
 
@@ -129,7 +130,7 @@ class WorkflowStageMessagesTest extends TestCase
 
         $this->assertFalse(WorkflowStageMessages::requiresPayment($entry));
         $this->assertSame(WorkflowStageType::AwaitingResults, WorkflowStageMessages::stageTypeFor($entry));
-        $this->assertFalse(CandidatePaymentListResource::getEloquentQuery()->whereKey($entry->getKey())->exists());
+        $this->assertFalse(PaymentStatusListResource::getEloquentQuery()->whereKey($entry->getKey())->exists());
     }
 
     public function test_status_text_comes_from_the_forms_workflow_stage(): void
@@ -186,7 +187,7 @@ class WorkflowStageMessagesTest extends TestCase
         $this->actingAs($this->user('payment_admin', 'admin'));
 
         $this->assertTrue(WorkflowStageMessages::requiresPayment($entry));
-        $this->assertTrue(CandidatePaymentListResource::getEloquentQuery()->whereKey($entry->getKey())->exists());
+        $this->assertTrue(PaymentStatusListResource::getEloquentQuery()->whereKey($entry->getKey())->exists());
     }
 
     public function test_notification_text_is_sent_to_the_candidate_at_the_expected_stage(): void

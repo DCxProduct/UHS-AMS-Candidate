@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Filament\Admin\Resources\CandidatePaymentLists\Tables\CandidatePaymentListsTable;
+use App\Filament\Admin\Resources\PaymentStatusLists\Tables\PaymentStatusListsTable;
 use App\Filament\Admin\Resources\Payments\Pages\ListPayments;
 use App\Filament\Admin\Resources\Payments\Tables\PaymentsTable;
 use App\Models\Payment;
@@ -25,18 +25,18 @@ class PaymentTotalsTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_unpaid_application_exports_omit_the_record_count_summary(): void
+    public function test_payment_status_list_exports_omit_the_record_count_summary(): void
     {
-        $exportColumns = $this->invokeProtectedStatic(CandidatePaymentListsTable::class, 'exportColumnDefinitions', []);
+        $exportColumns = $this->invokeProtectedStatic(PaymentStatusListsTable::class, 'exportColumnDefinitions', []);
         $reportColumnKeys = array_keys($exportColumns);
-        $sheet = $this->invokeProtectedStatic(CandidatePaymentListsTable::class, 'reportSheet', [[], $reportColumnKeys]);
+        $sheet = $this->invokeProtectedStatic(PaymentStatusListsTable::class, 'reportSheet', [[], $reportColumnKeys]);
         $spreadsheetRows = serialize($sheet['rows']);
 
         $this->assertStringNotContainsString(__('payments.export.total_records'), $spreadsheetRows);
-        $this->assertStringNotContainsString(__('candidate_payment_lists.columns.academic_year'), $spreadsheetRows);
-        $this->assertStringNotContainsString(__('candidate_payment_lists.columns.phone_number'), $spreadsheetRows);
-        $this->assertStringNotContainsString(__('candidate_payment_lists.columns.payment_status'), $spreadsheetRows);
-        $this->assertContains(__('candidate_payment_lists.columns.date_of_birth'), $sheet['rows'][10]);
+        $this->assertNotContains(__('payment_status_lists.columns.academic_year'), $sheet['rows'][10]);
+        $this->assertNotContains(__('payment_status_lists.columns.phone_number'), $sheet['rows'][10]);
+        $this->assertNotContains(__('payment_status_lists.columns.payment_status'), $sheet['rows'][10]);
+        $this->assertContains(__('payment_status_lists.columns.date_of_birth'), $sheet['rows'][10]);
         $this->assertArrayNotHasKey('academic_year', $exportColumns);
         $this->assertArrayNotHasKey('phone_number', $exportColumns);
         $this->assertArrayNotHasKey('status_payt', $exportColumns);
@@ -47,19 +47,19 @@ class PaymentTotalsTest extends TestCase
             $sheet['options']['cellStyles'][OfficialReport::columnName($dateOfBirthColumn + 1).'11'],
         );
 
-        $pdfRows = $this->invokeProtectedStatic(CandidatePaymentListsTable::class, 'excelRows', [[], null]);
-        $this->assertNotContains(__('candidate_payment_lists.columns.academic_year'), $pdfRows[0]);
-        $this->assertNotContains(__('candidate_payment_lists.columns.phone_number'), $pdfRows[0]);
-        $this->assertNotContains(__('candidate_payment_lists.columns.payment_status'), $pdfRows[0]);
+        $pdfRows = $this->invokeProtectedStatic(PaymentStatusListsTable::class, 'excelRows', [[], null]);
+        $this->assertNotContains(__('payment_status_lists.columns.academic_year'), $pdfRows[0]);
+        $this->assertNotContains(__('payment_status_lists.columns.phone_number'), $pdfRows[0]);
+        $this->assertNotContains(__('payment_status_lists.columns.payment_status'), $pdfRows[0]);
 
-        $cleanRows = $this->invokeProtectedStatic(CandidatePaymentListsTable::class, 'cleanDataRows', [[], $reportColumnKeys]);
+        $cleanRows = $this->invokeProtectedStatic(PaymentStatusListsTable::class, 'cleanDataRows', [[], $reportColumnKeys]);
         $this->assertNotContains('phone_number', $cleanRows[0]);
         $this->assertNotContains('status_payt', $cleanRows[0]);
 
         $pdfHtml = $this->invokeProtectedStatic(TablePdfExporter::class, 'html', [
             ['Application'],
             [['Candidate']],
-            'Unpaid Applications',
+            'Payment Status List',
             [],
             ['layout' => 'official-report', 'hide_summary' => true],
         ]);
@@ -86,6 +86,7 @@ class PaymentTotalsTest extends TestCase
         ]);
 
         Livewire::test(ListPayments::class)
+            ->set('tableFilters.payment_filters.received_by', null)
             ->assertSeeText('5.00$')
             ->assertTableColumnSummarizerExists('amount_usd', 'amount_usd_total')
             ->assertTableColumnSummarizerExists('amount_kh', 'amount_khr_total')
@@ -112,6 +113,7 @@ class PaymentTotalsTest extends TestCase
         ]);
 
         $component = Livewire::test(ListPayments::class)
+            ->set('tableFilters.payment_filters.received_by', null)
             ->set('tableSearch', 'match-001')
             ->assertTableColumnSummarySet('amount_usd', 'amount_usd_total', 5)
             ->assertTableColumnSummarySet('amount_kh', 'amount_khr_total', 20500);
@@ -138,6 +140,7 @@ class PaymentTotalsTest extends TestCase
         ]);
 
         Livewire::test(ListPayments::class)
+            ->set('tableFilters.payment_filters.received_by', null)
             ->set('tableFilters.payment_filters.receipt_number', 'FILTER-001')
             ->assertTableColumnSummarySet('amount_usd', 'amount_usd_total', 5)
             ->assertTableColumnSummarySet('amount_kh', 'amount_khr_total', 20500);
@@ -175,6 +178,7 @@ class PaymentTotalsTest extends TestCase
         ]);
 
         $component = Livewire::test(ListPayments::class)
+            ->set('tableFilters.payment_filters.received_by', null)
             ->assertCanSeeTableRecords([$today])
             ->assertCanNotSeeTableRecords([$beforeRange, $startDate, $endDate, $afterRange])
             ->set('tableFilters.payment_filters.from_date', '2026-10-19')
@@ -220,6 +224,7 @@ class PaymentTotalsTest extends TestCase
         ]);
 
         $component = Livewire::test(ListPayments::class)
+            ->set('tableFilters.payment_filters.received_by', null)
             ->set('tableFilters.payment_filters.from_time', '08:00')
             ->set('tableFilters.payment_filters.to_time', '21:00')
             ->assertCanSeeTableRecords([$inside])
@@ -244,6 +249,7 @@ class PaymentTotalsTest extends TestCase
         $this->assertNull($this->invokeProtected($component->instance(), 'exportReportTimeRange'));
 
         Livewire::test(ListPayments::class)
+            ->set('tableFilters.payment_filters.received_by', null)
             ->assertSet('tableFilters.payment_filters.from_time', null)
             ->assertSet('tableFilters.payment_filters.to_time', null);
     }
@@ -253,6 +259,7 @@ class PaymentTotalsTest extends TestCase
         $this->createPaymentViewer();
 
         $component = Livewire::test(ListPayments::class)
+            ->set('tableFilters.payment_filters.received_by', null)
             ->set('tableFilters.payment_filters.from_time', '08:00')
             ->set('tableFilters.payment_filters.to_time', '16:00');
 
@@ -285,6 +292,7 @@ class PaymentTotalsTest extends TestCase
         $this->assertNull($this->invokeProtected($component->instance(), 'exportReportTimeRange'));
 
         Livewire::test(ListPayments::class)
+            ->set('tableFilters.payment_filters.received_by', null)
             ->assertSet('tableFilters.payment_filters.from_time', null)
             ->assertSet('tableFilters.payment_filters.to_time', null);
         $this->assertFalse(Cache::has('payments.report_times.'.auth()->id()));
@@ -295,6 +303,7 @@ class PaymentTotalsTest extends TestCase
         $this->createPaymentViewer();
 
         $component = Livewire::test(ListPayments::class)
+            ->set('tableFilters.payment_filters.received_by', null)
             ->set('tableFilters.payment_filters.from_time', '09:00');
 
         $this->assertSame('០៩:០០ ព្រឹក - ២៣:៥៩ ល្ងាច', $this->invokeProtected($component->instance(), 'exportReportTimeRange'));
@@ -321,6 +330,7 @@ class PaymentTotalsTest extends TestCase
         app()->setLocale('km');
 
         $component = Livewire::test(ListPayments::class)
+            ->set('tableFilters.payment_filters.received_by', null)
             ->set('tableFilters.payment_filters.from_date', '2026-10-25')
             ->set('tableFilters.payment_filters.to_date', '2026-10-26')
             ->set('tableFilters.payment_filters.from_time', '18:00')
@@ -371,6 +381,7 @@ class PaymentTotalsTest extends TestCase
         $this->assertTrue(PaymentsTable::isValidReportTimeRange('08:00', '21:00'));
 
         Livewire::test(ListPayments::class)
+            ->set('tableFilters.payment_filters.received_by', null)
             ->set('tableFilters.payment_filters.from_time', '16:00')
             ->set('tableFilters.payment_filters.to_time', '15:00')
             ->call('saveReportTimes');
@@ -389,6 +400,7 @@ class PaymentTotalsTest extends TestCase
         ], now()->addDay());
 
         Livewire::test(ListPayments::class)
+            ->set('tableFilters.payment_filters.received_by', null)
             ->assertSet('tableFilters.payment_filters.from_time', null)
             ->assertSet('tableFilters.payment_filters.to_time', null);
 
@@ -406,6 +418,7 @@ class PaymentTotalsTest extends TestCase
         ], now()->addDay());
 
         Livewire::test(ListPayments::class)
+            ->set('tableFilters.payment_filters.received_by', null)
             ->assertSet('tableFilters.payment_filters.from_time', null)
             ->assertSet('tableFilters.payment_filters.to_time', null);
 
@@ -440,6 +453,7 @@ class PaymentTotalsTest extends TestCase
         ], now()->addDay());
 
         Livewire::test(ListPayments::class)
+            ->set('tableFilters.payment_filters.received_by', null)
             ->set('tableFilters.payment_filters.from_date', '2026-10-20')
             ->set('tableFilters.payment_filters.to_date', '2026-10-24')
             ->set('tableFilters.payment_filters.from_time', '08:00')
@@ -461,7 +475,8 @@ class PaymentTotalsTest extends TestCase
         app()->setLocale('en');
 
         try {
-            $englishComponent = Livewire::test(ListPayments::class);
+            $englishComponent = Livewire::test(ListPayments::class)
+                ->set('tableFilters.payment_filters.received_by', null);
             $englishTable = $englishComponent->instance()->getTable();
 
             $this->assertSame(
@@ -475,7 +490,8 @@ class PaymentTotalsTest extends TestCase
 
             app()->setLocale('km');
 
-            $khmerComponent = Livewire::test(ListPayments::class);
+            $khmerComponent = Livewire::test(ListPayments::class)
+                ->set('tableFilters.payment_filters.received_by', null);
             $khmerTable = $khmerComponent->instance()->getTable();
 
             $this->assertSame(
@@ -585,7 +601,8 @@ class PaymentTotalsTest extends TestCase
     {
         $this->createPaymentViewer();
 
-        $component = Livewire::test(ListPayments::class);
+        $component = Livewire::test(ListPayments::class)
+            ->set('tableFilters.payment_filters.received_by', null);
         $table = $component->instance()->getTable();
 
         $this->assertSame(
@@ -891,12 +908,13 @@ class PaymentTotalsTest extends TestCase
             ->andReturn(\Mockery::mock(['output' => '%PDF']));
 
         Livewire::test(ListPayments::class)
+            ->set('tableFilters.payment_filters.received_by', null)
             ->set('tableFilters.payment_filters.from_date', '2026-10-22')
             ->set('tableFilters.payment_filters.to_date', '2026-10-22')
             ->call('downloadPdfFromTableSelection');
     }
 
-    public function test_payment_records_and_unpaid_application_pdfs_use_a4_portrait(): void
+    public function test_payment_records_and_payment_status_list_pdfs_use_a4_portrait(): void
     {
         Pdf::shouldReceive('loadHTML')
             ->twice()
@@ -906,7 +924,7 @@ class PaymentTotalsTest extends TestCase
                 && ! str_contains($html, 'ឆ្នាំសិក្សា'))
             ->andReturn(\Mockery::mock(['output' => '%PDF']));
 
-        CandidatePaymentListsTable::downloadPdf([]);
+        PaymentStatusListsTable::downloadPdf([]);
         PaymentsTable::downloadPdf([]);
     }
 

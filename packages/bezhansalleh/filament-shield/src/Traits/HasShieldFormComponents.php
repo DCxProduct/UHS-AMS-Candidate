@@ -73,7 +73,7 @@ trait HasShieldFormComponents
     {
         $order = [
             'CustomFormEntry' => 1,
-            'UnpaidApplication' => 2,
+            'PaymentStatusList' => 2,
             'Payment' => 3,
             'CandidateEntranceStatistic' => 4,
             'ReviewApplication' => 4,

@@ -1,14 +1,14 @@
 <?php
 
-namespace App\Filament\Admin\Resources\CandidatePaymentLists;
+namespace App\Filament\Admin\Resources\PaymentStatusLists;
 
 use App\Enums\WorkflowStageType;
-use App\Filament\Admin\Resources\CandidatePaymentLists\Pages\CreateCandidatePaymentList;
-use App\Filament\Admin\Resources\CandidatePaymentLists\Pages\ListCandidatePaymentLists;
+use App\Filament\Admin\Resources\PaymentStatusLists\Pages\CreatePaymentStatusList;
+use App\Filament\Admin\Resources\PaymentStatusLists\Pages\ListPaymentStatusLists;
 use App\Filament\Admin\Resources\Payments\Schemas\PaymentForm;
-use App\Filament\Admin\Resources\CandidatePaymentLists\Tables\CandidatePaymentListsTable;
+use App\Filament\Admin\Resources\PaymentStatusLists\Tables\PaymentStatusListsTable;
 use App\Filament\Concerns\AdminOnly;
-use App\Models\UnpaidApplication;
+use App\Models\PaymentStatusList;
 use App\Models\WorkflowNotification;
 use BackedEnum;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
@@ -20,15 +20,15 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\Schema as DbSchema;
 use UnitEnum;
 
-class CandidatePaymentListResource extends Resource
+class PaymentStatusListResource extends Resource
 {
     use AdminOnly;
 
-    public const HIDDEN_FLAG = 'hidden_from_candidate_payment_lists';
+    public const HIDDEN_FLAG = 'hidden_from_payment_status_lists';
 
-    protected static ?string $model = UnpaidApplication::class;
+    protected static ?string $model = PaymentStatusList::class;
 
-    protected static ?string $slug = 'unpaid-applications';
+    protected static ?string $slug = 'payment-status-lists';
 
     protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-currency-dollar';
 
@@ -36,7 +36,7 @@ class CandidatePaymentListResource extends Resource
 
     public static function getNavigationLabel(): string
     {
-        return __('candidate_payment_lists.navigation_label');
+        return __('payment_status_lists.navigation_label');
     }
 
     public static function getNavigationBadge(): ?string
@@ -51,12 +51,12 @@ class CandidatePaymentListResource extends Resource
 
     public static function getModelLabel(): string
     {
-        return __('candidate_payment_lists.resource_label');
+        return __('payment_status_lists.resource_label');
     }
 
     public static function getPluralModelLabel(): string
     {
-        return __('candidate_payment_lists.resource_plural_label');
+        return __('payment_status_lists.resource_plural_label');
     }
 
     public static function form(Schema $schema): Schema
@@ -66,7 +66,7 @@ class CandidatePaymentListResource extends Resource
 
     public static function table(Table $table): Table
     {
-        return CandidatePaymentListsTable::configure($table);
+        return PaymentStatusListsTable::configure($table);
     }
 
     public static function getEloquentQuery(): Builder
@@ -113,12 +113,6 @@ class CandidatePaymentListResource extends Resource
                     ->orWhere('data->' . static::HIDDEN_FLAG, 0)
                     ->orWhere('data->' . static::HIDDEN_FLAG, '0');
             })
-            ->whereNotExists(function (QueryBuilder $subQuery): void {
-                $subQuery->selectRaw('1')
-                    ->from('payments')
-                    ->where(fn (QueryBuilder $matchQuery): QueryBuilder => static::applyPaidPaymentMatch($matchQuery))
-                    ->where('payments.status_payt', 'paid');
-            })
             ->latest('id');
 
         if (! static::currentUserCanViewAllRecords()) {
@@ -144,6 +138,17 @@ class CandidatePaymentListResource extends Resource
         return $query;
     }
 
+    public static function getUnpaidEloquentQuery(): Builder
+    {
+        return static::getEloquentQuery()
+            ->whereNotExists(function (QueryBuilder $subQuery): void {
+                $subQuery->selectRaw('1')
+                    ->from('payments')
+                    ->where(fn (QueryBuilder $matchQuery): QueryBuilder => static::applyPaidPaymentMatch($matchQuery))
+                    ->where('payments.status_payt', 'paid');
+            });
+    }
+
     protected static function applyPaymentOwnerMatch(QueryBuilder $query): QueryBuilder
     {
         $ownerColumns = collect(static::existingOwnerColumns());
@@ -153,7 +158,6 @@ class CandidatePaymentListResource extends Resource
         }
 
         $firstColumn = $ownerColumns->shift();
-
         $query->whereColumn('payments.users_id', "custom_form_entries.{$firstColumn}");
 
         foreach ($ownerColumns as $column) {
@@ -203,8 +207,8 @@ class CandidatePaymentListResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => ListCandidatePaymentLists::route('/'),
-            'create' => CreateCandidatePaymentList::route('/create'),
+            'index' => ListPaymentStatusLists::route('/'),
+            'create' => CreatePaymentStatusList::route('/create'),
         ];
     }
 }

@@ -347,7 +347,7 @@ return [
         ],
         'actions' => [
             'edit_form' => 'Edit Form',
-            'go_to_payment_lists' => 'Go to Unpaid Applications',
+            'go_to_payment_status_lists' => 'Go to Payment Status List',
         ],
         'notifications' => [
             'application' => 'Application',

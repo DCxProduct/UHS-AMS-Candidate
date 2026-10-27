@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Filament\Admin\Resources\CandidatePaymentLists\Pages;
+namespace App\Filament\Admin\Resources\PaymentStatusLists\Pages;
 
-use App\Filament\Admin\Resources\CandidatePaymentLists\CandidatePaymentListResource;
+use App\Filament\Admin\Resources\PaymentStatusLists\PaymentStatusListResource;
 use App\Models\Payment;
 use App\Services\CandidatePaymentRecorder;
 use Filament\Resources\Pages\CreateRecord;
@@ -12,9 +12,9 @@ use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
-class CreateCandidatePaymentList extends CreateRecord
+class CreatePaymentStatusList extends CreateRecord
 {
-    protected static string $resource = CandidatePaymentListResource::class;
+    protected static string $resource = PaymentStatusListResource::class;
 
     protected function handleRecordCreation(array $data): Model
     {
@@ -50,6 +50,6 @@ class CreateCandidatePaymentList extends CreateRecord
 
     protected function getRedirectUrl(): string
     {
-        return CandidatePaymentListResource::getUrl('index');
+        return PaymentStatusListResource::getUrl('index');
     }
 }

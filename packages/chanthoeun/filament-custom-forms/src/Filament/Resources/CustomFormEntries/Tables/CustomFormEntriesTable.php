@@ -808,7 +808,7 @@ class CustomFormEntriesTable
                 ->label(new HtmlString('&nbsp;'))
                 ->schema([
                     Select::make('major')
-                        ->label(__('candidate_payment_lists.columns.major'))
+                        ->label(__('payment_status_lists.columns.major'))
                         ->options(fn (): array => self::dynamicMajorOptions($formId))
                         ->native(false)
                         ->live(),
