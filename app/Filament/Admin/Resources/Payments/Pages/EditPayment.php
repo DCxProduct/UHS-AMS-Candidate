@@ -21,7 +21,8 @@ class EditPayment extends EditRecord
             $data['type_payment'] = PaymentType::activeKeyForMethod('cash');
         }
 
-        unset($data['payment_method']);
+        // The disabled date-only picker must not discard the original payment time.
+        unset($data['payment_method'], $data['datetime_pay']);
 
         if (! Schema::hasColumn('payments', 'exchange_rate')) {
             unset($data['exchange_rate']);

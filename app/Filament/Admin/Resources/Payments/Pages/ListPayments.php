@@ -22,35 +22,17 @@ class ListPayments extends ListRecords
         parent::mount();
 
         $today = today()->toDateString();
-        $rememberedTimes = [];
 
         if (auth()->id()) {
-            $cacheKey = 'payments.report_times.'.auth()->id();
-            $savedTimes = Cache::get($cacheKey, []);
-            $savedAt = (int) ($savedTimes['saved_at'] ?? 0);
-
-            if (
-                ($savedTimes['saved_manually'] ?? false) === true &&
-                filled($savedTimes['from_time'] ?? null) &&
-                filled($savedTimes['to_time'] ?? null) &&
-                PaymentsTable::isValidReportTimeRange($savedTimes['from_time'], $savedTimes['to_time']) &&
-                $savedAt > now()->subDay()->timestamp &&
-                $savedAt <= now()->timestamp
-            ) {
-                $rememberedTimes = [
-                    'from_time' => $savedTimes['from_time'],
-                    'to_time' => $savedTimes['to_time'],
-                ];
-            } elseif (Cache::has($cacheKey)) {
-                Cache::forget($cacheKey);
-            }
+            Cache::forget('payments.report_times.'.auth()->id());
         }
+
         $this->tableFilters = array_replace_recursive($this->tableFilters ?? [], [
             'payment_filters' => [
                 'from_date' => $today,
                 'to_date' => $today,
-                'from_time' => $rememberedTimes['from_time'] ?? null,
-                'to_time' => $rememberedTimes['to_time'] ?? null,
+                'from_time' => null,
+                'to_time' => null,
             ],
         ]);
     }
@@ -202,22 +184,26 @@ class ListPayments extends ListRecords
 
     protected function exportReportTimeRange(): ?string
     {
-        if (! auth()->id()) {
+        $filters = $this->getTableFilterState('payment_filters') ?? [];
+        $hasFromTime = filled($filters['from_time'] ?? null);
+        $hasToTime = filled($filters['to_time'] ?? null);
+
+        if (! $hasFromTime && ! $hasToTime) {
             return null;
         }
 
-        $savedTimes = Cache::get('payments.report_times.'.auth()->id(), []);
-        $savedAt = (int) ($savedTimes['saved_at'] ?? 0);
-        $fromTime = $savedTimes['from_time'] ?? null;
-        $toTime = $savedTimes['to_time'] ?? null;
+        $fromTime = $hasFromTime ? PaymentsTable::normalizeReportTime($filters['from_time']) : '00:00';
+        $toTime = $hasToTime ? PaymentsTable::normalizeReportTime($filters['to_time']) : '23:59';
+
+        $fromDate = PaymentsTable::normalizeReportDate($filters['from_date'] ?? null);
+        $toDate = PaymentsTable::normalizeReportDate($filters['to_date'] ?? null);
 
         if (
-            ($savedTimes['saved_manually'] ?? false) !== true ||
-            $savedAt <= now()->subDay()->timestamp ||
-            $savedAt > now()->timestamp ||
-            blank($fromTime) ||
-            blank($toTime) ||
-            ! PaymentsTable::isValidReportTimeRange($fromTime, $toTime)
+            $fromTime === null ||
+            $toTime === null ||
+            (filled($filters['from_date'] ?? null) && $fromDate === null) ||
+            (filled($filters['to_date'] ?? null) && $toDate === null) ||
+            ! PaymentsTable::isValidReportTimeRange($fromTime, $toTime, $fromDate, $toDate)
         ) {
             return null;
         }

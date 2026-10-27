@@ -6,6 +6,8 @@
         $siblingTimeFieldName,
         $getStatePath(),
     );
+    $fromDateStatePath = preg_replace('/' . preg_quote($timeFieldName, '/') . '$/', 'from_date', $getStatePath());
+    $toDateStatePath = preg_replace('/' . preg_quote($timeFieldName, '/') . '$/', 'to_date', $getStatePath());
 @endphp
 
 <x-dynamic-component :component="$getFieldWrapperView()" :field="$field">
@@ -14,21 +16,39 @@
         x-data="{
             time: $wire.$entangle(@js($getStatePath())).live,
             siblingTime: $wire.$entangle(@js($siblingTimeStatePath)).live,
+            fromDate: $wire.$entangle(@js($fromDateStatePath)).live,
+            toDate: $wire.$entangle(@js($toDateStatePath)).live,
             timeFieldName: @js($timeFieldName),
             open: false,
             hours: Array.from({ length: 12 }, (_, index) => index + 1),
             minutes: Array.from({ length: 60 }, (_, index) => index),
 
             get siblingMinutes() {
-                const [hour, minute] = String(this.siblingTime ?? '').split(':').map(Number);
+                const match = String(this.siblingTime ?? '').trim().match(/^([01][0-9]|2[0-3]):([0-5][0-9])(?::[0-5][0-9])?$/);
 
-                if (!Number.isInteger(hour) || !Number.isInteger(minute)) return null;
+                return match ? (Number(match[1]) * 60) + Number(match[2]) : null;
+            },
 
-                return (hour * 60) + minute;
+            dateOnly(value) {
+                return String(value ?? '').trim().match(/^(\d{4}-\d{2}-\d{2})(?:$|[ T])/)?.[1] ?? null;
             },
 
             get parts() {
-                let value = String(this.time ?? '').trim();
+                const value = String(this.time ?? '').trim();
+                const parts = this.parseParts(value);
+
+                if (
+                    this.siblingMinutes !== null &&
+                    (!value || !this.isTimeAllowed(this.toMinutes(parts.hour, parts.minute, parts.period)))
+                ) {
+                    return this.parseParts(this.siblingTime);
+                }
+
+                return parts;
+            },
+
+            parseParts(time) {
+                let value = String(time ?? '').trim();
 
                 if (value.includes(' ')) value = value.split(' ').pop();
                 if (value.includes('T')) value = value.split('T').pop();
@@ -46,7 +66,7 @@
             get displayText() {
                 if (!this.time) return @js(__('payments.placeholders.' . $getName()));
 
-                const parts = this.parts;
+                const parts = this.parseParts(this.time);
                 return `${this.khmer(String(parts.hour).padStart(2, '0'))}:${this.khmer(String(parts.minute).padStart(2, '0'))} ${this.periodLabel(parts.period)}`;
             },
 
@@ -71,6 +91,16 @@
             },
 
             isTimeAllowed(candidateMinutes) {
+                const fromDate = this.dateOnly(this.fromDate);
+                const toDate = this.dateOnly(this.toDate);
+
+                if (fromDate && toDate) {
+                    if (fromDate > toDate) return false;
+                    if (fromDate < toDate) return true;
+                } else if (fromDate || toDate) {
+                    return true;
+                }
+
                 if (this.siblingMinutes === null) return true;
 
                 return this.timeFieldName === 'from_time'

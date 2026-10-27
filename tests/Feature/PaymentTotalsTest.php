@@ -198,7 +198,7 @@ class PaymentTotalsTest extends TestCase
             ->assertCanNotSeeTableRecords([$beforeRange, $startDate, $today, $endDate, $afterRange]);
     }
 
-    public function test_payment_report_time_fields_do_not_filter_rows_and_format_the_export_subtitle(): void
+    public function test_payment_report_time_fields_filter_rows_and_format_the_export_subtitle_without_saving(): void
     {
         $this->travelTo(now()->setDate(2026, 10, 24)->setTime(18, 0));
         $this->createPaymentViewer();
@@ -213,64 +213,42 @@ class PaymentTotalsTest extends TestCase
             'amount_usd' => '2.00',
             'datetime_pay' => '2026-10-24 22:00:00',
         ]);
+        $inside = Payment::query()->create([
+            'receipt_number' => 'REPORT-TIME-INSIDE',
+            'amount_usd' => '3.00',
+            'datetime_pay' => '2026-10-24 12:00:00',
+        ]);
 
         $component = Livewire::test(ListPayments::class)
             ->set('tableFilters.payment_filters.from_time', '08:00')
             ->set('tableFilters.payment_filters.to_time', '21:00')
-            ->assertCanSeeTableRecords([$early, $late]);
+            ->assertCanSeeTableRecords([$inside])
+            ->assertCanNotSeeTableRecords([$early, $late]);
 
         $timeRange = $this->invokeProtected($component->instance(), 'exportReportTimeRange');
         $subtitle = $this->invokeProtectedStatic(PaymentsTable::class, 'reportSubtitle', [
             '2026-10-24',
             $timeRange,
         ]);
-
-        $this->assertNull($timeRange);
-        $this->assertSame('គិតត្រឹមថ្ងៃទី៖ ២៤-តុលា-២០២៦', $subtitle);
 
         $savedTimesKey = 'payments.report_times.'.auth()->id();
         $this->assertFalse(Cache::has($savedTimesKey));
-
-        $component->call('saveReportTimes');
-
-        $timeRange = $this->invokeProtected($component->instance(), 'exportReportTimeRange');
-        $subtitle = $this->invokeProtectedStatic(PaymentsTable::class, 'reportSubtitle', [
-            '2026-10-24',
-            $timeRange,
-        ]);
-
         $this->assertSame('០៨:០០ ព្រឹក - ២១:០០ ល្ងាច', $timeRange);
         $this->assertSame('គិតត្រឹមថ្ងៃទី៖ ២៤-តុលា-២០២៦ ម៉ោង ០៨:០០ ព្រឹក - ២១:០០ ល្ងាច', $subtitle);
 
         $component
             ->set('tableFilters.payment_filters.from_time', null)
             ->set('tableFilters.payment_filters.to_time', null)
-            ->assertCanSeeTableRecords([$early, $late]);
+            ->assertCanSeeTableRecords([$early, $inside, $late]);
+
+        $this->assertNull($this->invokeProtected($component->instance(), 'exportReportTimeRange'));
 
         Livewire::test(ListPayments::class)
-            ->assertSet('tableFilters.payment_filters.from_time', '08:00')
-            ->assertSet('tableFilters.payment_filters.to_time', '21:00');
-
-        $savedTimes = Cache::get($savedTimesKey);
-        $savedAt = $savedTimes['saved_at'] ?? null;
-        $this->assertNotNull($savedAt);
-        $this->assertTrue($savedTimes['saved_manually']);
-        $this->assertFalse(session()->has($savedTimesKey));
-
-        Carbon::setTestNow(Carbon::createFromTimestamp($savedAt + 86400));
-
-        try {
-            Livewire::test(ListPayments::class)
-                ->assertSet('tableFilters.payment_filters.from_time', null)
-                ->assertSet('tableFilters.payment_filters.to_time', null);
-
-            $this->assertFalse(Cache::has($savedTimesKey));
-        } finally {
-            Carbon::setTestNow();
-        }
+            ->assertSet('tableFilters.payment_filters.from_time', null)
+            ->assertSet('tableFilters.payment_filters.to_time', null);
     }
 
-    public function test_payment_exports_include_only_the_manually_saved_time_range(): void
+    public function test_payment_exports_use_current_time_filters_and_ignore_old_saved_times(): void
     {
         $this->createPaymentViewer();
 
@@ -280,7 +258,7 @@ class PaymentTotalsTest extends TestCase
 
         $timeRange = $this->invokeProtected($component->instance(), 'exportReportTimeRange');
 
-        $this->assertNull($timeRange);
+        $this->assertSame('០៨:០០ ព្រឹក - ១៦:០០ ល្ងាច', $timeRange);
 
         $component
             ->set('tableFilters.payment_filters.from_time', '09:00')
@@ -296,7 +274,88 @@ class PaymentTotalsTest extends TestCase
             ->set('tableFilters.payment_filters.to_time', '18:00');
 
         $this->assertSame(
-            '០៩:០០ ព្រឹក - ១៧:០០ ល្ងាច',
+            '១០:០០ ព្រឹក - ១៨:០០ ល្ងាច',
+            $this->invokeProtected($component->instance(), 'exportReportTimeRange'),
+        );
+
+        $component
+            ->set('tableFilters.payment_filters.from_time', null)
+            ->set('tableFilters.payment_filters.to_time', null);
+
+        $this->assertNull($this->invokeProtected($component->instance(), 'exportReportTimeRange'));
+
+        Livewire::test(ListPayments::class)
+            ->assertSet('tableFilters.payment_filters.from_time', null)
+            ->assertSet('tableFilters.payment_filters.to_time', null);
+        $this->assertFalse(Cache::has('payments.report_times.'.auth()->id()));
+    }
+
+    public function test_payment_export_time_range_supports_single_bounds_and_rejects_invalid_values(): void
+    {
+        $this->createPaymentViewer();
+
+        $component = Livewire::test(ListPayments::class)
+            ->set('tableFilters.payment_filters.from_time', '09:00');
+
+        $this->assertSame('០៩:០០ ព្រឹក - ២៣:៥៩ ល្ងាច', $this->invokeProtected($component->instance(), 'exportReportTimeRange'));
+
+        $component
+            ->set('tableFilters.payment_filters.from_time', null)
+            ->set('tableFilters.payment_filters.to_time', '16:00');
+
+        $this->assertSame('០០:០០ ព្រឹក - ១៦:០០ ល្ងាច', $this->invokeProtected($component->instance(), 'exportReportTimeRange'));
+
+        $component->set('tableFilters.payment_filters.from_time', 'invalid-time');
+        $this->assertNull($this->invokeProtected($component->instance(), 'exportReportTimeRange'));
+
+        $component
+            ->set('tableFilters.payment_filters.from_time', '17:00')
+            ->set('tableFilters.payment_filters.to_time', '16:00');
+        $this->assertNull($this->invokeProtected($component->instance(), 'exportReportTimeRange'));
+    }
+
+    public function test_payment_export_subtitle_shows_one_report_date_for_a_continuous_multi_day_interval(): void
+    {
+        $this->travelTo(now()->setDate(2026, 10, 27)->setTime(12, 0));
+        $this->createPaymentViewer();
+        app()->setLocale('km');
+
+        $component = Livewire::test(ListPayments::class)
+            ->set('tableFilters.payment_filters.from_date', '2026-10-25')
+            ->set('tableFilters.payment_filters.to_date', '2026-10-26')
+            ->set('tableFilters.payment_filters.from_time', '18:00')
+            ->set('tableFilters.payment_filters.to_time', '09:00');
+
+        $this->assertSame(
+            '១៨:០០ ល្ងាច - ០៩:០០ ព្រឹក',
+            $this->invokeProtected($component->instance(), 'exportReportTimeRange'),
+        );
+        $this->assertSame(
+            'គិតត្រឹមថ្ងៃទី៖ ២៦-តុលា-២០២៦ ម៉ោង ១៨:០០ ល្ងាច - ០៩:០០ ព្រឹក',
+            $this->invokeProtectedStatic(PaymentsTable::class, 'reportSubtitle', [
+                $this->invokeProtected($component->instance(), 'exportReportDate'),
+                $this->invokeProtected($component->instance(), 'exportReportTimeRange'),
+            ]),
+        );
+
+        app()->setLocale('en');
+        $this->assertSame(
+            '18:00 PM - 09:00 AM',
+            $this->invokeProtected($component->instance(), 'exportReportTimeRange'),
+        );
+
+        $component->set('tableFilters.payment_filters.to_date', '2026-10-25');
+        $this->assertNull($this->invokeProtected($component->instance(), 'exportReportTimeRange'));
+
+        $component->set('tableFilters.payment_filters.to_date', '2026-10-24');
+        $this->assertNull($this->invokeProtected($component->instance(), 'exportReportTimeRange'));
+
+        $component
+            ->set('tableFilters.payment_filters.to_date', '2026-10-26')
+            ->set('tableFilters.payment_filters.from_time', null);
+        app()->setLocale('km');
+        $this->assertSame(
+            '០០:០០ ព្រឹក - ០៩:០០ ព្រឹក',
             $this->invokeProtected($component->instance(), 'exportReportTimeRange'),
         );
     }

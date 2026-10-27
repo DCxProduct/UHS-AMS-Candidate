@@ -13,34 +13,65 @@ use App\Support\LocalizedNumber;
 use App\Support\OfficialReport;
 use App\Support\TablePdfExporter;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
-use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\ViewField;
-use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\Utilities\Get;
-use Filament\Support\Enums\VerticalAlignment;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Expression;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\HtmlString;
-use Livewire\Component;
 
 class PaymentsTable
 {
-    public static function isValidReportTimeRange(?string $fromTime, ?string $toTime): bool
+    public static function isValidReportTimeRange(?string $fromTime, ?string $toTime, ?string $fromDate = null, ?string $toDate = null): bool
     {
-        if (blank($fromTime) || blank($toTime)) {
+        $fromTime = self::normalizeReportTime($fromTime);
+        $toTime = self::normalizeReportTime($toTime);
+
+        if (
+            $fromTime === null || $toTime === null ||
+            (filled($fromDate) && self::normalizeReportDate($fromDate) === null) ||
+            (filled($toDate) && self::normalizeReportDate($toDate) === null)
+        ) {
             return false;
         }
 
-        return Carbon::parse($fromTime)->format('H:i') <= Carbon::parse($toTime)->format('H:i');
+        $fromDate = self::normalizeReportDate($fromDate);
+        $toDate = self::normalizeReportDate($toDate);
+
+        if ($fromDate !== null && $toDate !== null) {
+            return ($fromDate.' '.$fromTime) <= ($toDate.' '.$toTime);
+        }
+
+        return $fromDate !== null || $toDate !== null || $fromTime <= $toTime;
+    }
+
+    public static function normalizeReportTime(mixed $time): ?string
+    {
+        if (! is_string($time) || ! preg_match('/^(?:[01][0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?$/D', trim($time))) {
+            return null;
+        }
+
+        return substr(trim($time), 0, 5);
+    }
+
+    public static function normalizeReportDate(mixed $date): ?string
+    {
+        if (! is_string($date) || ! preg_match('/^([0-9]{4})-([0-9]{2})-([0-9]{2})(?:$|[ T])/', trim($date), $parts)) {
+            return null;
+        }
+
+        return checkdate((int) $parts[2], (int) $parts[3], (int) $parts[1])
+            ? substr(trim($date), 0, 10)
+            : null;
     }
 
     public static function configure(Table $table): Table
@@ -258,27 +289,29 @@ class PaymentsTable
                             ->view('filament.admin.fields.bounded-time-picker')
                             ->label(__('payments.table.to_time'))
                             ->live(),
-
-                        Actions::make([
-                            Action::make('save_report_times')
-                                ->label(__('payments.actions.save_times'))
-                                ->color('primary')
-                                ->disabled(fn (Get $get): bool => ! self::isValidReportTimeRange(
-                                    $get('from_time'),
-                                    $get('to_time'),
-                                ))
-                                ->action(fn (Component $livewire) => $livewire->saveReportTimes()),
-                            Action::make('reset_report_times')
-                                ->label(__('payments.actions.reset_times'))
-                                ->color('gray')
-                                ->outlined()
-                                ->action(fn (Component $livewire) => $livewire->resetReportTimes()),
-                        ])->verticalAlignment(VerticalAlignment::End),
-
                     ])
                     ->columns(3)
                     ->columnSpanFull()
                     ->query(function (Builder $query, array $data): Builder {
+                        $fromTime = self::normalizeReportTime($data['from_time'] ?? null);
+                        $toTime = self::normalizeReportTime($data['to_time'] ?? null);
+                        $fromDate = self::normalizeReportDate($data['from_date'] ?? null);
+                        $toDate = self::normalizeReportDate($data['to_date'] ?? null);
+
+                        if (
+                            (filled($data['from_time'] ?? null) && $fromTime === null) ||
+                            (filled($data['to_time'] ?? null) && $toTime === null) ||
+                            (filled($data['from_date'] ?? null) && $fromDate === null) ||
+                            (filled($data['to_date'] ?? null) && $toDate === null) ||
+                            ! self::isValidReportTimeRange($fromTime ?? '00:00', $toTime ?? '23:59', $fromDate, $toDate)
+                        ) {
+                            return $query->whereRaw('1 = 0');
+                        }
+
+                        $paidAt = $fromTime !== null || $toTime !== null
+                            ? self::paymentTimestampExpression($query)
+                            : $query->getModel()->qualifyColumn('datetime_pay');
+
                         return $query
                             ->when(
                                 filled($data['receipt_number'] ?? null),
@@ -297,12 +330,20 @@ class PaymentsTable
                                 fn (Builder $query): Builder => $query->where('received_by', $data['received_by'])
                             )
                             ->when(
-                                filled($data['from_date'] ?? null),
-                                fn (Builder $query): Builder => $query->whereDate('datetime_pay', '>=', Carbon::parse($data['from_date'])->toDateString())
+                                $fromDate !== null,
+                                fn (Builder $query): Builder => $query->where($paidAt, '>=', $fromDate.' '.($fromTime ?? '00:00').':00')
                             )
                             ->when(
-                                filled($data['to_date'] ?? null),
-                                fn (Builder $query): Builder => $query->whereDate('datetime_pay', '<=', Carbon::parse($data['to_date'])->toDateString())
+                                $toDate !== null,
+                                fn (Builder $query): Builder => $query->where($paidAt, '<', Carbon::parse($toDate.' '.($toTime ?? '23:59'))->addMinute()->format('Y-m-d H:i:s'))
+                            )
+                            ->when(
+                                $fromDate === null && $fromTime !== null,
+                                fn (Builder $query): Builder => $query->whereTime($paidAt, '>=', $fromTime.':00')
+                            )
+                            ->when(
+                                $toDate === null && $toTime !== null,
+                                fn (Builder $query): Builder => $query->whereTime($paidAt, '<=', $toTime.':59.999999')
                             );
                     }),
             ], layout: FiltersLayout::AboveContent)
@@ -313,6 +354,23 @@ class PaymentsTable
                     ->label(__('payments.actions.edit'))
                     ->icon('heroicon-o-pencil-square'),
             ]);
+    }
+
+    protected static function paymentTimestampExpression(Builder $query): Expression
+    {
+        $grammar = $query->getQuery()->getGrammar();
+        $paidAt = $grammar->wrap($query->getModel()->qualifyColumn('datetime_pay'));
+        $createdAt = $grammar->wrap($query->getModel()->qualifyColumn('created_at'));
+
+        // Older payment forms saved only the date. Use the same-day recording
+        // timestamp when the stored payment clock is missing, without rewriting history.
+        $missingClock = match ($query->getConnection()->getDriverName()) {
+            'pgsql' => "{$paidAt}::time = TIME '00:00:00'",
+            'sqlite' => "strftime('%H:%M:%f', {$paidAt}) = '00:00:00.000'",
+            default => "TIME({$paidAt}) = '00:00:00'",
+        };
+
+        return new Expression("CASE WHEN {$missingClock} AND DATE({$paidAt}) = DATE({$createdAt}) THEN {$createdAt} ELSE {$paidAt} END");
     }
 
     protected static function matchedEntry(Payment $record): ?CustomFormEntry
