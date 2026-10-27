@@ -431,7 +431,6 @@ class RolesAndPermissionsSeeder extends Seeder
             Permission::query()
                 ->where('guard_name', 'web')
                 ->whereIn('name', [
-                    'ViewAny:CustomFormEntry',
                     'ViewAny:PaymentStatusList',
                     'Pay:PaymentStatusList',
                     'DownloadExcel:PaymentStatusList',
