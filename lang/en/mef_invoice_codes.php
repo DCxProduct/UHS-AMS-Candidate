@@ -7,12 +7,14 @@ return [
     'search' => 'Search MEF or invoice codes',
     'form' => [
         'section_title' => 'Code Information',
+        'mef_numbers_only' => 'Enter numbers only',
     ],
     'fields' => [
         'mef_code' => 'MEF Code',
         'invoice_code' => 'Invoice Code',
     ],
     'validation' => [
+        'mef_code_numbers_only' => 'MEF Code can contain numbers only (0–9).',
         'invoice_code_symbols_only' => 'Invoice Code can contain numbers and symbols only.',
     ],
     'table' => [

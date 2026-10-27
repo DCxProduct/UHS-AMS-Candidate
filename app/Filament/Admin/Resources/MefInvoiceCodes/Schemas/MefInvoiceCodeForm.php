@@ -18,8 +18,31 @@ class MefInvoiceCodeForm
                 ->schema([
                     TextInput::make('mef_code')
                         ->label(__('mef_invoice_codes.fields.mef_code'))
+                        ->prefix('MEF')
+                        ->placeholder(__('mef_invoice_codes.form.mef_numbers_only'))
+                        ->inputMode('numeric')
+                        ->autocomplete(false)
                         ->required()
-                        ->maxLength(100),
+                        ->maxLength(97)
+                        ->extraInputAttributes([
+                            'oninput' => "this.value = this.value.replace(/[^0-9]/g, '')",
+                            'pattern' => '[0-9]*',
+                        ])
+                        ->formatStateUsing(fn (mixed $state): string => self::mefCodeDigits($state))
+                        ->dehydrateStateUsing(function (mixed $state, ?MefInvoiceCode $record): string {
+                            $digits = (string) $state;
+
+                            // Keep existing imported identifiers when their digits have not changed.
+                            if ($record && $digits === self::mefCodeDigits($record->mef_code)) {
+                                return (string) $record->mef_code;
+                            }
+
+                            return 'MEF'.$digits;
+                        })
+                        ->rule('regex:/^[0-9]+$/D')
+                        ->validationMessages([
+                            'regex' => __('mef_invoice_codes.validation.mef_code_numbers_only'),
+                        ]),
                     TextInput::make('invoice_code')
                         ->label(__('mef_invoice_codes.fields.invoice_code'))
                         ->required()
@@ -42,5 +65,10 @@ class MefInvoiceCodeForm
                         ]),
                 ]),
         ]);
+    }
+
+    protected static function mefCodeDigits(mixed $value): string
+    {
+        return preg_replace('/[^0-9]/', '', (string) $value) ?? '';
     }
 }
