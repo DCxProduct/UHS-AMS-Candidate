@@ -1,16 +1,16 @@
 <?php
 
 return [
-    'navigation_label' => 'កូដ MEF និងលេខវិក្កយបត្រ',
-    'resource_label' => 'កូដ MEF និងលេខវិក្កយបត្រ',
-    'resource_plural_label' => 'កូដ MEF និងលេខវិក្កយបត្រ',
-    'search' => 'ស្វែងរកកូដ MEF ឬលេខវិក្កយបត្រ',
+    'navigation_label' => 'កូដក្រសួងនិងលេខវិក្កយបត្រ',
+    'resource_label' => 'កូដក្រសួងនិងលេខវិក្កយបត្រ',
+    'resource_plural_label' => 'កូដក្រសួងនិងលេខវិក្កយបត្រ',
+    'search' => 'ស្វែងរកកូដក្រសួងឬលេខវិក្កយបត្រ',
     'form' => [
         'section_title' => 'ព័ត៌មានកូដ',
         'mef_code_placeholder' => 'ឧទាហរណ៍៖ MEF1',
     ],
     'fields' => [
-        'mef_code' => 'កូដ MEF',
+        'mef_code' => 'កូដក្រសួង',
         'invoice_code' => 'លេខវិក្កយបត្រ',
     ],
     'validation' => [
@@ -31,7 +31,7 @@ return [
     ],
     'import' => [
         'file_label' => 'ឯកសារ Excel (.xlsx) ឬ CSV',
-        'modal_title' => 'បញ្ចូលកូដ MEF និងលេខវិក្កយបត្រ',
+        'modal_title' => 'បញ្ចូលកូដក្រសួងនិងលេខវិក្កយបត្រ',
         'completed_title' => 'បញ្ចូលទិន្នន័យរួចរាល់',
         'completed_body' => 'បានបញ្ចូលថ្មី :created កំណត់ត្រា និងរំលងជួរដែលស្ទួន :existing ជួរ។',
         'errors' => [
