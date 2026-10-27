@@ -120,7 +120,7 @@ class MefInvoiceCodeImportService
             }
 
             foreach ($node['attributes'] ?? [] as $key => $value) {
-                if (strtolower((string) $key) === 'r:id') {
+                if (strtolower((string) $key) === 'id') {
                     $relationshipId = (string) $value;
                     break 2;
                 }
@@ -279,7 +279,7 @@ class MefInvoiceCodeImportService
             break;
         }
 
-        foreach (['no', 'mefcode', 'invoicecode'] as $requiredHeader) {
+        foreach (['mefcode', 'invoicecode'] as $requiredHeader) {
             if (! array_key_exists($requiredHeader, $headerMap)) {
                 throw ValidationException::withMessages([
                     'file' => __('mef_invoice_codes.import.errors.headers'),
@@ -332,7 +332,7 @@ class MefInvoiceCodeImportService
     /** @return list<array{tag: string, type: string, level?: int, value?: string, attributes?: array<string, string>}> */
     private function xmlStructs(string $xml): array
     {
-        $parser = xml_parser_create('UTF-8');
+        $parser = xml_parser_create_ns('UTF-8', '|');
         xml_parser_set_option($parser, XML_OPTION_CASE_FOLDING, false);
         xml_parser_set_option($parser, XML_OPTION_SKIP_WHITE, true);
 
@@ -343,9 +343,30 @@ class MefInvoiceCodeImportService
                 ]);
             }
 
+            foreach ($values as &$node) {
+                $node['tag'] = $this->xmlLocalName($node['tag']);
+
+                if (isset($node['attributes'])) {
+                    $attributes = [];
+
+                    foreach ($node['attributes'] as $name => $value) {
+                        $attributes[$this->xmlLocalName($name)] = $value;
+                    }
+
+                    $node['attributes'] = $attributes;
+                }
+            }
+
             return $values;
         } finally {
             xml_parser_free($parser);
         }
+    }
+
+    private function xmlLocalName(string $name): string
+    {
+        $separator = strrpos($name, '|');
+
+        return $separator === false ? $name : substr($name, $separator + 1);
     }
 }

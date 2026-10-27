@@ -38,7 +38,7 @@ return [
             'file_type' => 'សូមបញ្ចូលឯកសារ .xlsx ឬ .csv។',
             'cannot_read' => 'មិនអាចអានឯកសារដែលបានបញ្ចូលបានទេ។',
             'invalid_excel' => 'ឯកសារ Excel មិនត្រឹមត្រូវ ឬមិនអាចអានបាន។',
-            'headers' => 'ជួរដំបូងត្រូវមានជួរឈរ៖ no, MEF Code និង Invoice Code។',
+            'headers' => 'ជួរដំបូងត្រូវមាន MEF Code និង Invoice Code (ឬ mef_code និង invoice_code)។ ជួរឈរ no ជាជម្រើស។',
             'no_rows' => 'មិនមានទិន្នន័យកូដនៅក្នុងឯកសារទេ។',
             'incomplete_row' => 'ត្រូវបំពេញទាំង MEF Code និង Invoice Code នៅជួរទី :row។',
             'invalid_invoice_code' => 'Invoice Code នៅជួរទី :row អាចមានតែលេខ និងនិមិត្តសញ្ញាប៉ុណ្ណោះ។',
