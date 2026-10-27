@@ -14,6 +14,17 @@ class CandidatePaymentRecorder
 {
     public function record(array $data): Payment
     {
+        $paymentDate = $data['datetime_pay'] ?? null;
+
+        // Capture the missing clock once, before any transaction retries.
+        if (
+            is_string($paymentDate) &&
+            preg_match('/^([0-9]{4})-([0-9]{2})-([0-9]{2})$/D', trim($paymentDate), $parts) &&
+            checkdate((int) $parts[2], (int) $parts[3], (int) $parts[1])
+        ) {
+            $data['datetime_pay'] = trim($paymentDate).' '.now()->format('H:i:s');
+        }
+
         return DB::transaction(function () use ($data): Payment {
             if (blank($data['custom_form_entry_id'] ?? null)) {
                 // Preserve standalone receipt entry for legacy records.
