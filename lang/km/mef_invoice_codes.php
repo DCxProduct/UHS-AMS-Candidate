@@ -7,14 +7,13 @@ return [
     'search' => 'ស្វែងរកកូដ MEF ឬលេខវិក្កយបត្រ',
     'form' => [
         'section_title' => 'ព័ត៌មានកូដ',
-        'mef_numbers_only' => 'បញ្ចូលតែលេខ',
+        'mef_code_placeholder' => 'ឧទាហរណ៍៖ MEF1',
     ],
     'fields' => [
         'mef_code' => 'កូដ MEF',
         'invoice_code' => 'លេខវិក្កយបត្រ',
     ],
     'validation' => [
-        'mef_code_numbers_only' => 'កូដ MEF អាចបញ្ចូលតែលេខ 0–9 ប៉ុណ្ណោះ។',
         'invoice_code_symbols_only' => 'លេខកូដវិក្កយបត្រអាចបញ្ចូលតែលេខ និងនិមិត្តសញ្ញាប៉ុណ្ណោះ។',
     ],
     'table' => [

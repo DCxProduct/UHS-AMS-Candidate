@@ -18,31 +18,23 @@ class MefInvoiceCodeForm
                 ->schema([
                     TextInput::make('mef_code')
                         ->label(__('mef_invoice_codes.fields.mef_code'))
-                        ->prefix('MEF')
-                        ->placeholder(__('mef_invoice_codes.form.mef_numbers_only'))
-                        ->inputMode('numeric')
+                        ->placeholder(__('mef_invoice_codes.form.mef_code_placeholder'))
                         ->autocomplete(false)
                         ->required()
-                        ->maxLength(97)
+                        ->maxLength(100)
                         ->extraInputAttributes([
-                            'oninput' => "this.value = this.value.replace(/[^0-9]/g, '')",
-                            'pattern' => '[0-9]*',
+                            'oninput' => "if (/^[0-9]+$/.test(this.value)) { this.value = 'MEF' + this.value; }",
                         ])
-                        ->formatStateUsing(fn (mixed $state): string => self::mefCodeDigits($state))
-                        ->dehydrateStateUsing(function (mixed $state, ?MefInvoiceCode $record): string {
-                            $digits = (string) $state;
+                        ->live(onBlur: true)
+                        ->afterStateUpdated(function (mixed $state, callable $set, ?MefInvoiceCode $record): void {
+                            $code = self::normalizeMefCode($state, $record);
 
-                            // Keep existing imported identifiers when their digits have not changed.
-                            if ($record && $digits === self::mefCodeDigits($record->mef_code)) {
-                                return (string) $record->mef_code;
+                            if ($code !== $state) {
+                                $set('mef_code', $code);
                             }
-
-                            return 'MEF'.$digits;
                         })
-                        ->rule('regex:/^[0-9]+$/D')
-                        ->validationMessages([
-                            'regex' => __('mef_invoice_codes.validation.mef_code_numbers_only'),
-                        ]),
+                        ->mutateStateForValidationUsing(fn (mixed $state, ?MefInvoiceCode $record): string => self::normalizeMefCode($state, $record))
+                        ->dehydrateStateUsing(fn (mixed $state, ?MefInvoiceCode $record): string => self::normalizeMefCode($state, $record)),
                     TextInput::make('invoice_code')
                         ->label(__('mef_invoice_codes.fields.invoice_code'))
                         ->required()
@@ -67,8 +59,15 @@ class MefInvoiceCodeForm
         ]);
     }
 
-    protected static function mefCodeDigits(mixed $value): string
+    protected static function normalizeMefCode(mixed $value, ?MefInvoiceCode $record = null): string
     {
-        return preg_replace('/[^0-9]/', '', (string) $value) ?? '';
+        // Preserve an existing identifier when only its invoice is edited.
+        if ($record && (string) $value === (string) $record->mef_code) {
+            return (string) $record->mef_code;
+        }
+
+        $code = trim((string) $value);
+
+        return preg_match('/^[0-9]+$/D', $code) ? 'MEF'.$code : $code;
     }
 }
