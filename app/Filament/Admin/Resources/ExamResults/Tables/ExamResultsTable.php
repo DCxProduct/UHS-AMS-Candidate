@@ -6,6 +6,7 @@ use App\Enums\WorkflowStageType;
 use App\Filament\Admin\Resources\CandidateEntranceStatistics\Tables\CandidateEntranceStatisticsTable;
 use App\Filament\Admin\Resources\ExamResults\ExamResultResource;
 use App\Filament\Admin\Resources\ExitExamResults\ExitExamResultResource;
+use App\Models\Major;
 use App\Models\User;
 use App\Support\FilamentActionPermissions;
 use App\Support\FormEntryData;
@@ -483,10 +484,8 @@ class ExamResultsTable
                 'value' => fn (CustomFormEntry $record): string => self::dateValue(
                     self::entryValue($record, 'date_of_birth', $record->creator?->date_of_birth)
                 ),
-                'clean' => fn (CustomFormEntry $record): string => self::entryValue(
-                    $record,
-                    'date_of_birth',
-                    $record->creator?->date_of_birth
+                'clean' => fn (CustomFormEntry $record): string => self::dateValue(
+                    self::entryValue($record, 'date_of_birth', $record->creator?->date_of_birth)
                 ),
             ],
             'exam_date' => [
@@ -842,7 +841,13 @@ class ExamResultsTable
 
     protected static function majorKey($record): string
     {
-        return (string) FormEntryData::firstFilled($record->data, FormEntryData::majorKeys(), '-');
+        $value = (string) FormEntryData::firstFilled($record->data, FormEntryData::majorKeys(), '-');
+
+        if (! ctype_digit($value)) {
+            return $value;
+        }
+
+        return (string) (Major::query()->whereKey($value)->value('key') ?: $value);
     }
 
     protected static function majorValue($record): string
