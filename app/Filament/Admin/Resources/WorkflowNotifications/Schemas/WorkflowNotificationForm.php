@@ -8,6 +8,7 @@ use App\Models\Role;
 use App\Models\SmsTemplate;
 use App\Support\WorkflowNotificationStageSummary;
 use App\Support\WorkflowStageMessages;
+use App\Support\WorkflowSubmissionMessages;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Builder;
 use Filament\Forms\Components\CheckboxList;
@@ -17,6 +18,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
@@ -106,14 +108,23 @@ class WorkflowNotificationForm
 
     /**
      * Fields of one workflow stage.
-     * Role and messages appear once the stage is handled by staff.
+     * Submission messages are optional; staff-handled stages retain their role and message settings.
      */
     private static function stageFields(): array
     {
         $handledByStaff = fn (Get $get): bool => (bool) WorkflowStageType::tryFrom((string) $get('stage_type'))?->requiresRole();
-        $automaticRole = fn (Get $get): bool => WorkflowStageType::tryFrom((string) $get('stage_type')) === WorkflowStageType::Completed;
-        $requiresManualRole = fn (Get $get): bool => $handledByStaff($get) && ! $automaticRole($get);
+        $isCompletedStage = fn (Get $get): bool => WorkflowStageType::tryFrom((string) $get('stage_type')) === WorkflowStageType::Completed;
+        $requiresManualRole = fn (Get $get): bool => $handledByStaff($get) && ! $isCompletedStage($get);
         $isReviewStage = fn (Get $get): bool => WorkflowStageType::tryFrom((string) $get('stage_type')) === WorkflowStageType::Review;
+        $isPaymentStage = fn (Get $get): bool => WorkflowStageType::tryFrom((string) $get('stage_type')) === WorkflowStageType::Payment;
+        $isAwaitingResultsStage = fn (Get $get): bool => WorkflowStageType::tryFrom((string) $get('stage_type')) === WorkflowStageType::AwaitingResults;
+        $isSubmissionStage = fn (Get $get): bool => WorkflowStageType::tryFrom((string) $get('stage_type')) === WorkflowStageType::FormSubmission;
+        $usesStageAudienceLayout = fn (Get $get): bool => in_array(WorkflowStageType::tryFrom((string) $get('stage_type')), [
+            WorkflowStageType::Payment,
+            WorkflowStageType::AwaitingResults,
+            WorkflowStageType::Completed,
+        ], true);
+        $supportsNotificationChannels = fn (Get $get): bool => $handledByStaff($get) || $isSubmissionStage($get);
 
         return [
             Grid::make(2)->schema([
@@ -128,7 +139,7 @@ class WorkflowNotificationForm
                     ->columns(3)
                     ->gridDirection('row')
                     ->live()
-                    ->visible($handledByStaff)
+                    ->visible($supportsNotificationChannels)
                     ->columnSpanFull(),
 
 
@@ -144,7 +155,7 @@ class WorkflowNotificationForm
                         ->all())
                     ->searchable()
                     ->native(false)
-                    ->visible(fn (Get $get): bool => $handledByStaff($get) && in_array('email', (array) $get('notification_channels'), true)),
+                    ->visible(fn (Get $get): bool => $supportsNotificationChannels($get) && in_array('email', (array) $get('notification_channels'), true)),
 
                 Select::make('sms_template_key')
                     ->label(__('workflow_notifications.fields.sms_template'))
@@ -157,7 +168,7 @@ class WorkflowNotificationForm
                         ->all())
                     ->searchable()
                     ->native(false)
-                    ->visible(fn (Get $get): bool => $handledByStaff($get) && in_array('sms', (array) $get('notification_channels'), true)),
+                    ->visible(fn (Get $get): bool => $supportsNotificationChannels($get) && in_array('sms', (array) $get('notification_channels'), true)),
 
                 TextInput::make('stage_name')
                     ->label(__('workflow_notifications.fields.stage_name'))
@@ -189,102 +200,230 @@ class WorkflowNotificationForm
                     })
                     ->native(false),
 
+                TextInput::make('submission_messages.candidate_status_message')
+                    ->label(__('workflow_notifications.fields.shared_status_message'))
+                    ->placeholder(__('workflow_notifications.placeholders.submission_status'))
+                    ->helperText(__('workflow_notifications.helpers.submission_status'))
+                    ->maxLength(255)
+                    ->visible($isSubmissionStage)
+                    ->columnSpanFull(),
+
+                TextInput::make('payment_statuses.unpaid_status_message')
+                    ->label(__('workflow_notifications.fields.unpaid_status_message'))
+                    ->placeholder(__('workflow_notifications.placeholders.unpaid_status_message'))
+                    ->helperText(__('workflow_notifications.helpers.unpaid_status_message'))
+                    ->maxLength(255)
+                    ->visible($isPaymentStage),
+
+                TextInput::make('result_statuses.pending_status_message')
+                    ->label(__('workflow_notifications.fields.waiting_result_status_message'))
+                    ->placeholder(__('workflow_notifications.placeholders.waiting_result_status_message'))
+                    ->helperText(__('workflow_notifications.helpers.waiting_result_status_message'))
+                    ->maxLength(255)
+                    ->visible($isAwaitingResultsStage),
+
+                TextInput::make('status_message')
+                    ->label(fn (Get $get): string => __($isPaymentStage($get)
+                        ? 'workflow_notifications.fields.paid_status_message'
+                        : ($isAwaitingResultsStage($get)
+                            ? 'workflow_notifications.fields.passed_result_status_message'
+                            : ($usesStageAudienceLayout($get)
+                                ? 'workflow_notifications.fields.shared_status_message'
+                                : 'workflow_notifications.fields.status_message'))))
+                    ->helperText(fn (Get $get): ?string => $isPaymentStage($get)
+                        ? __('workflow_notifications.helpers.paid_status_message')
+                        : ($isAwaitingResultsStage($get)
+                            ? __('workflow_notifications.helpers.passed_result_status_message')
+                            : ($usesStageAudienceLayout($get) ? __('workflow_notifications.helpers.shared_stage_status') : null)))
+                    ->placeholder(fn (Get $get): string => $usesStageAudienceLayout($get)
+                        ? __('workflow_notifications.placeholders.stage_audiences.'.$get('stage_type').'.status_message')
+                        : (filled($get('stage_type')) && Lang::has('workflow_notifications.status_defaults.'.$get('stage_type'))
+                            ? __('workflow_notifications.status_defaults.'.$get('stage_type'))
+                            : __('workflow_notifications.placeholders.status_message')))
+                    ->maxLength(255)
+                    ->visible(fn (Get $get): bool => $handledByStaff($get) && ! $isReviewStage($get))
+                    ->columnSpan(fn (Get $get): string|int => ($isPaymentStage($get) || $isAwaitingResultsStage($get)) ? 1 : 'full'),
+
                 Select::make('responsible_role')
                     ->label(__('workflow_notifications.fields.responsible_role'))
+                    ->helperText(fn (Get $get): ?string => $isCompletedStage($get) ? __('workflow_notifications.helpers.completed_responsible_role') : null)
                     ->options(fn (Get $get): array => self::responsibleRoleOptions($get('stage_type')))
                     ->multiple()
                     ->searchable()
                     ->preload()
                     ->in(fn (Get $get): array => array_keys(self::responsibleRoleOptions($get('stage_type'))))
                     ->required($requiresManualRole)
-                    ->visible($requiresManualRole)
+                    ->visible($handledByStaff)
                     ->columnSpanFull(),
 
-                TextInput::make('responsible_role_automatic')
-                    ->label(__('workflow_notifications.fields.responsible_role'))
-                    ->placeholder(__('workflow_notifications.placeholders.automatic_role'))
-                    ->disabled()
-                    ->dehydrated(false)
-                    ->visible($automaticRole)
+                Grid::make(['default' => 1, 'lg' => 2])
+                    ->schema([
+                        Group::make()->schema([
+                            Placeholder::make('submission_candidate_heading')
+                                ->content(new HtmlString('<div class="border-b border-gray-200 pb-3 font-semibold dark:border-gray-700">'.e(__('workflow_notifications.sections.for_candidates')).'</div>'))
+                                ->hiddenLabel(),
+
+                            Textarea::make('submission_messages.candidate_notification_message')
+                                ->label(__('workflow_notifications.fields.notification_message'))
+                                ->placeholder(__('workflow_notifications.placeholders.submission_candidate_notification'))
+                                ->helperText(__('workflow_notifications.helpers.submission_candidate_notification'))
+                                ->rows(1)
+                                ->autosize()
+                                ->maxLength(1000),
+                        ])->columnSpan(1),
+
+                        Group::make()->schema([
+                            Placeholder::make('submission_staff_heading')
+                                ->content(new HtmlString('<div class="border-b border-gray-200 pb-3 font-semibold dark:border-gray-700">'.e(__('workflow_notifications.sections.for_system_users')).'</div>'))
+                                ->hiddenLabel(),
+
+                            Textarea::make('submission_messages.staff_notification_message')
+                                ->label(__('workflow_notifications.fields.staff_notification_message'))
+                                ->placeholder(__('workflow_notifications.placeholders.submission_staff_notification'))
+                                ->rows(1)
+                                ->autosize()
+                                ->maxLength(1000),
+
+                            Select::make('submission_messages.staff_recipient_ids')
+                                ->label(__('workflow_notifications.fields.staff_recipient_ids'))
+                                ->placeholder(__('workflow_notifications.placeholders.staff_recipient_ids'))
+                                ->options(fn (): array => WorkflowSubmissionMessages::recipientOptions())
+                                ->multiple()
+                                ->searchable()
+                                ->preload()
+                                ->in(fn (): array => array_keys(WorkflowSubmissionMessages::recipientOptions()))
+                                ->default([])
+                                ->native(false),
+                        ])->columnSpan(1),
+                    ])
+                    ->visible($isSubmissionStage)
                     ->columnSpanFull(),
 
-                TextInput::make('status_message')
-                    ->label(__('workflow_notifications.fields.status_message'))
-                    ->placeholder(fn (Get $get): string => filled($get('stage_type')) && Lang::has('workflow_notifications.status_defaults.'.$get('stage_type'))
-                        ? __('workflow_notifications.status_defaults.'.$get('stage_type'))
-                        : __('workflow_notifications.placeholders.status_message'))
-                    ->maxLength(255)
-                    ->visible(fn (Get $get): bool => $handledByStaff($get) && ! $isReviewStage($get)),
+                Grid::make(1)
+                    ->columns(fn (Get $get): array => ['default' => 1, 'lg' => $usesStageAudienceLayout($get) ? 2 : 1])
+                    ->schema([
+                        Group::make()->schema([
+                            Placeholder::make('stage_candidate_heading')
+                                ->content(new HtmlString('<div class="border-b border-gray-200 pb-3 font-semibold dark:border-gray-700">'.e(__('workflow_notifications.sections.for_candidates')).'</div>'))
+                                ->hiddenLabel()
+                                ->visible($usesStageAudienceLayout),
 
-                Textarea::make('notification_message')
-                    ->label(__('workflow_notifications.fields.notification_message'))
-                    ->placeholder(__('workflow_notifications.placeholders.notification_message'))
-                    ->rows(1)
-                    ->autosize()
-                    ->maxLength(1000)
-                    ->visible(fn (Get $get): bool => $handledByStaff($get) && ! $isReviewStage($get)),
+                            Textarea::make('notification_message')
+                                ->label(__('workflow_notifications.fields.notification_message'))
+                                ->helperText(fn (Get $get): ?string => $usesStageAudienceLayout($get) ? __('workflow_notifications.helpers.stage_candidate_notification') : null)
+                                ->placeholder(fn (Get $get): string => $usesStageAudienceLayout($get)
+                                    ? __('workflow_notifications.placeholders.stage_audiences.'.$get('stage_type').'.notification_message')
+                                    : __('workflow_notifications.placeholders.notification_message'))
+                                ->rows(2)
+                                ->autosize()
+                                ->maxLength(1000),
+                        ])->columnSpan(1),
 
-                Placeholder::make('review_actions.accept_heading')
-                    ->content(new HtmlString('<strong class="text-info-600 dark:text-info-400">'.e(__('workflow_notifications.review_actions.accept.title')).'</strong>'))
-                    ->hiddenLabel()
+                        Group::make()->schema([
+                            Placeholder::make('stage_staff_heading')
+                                ->content(new HtmlString('<div class="border-b border-gray-200 pb-3 font-semibold dark:border-gray-700">'.e(__('workflow_notifications.sections.for_system_users')).'</div>'))
+                                ->hiddenLabel(),
+
+                            Textarea::make('audience_messages.staff_notification_message')
+                                ->label(__('workflow_notifications.fields.staff_notification_message'))
+                                ->helperText(__('workflow_notifications.helpers.stage_staff_notification'))
+                                ->placeholder(fn (Get $get): string => __('workflow_notifications.placeholders.stage_audiences.'.$get('stage_type').'.staff_notification_message'))
+                                ->rows(2)
+                                ->autosize()
+                                ->maxLength(1000),
+
+                            Select::make('audience_messages.staff_recipient_ids')
+                                ->label(__('workflow_notifications.fields.staff_recipient_ids'))
+                                ->placeholder(__('workflow_notifications.placeholders.staff_recipient_ids'))
+                                ->helperText(__('workflow_notifications.helpers.review_staff_recipients'))
+                                ->options(fn (): array => WorkflowSubmissionMessages::recipientOptions())
+                                ->multiple()
+                                ->searchable()
+                                ->preload()
+                                ->in(fn (): array => array_keys(WorkflowSubmissionMessages::recipientOptions()))
+                                ->default([])
+                                ->native(false),
+                        ])->visible($usesStageAudienceLayout)->columnSpan(1),
+                    ])
+                    ->visible(fn (Get $get): bool => $handledByStaff($get) && ! $isReviewStage($get))
+                    ->columnSpanFull(),
+
+                Section::make(__('workflow_notifications.sections.review_outcomes'))
+                    ->key('review-actions')
+                    ->description(__('workflow_notifications.helpers.review_outcomes'))
+                    ->compact()
+                    ->columns(1)
+                    ->schema([
+                        self::reviewActionGroup('accept'),
+                        self::reviewActionGroup('send_back'),
+                        self::reviewActionGroup('reject'),
+                    ])
                     ->visible($isReviewStage)
                     ->columnSpanFull(),
-
-                TextInput::make('review_actions.accept.status_message')
-                    ->label(__('workflow_notifications.review_actions.accept.status_message'))
-                    ->placeholder(__('workflow_notifications.placeholders.status_message'))
-                    ->maxLength(255)
-                    ->visible($isReviewStage),
-
-                Textarea::make('review_actions.accept.notification_message')
-                    ->label(__('workflow_notifications.review_actions.accept.notification_message'))
-                    ->placeholder(__('workflow_notifications.placeholders.notification_message'))
-                    ->rows(1)
-                    ->autosize()
-                    ->maxLength(1000)
-                    ->visible($isReviewStage),
-
-                Placeholder::make('review_actions.send_back_heading')
-                    ->content(new HtmlString('<strong class="text-info-600 dark:text-info-400">'.e(__('workflow_notifications.review_actions.send_back.title')).'</strong>'))
-                    ->hiddenLabel()
-                    ->visible($isReviewStage)
-                    ->columnSpanFull(),
-
-                TextInput::make('review_actions.send_back.status_message')
-                    ->label(__('workflow_notifications.review_actions.send_back.status_message'))
-                    ->placeholder(__('workflow_notifications.placeholders.status_message'))
-                    ->maxLength(255)
-                    ->visible($isReviewStage),
-
-                Textarea::make('review_actions.send_back.notification_message')
-                    ->label(__('workflow_notifications.review_actions.send_back.notification_message'))
-                    ->placeholder(__('workflow_notifications.placeholders.notification_message'))
-                    ->rows(1)
-                    ->autosize()
-                    ->maxLength(1000)
-                    ->visible($isReviewStage),
-
-                Placeholder::make('review_actions.reject_heading')
-                    ->content(new HtmlString('<strong class="text-info-600 dark:text-info-400">'.e(__('workflow_notifications.review_actions.reject.title')).'</strong>'))
-                    ->hiddenLabel()
-                    ->visible($isReviewStage)
-                    ->columnSpanFull(),
-
-                TextInput::make('review_actions.reject.status_message')
-                    ->label(__('workflow_notifications.review_actions.reject.status_message'))
-                    ->placeholder(__('workflow_notifications.placeholders.status_message'))
-                    ->maxLength(255)
-                    ->visible($isReviewStage),
-
-                Textarea::make('review_actions.reject.notification_message')
-                    ->label(__('workflow_notifications.review_actions.reject.notification_message'))
-                    ->placeholder(__('workflow_notifications.placeholders.notification_message'))
-                    ->rows(1)
-                    ->autosize()
-                    ->maxLength(1000)
-                    ->visible($isReviewStage),
             ]),
         ];
+    }
+
+    private static function reviewActionGroup(string $action): Group
+    {
+        return Group::make()
+            ->key('review-action-'.$action)
+            ->extraAttributes($action === 'accept' ? [] : ['class' => 'border-t border-gray-200 pt-6 dark:border-gray-700'])
+            ->columns(1)
+            ->schema([
+                Placeholder::make('review_actions.'.$action.'.heading')
+                    ->content(new HtmlString('<div class="font-semibold">'.e(__('workflow_notifications.review_actions.'.$action.'.title')).'</div><p class="mt-1 text-sm text-gray-500 dark:text-gray-400">'.e(__('workflow_notifications.review_actions.'.$action.'.description')).'</p>'))
+                    ->hiddenLabel(),
+
+                TextInput::make('review_actions.'.$action.'.status_message')
+                    ->label(__('workflow_notifications.fields.shared_status_message'))
+                    ->helperText(__('workflow_notifications.helpers.shared_review_status'))
+                    ->placeholder(__('workflow_notifications.placeholders.review_actions.'.$action.'.status_message'))
+                    ->maxLength(255),
+
+                Grid::make(['default' => 1, 'lg' => 2])
+                    ->schema([
+                        Group::make()->schema([
+                            Placeholder::make('review_actions.'.$action.'.candidate_heading')
+                                ->content(new HtmlString('<div class="border-b border-gray-200 pb-2 font-semibold dark:border-gray-700">'.e(__('workflow_notifications.sections.for_candidates')).'</div>'))
+                                ->hiddenLabel(),
+
+                            Textarea::make('review_actions.'.$action.'.notification_message')
+                                ->label(__('workflow_notifications.review_actions.'.$action.'.notification_message'))
+                                ->helperText(__('workflow_notifications.helpers.review_candidate_notification'))
+                                ->placeholder(__('workflow_notifications.placeholders.review_actions.'.$action.'.notification_message'))
+                                ->rows(2)
+                                ->autosize()
+                                ->maxLength(1000),
+                        ])->columnSpan(1),
+
+                        Group::make()->schema([
+                            Placeholder::make('review_actions.'.$action.'.staff_heading')
+                                ->content(new HtmlString('<div class="border-b border-gray-200 pb-2 font-semibold dark:border-gray-700">'.e(__('workflow_notifications.sections.for_system_users')).'</div>'))
+                                ->hiddenLabel(),
+
+                            Textarea::make('review_actions.'.$action.'.staff_notification_message')
+                                ->label(__('workflow_notifications.fields.staff_notification_message'))
+                                ->helperText(__('workflow_notifications.helpers.review_staff_notification'))
+                                ->placeholder(__('workflow_notifications.placeholders.review_actions.'.$action.'.staff_notification_message'))
+                                ->rows(2)
+                                ->autosize()
+                                ->maxLength(1000),
+
+                            Select::make('review_actions.'.$action.'.staff_recipient_ids')
+                                ->label(__('workflow_notifications.fields.staff_recipient_ids'))
+                                ->placeholder(__('workflow_notifications.placeholders.staff_recipient_ids'))
+                                ->helperText(__('workflow_notifications.helpers.review_staff_recipients'))
+                                ->options(fn (): array => WorkflowSubmissionMessages::recipientOptions())
+                                ->multiple()
+                                ->searchable()
+                                ->preload()
+                                ->in(fn (): array => array_keys(WorkflowSubmissionMessages::recipientOptions()))
+                                ->default([])
+                                ->native(false),
+                        ])->columnSpan(1),
+                    ]),
+            ]);
     }
 
     /**
@@ -294,7 +433,7 @@ class WorkflowNotificationForm
     {
         $type = WorkflowStageType::tryFrom((string) $stageType);
 
-        if (! $type?->requiresRole() || $type === WorkflowStageType::Completed) {
+        if (! $type?->requiresRole()) {
             return [];
         }
 

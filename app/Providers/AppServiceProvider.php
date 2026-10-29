@@ -28,6 +28,7 @@ use App\Observers\CustomFormEntryStatisticsObserver;
 use App\Support\FilamentActionPermissions;
 use App\Support\NotificationLanguage;
 use App\Support\WorkflowStageMessages;
+use App\Support\WorkflowSubmissionMessages;
 use BezhanSalleh\LanguageSwitch\LanguageSwitch;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
@@ -151,12 +152,21 @@ class AppServiceProvider extends ServiceProvider
         */
         CustomFormEntry::created(function (CustomFormEntry $entry): void {
             if (WorkflowStageMessages::hasConfiguredWorkflow($entry)) {
+                WorkflowSubmissionMessages::notify($entry);
                 WorkflowStageMessages::notifyResponsibleRole($entry);
 
                 return;
             }
 
             $this->notifyAdminsWhenStudentSubmitEnrollment($entry);
+        });
+
+        CustomFormEntry::updated(function (CustomFormEntry $entry): void {
+            if ($entry->wasChanged('review_status')
+                && strtolower(trim((string) $entry->getRawOriginal('review_status'))) === 'draft'
+                && strtolower(trim((string) $entry->review_status)) === 'pending') {
+                WorkflowSubmissionMessages::notify($entry);
+            }
         });
 
         LanguageSwitch::configureUsing(function (LanguageSwitch $switch) {

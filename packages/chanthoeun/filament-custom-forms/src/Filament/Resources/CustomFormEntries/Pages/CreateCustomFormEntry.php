@@ -4,6 +4,7 @@ namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Pa
 
 use App\Models\CandidateSubmitPopupSetting;
 use App\Support\ProfileFormData;
+use App\Support\WorkflowSubmissionMessages;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
@@ -182,6 +183,10 @@ class CreateCustomFormEntry extends CreateRecord
                             ->update($data);
 
                         $this->record = CustomFormEntry::find($this->draftEntryId);
+
+                        if ($this->record) {
+                            WorkflowSubmissionMessages::notify($this->record);
+                        }
 
                         $this->redirect($this->getRedirectUrl());
 

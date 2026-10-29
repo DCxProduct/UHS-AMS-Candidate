@@ -43,7 +43,6 @@ final class WorkflowNotificationStageSummary
 
                 $responsibleLabel = match ($type) {
                     WorkflowStageType::FormSubmission => __('workflow_notifications.view.candidate'),
-                    WorkflowStageType::Completed => __('workflow_notifications.view.automatic'),
                     default => count($responsibleRoles) > 0
                         ? collect($responsibleRoles)->map(fn (string $role): string => $roleLabels->get(
                             $role,
@@ -52,7 +51,9 @@ final class WorkflowNotificationStageSummary
                                 ->title()
                                 ->toString(),
                         ))->implode(', ')
-                        : __('workflow_notifications.not_assigned'),
+                        : ($type === WorkflowStageType::Completed
+                            ? __('workflow_notifications.view.automatic')
+                            : __('workflow_notifications.not_assigned')),
                 };
 
                 return [

@@ -154,11 +154,8 @@ class CandidateEntranceStatisticsTable
                 TextColumn::make('data.candidate_status')
                     ->label(__('candidate_entrance_statistics.review_status_result'))
                     ->badge()
-                    ->getStateUsing(fn ($record) => data_get($record->data, 'candidate_status', 'pending'))
-                    ->formatStateUsing(fn (?string $state) => match ($state) {
-                        'passed' => __('candidate_entrance_statistics.statuses.passed'),
-                        default => __('candidate_entrance_statistics.statuses.pending'),
-                    })
+                    ->getStateUsing(fn ($record) => data_get($record->data, 'candidate_status') ?: 'pending')
+                    ->formatStateUsing(fn (?string $state, CustomFormEntry $record): string => self::resultStatusLabel($record, $state))
                     ->color(fn (?string $state) => match ($state) {
                         'passed' => 'success',
                         default => 'warning',
@@ -644,10 +641,7 @@ class CandidateEntranceStatisticsTable
             'data.candidate_status' => [
                 'label' => __('candidate_entrance_statistics.review_status_result'),
                 'field_key' => 'candidate_status',
-                'value' => fn (CustomFormEntry $record): string => match ((string) data_get($record->data, 'candidate_status', 'pending')) {
-                    'passed' => __('candidate_entrance_statistics.statuses.passed'),
-                    default => __('candidate_entrance_statistics.statuses.pending'),
-                },
+                'value' => fn (CustomFormEntry $record): string => self::resultStatusLabel($record, data_get($record->data, 'candidate_status')),
                 'clean' => fn (CustomFormEntry $record): string => (string) data_get($record->data, 'candidate_status', 'pending'),
             ],
             'data.candidate_reviewed_at' => [
@@ -1023,6 +1017,21 @@ class CandidateEntranceStatisticsTable
         } catch (\Throwable) {
             return (string) $state;
         }
+    }
+
+    protected static function resultStatusLabel(CustomFormEntry $record, ?string $status): string
+    {
+        if ($status === 'passed') {
+            return WorkflowStageMessages::passedResultStatusLabel($record)
+                ?? __('candidate_entrance_statistics.statuses.passed');
+        }
+
+        if (blank($status) || $status === 'pending') {
+            return WorkflowStageMessages::waitingResultStatusLabel($record)
+                ?? __('candidate_entrance_statistics.statuses.pending');
+        }
+
+        return __('candidate_entrance_statistics.statuses.pending');
     }
 
     public static function notifyStudentReviewResult(

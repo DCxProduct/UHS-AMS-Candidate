@@ -432,7 +432,7 @@ class WorkflowNotificationResourceTest extends TestCase
             ->assertSet("{$stagePath}.stage_name", 'Check documents');
     }
 
-    public function test_completed_stage_uses_an_automatic_responsible_role(): void
+    public function test_completed_stage_keeps_automatic_behavior_when_no_roles_are_selected(): void
     {
         $this->actingAs($this->admin);
 
@@ -456,8 +456,67 @@ class WorkflowNotificationResourceTest extends TestCase
         $template = WorkflowNotification::query()->firstOrFail();
 
         $this->assertNull(data_get($template->stages, '0.data.responsible_role'));
-        $this->assertSame('Automatic', __('workflow_notifications.placeholders.automatic_role', [], 'en'));
-        $this->assertSame('ស្វ័យប្រវត្តិ', __('workflow_notifications.placeholders.automatic_role', [], 'km'));
+        Livewire::test(EditWorkflowNotification::class, ['record' => $template->getRouteKey()])
+            ->call('save')
+            ->assertHasNoFormErrors();
+        $this->assertNull(data_get($template->fresh()->stages, '0.data.responsible_role'));
+
+        $originalLocale = app()->getLocale();
+        try {
+            foreach (['en', 'km'] as $locale) {
+                app()->setLocale($locale);
+                $this->assertSame(
+                    __('workflow_notifications.view.automatic'),
+                    WorkflowNotificationStageSummary::from($template->fresh()->stages)[0]['responsible_label'],
+                );
+            }
+        } finally {
+            app()->setLocale($originalLocale);
+        }
+    }
+
+    public function test_completed_stage_can_create_and_edit_multiple_roles_with_localized_summary(): void
+    {
+        Role::findByName('registrar_officer')->update(['label_en' => 'Registrar Officer', 'name_kh' => 'មន្ត្រីចុះឈ្មោះ']);
+        Role::findByName('cashier_officer')->update(['label_en' => 'Cashier Officer', 'name_kh' => 'មន្ត្រីបេឡា']);
+        $this->actingAs($this->admin);
+
+        Livewire::test(CreateWorkflowNotification::class)
+            ->set('data.stages', [])
+            ->fillForm([
+                'name' => 'Completed workflow with staff roles',
+                'stages' => ['completed' => ['type' => 'stage', 'data' => [
+                    'stage_name' => 'Completed',
+                    'stage_type' => 'completed',
+                    'responsible_role' => ['registrar_officer', 'cashier_officer'],
+                ]]],
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $template = WorkflowNotification::query()->sole();
+        $this->assertSame(['registrar_officer', 'cashier_officer'], data_get($template->stages, '0.data.responsible_role'));
+        $component = Livewire::test(EditWorkflowNotification::class, ['record' => $template->getRouteKey()]);
+        $key = array_key_first($component->get('data.stages'));
+        $path = "data.stages.{$key}.data.responsible_role";
+        $component->assertSet($path, ['registrar_officer', 'cashier_officer'])
+            ->set($path, ['cashier_officer', 'registrar_officer'])
+            ->call('save')
+            ->assertHasNoFormErrors();
+        $this->assertSame(['cashier_officer', 'registrar_officer'], data_get($template->fresh()->stages, '0.data.responsible_role'));
+
+        $originalLocale = app()->getLocale();
+        try {
+            foreach (['en' => 'Cashier Officer, Registrar Officer', 'km' => 'មន្ត្រីបេឡា, មន្ត្រីចុះឈ្មោះ'] as $locale => $expected) {
+                app()->setLocale($locale);
+                $this->assertSame($expected, WorkflowNotificationStageSummary::from($template->fresh()->stages)[0]['responsible_label']);
+                $this->get(WorkflowNotificationResource::getUrl('view', ['record' => $template]))
+                    ->assertOk()
+                    ->assertSee($expected);
+            }
+        } finally {
+            app()->setLocale($originalLocale);
+        }
     }
 
     public function test_staff_stage_requires_a_responsible_role(): void
@@ -481,12 +540,11 @@ class WorkflowNotificationResourceTest extends TestCase
         Role::query()->create(['name' => 'candidate', 'guard_name' => 'web', 'role_type_key' => 'candidate']);
         $staffRoles = ['admin', 'registrar_officer', 'cashier_officer'];
 
-        foreach (['review', 'payment', 'awaiting_results', 'approval'] as $stageType) {
+        foreach (['review', 'payment', 'awaiting_results', 'approval', 'completed'] as $stageType) {
             $this->assertSame($staffRoles, array_keys(WorkflowNotificationForm::responsibleRoleOptions($stageType)));
         }
 
         $this->assertSame([], WorkflowNotificationForm::responsibleRoleOptions('form_submission'));
-        $this->assertSame([], WorkflowNotificationForm::responsibleRoleOptions('completed'));
     }
 
     public function test_the_candidate_role_cannot_be_responsible_for_a_stage(): void
