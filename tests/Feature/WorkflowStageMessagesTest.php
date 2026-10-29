@@ -137,7 +137,7 @@ class WorkflowStageMessagesTest extends TestCase
     {
         $this->assertSame('Under review', WorkflowStageMessages::statusText($this->entry('pending')));
         $this->assertSame('Waiting for payment', WorkflowStageMessages::statusText($this->entry('approved')));
-        $this->assertSame('Completed', WorkflowStageMessages::statusText($this->entry('passed')));
+        $this->assertSame('Waiting for results', WorkflowStageMessages::statusText($this->entry('passed')));
 
         $editedResult = $this->entry('passed', ['candidate_status' => 'pending']);
         $this->assertSame('Waiting for results', WorkflowStageMessages::statusText($editedResult));
@@ -146,15 +146,16 @@ class WorkflowStageMessagesTest extends TestCase
         $this->assertNull(WorkflowStageMessages::statusText($this->entry('draft')));
     }
 
-    public function test_review_status_prefers_the_accept_status_over_a_legacy_generic_message(): void
+    public function test_pending_review_does_not_use_the_checked_action_status_before_approval(): void
     {
         $workflow = WorkflowNotification::query()->where('name', 'Admission')->firstOrFail();
         $stages = $workflow->stages;
-        $stages[1]['data']['status_message'] = 'Please go to cashier counter';
-        $stages[1]['data']['review_actions']['accept']['status_message'] = 'Under review';
+        $stages[1]['data']['status_message'] = 'Under review';
+        $stages[1]['data']['review_actions']['accept']['status_message'] = 'Checked';
         $workflow->update(['stages' => $stages]);
 
         $this->assertSame('Under review', WorkflowStageMessages::statusText($this->entry('pending')));
+        $this->assertSame('Checked', WorkflowStageMessages::statusText($this->entry('approved')));
     }
 
     public function test_forms_without_a_workflow_keep_the_existing_behaviour(): void
@@ -532,7 +533,7 @@ class WorkflowStageMessagesTest extends TestCase
         $this->assertSame(['Congratulations.'], $this->student->notifications()->get()->pluck('data.body')->all());
     }
 
-    public function test_candidates_see_the_status_text_and_staff_keep_the_built_in_label(): void
+    public function test_generic_review_status_keeps_its_legacy_staff_label_and_payment_status_is_shared(): void
     {
         Filament::setCurrentPanel(Filament::getPanel('app'));
         $entry = $this->entry('pending');
@@ -551,7 +552,7 @@ class WorkflowStageMessagesTest extends TestCase
 
         $approved = $this->entry('approved');
         $column->record($approved);
-        $this->assertSame(__('candidate_entrance_statistics.statuses.accepted'), $column->formatState($column->getState()));
+        $this->assertSame('Waiting for payment', $column->formatState($column->getState()));
 
         $this->actingAs($this->student);
         $column->record($entry);

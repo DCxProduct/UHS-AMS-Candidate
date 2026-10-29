@@ -3,6 +3,7 @@
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Tables;
 
 use App\Support\WorkflowStageMessages;
+use App\Support\WorkflowSubmissionMessages;
 use App\Support\StaticWorkflowMessages;
 use App\Enums\WorkflowStageType;
 use App\Models\Major;
@@ -541,10 +542,22 @@ class CustomFormEntriesTable
             ->badge()
             ->getStateUsing(fn ($record): string => self::displayStatus($record))
             ->formatStateUsing(function ($state, $record): string {
-                // No-payment workflows expose their configured stage status
-                // to staff as well, so the admin list does not show a stale
-                // payment message after approval.
+                if (filled($submissionStatus = WorkflowSubmissionMessages::statusText($record))) {
+                    return $submissionStatus;
+                }
+
+                if (filled($reviewStatus = WorkflowStageMessages::sharedReviewStatusText($record))) {
+                    return $reviewStatus;
+                }
+
+                // Payment and result stages share their configured status with
+                // staff. Preserve the existing display for no-payment workflows.
                 if ((self::candidateIsViewing()
+                        || in_array(WorkflowStageMessages::stageTypeFor($record), [
+                            WorkflowStageType::Payment,
+                            WorkflowStageType::AwaitingResults,
+                            WorkflowStageType::Completed,
+                        ], true)
                         || (WorkflowStageMessages::hasConfiguredWorkflow($record)
                             && ! WorkflowStageMessages::requiresPayment($record)))
                     && filled($workflowStatus = WorkflowStageMessages::statusText($record))) {
@@ -581,8 +594,8 @@ class CustomFormEntriesTable
 
         $status = self::entryStatus($record);
 
-        // Workflow display text is candidate-only. Staff keep the stored
-        // review status, with a paid label only when payment is recorded.
+        // Keep the stored status for staff; explicit shared workflow text is
+        // applied by the formatter without changing this underlying state.
         if (! self::candidateIsViewing()) {
             return in_array($status, ['passed', 'accepted', 'approved'], true)
                 && self::entryHasPaidPayment($record)

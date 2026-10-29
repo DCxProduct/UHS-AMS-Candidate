@@ -12,6 +12,7 @@ use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
 use App\Support\OfficialReport;
 use App\Support\TablePdfExporter;
+use App\Support\WorkflowStageMessages;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
@@ -198,7 +199,7 @@ class PaymentsTable
                     ->label(__('payments.table.status_payt'))
                     ->badge()
                     ->alignCenter()
-                    ->formatStateUsing(fn (?string $state): string => __('payments.options.status_payt.'.strtolower((string) $state)))
+                    ->formatStateUsing(fn (?string $state, Payment $record): string => self::paymentStatusLabel($record, $state))
                     ->color(fn (?string $state): string => match (strtolower((string) $state)) {
                         'paid' => 'success',
                         'return' => 'danger',
@@ -372,6 +373,19 @@ class PaymentsTable
         };
 
         return new Expression("CASE WHEN {$missingClock} AND DATE({$paidAt}) = DATE({$createdAt}) THEN {$createdAt} ELSE {$paidAt} END");
+    }
+
+    protected static function paymentStatusLabel(Payment $record, ?string $state = null): string
+    {
+        $state = strtolower((string) ($state ?? $record->status_payt));
+        // Workflow labels require the exact application link; legacy standalone
+        // receipts retain their original label rather than matching another entry.
+        $entry = Schema::hasColumn('payments', 'custom_form_entry_id') && filled($record->custom_form_entry_id)
+            ? $record->customFormEntry
+            : null;
+
+        return ($entry ? WorkflowStageMessages::paymentStatusLabel($entry, $state) : null)
+            ?? __('payments.options.status_payt.'.$state);
     }
 
     protected static function matchedEntry(Payment $record): ?CustomFormEntry
@@ -1072,7 +1086,7 @@ class PaymentsTable
             'status_payt' => [
                 'label' => __('payments.table.status_payt'),
                 'field_key' => 'status_payt',
-                'value' => fn (Payment $record): string => __('payments.options.status_payt.'.strtolower((string) $record->status_payt)),
+                'value' => fn (Payment $record): string => self::paymentStatusLabel($record),
                 'clean' => fn (Payment $record): string => blank($record->status_payt) ? '-' : (string) $record->status_payt,
             ],
             'amount_usd' => [

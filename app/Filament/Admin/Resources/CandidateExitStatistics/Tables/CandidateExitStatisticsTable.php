@@ -42,7 +42,7 @@ class CandidateExitStatisticsTable
                 true,
             ))
             ->defaultSort('id', 'desc')
-            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with('customFormEntry:id,candidate_id'))
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with('customFormEntry:id,candidate_id,custom_form_id'))
             ->recordUrl(null)
             ->recordAction(null)
             ->columns([
@@ -120,7 +120,8 @@ class CandidateExitStatisticsTable
 
                 TextColumn::make('candidate_status')
                     ->label(__('candidate_exit_statistics.fields.candidate_status'))
-                    ->formatStateUsing(fn (?string $state): string => self::optionLabel('candidate_status', $state))
+                    ->getStateUsing(fn (CandidateExitStatistic $record): string => $record->candidate_status ?: 'pending')
+                    ->formatStateUsing(fn (?string $state, CandidateExitStatistic $record): string => self::resultStatusLabel($record, $state))
                     ->badge()
                     ->color(fn (?string $state): string => $state === 'passed' ? 'success' : 'warning')
                     ->toggleable(isToggledHiddenByDefault: false),
@@ -555,7 +556,7 @@ class CandidateExitStatisticsTable
             'candidate_status' => [
                 'label' => __('candidate_exit_statistics.fields.candidate_status'),
                 'field_key' => 'candidate_status',
-                'value' => fn (CandidateExitStatistic $record): string => self::optionLabel('candidate_status', $record->candidate_status),
+                'value' => fn (CandidateExitStatistic $record): string => self::resultStatusLabel($record, $record->candidate_status),
                 'clean' => fn (CandidateExitStatistic $record): string => (string) $record->candidate_status,
             ],
             'candidate_reviewed_at' => [
@@ -738,6 +739,23 @@ class CandidateExitStatisticsTable
     protected static function joinName(?string $firstName, ?string $lastName): string
     {
         return trim(implode(' ', array_filter([(string) $firstName, (string) $lastName], fn (string $value): bool => $value !== '')));
+    }
+
+    protected static function resultStatusLabel(CandidateExitStatistic $record, ?string $status): string
+    {
+        if ($status === 'passed' && $record->customFormEntry) {
+            return WorkflowStageMessages::passedResultStatusLabel($record->customFormEntry)
+                ?? self::optionLabel('candidate_status', $status);
+        }
+
+        if (blank($status) || $status === 'pending') {
+            $entry = $record->customFormEntry;
+
+            return ($entry ? WorkflowStageMessages::waitingResultStatusLabel($entry) : null)
+                ?? self::optionLabel('candidate_status', 'pending');
+        }
+
+        return self::optionLabel('candidate_status', $status);
     }
 
     protected static function optionLabel(string $group, ?string $value): string

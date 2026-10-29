@@ -228,9 +228,10 @@ class PaymentStatusListsTable
                     ->label(__('payment_status_lists.columns.payment_status'))
                     ->badge()
                     ->getStateUsing(fn (PaymentStatusList $record): string => self::paymentStatus($record))
-                    ->formatStateUsing(fn (?string $state): string => strtolower((string) $state) === 'paid'
-                        ? __('payments.options.status_payt.paid')
-                        : __('payments.options.status_payt.unpaid'))
+                    ->formatStateUsing(fn (?string $state, PaymentStatusList $record): string => WorkflowStageMessages::paymentStatusLabel($record, (string) $state)
+                        ?? (strtolower((string) $state) === 'paid'
+                            ? __('payments.options.status_payt.paid')
+                            : __('payments.options.status_payt.unpaid')))
                     ->color(fn (?string $state): string => match (strtolower((string) $state)) {
                         'paid' => 'success',
                         default => 'warning',
