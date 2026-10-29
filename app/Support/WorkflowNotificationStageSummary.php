@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Enums\WorkflowPaymentSource;
 use App\Enums\WorkflowStageType;
 use App\Models\Role;
 use App\Models\WorkflowNotification;
@@ -56,13 +57,19 @@ final class WorkflowNotificationStageSummary
                             : __('workflow_notifications.not_assigned')),
                 };
 
-                return [
+                $summary = [
                     'name' => self::localizedName($stage['stage_name'] ?? null, $type),
                     'type_label' => $type?->label() ?? (string) ($stage['stage_type'] ?? ''),
                     'responsible_label' => $responsibleLabel,
                     'status_message' => $stage['status_message'] ?? null,
                     'notification_message' => $stage['notification_message'] ?? null,
                 ];
+
+                if ($type === WorkflowStageType::Payment) {
+                    $summary['payment_source_label'] = WorkflowPaymentSource::resolve($stage['payment_source'] ?? null)->label();
+                }
+
+                return $summary;
             })
             ->all();
     }

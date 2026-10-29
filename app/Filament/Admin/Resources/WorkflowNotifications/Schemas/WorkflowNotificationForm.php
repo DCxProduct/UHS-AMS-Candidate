@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources\WorkflowNotifications\Schemas;
 
+use App\Enums\WorkflowPaymentSource;
 use App\Enums\WorkflowStageType;
 use App\Models\EmailTemplate;
 use App\Models\Role;
@@ -192,6 +193,10 @@ class WorkflowNotificationForm
 
                         $set('responsible_role', []);
 
+                        if ($type === WorkflowStageType::Payment && blank($get('payment_source'))) {
+                            $set('payment_source', WorkflowPaymentSource::System->value);
+                        }
+
                         if ($type === WorkflowStageType::FormSubmission) {
                             $set('status_message', null);
                             $set('notification_message', null);
@@ -199,6 +204,18 @@ class WorkflowNotificationForm
                         }
                     })
                     ->native(false),
+
+                Select::make('payment_source')
+                    ->label(__('workflow_notifications.fields.payment_source'))
+                    ->helperText(__('workflow_notifications.helpers.payment_source'))
+                    ->options(fn (): array => WorkflowPaymentSource::options())
+                    ->in(fn (): array => array_keys(WorkflowPaymentSource::options()))
+                    ->default(WorkflowPaymentSource::System->value)
+                    ->afterStateHydrated(fn (Select $component, mixed $state) => $component->state(WorkflowPaymentSource::resolve($state)->value))
+                    ->required($isPaymentStage)
+                    ->visible($isPaymentStage)
+                    ->native(false)
+                    ->columnSpanFull(),
 
                 TextInput::make('submission_messages.candidate_status_message')
                     ->label(__('workflow_notifications.fields.shared_status_message'))

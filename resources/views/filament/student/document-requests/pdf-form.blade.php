@@ -839,7 +839,7 @@
 
                 <div class="uhs-id-row">
                     <div class="uhs-id-label">
-                        {!! $pair('អត្តលេខបេក្ខជន', 'UHS ID') !!}
+                        {!! $pair('លេខបេក្ខជន', 'UHS ID') !!}
                     </div>
                     <input class="uhs-box-letter" type="text" maxlength="10" wire:model.blur="data.student_id">
                 </div>
@@ -1323,7 +1323,7 @@
             </tr>
             <tr>
                 <td>២</td>
-                <td class="uhs-doc-type">{!! $t('រូបថត 4x6 <small style="font-style: italic">( មានសរសេរឈ្មោះ និង អត្តលេខបេក្ខជនខាងខ្នងរូបថត និង សូមអានការណែនាំអំពីរូបថតនៅខាងក្រោម )</small>', '4x6 Photo <small style="font-style: italic">(write name and UHS ID on the back; read photo instructions below)</small>') !!}</td>
+                <td class="uhs-doc-type">{!! $t('រូបថត 4x6 <small style="font-style: italic">( មានសរសេរឈ្មោះ និង លេខបេក្ខជនខាងខ្នងរូបថត និង សូមអានការណែនាំអំពីរូបថតនៅខាងក្រោម )</small>', '4x6 Photo <small style="font-style: italic">(write name and UHS ID on the back; read photo instructions below)</small>') !!}</td>
                 <td>{{ $t('៦ សន្លឹក', '6 photos') }}</td>
                 <td class="uhs-page2-shade"></td>
                 <td><span class="uhs-page2-check">✓</span></td>

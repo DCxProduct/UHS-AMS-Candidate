@@ -27,6 +27,13 @@
                             </span>
                         </div>
 
+                        @if (filled($stage['payment_source_label'] ?? null))
+                            <p class="uhs-workflow-stage-card__message">
+                                <span class="uhs-workflow-stage-card__message-label">{{ __('workflow_notifications.fields.payment_source') }}:</span>
+                                {{ $stage['payment_source_label'] }}
+                            </p>
+                        @endif
+
                         @if (filled($stage['status_message']))
                             <p class="uhs-workflow-stage-card__message">
                                 <span class="uhs-workflow-stage-card__message-label">{{ __('workflow_notifications.fields.status_message') }}:</span>

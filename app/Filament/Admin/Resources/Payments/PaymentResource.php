@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Schema as DatabaseSchema;
 use UnitEnum;
 
 class PaymentResource extends Resource
@@ -66,6 +67,10 @@ class PaymentResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         $query = parent::getEloquentQuery();
+
+        if (DatabaseSchema::hasColumn('payments', 'integration_source')) {
+            $query->whereRaw("LOWER(COALESCE(payments.integration_source, '')) <> ?", ['ams']);
+        }
 
         if (! static::currentUserCanViewAllRecords()) {
             $userId = auth()->id();

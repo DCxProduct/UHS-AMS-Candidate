@@ -207,6 +207,14 @@ class PaymentsTable
                     })
                     ->toggleable(isToggledHiddenByDefault: false),
 
+                TextColumn::make('payment_source')
+                    ->label(__('payments.table.payment_source'))
+                    ->badge()
+                    ->alignCenter()
+                    ->getStateUsing(fn (Payment $record): string => $record->paymentSourceLabel())
+                    ->color(fn (Payment $record): string => $record->paidViaAms() ? 'info' : 'gray')
+                    ->toggleable(isToggledHiddenByDefault: false),
+
                 TextColumn::make('datetime_pay')
                     ->label(__('payments.table.datetime_pay'))
                     ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
@@ -591,7 +599,7 @@ class PaymentsTable
 
     protected static function dynamicAmountUsdOptions(): array
     {
-        return Payment::query()
+        return PaymentResource::getEloquentQuery()
             ->whereNotNull('amount_usd')
             ->pluck('amount_usd')
             ->map(fn (mixed $value): string => self::normalizeNumericFilterValue($value))
@@ -604,7 +612,7 @@ class PaymentsTable
 
     protected static function dynamicAmountKhOptions(): array
     {
-        return Payment::query()
+        return PaymentResource::getEloquentQuery()
             ->whereNotNull('amount_kh')
             ->pluck('amount_kh')
             ->map(fn (mixed $value): string => self::normalizeNumericFilterValue($value))
@@ -626,7 +634,7 @@ class PaymentsTable
 
     protected static function dynamicStatusPaymentOptions(): array
     {
-        return Payment::query()
+        return PaymentResource::getEloquentQuery()
             ->whereNotNull('status_payt')
             ->pluck('status_payt')
             ->map(fn (?string $value): string => strtolower(trim((string) $value)))
@@ -679,6 +687,10 @@ class PaymentsTable
             'type_payment' => [
                 'label' => __('payments.export.columns.type_payment'),
                 'value' => fn (Payment $record): string => $record->payment_method_label,
+            ],
+            'payment_source' => [
+                'label' => __('payments.table.payment_source'),
+                'value' => fn (Payment $record): string => $record->paymentSourceLabel(),
             ],
         ];
     }
@@ -841,7 +853,7 @@ class PaymentsTable
                 [__('payments.export.total_usd'), $summary['usd'].' $'],
                 [__('payments.export.total_khr'), $summary['khr'].' ៛'],
             ],
-            [1 => 8, 2 => 21, 3 => 29, 4 => 18, 5 => 24, 6 => 24, 7 => 16, 8 => 14, 9 => 22, 10 => 20],
+            [1 => 8, 2 => 21, 3 => 29, 4 => 18, 5 => 24, 6 => 24, 7 => 16, 8 => 14, 9 => 22, 10 => 20, 11 => 20],
             footerText: __('payments.export.footer.handed_over_by'),
             footerColumn: 9,
             footerDateText: self::reportFooterDateText($reportDate),
@@ -909,7 +921,7 @@ class PaymentsTable
                 'footer_text' => __('payments.export.footer.handed_over_by'),
                 'footer_column' => 6,
                 'footer_span' => 6,
-                'column_widths' => ['7mm', '19mm', '29mm', '18mm', '22mm', '24mm', '16mm', '13.5mm', '22mm', '23.5mm'],
+                'column_widths' => ['7mm', '18mm', '27mm', '12mm', '20mm', '21mm', '17mm', '14mm', '20mm', '21mm', '17mm'],
                 'footer_date_parts' => self::reportFooterDateParts($reportDate),
                 'footer_name' => self::exportingUserName(),
                 'footer_receiver_text' => __('payments.export.footer.received_by'),
@@ -1088,6 +1100,14 @@ class PaymentsTable
                 'field_key' => 'status_payt',
                 'value' => fn (Payment $record): string => self::paymentStatusLabel($record),
                 'clean' => fn (Payment $record): string => blank($record->status_payt) ? '-' : (string) $record->status_payt,
+            ],
+            'payment_source' => [
+                'label' => __('payments.table.payment_source'),
+                'field_key' => 'payment_source',
+                'value' => fn (Payment $record): string => $record->paymentSourceLabel(),
+                'clean' => fn (Payment $record): string => strtolower((string) $record->status_payt) === 'paid'
+                    ? ($record->paidViaAms() ? 'ams' : 'candidate')
+                    : '-',
             ],
             'amount_usd' => [
                 'label' => __('payments.table.amount_usd'),

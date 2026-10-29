@@ -288,6 +288,10 @@ final class WorkflowStageMessages
 
             $action = self::normalizeReviewAction($action);
 
+            if ($action === 'accept') {
+                app(\App\Services\AmsPaymentSync::class)->sync($entry);
+            }
+
             if ($action === null) {
                 return false;
             }

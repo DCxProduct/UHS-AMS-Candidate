@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\WorkflowPaymentSource;
 use App\Enums\WorkflowStageType;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Illuminate\Database\Eloquent\Model;
@@ -50,6 +51,11 @@ class WorkflowNotification extends Model
                 if (array_key_exists('responsible_role', $data)) {
                     $roles = self::normalizeResponsibleRoles($data['responsible_role']);
                     $data['responsible_role'] = $roles === [] ? null : $roles;
+                }
+
+                if (($data['stage_type'] ?? null) === WorkflowStageType::Payment->value
+                    && array_key_exists('payment_source', $data)) {
+                    $data['payment_source'] = WorkflowPaymentSource::resolve($data['payment_source'])->value;
                 }
 
                 if ($hasDataWrapper) {
@@ -145,6 +151,23 @@ class WorkflowNotification extends Model
                 ->select('workflow_notification_id')
                 ->where('custom_form_id', $customFormId))
             ->first();
+    }
+
+    /** Read the configured source without changing payment processing or status. */
+    public function paymentSource(): WorkflowPaymentSource
+    {
+        $stage = collect($this->stages ?? [])
+            ->map(fn (mixed $item): array => is_array($item) && is_array($item['data'] ?? null)
+                ? $item['data']
+                : (is_array($item) ? $item : []))
+            ->first(fn (array $data): bool => ($data['stage_type'] ?? null) === WorkflowStageType::Payment->value);
+
+        return WorkflowPaymentSource::resolve($stage['payment_source'] ?? null);
+    }
+
+    public static function paymentSourceForForm(int|string $customFormId): WorkflowPaymentSource
+    {
+        return static::forForm($customFormId)?->paymentSource() ?? WorkflowPaymentSource::System;
     }
 
     /**
