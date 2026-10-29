@@ -44,7 +44,7 @@ class Payment extends Model
     {
 
         static::creating(function (Payment $payment): void {
-            if (blank($payment->received_by) && auth()->check() && auth()->id() !== $payment->users_id) {
+            if ($payment->integration_source !== 'ams' && blank($payment->received_by) && auth()->check() && auth()->id() !== $payment->users_id) {
                 $payment->received_by = auth()->id();
             }
         });
@@ -78,6 +78,21 @@ class Payment extends Model
     public function receivedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'received_by');
+    }
+
+    public function paidViaAms(): bool
+    {
+        return strtolower((string) $this->status_payt) === 'paid'
+            && strtolower((string) $this->integration_source) === 'ams';
+    }
+
+    public function paymentSourceLabel(): string
+    {
+        if (strtolower((string) $this->status_payt) !== 'paid') {
+            return '-';
+        }
+
+        return __('payments.payment_sources.'.($this->paidViaAms() ? 'ams' : 'candidate'));
     }
 
     public function paymentType(): BelongsTo

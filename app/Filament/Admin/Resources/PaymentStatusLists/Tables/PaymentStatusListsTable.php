@@ -238,7 +238,12 @@ class PaymentStatusListsTable
                     })
                     ->toggleable(isToggledHiddenByDefault: false),
 
-                 TextColumn::make('receipt_number')
+                TextColumn::make('payment_source')
+                    ->label(__('payments.table.payment_source'))
+                    ->getStateUsing(fn (PaymentStatusList $record): string => self::latestPaymentRecord($record)?->paymentSourceLabel() ?? '-')
+                    ->toggleable(isToggledHiddenByDefault: false),
+
+                TextColumn::make('receipt_number')
                     ->label(__('payments.table.receipt_number'))
                     ->getStateUsing(fn (PaymentStatusList $record): string => (string) (self::latestPaymentRecord($record)?->receipt_number ?: '-'))
                     ->toggleable(isToggledHiddenByDefault: false),
@@ -298,7 +303,7 @@ class PaymentStatusListsTable
                             ->searchable()
                             ->live(),
 
-                            
+
                         Select::make('form_id')
                             ->label(__('payment_status_lists.columns.application_form_type'))
                             ->options(fn (): array => self::dynamicFormOptions())
@@ -320,11 +325,22 @@ class PaymentStatusListsTable
                             ->native(false)
                             ->searchable()
                             ->live(),
+
+                        Select::make('payment_source')
+                            ->label(__('payments.table.payment_source'))
+                            ->placeholder(__('payments.placeholders.payment_source'))
+                            ->options([
+                                'ams' => __('payments.payment_sources.ams'),
+                                'candidate' => __('payments.payment_sources.candidate'),
+                            ])
+                            ->native(false)
+                            ->live(),
                     ])
                     ->columns(4)
                     ->columnSpanFull()
                     ->query(function (Builder $query, array $data): Builder {
                         $query = self::applyPaymentStatusFilter($query, $data['status_payt'] ?? null);
+                        $query = self::applyPaymentSourceFilter($query, $data['payment_source'] ?? null);
 
                         return self::applyPaymentDetailsFilter($query, $data)
                             ->when(
@@ -548,6 +564,7 @@ class PaymentStatusListsTable
                             ->send();
                     })
                     ->visible(fn (PaymentStatusList $record): bool => FilamentActionPermissions::canForResource(PaymentStatusListResource::class, 'pay')
+                        && ! \App\Services\AmsPaymentSync::usesAms($record)
                         && WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::Payment)
                         && self::latestPaymentRecord($record) === null),
             ]);
@@ -621,6 +638,10 @@ class PaymentStatusListsTable
                 'label' => __('payment_status_lists.columns.major'),
                 'field_key' => 'major',
             ],
+            'payment_source' => [
+                'label' => __('payments.table.payment_source'),
+                'field_key' => 'payment_source',
+            ],
         ];
     }
 
@@ -657,6 +678,7 @@ class PaymentStatusListsTable
             'gender' => self::genderLabel(self::entryValue($record, 'gender')),
             'date_of_birth' => self::dateOfBirth($record),
             'major' => FormEntryData::majorLabel($record->data),
+            'payment_source' => self::latestPaymentRecord($record)?->paymentSourceLabel() ?? '-',
         ];
 
         return collect($columnKeys)
@@ -677,6 +699,8 @@ class PaymentStatusListsTable
             'gender' => self::entryValue($record, 'gender'),
             'date_of_birth' => self::entryValue($record, 'date_of_birth', $record->creator?->date_of_birth),
             'major' => (string) FormEntryData::firstFilled($record->data, FormEntryData::majorKeys(), '-'),
+            'payment_source' => ($payment = self::latestPaymentRecord($record)) && strtolower((string) $payment->status_payt) === 'paid'
+                ? ($payment->paidViaAms() ? 'ams' : 'candidate') : '-',
         ];
 
         return collect($columnKeys)
@@ -817,6 +841,26 @@ class PaymentStatusListsTable
         return $query->whereRaw(
             "COALESCE(({$latestPayment->toSql()}), '') {$operator} ?",
             [...$latestPayment->getBindings(), 'paid'],
+        );
+    }
+
+    protected static function applyPaymentSourceFilter(Builder $query, mixed $source): Builder
+    {
+        if (! in_array($source, ['ams', 'candidate'], true)) {
+            return $query;
+        }
+
+        // Only currently paid applications have a displayed payment source.
+        $query = self::applyPaymentStatusFilter($query, 'paid');
+
+        if (! Schema::hasColumn('payments', 'integration_source')) {
+            return $source === 'ams' ? $query->whereRaw('1 = 0') : $query;
+        }
+
+        return $query->where(
+            self::latestPaymentQuery()->selectRaw("LOWER(COALESCE(integration_source, ''))"),
+            $source === 'ams' ? '=' : '<>',
+            'ams',
         );
     }
 

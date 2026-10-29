@@ -33,6 +33,9 @@ class CandidatePaymentRecorder
 
             // Serialize payments on the application, including distinct receipts.
             $entry = CustomFormEntry::query()->lockForUpdate()->findOrFail($data['custom_form_entry_id']);
+            if (AmsPaymentSync::usesAms($entry)) {
+                throw ValidationException::withMessages(['receipt_number' => __('workflow_notifications.validation.ams_payment_only')]);
+            }
             abort_unless(WorkflowStageMessages::canCurrentUserHandleStage($entry, WorkflowStageType::Payment), 403);
             $ownerId = $entry->created_by;
             $status = strtolower((string) (data_get($entry->data, 'registration_status') ?: $entry->review_status));

@@ -3,7 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Filament\Admin\Resources\PaymentStatusLists\PaymentStatusListResource;
-use App\Filament\Admin\Resources\Payments\PaymentResource;
+use App\Models\Payment;
 use App\Support\StaffRoles;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
@@ -24,7 +24,7 @@ class CashierStatsOverview extends StatsOverviewWidget
     protected function getStats(): array
     {
         $paymentLists = PaymentStatusListResource::getDashboardEloquentQuery()->count();
-        $paidRecords = PaymentResource::getEloquentQuery()
+        $paidRecords = Payment::query()
             ->whereRaw('LOWER(COALESCE(status_payt, \'\')) = ?', ['paid'])
             ->count();
         $unpaidApplications = PaymentStatusListResource::getUnpaidEloquentQuery(includeCleared: true)->count();

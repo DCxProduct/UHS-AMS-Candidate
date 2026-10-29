@@ -10,6 +10,11 @@ return [
         'payment_information' => 'Payment Information',
     ],
 
+    'payment_sources' => [
+        'ams' => 'Paid via AMS',
+        'candidate' => 'Paid in Candidate system',
+    ],
+
     'fields' => [
         'user' => 'Candidate Name',
         'form' => 'Application Form Type',
@@ -27,6 +32,7 @@ return [
     ],
 
     'placeholders' => [
+        'payment_source' => 'All payment sources',
         'user' => 'Select candidate name',
         'form' => 'Select application form type',
         'major' => 'Select major',
@@ -53,6 +59,7 @@ return [
     ],
 
     'table' => [
+        'payment_source' => 'Payment source',
         'no' => 'No',
         'user' => 'Candidate Name',
         'form' => 'Application Form Type',

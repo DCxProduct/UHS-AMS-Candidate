@@ -130,6 +130,7 @@ class WorkflowPaymentStatusLabelFormTest extends TestCase
                 'stages' => ['payment' => ['type' => 'stage', 'data' => [
                     'stage_name' => 'Payment',
                     'stage_type' => 'payment',
+                    'payment_source' => 'system',
                     'responsible_role' => ['cashier_officer'],
                     'notification_channels' => ['system'],
                 ]]],

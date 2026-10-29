@@ -39,6 +39,7 @@ return [
         'updated_at' => 'Updated At',
         'stage_name' => 'Stage Name',
         'stage_type' => 'Stage Type',
+        'payment_source' => 'Payment Source',
         'responsible_role' => 'Responsible Role',
         'status_message' => 'Candidate Status Message (Optional)',
         'shared_status_message' => 'Status Message (Optional)',
@@ -49,6 +50,11 @@ return [
         'notification_message' => 'Candidate Notification Message (Optional)',
         'staff_notification_message' => 'System User Notification Message (Optional)',
         'staff_recipient_ids' => 'Send Notification To',
+    ],
+
+    'payment_sources' => [
+        'system' => 'This system',
+        'ams' => 'AMS system',
     ],
 
     'placeholders' => [
@@ -123,6 +129,7 @@ return [
     ],
 
     'helpers' => [
+        'payment_source' => 'Choose where payments are collected. For AMS, clicking Checked sends the application to AMS Other Fees, and AMS confirms the payment back to this system.',
         'notification_channels' => 'Where the candidate receives this stage\'s notification message. SMS goes to the candidate\'s phone through PlasGate; Email to their email address.',
         'assigned_forms' => 'Forms that follow this workflow. A form can belong to only one template.',
         'completed_responsible_role' => 'Select one or more roles. Leave empty to keep automatic handling.',
@@ -166,6 +173,7 @@ return [
     ],
 
     'validation' => [
+        'ams_payment_only' => 'This application must be paid in AMS.',
         'stages_required' => 'Add at least one stage.',
         'name_already_exists' => 'A workflow with this name already exists.',
         'could_not_save' => 'The workflow could not be saved.',

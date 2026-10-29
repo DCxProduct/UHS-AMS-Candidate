@@ -693,6 +693,7 @@ class PaymentTotalsTest extends TestCase
                 'USD',
                 'KHR',
                 'Payment Type',
+                'Payment source',
             ], $headings);
             $this->assertSame('Payment Viewer', $rows[0][1]);
             $this->assertSame('PAYMENT VIEWER', $rows[0][2]);
@@ -725,6 +726,7 @@ class PaymentTotalsTest extends TestCase
             $this->assertStringContainsString('<td>5.00 $</td>', $pdfHtml);
             $this->assertStringContainsString('<th>Payment Type</th>', $pdfHtml);
             $this->assertStringContainsString('<th>KHR</th><th>Payment Type</th>', $pdfHtml);
+            $this->assertStringContainsString('<th>Payment source</th>', $pdfHtml);
             $this->assertStringNotContainsString('<th>Academic Year</th>', $pdfHtml);
             $this->assertStringContainsString('<th style="white-space: nowrap; font-size: 7pt">Date of Birth</th>', $pdfHtml);
             $this->assertStringContainsString('<th>Count</th>', $pdfHtml);
@@ -754,7 +756,7 @@ class PaymentTotalsTest extends TestCase
             $this->assertStringContainsString('Cash', serialize($sheet['rows']));
             $this->assertStringContainsString('Bank', serialize($sheet['rows']));
             $this->assertStringNotContainsString('ABA', serialize($sheet['rows']));
-            foreach (['A1:J1', 'A2:J2', 'A7:B7', 'A8:J8', 'A9:J9'] as $range) {
+            foreach (['A1:K1', 'A2:K2', 'A7:B7', 'A8:K8', 'A9:K9'] as $range) {
                 $this->assertStringContainsString('<mergeCell ref="'.$range.'"/>', $worksheetXml);
             }
             $this->assertStringContainsString('xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"', $worksheetXml);
@@ -867,9 +869,9 @@ class PaymentTotalsTest extends TestCase
                 ->withArgs(fn (string $html, array $pdfOptions): bool => $pdfOptions['format'] === 'A4'
                     && $pdfOptions['orientation'] === 'P'
                     && str_contains($html, 'បញ្ជីឈ្មោះបេក្ខជនបង់លុយ')
-                    && str_contains($html, '<th style="width: 18mm">ភេទ</th>')
-                    && str_contains($html, '<th style="width: 22mm; white-space: nowrap; font-size: 7pt">ថ្ងៃខែឆ្នាំកំណើត</th>')
-                    && str_contains($html, '<th style="width: 22mm; white-space: nowrap; font-size: 7pt">ថ្ងៃខែឆ្នាំកំណើត</th>')
+                    && str_contains($html, '<th style="width: 12mm">ភេទ</th>')
+                    && str_contains($html, '<th style="width: 20mm; white-space: nowrap; font-size: 7pt">ថ្ងៃខែឆ្នាំកំណើត</th>')
+                    && str_contains($html, '<th style="width: 17mm">ប្រភពបង់ប្រាក់</th>')
                     && str_contains($html, '.compact-table th, .compact-table td { font-size: 7pt; }')
                     && str_contains($html, '<table class="data-table compact-table">')
                     && str_contains($html, '<table class="summary-table compact-table">')
