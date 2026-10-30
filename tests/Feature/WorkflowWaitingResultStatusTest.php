@@ -242,16 +242,20 @@ class WorkflowWaitingResultStatusTest extends TestCase
             'custom_form_entry_id' => $entry->getKey(), 'candidate_status' => 'pending',
             'form_type' => 'exit-test',
         ]);
+        $passedEntry = $this->entry('passed');
         $passed = CandidateExitStatistic::query()->create([
-            'custom_form_entry_id' => $this->entry('passed')->getKey(), 'candidate_status' => 'passed',
+            'custom_form_entry_id' => $passedEntry->getKey(), 'candidate_status' => 'passed',
             'form_type' => 'exit-test',
         ]);
+        $this->pay($entry);
+        $this->pay($passedEntry);
         $unlinked = CandidateExitStatistic::query()->create(['candidate_status' => 'pending', 'form_type' => 'unlinked-test']);
         $viewer = $this->user('exit_waiting_viewer', 'admin');
         $viewer->givePermissionTo(Permission::findOrCreate('ViewAny:CandidateExitStatistic', 'web'));
         $this->actingAs($viewer);
         $component = Livewire::test(ListCandidateExitStatistics::class)
-            ->assertCanSeeTableRecords([$waiting, $passed, $unlinked]);
+            ->assertCanSeeTableRecords([$waiting, $passed])
+            ->assertCanNotSeeTableRecords([$unlinked]);
         $column = $component->instance()->getTable()->getColumn('candidate_status');
         $column->record($waiting);
         $this->assertSame('សូមរង់ចាំលទ្ធផល', $column->formatState($column->getState()));

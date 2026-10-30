@@ -2,20 +2,16 @@
 
 namespace App\Filament\Admin\Resources\CandidateEntranceStatistics;
 
-use App\Enums\WorkflowStageType;
 use App\Filament\Admin\Resources\CandidateEntranceStatistics\Tables\CandidateEntranceStatisticsTable;
 use App\Filament\Concerns\AdminOnly;
 use App\Models\CandidateEntranceStatistic;
-use App\Models\WorkflowNotification;
+use App\Support\StatisticsPaymentEligibility;
 use App\Support\StatisticsMenuOptions;
 use BackedEnum;
-use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Query\Builder as QueryBuilder;
-use Illuminate\Support\Facades\Schema as DbSchema;
 
 class CandidateEntranceStatisticResource extends Resource
 {
@@ -72,20 +68,7 @@ class CandidateEntranceStatisticResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        $configuredPaymentFormIds = WorkflowNotification::formIdsWithStage(WorkflowStageType::Payment);
-        $assignedWorkflowFormIds = WorkflowNotification::assignedFormIds();
-        $paymentFormsQuery = CustomForm::query()->where('requires_payment', true);
-
-        if ($assignedWorkflowFormIds !== []) {
-            $paymentFormsQuery->where(function (Builder $query) use ($configuredPaymentFormIds, $assignedWorkflowFormIds): void {
-                $query->whereIn('id', $configuredPaymentFormIds)
-                    ->orWhereNotIn('id', $assignedWorkflowFormIds);
-            });
-        }
-
-        $paymentFormIds = $paymentFormsQuery->pluck('id')->all();
-
-        return parent::getEloquentQuery()
+        return StatisticsPaymentEligibility::apply(parent::getEloquentQuery())
             ->with([
                 'creator',
                 'customForm',
@@ -107,21 +90,6 @@ class CandidateEntranceStatisticResource extends Resource
                     ->orWhere('data->candidate_status', 'pending')
                     ->orWhere('data->candidate_status', 'passed');
             })
-            ->where(function (Builder $query) use ($paymentFormIds): void {
-                $query
-                    ->whereNotIn('custom_form_id', $paymentFormIds)
-                    ->orWhere(function (Builder $query) use ($paymentFormIds): void {
-                        $query
-                            ->whereIn('custom_form_id', $paymentFormIds)
-                            ->whereExists(function (QueryBuilder $subQuery): void {
-                                $subQuery->selectRaw('1')
-                                    ->from('payments')
-                                    ->whereColumn('payments.form_id', 'custom_form_entries.custom_form_id')
-                                    ->where(fn (QueryBuilder $matchQuery): QueryBuilder => static::applyPaymentOwnerMatch($matchQuery))
-                                    ->where('payments.status_payt', 'paid');
-                            });
-                    });
-            })
             ->where(function (Builder $query): void {
                 $query->whereNull('data->' . static::HIDDEN_FLAG)
                     ->orWhere('data->' . static::HIDDEN_FLAG, false)
@@ -130,27 +98,6 @@ class CandidateEntranceStatisticResource extends Resource
                     ->orWhere('data->' . static::HIDDEN_FLAG, '0');
             })
             ->latest('id');
-    }
-
-    protected static function applyPaymentOwnerMatch(QueryBuilder $query): QueryBuilder
-    {
-        $ownerColumns = collect(['created_by', 'user_id', 'created_by_id'])
-            ->filter(fn (string $column): bool => DbSchema::hasColumn('custom_form_entries', $column))
-            ->values();
-
-        if ($ownerColumns->isEmpty()) {
-            return $query->whereRaw('1 = 0');
-        }
-
-        $firstColumn = $ownerColumns->shift();
-
-        $query->whereColumn('payments.users_id', "custom_form_entries.{$firstColumn}");
-
-        foreach ($ownerColumns as $column) {
-            $query->orWhereColumn('payments.users_id', "custom_form_entries.{$column}");
-        }
-
-        return $query;
     }
 
     public static function form(Schema $schema): Schema

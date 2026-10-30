@@ -170,6 +170,14 @@ class CandidateStatisticsRoutingTest extends TestCase
             'updated_at' => now(),
         ]);
 
+        DB::table('payments')->insert([
+            'form_id' => $form->id,
+            'custom_form_entry_id' => $entryId,
+            'status_payt' => 'paid',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
         $this->assertTrue(
             CandidateEntranceStatisticResource::getEloquentQuery()
                 ->whereKey($entryId)

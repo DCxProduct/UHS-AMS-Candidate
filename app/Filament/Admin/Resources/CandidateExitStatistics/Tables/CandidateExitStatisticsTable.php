@@ -198,7 +198,7 @@ class CandidateExitStatisticsTable
                     ->modalSubmitActionLabel(__('candidate_exit_statistics.passed_confirm_yes'))
                     ->modalCancelActionLabel(__('candidate_exit_statistics.passed_confirm_no'))
                     ->visible(fn (CandidateExitStatistic $record): bool => FilamentActionPermissions::canForResource(CandidateExitStatisticResource::class, 'passed')
-                        && WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::AwaitingResults)
+                        && self::canHandleResultStage($record)
                         && strtolower((string) $record->candidate_status) === 'pending')
                     ->action(function (CandidateExitStatistic $record): void {
                         FilamentActionPermissions::abortUnlessCanForResource(CandidateExitStatisticResource::class, 'passed');
@@ -229,7 +229,7 @@ class CandidateExitStatisticsTable
                         $entry = CustomFormEntry::query()->find($record->custom_form_entry_id);
 
                         return FilamentActionPermissions::canForResource(CandidateExitStatisticResource::class, 'edit_result')
-                            && WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::AwaitingResults)
+                            && self::canHandleResultStage($record)
                             && ($entry === null || ! CandidateEntranceStatisticsTable::hasStudentPassedNotification($entry))
                             && strtolower((string) $record->candidate_status) === 'passed';
                     })
@@ -266,7 +266,7 @@ class CandidateExitStatisticsTable
                         $records->each(function (CandidateExitStatistic $record) use (&$passedCount): void {
                             if (
                                 strtolower((string) $record->candidate_status) !== 'pending'
-                                || ! WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::AwaitingResults)
+                                || ! self::canHandleResultStage($record)
                             ) {
                                 return;
                             }
@@ -306,7 +306,7 @@ class CandidateExitStatisticsTable
                         $records->each(function (CandidateExitStatistic $record) use (&$editedCount): void {
                             if (
                                 strtolower((string) $record->candidate_status) !== 'passed'
-                                || ! WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::AwaitingResults)
+                                || ! self::canHandleResultStage($record)
                             ) {
                                 return;
                             }
@@ -322,6 +322,13 @@ class CandidateExitStatisticsTable
                             ->send();
                     }),
             ]);
+    }
+
+    protected static function canHandleResultStage(CandidateExitStatistic $record): bool
+    {
+        $entry = $record->customFormEntry;
+
+        return $entry !== null && WorkflowStageMessages::canCurrentUserHandleStage($entry, WorkflowStageType::AwaitingResults);
     }
 
     public static function downloadExcel(iterable $records, ?array $columnKeys = null)
