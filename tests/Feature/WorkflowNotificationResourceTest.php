@@ -192,7 +192,7 @@ class WorkflowNotificationResourceTest extends TestCase
 
             $this->get(WorkflowNotificationResource::getUrl('view', ['record' => $template]))
                 ->assertOk()
-                ->assertSee('ការពិនិត្យ')
+                ->assertSee('ការពិនិត្យពាក្យស្នើសុំ')
                 ->assertSee('Custom checkpoint');
         } finally {
             app()->setLocale($originalLocale);
@@ -217,8 +217,16 @@ class WorkflowNotificationResourceTest extends TestCase
 
             app()->setLocale('km');
             $this->assertSame(
-                'ការពិនិត្យ',
+                'ការពិនិត្យពាក្យស្នើសុំ',
                 WorkflowNotificationStageSummary::localizedName('Review', WorkflowStageType::Review),
+            );
+            $this->assertSame(
+                'ការពិនិត្យពាក្យស្នើសុំ',
+                WorkflowNotificationStageSummary::localizedName('ការពិនិត្យ', WorkflowStageType::Review),
+            );
+            $this->assertSame(
+                'ការពិនិត្យឯកសារ',
+                WorkflowNotificationStageSummary::localizedName('ការពិនិត្យឯកសារ', WorkflowStageType::Review),
             );
             $this->assertSame(
                 $customName,
@@ -227,6 +235,38 @@ class WorkflowNotificationResourceTest extends TestCase
         } finally {
             app()->setLocale($originalLocale);
         }
+    }
+
+    public function test_editing_legacy_khmer_review_name_shows_the_updated_label_without_changing_custom_names_or_saved_settings(): void
+    {
+        $template = WorkflowNotification::query()->create([
+            'name' => 'Legacy Khmer review names',
+            'stages' => collect(['ការពិនិត្យ', 'ការពិនិត្យឯកសារ'])->map(fn (string $name): array => [
+                'type' => 'stage',
+                'data' => [
+                    'stage_name' => $name,
+                    'stage_type' => 'review',
+                    'responsible_role' => ['registrar_officer'],
+                    'notification_channels' => ['system'],
+                    'review_actions' => ['accept' => ['status_message' => 'បានពិនិត្យពាក្យ']],
+                ],
+            ])->all(),
+        ]);
+        $savedStages = $template->stages;
+        $this->actingAs($this->admin);
+        app()->setLocale('km');
+
+        $component = Livewire::test(EditWorkflowNotification::class, ['record' => $template->getRouteKey()]);
+        $keys = array_keys($component->get('data.stages'));
+        foreach (['ការពិនិត្យពាក្យស្នើសុំ', 'ការពិនិត្យឯកសារ'] as $index => $name) {
+            $path = 'data.stages.'.$keys[$index].'.data';
+            $component->assertSet($path.'.stage_name', $name)
+                ->assertSet($path.'.stage_type', 'review')
+                ->assertSet($path.'.responsible_role', ['registrar_officer'])
+                ->assertSet($path.'.review_actions.accept.status_message', 'បានពិនិត្យពាក្យ');
+        }
+        $component->assertSee('ការពិនិត្យពាក្យស្នើសុំ');
+        $this->assertSame($savedStages, $template->fresh()->stages);
     }
 
     public function test_view_table_action_uses_a_modal_instead_of_the_view_url(): void

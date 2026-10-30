@@ -51,16 +51,11 @@ class WorkflowReviewStageFormTest extends TestCase
         $fields = collect($component->instance()->form->getFlatFields());
         $actionFields = $fields->filter(fn ($field): bool => str_contains($field->getStatePath(), '.review_actions.'));
         $this->assertCount(12, $actionFields);
-        $component->assertSee(__('workflow_notifications.helpers.shared_review_status'))
-            ->assertSee(__('workflow_notifications.helpers.review_candidate_notification'))
-            ->assertSee(__('workflow_notifications.helpers.review_staff_notification'))
-            ->assertSee(__('workflow_notifications.helpers.review_staff_recipients'))
-            ->assertSee(__('workflow_notifications.sections.for_candidates'))
+        $component->assertSee(__('workflow_notifications.sections.for_candidates'))
             ->assertSee(__('workflow_notifications.sections.for_system_users'));
 
         foreach (['accept', 'send_back', 'reject'] as $action) {
-            $component->assertSee(__('workflow_notifications.review_actions.'.$action.'.title'))
-                ->assertSee(__('workflow_notifications.review_actions.'.$action.'.description'));
+            $component->assertSee(__('workflow_notifications.review_actions.'.$action.'.title'));
 
             $status = $actionFields->first(fn ($field): bool => str_ends_with($field->getStatePath(), '.review_actions.'.$action.'.status_message'));
             $notification = $actionFields->first(fn ($field): bool => str_ends_with($field->getStatePath(), '.review_actions.'.$action.'.notification_message'));

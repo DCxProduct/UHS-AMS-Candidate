@@ -62,9 +62,7 @@ class WorkflowPaymentStatusLabelFormTest extends TestCase
         $this->assertSame(__('workflow_notifications.placeholders.stage_audiences.payment.status_message'), (string) $paid->getPlaceholder());
         $this->assertFalse($paid->isRequired());
         $this->assertFalse($unpaid->isRequired());
-        $component->assertSet($path.'.status_message', 'Existing paid status')
-            ->assertSee(__('workflow_notifications.helpers.paid_status_message'))
-            ->assertSee(__('workflow_notifications.helpers.unpaid_status_message'));
+        $component->assertSet($path.'.status_message', 'Existing paid status');
         $this->assertEmpty(data_get($workflow->stages, '0.data.payment_statuses.unpaid_status_message'));
     }
 

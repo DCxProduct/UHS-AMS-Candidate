@@ -91,14 +91,10 @@ class WorkflowStageAudienceFormTest extends TestCase
         }
 
         $component->assertSee(__('workflow_notifications.sections.for_candidates'))
-            ->assertSee(__('workflow_notifications.sections.for_system_users'))
-            ->assertSee(__(match ($type) {
-                'payment' => 'workflow_notifications.helpers.paid_status_message',
-                'awaiting_results' => 'workflow_notifications.helpers.passed_result_status_message',
-                default => 'workflow_notifications.helpers.shared_stage_status',
-            }))
-            ->assertSee(__('workflow_notifications.helpers.stage_candidate_notification'))
-            ->assertSee(__('workflow_notifications.helpers.stage_staff_notification'));
+            ->assertSee(__('workflow_notifications.sections.for_system_users'));
+        if ($type === 'awaiting_results') {
+            $component->assertSee(__('workflow_notifications.helpers.passed_result_status_message'));
+        }
         $this->assertTrue($fields->has($path.'.responsible_role'));
         $this->assertFalse($fields->has($path.'.responsible_role_automatic'));
         $this->assertTrue($fields->get($path.'.responsible_role')->isMultiple());

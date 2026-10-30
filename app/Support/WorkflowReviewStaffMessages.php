@@ -53,6 +53,11 @@ final class WorkflowReviewStaffMessages
                                 'reject' => 'heroicon-o-x-circle',
                                 default => 'heroicon-o-check-circle',
                             })
+                            ->iconColor(match ($action) {
+                                'reject' => 'danger',
+                                'send_back' => 'warning',
+                                default => 'success',
+                            })
                             ->viewData([
                                 'workflow_entry_id' => (string) $entry->getKey(),
                                 'workflow_stage_type' => WorkflowStageType::Review->value,

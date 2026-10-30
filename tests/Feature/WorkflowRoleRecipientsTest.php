@@ -77,10 +77,13 @@ class WorkflowRoleRecipientsTest extends TestCase
 
         $this->dispatch($entry, $location);
 
+        $candidateNotification = $this->candidate->notifications()->sole();
         foreach ($admins as $admin) {
             $notification = $admin->notifications()->sole();
             $this->assertSame('Staff: '.$location, $notification->data['body']);
             $this->assertSame($this->event($location), data_get($notification->data, 'viewData.workflow_event'));
+            $this->assertSame($candidateNotification->data['icon'], $notification->data['icon']);
+            $this->assertSame($candidateNotification->data['iconColor'], $notification->data['iconColor']);
         }
         $this->assertSame('Candidate: '.$location, $this->candidate->notifications()->sole()->data['body']);
         $this->assertSame(0, $namedAdminWithoutRole->notifications()->count());

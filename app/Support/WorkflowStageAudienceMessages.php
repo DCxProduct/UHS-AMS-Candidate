@@ -57,7 +57,8 @@ final class WorkflowStageAudienceMessages
                             ]))
                             ->body($body)
                             ->info()
-                            ->icon('heroicon-o-clipboard-document-check')
+                            ->icon('heroicon-o-check-circle')
+                            ->iconColor('success')
                             ->viewData([
                                 'workflow_entry_id' => (string) $entry->getKey(),
                                 'workflow_stage_type' => $stageType->value,
