@@ -6,7 +6,9 @@ use App\Enums\WorkflowStageType;
 use App\Filament\Admin\Resources\CandidateEntranceStatistics\Tables\CandidateEntranceStatisticsTable;
 use App\Filament\Admin\Resources\ExamResults\ExamResultResource;
 use App\Filament\Admin\Resources\ExitExamResults\ExitExamResultResource;
+use App\Models\Major;
 use App\Models\User;
+use App\Support\CandidateNumber;
 use App\Support\FilamentActionPermissions;
 use App\Support\FormEntryData;
 use App\Support\CaseInsensitiveSearch;
@@ -44,33 +46,35 @@ class ExamResultsTable
                     ->width('60px')
                     ->toggleable(isToggledHiddenByDefault: false),
 
-                TextColumn::make('id')
-                    ->label(__('exam_results.id'))
-                    ->formatStateUsing(fn ($state): string => LocalizedNumber::digits($state))
-                    ->alignCenter()
-                    ->toggleable(isToggledHiddenByDefault: true),
-
                 TextColumn::make('candidate_id')
                     ->label(__('candidate_entrance_statistics.student_id'))
                     ->getStateUsing(fn (CustomFormEntry $record): string => self::candidateId($record))
                     ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: false),
 
-                TextColumn::make('seat_number')
-                    ->label(__('exam_results.seat_number'))
-                    ->getStateUsing(fn ($record): string => self::entryValue($record, 'seat_number', self::entryValue($record, 'list_number', $record->creator?->seat_number)))
-                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyAny($query, [
-                        'data->seat_number',
-                        'data->list_number',
-                    ], $search))
+                TextColumn::make('national_exam_pass_list_number')
+                    ->label(__('exam_results.national_exam_pass_list_number'))
+                    ->getStateUsing(fn ($record): string => self::entryValue($record, 'national_exam_pass_list_number'))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::apply($query, 'data->national_exam_pass_list_number', $search))
                     ->toggleable(isToggledHiddenByDefault: false),
 
-                TextColumn::make('name_khmer')
-                    ->label(__('exam_results.name_khmer'))
-                    ->getStateUsing(fn ($record): string => self::khmerName($record))
+                TextColumn::make('first_name_khmer')
+                    ->label(__('exam_results.first_name_khmer'))
+                    ->getStateUsing(fn ($record): string => self::khmerNamePart($record, 'first_name_kh'))
                     ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyAny($query, [
                         'data->first_name_kh',
                         'data->last_name_kh',
+                        'data->name_khmer',
+                    ], $search))
+                    ->toggleable(isToggledHiddenByDefault: false),
+
+                TextColumn::make('last_name_khmer')
+                    ->label(__('exam_results.last_name_khmer'))
+                    ->getStateUsing(fn ($record): string => self::khmerNamePart($record, 'last_name_kh'))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyAny($query, [
+                        'data->first_name_kh',
+                        'data->last_name_kh',
+                        'data->name_khmer',
                     ], $search))
                     ->toggleable(isToggledHiddenByDefault: false),
 
@@ -421,12 +425,6 @@ class ExamResultsTable
                 'value' => fn (CustomFormEntry $record, int $rowNumber): string => (string) $rowNumber,
                 'clean' => fn (CustomFormEntry $record, int $rowNumber): string => (string) $rowNumber,
             ],
-            'id' => [
-                'label' => __('exam_results.id'),
-                'field_key' => 'id',
-                'value' => fn (CustomFormEntry $record): string => (string) $record->id,
-                'clean' => fn (CustomFormEntry $record): string => (string) $record->id,
-            ],
             'academic_year' => [
                 'label' => __('exam_results.academic_year'),
                 'field_key' => 'academic_year',
@@ -435,17 +433,23 @@ class ExamResultsTable
                 ),
                 'clean' => fn (CustomFormEntry $record): string => self::entryValue($record, 'academic_year', $record->creator?->academic_year),
             ],
-            'seat_number' => [
-                'label' => __('exam_results.seat_number'),
-                'field_key' => 'seat_number',
-                'value' => fn (CustomFormEntry $record): string => self::entryValue($record, 'seat_number', self::entryValue($record, 'list_number', $record->creator?->seat_number)),
-                'clean' => fn (CustomFormEntry $record): string => self::entryValue($record, 'seat_number', self::entryValue($record, 'list_number', $record->creator?->seat_number)),
+            'national_exam_pass_list_number' => [
+                'label' => __('exam_results.national_exam_pass_list_number'),
+                'field_key' => 'national_exam_pass_list_number',
+                'value' => fn (CustomFormEntry $record): string => self::entryValue($record, 'national_exam_pass_list_number'),
+                'clean' => fn (CustomFormEntry $record): string => self::entryValue($record, 'national_exam_pass_list_number'),
             ],
-            'name_khmer' => [
-                'label' => __('exam_results.name_khmer'),
-                'field_key' => 'name_khmer',
-                'value' => fn (CustomFormEntry $record): string => self::khmerName($record),
-                'clean' => fn (CustomFormEntry $record): string => self::khmerName($record),
+            'first_name_khmer' => [
+                'label' => __('exam_results.first_name_khmer'),
+                'field_key' => 'first_name_kh',
+                'value' => fn (CustomFormEntry $record): string => self::khmerNamePart($record, 'first_name_kh'),
+                'clean' => fn (CustomFormEntry $record): string => self::khmerNamePart($record, 'first_name_kh'),
+            ],
+            'last_name_khmer' => [
+                'label' => __('exam_results.last_name_khmer'),
+                'field_key' => 'last_name_kh',
+                'value' => fn (CustomFormEntry $record): string => self::khmerNamePart($record, 'last_name_kh'),
+                'clean' => fn (CustomFormEntry $record): string => self::khmerNamePart($record, 'last_name_kh'),
             ],
             'first_name_latin' => [
                 'label' => __('exam_results.first_name_latin'),
@@ -483,10 +487,8 @@ class ExamResultsTable
                 'value' => fn (CustomFormEntry $record): string => self::dateValue(
                     self::entryValue($record, 'date_of_birth', $record->creator?->date_of_birth)
                 ),
-                'clean' => fn (CustomFormEntry $record): string => self::entryValue(
-                    $record,
-                    'date_of_birth',
-                    $record->creator?->date_of_birth
+                'clean' => fn (CustomFormEntry $record): string => self::dateValue(
+                    self::entryValue($record, 'date_of_birth', $record->creator?->date_of_birth)
                 ),
             ],
             'exam_date' => [
@@ -505,7 +507,7 @@ class ExamResultsTable
 
     protected static function candidateId(CustomFormEntry $record): string
     {
-        return (string) ($record->candidate_id ?: $record->creator?->candidate_id ?: '');
+        return CandidateNumber::format($record->candidate_id ?: $record->creator?->candidate_id ?: '');
     }
 
     protected static function contentTypesXml(array $sheets): string
@@ -842,7 +844,13 @@ class ExamResultsTable
 
     protected static function majorKey($record): string
     {
-        return (string) FormEntryData::firstFilled($record->data, FormEntryData::majorKeys(), '-');
+        $value = (string) FormEntryData::firstFilled($record->data, FormEntryData::majorKeys(), '-');
+
+        if (! ctype_digit($value)) {
+            return $value;
+        }
+
+        return (string) (Major::query()->whereKey($value)->value('key') ?: $value);
     }
 
     protected static function majorValue($record): string
@@ -884,14 +892,24 @@ class ExamResultsTable
             ?? $roles->first();
     }
 
-    protected static function khmerName($record): string
+    protected static function khmerNamePart($record, string $key): string
     {
-        $name = trim(collect([
-            data_get($record->data, 'first_name_kh'),
-            data_get($record->data, 'last_name_kh'),
-        ])->filter()->join(' '));
+        $firstName = trim((string) data_get($record->data, 'first_name_kh'));
+        $lastName = trim((string) data_get($record->data, 'last_name_kh'));
 
-        return filled($name) ? $name : self::entryValue($record, 'name_khmer', $record->creator?->name);
+        if (filled($firstName) || filled($lastName)) {
+            return ($key === 'first_name_kh' ? $firstName : $lastName) ?: '-';
+        }
+
+        $fallback = self::entryValue($record, 'name_khmer', $record->creator?->name);
+
+        if ($fallback === '-') {
+            return '-';
+        }
+
+        $parts = preg_split('/\s+/u', trim($fallback), 2, PREG_SPLIT_NO_EMPTY) ?: [];
+
+        return (string) ($parts[$key === 'first_name_kh' ? 0 : 1] ?? '-');
     }
 
     protected static function latinNamePart($record, string $key): string

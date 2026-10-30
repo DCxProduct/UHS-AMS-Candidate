@@ -7,6 +7,7 @@ use App\Filament\Admin\Resources\CandidateExitStatistics\CandidateExitStatisticR
 use App\Filament\Admin\Resources\CandidateEntranceStatistics\Tables\CandidateEntranceStatisticsTable;
 use App\Models\CandidateExitStatistic;
 use App\Support\AuditLogger;
+use App\Support\CandidateNumber;
 use App\Support\CandidateTypeResolver;
 use App\Support\CandidateStatisticsSynchronizer;
 use App\Support\CaseInsensitiveSearch;
@@ -55,7 +56,7 @@ class CandidateExitStatisticsTable
 
                 TextColumn::make('candidate_id')
                     ->label(__('candidate_entrance_statistics.student_id'))
-                    ->getStateUsing(fn (CandidateExitStatistic $record): string => (string) ($record->customFormEntry?->candidate_id ?? '-'))
+                    ->getStateUsing(fn (CandidateExitStatistic $record): string => CandidateNumber::format($record->customFormEntry?->candidate_id ?? '-'))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('form_type')
@@ -496,8 +497,8 @@ class CandidateExitStatisticsTable
             'candidate_id' => [
                 'label' => __('candidate_entrance_statistics.student_id'),
                 'field_key' => 'candidate_id',
-                'value' => fn (CandidateExitStatistic $record): string => (string) ($record->customFormEntry?->candidate_id ?? ''),
-                'clean' => fn (CandidateExitStatistic $record): string => (string) ($record->customFormEntry?->candidate_id ?? ''),
+                'value' => fn (CandidateExitStatistic $record): string => CandidateNumber::format($record->customFormEntry?->candidate_id),
+                'clean' => fn (CandidateExitStatistic $record): string => CandidateNumber::format($record->customFormEntry?->candidate_id),
             ],
             'form_type' => [
                 'label' => __('candidate_exit_statistics.fields.form_type'),
