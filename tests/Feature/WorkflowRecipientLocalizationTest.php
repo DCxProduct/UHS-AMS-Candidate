@@ -48,7 +48,6 @@ class WorkflowRecipientLocalizationTest extends TestCase
         $component = Livewire::test(EditWorkflowNotification::class, ['record' => $workflow->getRouteKey()]);
         $pickers = $this->pickers($component);
         $this->assertCount(7, $pickers);
-        $component->assertSee(__('workflow_notifications.helpers.review_staff_recipients'));
 
         foreach ($pickers as $picker) {
             $this->assertSame($labels[$locale], $picker->getOptions());

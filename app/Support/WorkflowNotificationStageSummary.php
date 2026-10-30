@@ -90,7 +90,7 @@ final class WorkflowNotificationStageSummary
 
         $defaults = match ($type) {
             WorkflowStageType::FormSubmission => ['form', 'form submission', 'submission', 'student', 'candidate'],
-            WorkflowStageType::Review => ['review', 'application review', 'registrar review'],
+            WorkflowStageType::Review => ['review', 'application review', 'registrar review', 'ការពិនិត្យ'],
             WorkflowStageType::Approval => ['approval', 'approve', 'registrar approval'],
             WorkflowStageType::Payment => ['payment'],
             WorkflowStageType::AwaitingResults => ['awaiting result', 'awaiting results', 'results'],

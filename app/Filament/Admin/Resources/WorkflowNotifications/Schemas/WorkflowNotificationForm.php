@@ -130,7 +130,6 @@ class WorkflowNotificationForm
             Grid::make(2)->schema([
                 CheckboxList::make('notification_channels')
                     ->label(fn (): HtmlString => new HtmlString('<span style="font-size: 1.05rem; font-weight: 700;">'.e(__('workflow_notifications.fields.notification_channels')).'</span>'))
-                    ->helperText(__('workflow_notifications.helpers.notification_channels'))
                     ->options(fn (): array => collect(WorkflowStageMessages::CHANNELS)
                         ->mapWithKeys(fn (string $channel): array => [$channel => '<span style="font-size: 1.05rem;">'.e(__('workflow_notifications.channels.'.$channel)).'</span>'])
                         ->all())
@@ -171,6 +170,9 @@ class WorkflowNotificationForm
                 TextInput::make('stage_name')
                     ->label(__('workflow_notifications.fields.stage_name'))
                     ->placeholder(__('workflow_notifications.placeholders.stage_name'))
+                    ->formatStateUsing(fn (?string $state, Get $get): ?string => $state === 'ការពិនិត្យ'
+                        ? WorkflowNotificationStageSummary::localizedName($state, WorkflowStageType::tryFrom((string) $get('stage_type')))
+                        : $state)
                     ->required()
                     ->maxLength(255)
                     ->live(onBlur: true),
@@ -203,7 +205,6 @@ class WorkflowNotificationForm
 
                 Select::make('payment_source')
                     ->label(__('workflow_notifications.fields.payment_source'))
-                    ->helperText(__('workflow_notifications.helpers.payment_source'))
                     ->options(fn (): array => WorkflowPaymentSource::options())
                     ->in(fn (): array => array_keys(WorkflowPaymentSource::options()))
                     ->default(WorkflowPaymentSource::System->value)
@@ -216,24 +217,9 @@ class WorkflowNotificationForm
                 TextInput::make('submission_messages.candidate_status_message')
                     ->label(__('workflow_notifications.fields.shared_status_message'))
                     ->placeholder(__('workflow_notifications.placeholders.submission_status'))
-                    ->helperText(__('workflow_notifications.helpers.submission_status'))
                     ->maxLength(255)
                     ->visible($isSubmissionStage)
                     ->columnSpanFull(),
-
-                TextInput::make('payment_statuses.unpaid_status_message')
-                    ->label(__('workflow_notifications.fields.unpaid_status_message'))
-                    ->placeholder(__('workflow_notifications.placeholders.unpaid_status_message'))
-                    ->helperText(__('workflow_notifications.helpers.unpaid_status_message'))
-                    ->maxLength(255)
-                    ->visible($isPaymentStage),
-
-                TextInput::make('result_statuses.pending_status_message')
-                    ->label(__('workflow_notifications.fields.waiting_result_status_message'))
-                    ->placeholder(__('workflow_notifications.placeholders.waiting_result_status_message'))
-                    ->helperText(__('workflow_notifications.helpers.waiting_result_status_message'))
-                    ->maxLength(255)
-                    ->visible($isAwaitingResultsStage),
 
                 TextInput::make('status_message')
                     ->label(fn (Get $get): string => __($isPaymentStage($get)
@@ -243,11 +229,9 @@ class WorkflowNotificationForm
                             : ($usesStageAudienceLayout($get)
                                 ? 'workflow_notifications.fields.shared_status_message'
                                 : 'workflow_notifications.fields.status_message'))))
-                    ->helperText(fn (Get $get): ?string => $isPaymentStage($get)
-                        ? __('workflow_notifications.helpers.paid_status_message')
-                        : ($isAwaitingResultsStage($get)
-                            ? __('workflow_notifications.helpers.passed_result_status_message')
-                            : ($usesStageAudienceLayout($get) ? __('workflow_notifications.helpers.shared_stage_status') : null)))
+                    ->helperText(fn (Get $get): ?string => $isAwaitingResultsStage($get)
+                        ? __('workflow_notifications.helpers.passed_result_status_message')
+                        : null)
                     ->placeholder(fn (Get $get): string => $usesStageAudienceLayout($get)
                         ? __('workflow_notifications.placeholders.stage_audiences.'.$get('stage_type').'.status_message')
                         : (filled($get('stage_type')) && Lang::has('workflow_notifications.status_defaults.'.$get('stage_type'))
@@ -255,11 +239,10 @@ class WorkflowNotificationForm
                             : __('workflow_notifications.placeholders.status_message')))
                     ->maxLength(255)
                     ->visible(fn (Get $get): bool => $handledByStaff($get) && ! $isReviewStage($get))
-                    ->columnSpan(fn (Get $get): string|int => ($isPaymentStage($get) || $isAwaitingResultsStage($get)) ? 1 : 'full'),
+                    ->columnSpanFull(),
 
                 Select::make('responsible_role')
                     ->label(__('workflow_notifications.fields.responsible_role'))
-                    ->helperText(fn (Get $get): ?string => $isCompletedStage($get) ? __('workflow_notifications.helpers.completed_responsible_role') : null)
                     ->options(fn (Get $get): array => self::responsibleRoleOptions($get('stage_type')))
                     ->multiple()
                     ->searchable()
@@ -279,7 +262,6 @@ class WorkflowNotificationForm
                             Textarea::make('submission_messages.candidate_notification_message')
                                 ->label(__('workflow_notifications.fields.notification_message'))
                                 ->placeholder(__('workflow_notifications.placeholders.submission_candidate_notification'))
-                                ->helperText(__('workflow_notifications.helpers.submission_candidate_notification'))
                                 ->rows(1)
                                 ->autosize()
                                 ->maxLength(1000),
@@ -300,7 +282,6 @@ class WorkflowNotificationForm
                             Select::make('submission_messages.staff_recipient_roles')
                                 ->label(__('workflow_notifications.fields.staff_recipient_roles'))
                                 ->placeholder(__('workflow_notifications.placeholders.staff_recipient_roles'))
-                                ->helperText(__('workflow_notifications.helpers.review_staff_recipients'))
                                 ->options(fn (): array => WorkflowStaffRecipients::roleOptions())
                                 ->multiple()
                                 ->searchable()
@@ -324,7 +305,6 @@ class WorkflowNotificationForm
 
                             Textarea::make('notification_message')
                                 ->label(__('workflow_notifications.fields.notification_message'))
-                                ->helperText(fn (Get $get): ?string => $usesStageAudienceLayout($get) ? __('workflow_notifications.helpers.stage_candidate_notification') : null)
                                 ->placeholder(fn (Get $get): string => $usesStageAudienceLayout($get)
                                     ? __('workflow_notifications.placeholders.stage_audiences.'.$get('stage_type').'.notification_message')
                                     : __('workflow_notifications.placeholders.notification_message'))
@@ -338,9 +318,21 @@ class WorkflowNotificationForm
                                 ->content(new HtmlString('<div class="border-b border-gray-200 pb-3 font-semibold dark:border-gray-700">'.e(__('workflow_notifications.sections.for_system_users')).'</div>'))
                                 ->hiddenLabel(),
 
+                            TextInput::make('payment_statuses.unpaid_status_message')
+                                ->label(__('workflow_notifications.fields.unpaid_status_message'))
+                                ->placeholder(__('workflow_notifications.placeholders.unpaid_status_message'))
+                                ->maxLength(255)
+                                ->visible($isPaymentStage),
+
+                            TextInput::make('result_statuses.pending_status_message')
+                                ->label(__('workflow_notifications.fields.waiting_result_status_message'))
+                                ->placeholder(__('workflow_notifications.placeholders.waiting_result_status_message'))
+                                ->helperText(__('workflow_notifications.helpers.waiting_result_status_message'))
+                                ->maxLength(255)
+                                ->visible($isAwaitingResultsStage),
+
                             Textarea::make('audience_messages.staff_notification_message')
                                 ->label(__('workflow_notifications.fields.staff_notification_message'))
-                                ->helperText(__('workflow_notifications.helpers.stage_staff_notification'))
                                 ->placeholder(fn (Get $get): string => __('workflow_notifications.placeholders.stage_audiences.'.$get('stage_type').'.staff_notification_message'))
                                 ->rows(2)
                                 ->autosize()
@@ -349,7 +341,6 @@ class WorkflowNotificationForm
                             Select::make('audience_messages.staff_recipient_roles')
                                 ->label(__('workflow_notifications.fields.staff_recipient_roles'))
                                 ->placeholder(__('workflow_notifications.placeholders.staff_recipient_roles'))
-                                ->helperText(__('workflow_notifications.helpers.review_staff_recipients'))
                                 ->options(fn (): array => WorkflowStaffRecipients::roleOptions())
                                 ->multiple()
                                 ->searchable()
@@ -364,7 +355,6 @@ class WorkflowNotificationForm
 
                 Section::make(__('workflow_notifications.sections.review_outcomes'))
                     ->key('review-actions')
-                    ->description(__('workflow_notifications.helpers.review_outcomes'))
                     ->compact()
                     ->columns(1)
                     ->schema([
@@ -386,12 +376,11 @@ class WorkflowNotificationForm
             ->columns(1)
             ->schema([
                 Placeholder::make('review_actions.'.$action.'.heading')
-                    ->content(new HtmlString('<div class="font-semibold">'.e(__('workflow_notifications.review_actions.'.$action.'.title')).'</div><p class="mt-1 text-sm text-gray-500 dark:text-gray-400">'.e(__('workflow_notifications.review_actions.'.$action.'.description')).'</p>'))
+                    ->content(new HtmlString('<div class="font-semibold">'.e(__('workflow_notifications.review_actions.'.$action.'.title')).'</div>'))
                     ->hiddenLabel(),
 
                 TextInput::make('review_actions.'.$action.'.status_message')
                     ->label(__('workflow_notifications.fields.shared_status_message'))
-                    ->helperText(__('workflow_notifications.helpers.shared_review_status'))
                     ->placeholder(__('workflow_notifications.placeholders.review_actions.'.$action.'.status_message'))
                     ->maxLength(255),
 
@@ -404,7 +393,6 @@ class WorkflowNotificationForm
 
                             Textarea::make('review_actions.'.$action.'.notification_message')
                                 ->label(__('workflow_notifications.review_actions.'.$action.'.notification_message'))
-                                ->helperText(__('workflow_notifications.helpers.review_candidate_notification'))
                                 ->placeholder(__('workflow_notifications.placeholders.review_actions.'.$action.'.notification_message'))
                                 ->rows(2)
                                 ->autosize()
@@ -418,7 +406,6 @@ class WorkflowNotificationForm
 
                             Textarea::make('review_actions.'.$action.'.staff_notification_message')
                                 ->label(__('workflow_notifications.fields.staff_notification_message'))
-                                ->helperText(__('workflow_notifications.helpers.review_staff_notification'))
                                 ->placeholder(__('workflow_notifications.placeholders.review_actions.'.$action.'.staff_notification_message'))
                                 ->rows(2)
                                 ->autosize()
@@ -427,7 +414,6 @@ class WorkflowNotificationForm
                             Select::make('review_actions.'.$action.'.staff_recipient_roles')
                                 ->label(__('workflow_notifications.fields.staff_recipient_roles'))
                                 ->placeholder(__('workflow_notifications.placeholders.staff_recipient_roles'))
-                                ->helperText(__('workflow_notifications.helpers.review_staff_recipients'))
                                 ->options(fn (): array => WorkflowStaffRecipients::roleOptions())
                                 ->multiple()
                                 ->searchable()
