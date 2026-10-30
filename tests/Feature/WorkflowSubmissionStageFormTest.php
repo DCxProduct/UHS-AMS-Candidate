@@ -30,8 +30,7 @@ class WorkflowSubmissionStageFormTest extends TestCase
 
     public function test_submission_messages_can_be_created_without_a_responsible_role_or_staff_status(): void
     {
-        $recipient = $this->user('submission_recipient');
-        $messages = $this->messages($recipient);
+        $messages = $this->messages();
 
         $component = $this->createForm('Submission configuration', $messages)
             ->call('create')
@@ -47,8 +46,7 @@ class WorkflowSubmissionStageFormTest extends TestCase
 
     public function test_existing_submission_configuration_hydrates_and_edits_all_four_fields(): void
     {
-        $recipient = $this->user('existing_submission_recipient');
-        $messages = $this->messages($recipient);
+        $messages = $this->messages();
         $workflow = WorkflowNotification::query()->create([
             'name' => 'Editable submission',
             'stages' => [$this->stage($messages)],
@@ -70,7 +68,7 @@ class WorkflowSubmissionStageFormTest extends TestCase
         $this->assertSame('Submitted and awaiting review', $saved['candidate_status_message']);
         $this->assertSame('An application is ready for review.', $saved['staff_notification_message']);
         $this->assertSame($messages['candidate_notification_message'], $saved['candidate_notification_message']);
-        $this->assertEquals($messages['staff_recipient_ids'], $saved['staff_recipient_ids']);
+        $this->assertEquals($messages['staff_recipient_roles'], $saved['staff_recipient_roles']);
     }
 
     public function test_new_submission_settings_are_optional_and_do_not_change_other_stage_configuration(): void
@@ -125,7 +123,7 @@ class WorkflowSubmissionStageFormTest extends TestCase
             'candidate_status_message',
             'candidate_notification_message',
             'staff_notification_message',
-            'staff_recipient_ids',
+            'staff_recipient_roles',
         ], $visibleSubmissionFields);
         $this->assertFalse(collect($fields)->contains(fn ($field): bool => str_ends_with($field->getStatePath(), '.responsible_role')));
         $component->assertSee($locale === 'km' ? 'សម្រាប់បេក្ខជន' : 'For Candidates')
@@ -158,19 +156,24 @@ class WorkflowSubmissionStageFormTest extends TestCase
         }
     }
 
-    public function test_staff_recipient_picker_excludes_candidates_and_inactive_staff(): void
+    public function test_staff_recipient_picker_lists_roles_instead_of_personal_accounts(): void
     {
-        $active = $this->user('active_submission_staff');
-        $inactive = $this->user('inactive_submission_staff', active: false);
-        $candidate = $this->user('submission_candidate', type: 'student');
-        $component = $this->createForm('Recipient options');
+        $staff = $this->user('personal_submission_staff');
+        $staff->assignRole('cashier_officer');
+        Role::findOrCreate('candidate', 'web')->forceFill(['role_type_key' => 'candidate'])->save();
+        Role::findOrCreate('api_role', 'api');
+        $component = $this->createForm('Recipient roles');
         $picker = collect($component->instance()->form->getFlatFields())
-            ->first(fn ($field): bool => str_ends_with($field->getStatePath(), '.submission_messages.staff_recipient_ids'));
+            ->first(fn ($field): bool => str_ends_with($field->getStatePath(), '.submission_messages.staff_recipient_roles'));
         $this->assertNotNull($picker);
+        $this->assertTrue($picker->isMultiple());
         $options = $picker->getOptions();
-        $this->assertArrayHasKey($active->getKey(), $options);
-        $this->assertArrayNotHasKey($inactive->getKey(), $options);
-        $this->assertArrayNotHasKey($candidate->getKey(), $options);
+        $this->assertArrayHasKey('admin', $options);
+        $this->assertArrayHasKey('cashier_officer', $options);
+        $this->assertArrayNotHasKey('candidate', $options);
+        $this->assertArrayNotHasKey('api_role', $options);
+        $this->assertArrayNotHasKey($staff->getKey(), $options);
+        $this->assertNotContains($staff->name, $options);
     }
 
     #[DataProvider('locales')]
@@ -219,13 +222,13 @@ class WorkflowSubmissionStageFormTest extends TestCase
         return ['type' => 'stage', 'data' => $data];
     }
 
-    private function messages(User $recipient): array
+    private function messages(): array
     {
         return [
             'candidate_status_message' => 'Application submitted',
             'candidate_notification_message' => 'Your application was submitted successfully.',
             'staff_notification_message' => 'A new application needs review.',
-            'staff_recipient_ids' => [$recipient->getKey()],
+            'staff_recipient_roles' => ['cashier_officer'],
         ];
     }
 

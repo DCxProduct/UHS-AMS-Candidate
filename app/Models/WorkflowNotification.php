@@ -58,6 +58,18 @@ class WorkflowNotification extends Model
                     $data['payment_source'] = WorkflowPaymentSource::resolve($data['payment_source'])->value;
                 }
 
+                foreach (['submission_messages', 'audience_messages'] as $key) {
+                    if (is_array($data[$key] ?? null)) {
+                        $data[$key] = self::normalizeStaffRecipients($data[$key]);
+                    }
+                }
+
+                foreach (['accept', 'send_back', 'reject'] as $action) {
+                    if (is_array($data['review_actions'][$action] ?? null)) {
+                        $data['review_actions'][$action] = self::normalizeStaffRecipients($data['review_actions'][$action]);
+                    }
+                }
+
                 if ($hasDataWrapper) {
                     $stage['data'] = $data;
 
@@ -67,6 +79,17 @@ class WorkflowNotification extends Model
                 return $data;
             })
             ->all();
+    }
+
+    private static function normalizeStaffRecipients(array $messages): array
+    {
+        if (array_key_exists('staff_recipient_roles', $messages)) {
+            $roles = $messages['staff_recipient_roles'];
+            $messages['staff_recipient_roles'] = self::normalizeResponsibleRoles(is_array($roles) ? $roles : []);
+            unset($messages['staff_recipient_ids']);
+        }
+
+        return $messages;
     }
 
     /** @return array<string> */

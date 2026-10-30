@@ -59,7 +59,7 @@ class WorkflowStageAudienceFormTest extends TestCase
         $status = $fields->get($path.'.status_message');
         $candidateNotification = $fields->get($path.'.notification_message');
         $staffNotification = $fields->get($path.'.audience_messages.staff_notification_message');
-        $staffRecipients = $fields->get($path.'.audience_messages.staff_recipient_ids');
+        $staffRecipients = $fields->get($path.'.audience_messages.staff_recipient_roles');
         $this->assertNotNull($status);
         $this->assertNotNull($candidateNotification);
         $this->assertNotNull($staffNotification);
@@ -71,7 +71,7 @@ class WorkflowStageAudienceFormTest extends TestCase
         }), $status->getLabel());
         $this->assertSame(__('workflow_notifications.fields.notification_message'), $candidateNotification->getLabel());
         $this->assertSame(__('workflow_notifications.fields.staff_notification_message'), $staffNotification->getLabel());
-        $this->assertSame(__('workflow_notifications.fields.staff_recipient_ids'), $staffRecipients->getLabel());
+        $this->assertSame(__('workflow_notifications.fields.staff_recipient_roles'), $staffRecipients->getLabel());
         $this->assertEmpty($staffRecipients->getState());
         $pendingStatus = $fields->get($path.'.result_statuses.pending_status_message');
         $this->assertSame($type === 'awaiting_results', $pendingStatus !== null);
@@ -110,7 +110,6 @@ class WorkflowStageAudienceFormTest extends TestCase
     {
         $workflow = $this->workflow([$type]);
         $original = $workflow->stages[0]['data'];
-        $recipient = $this->user('recipient_'.$type);
         $component = Livewire::test(EditWorkflowNotification::class, ['record' => $workflow->getRouteKey()]);
         $key = array_key_first($component->get('data.stages'));
         $path = "data.stages.{$key}.data";
@@ -118,7 +117,7 @@ class WorkflowStageAudienceFormTest extends TestCase
         $component->assertSet($path.'.status_message', $original['status_message'])
             ->assertSet($path.'.notification_message', $original['notification_message'])
             ->set($path.'.audience_messages.staff_notification_message', 'Staff alert for '.$type)
-            ->set($path.'.audience_messages.staff_recipient_ids', [$recipient->getKey()])
+            ->set($path.'.audience_messages.staff_recipient_roles', ['cashier_officer'])
             ->call('save')
             ->assertHasNoFormErrors();
 
@@ -127,7 +126,7 @@ class WorkflowStageAudienceFormTest extends TestCase
             $this->assertEquals($original[$field], $saved[$field] ?? null);
         }
         $this->assertSame('Staff alert for '.$type, data_get($saved, 'audience_messages.staff_notification_message'));
-        $this->assertEquals([$recipient->getKey()], data_get($saved, 'audience_messages.staff_recipient_ids'));
+        $this->assertEquals(['cashier_officer'], data_get($saved, 'audience_messages.staff_recipient_roles'));
 
         $reopened = Livewire::test(EditWorkflowNotification::class, ['record' => $workflow->getRouteKey()]);
         $reopenedKey = array_key_first($reopened->get('data.stages'));
@@ -135,7 +134,7 @@ class WorkflowStageAudienceFormTest extends TestCase
         $reopened->assertSet($reopenedPath.'.status_message', $original['status_message'])
             ->assertSet($reopenedPath.'.notification_message', $original['notification_message'])
             ->assertSet($reopenedPath.'.audience_messages.staff_notification_message', 'Staff alert for '.$type)
-            ->assertSet($reopenedPath.'.audience_messages.staff_recipient_ids', [$recipient->getKey()]);
+            ->assertSet($reopenedPath.'.audience_messages.staff_recipient_roles', ['cashier_officer']);
     }
 
     public function test_new_staff_settings_are_optional_on_all_three_stage_types(): void
@@ -155,7 +154,7 @@ class WorkflowStageAudienceFormTest extends TestCase
         foreach ($workflow->stages as $stage) {
             $data = $stage['data'];
             $this->assertEmpty(data_get($data, 'audience_messages.staff_notification_message'));
-            $this->assertEmpty(data_get($data, 'audience_messages.staff_recipient_ids'));
+            $this->assertEmpty(data_get($data, 'audience_messages.staff_recipient_roles'));
             $this->assertSame('Existing status for '.$data['stage_type'], $data['status_message']);
             $this->assertSame('Existing candidate message for '.$data['stage_type'], $data['notification_message']);
         }
@@ -163,14 +162,13 @@ class WorkflowStageAudienceFormTest extends TestCase
 
     public function test_waiting_and_passed_exam_result_labels_save_independently_without_changing_audience_settings(): void
     {
-        $recipient = $this->user('waiting_result_recipient');
         $workflow = $this->workflow(['awaiting_results']);
         $stages = $workflow->stages;
         $stages[0]['data']['status_message'] = 'បានជាប់';
         $stages[0]['data']['result_statuses']['pending_status_message'] = 'កំពុងរង់ចាំ';
         $stages[0]['data']['audience_messages'] = [
             'staff_notification_message' => 'A candidate is waiting for exam results.',
-            'staff_recipient_ids' => [$recipient->getKey()],
+            'staff_recipient_roles' => ['cashier_officer'],
         ];
         $workflow->update(['stages' => $stages]);
         $original = $workflow->stages[0]['data'];
@@ -207,7 +205,7 @@ class WorkflowStageAudienceFormTest extends TestCase
                 ->assertSet($reopenedPath.'.result_statuses.pending_status_message', 'រង់ចាំលទ្ធផលប្រឡង')
                 ->assertSet($reopenedPath.'.notification_message', $original['notification_message'])
                 ->assertSet($reopenedPath.'.audience_messages.staff_notification_message', $original['audience_messages']['staff_notification_message'])
-                ->assertSet($reopenedPath.'.audience_messages.staff_recipient_ids', [$recipient->getKey()]);
+                ->assertSet($reopenedPath.'.audience_messages.staff_recipient_roles', ['cashier_officer']);
             $statusFields = collect($reopened->instance()->form->getFlatFields())
                 ->filter(fn ($field): bool => str_ends_with($field->getStatePath(), 'status_message'));
             $this->assertCount(2, $statusFields);
@@ -258,26 +256,26 @@ class WorkflowStageAudienceFormTest extends TestCase
         }
     }
 
-    public function test_staff_picker_on_each_stage_excludes_candidates_and_inactive_or_deleted_staff(): void
+    public function test_staff_picker_on_each_stage_lists_system_roles_instead_of_accounts(): void
     {
-        $active = $this->user('active_audience_staff');
-        $inactive = $this->user('inactive_audience_staff', active: false);
-        $candidate = $this->user('audience_candidate', type: 'student');
-        $deleted = $this->user('deleted_audience_staff');
-        $deleted->delete();
+        $staff = $this->user('personal_audience_staff');
+        $staff->assignRole('cashier_officer');
+        Role::findOrCreate('candidate', 'web')->forceFill(['role_type_key' => 'candidate'])->save();
         $workflow = $this->workflow(['payment', 'awaiting_results', 'completed']);
         $component = Livewire::test(EditWorkflowNotification::class, ['record' => $workflow->getRouteKey()]);
         $pickers = collect($component->instance()->form->getFlatFields())
-            ->filter(fn ($field): bool => str_ends_with($field->getStatePath(), '.audience_messages.staff_recipient_ids'));
+            ->filter(fn ($field): bool => str_ends_with($field->getStatePath(), '.audience_messages.staff_recipient_roles'));
         $this->assertCount(3, $pickers);
 
         foreach ($pickers as $picker) {
+            $this->assertTrue($picker->isMultiple());
             $this->assertEmpty($picker->getState());
             $options = $picker->getOptions();
-            $this->assertArrayHasKey($active->getKey(), $options);
-            $this->assertArrayNotHasKey($inactive->getKey(), $options);
-            $this->assertArrayNotHasKey($candidate->getKey(), $options);
-            $this->assertArrayNotHasKey($deleted->getKey(), $options);
+            $this->assertArrayHasKey('admin', $options);
+            $this->assertArrayHasKey('cashier_officer', $options);
+            $this->assertArrayNotHasKey('candidate', $options);
+            $this->assertArrayNotHasKey($staff->getKey(), $options);
+            $this->assertNotContains($staff->name, $options);
         }
     }
 

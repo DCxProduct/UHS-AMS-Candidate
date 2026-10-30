@@ -8,12 +8,12 @@ use App\Models\EmailTemplate;
 use App\Models\Role;
 use App\Models\SmsTemplate;
 use App\Support\WorkflowNotificationStageSummary;
+use App\Support\WorkflowStaffRecipients;
 use App\Support\WorkflowStageMessages;
-use App\Support\WorkflowSubmissionMessages;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Builder;
-use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Builder\Block;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -26,8 +26,8 @@ use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Alignment;
-use Illuminate\Support\HtmlString;
 use Illuminate\Support\Facades\Lang;
+use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 
 class WorkflowNotificationForm
@@ -81,7 +81,6 @@ class WorkflowNotificationForm
                     ])
                     ->footerActionsAlignment(Alignment::Center)
                     ->hidden(fn (string $operation): bool => $operation === 'view'),
-
 
                 Section::make(__('workflow_notifications.sections.stages'))
                     ->schema([
@@ -143,8 +142,6 @@ class WorkflowNotificationForm
                     ->visible($supportsNotificationChannels)
                     ->columnSpanFull(),
 
-
-
                 Select::make('email_template_key')
                     ->label(__('workflow_notifications.fields.email_template'))
                     ->placeholder(__('workflow_notifications.placeholders.plain_email'))
@@ -189,7 +186,6 @@ class WorkflowNotificationForm
                         if ($type !== null && blank($old) && blank($get('stage_name'))) {
                             $set('stage_name', $type->label());
                         }
-
 
                         $set('responsible_role', []);
 
@@ -301,14 +297,15 @@ class WorkflowNotificationForm
                                 ->autosize()
                                 ->maxLength(1000),
 
-                            Select::make('submission_messages.staff_recipient_ids')
-                                ->label(__('workflow_notifications.fields.staff_recipient_ids'))
-                                ->placeholder(__('workflow_notifications.placeholders.staff_recipient_ids'))
-                                ->options(fn (): array => WorkflowSubmissionMessages::recipientOptions())
+                            Select::make('submission_messages.staff_recipient_roles')
+                                ->label(__('workflow_notifications.fields.staff_recipient_roles'))
+                                ->placeholder(__('workflow_notifications.placeholders.staff_recipient_roles'))
+                                ->helperText(__('workflow_notifications.helpers.review_staff_recipients'))
+                                ->options(fn (): array => WorkflowStaffRecipients::roleOptions())
                                 ->multiple()
                                 ->searchable()
                                 ->preload()
-                                ->in(fn (): array => array_keys(WorkflowSubmissionMessages::recipientOptions()))
+                                ->in(fn (): array => array_keys(WorkflowStaffRecipients::roleOptions()))
                                 ->default([])
                                 ->native(false),
                         ])->columnSpan(1),
@@ -349,15 +346,15 @@ class WorkflowNotificationForm
                                 ->autosize()
                                 ->maxLength(1000),
 
-                            Select::make('audience_messages.staff_recipient_ids')
-                                ->label(__('workflow_notifications.fields.staff_recipient_ids'))
-                                ->placeholder(__('workflow_notifications.placeholders.staff_recipient_ids'))
+                            Select::make('audience_messages.staff_recipient_roles')
+                                ->label(__('workflow_notifications.fields.staff_recipient_roles'))
+                                ->placeholder(__('workflow_notifications.placeholders.staff_recipient_roles'))
                                 ->helperText(__('workflow_notifications.helpers.review_staff_recipients'))
-                                ->options(fn (): array => WorkflowSubmissionMessages::recipientOptions())
+                                ->options(fn (): array => WorkflowStaffRecipients::roleOptions())
                                 ->multiple()
                                 ->searchable()
                                 ->preload()
-                                ->in(fn (): array => array_keys(WorkflowSubmissionMessages::recipientOptions()))
+                                ->in(fn (): array => array_keys(WorkflowStaffRecipients::roleOptions()))
                                 ->default([])
                                 ->native(false),
                         ])->visible($usesStageAudienceLayout)->columnSpan(1),
@@ -427,15 +424,15 @@ class WorkflowNotificationForm
                                 ->autosize()
                                 ->maxLength(1000),
 
-                            Select::make('review_actions.'.$action.'.staff_recipient_ids')
-                                ->label(__('workflow_notifications.fields.staff_recipient_ids'))
-                                ->placeholder(__('workflow_notifications.placeholders.staff_recipient_ids'))
+                            Select::make('review_actions.'.$action.'.staff_recipient_roles')
+                                ->label(__('workflow_notifications.fields.staff_recipient_roles'))
+                                ->placeholder(__('workflow_notifications.placeholders.staff_recipient_roles'))
                                 ->helperText(__('workflow_notifications.helpers.review_staff_recipients'))
-                                ->options(fn (): array => WorkflowSubmissionMessages::recipientOptions())
+                                ->options(fn (): array => WorkflowStaffRecipients::roleOptions())
                                 ->multiple()
                                 ->searchable()
                                 ->preload()
-                                ->in(fn (): array => array_keys(WorkflowSubmissionMessages::recipientOptions()))
+                                ->in(fn (): array => array_keys(WorkflowStaffRecipients::roleOptions()))
                                 ->default([])
                                 ->native(false),
                         ])->columnSpan(1),

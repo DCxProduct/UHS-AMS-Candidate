@@ -3,7 +3,6 @@
 namespace App\Support;
 
 use App\Enums\WorkflowStageType;
-use App\Models\User;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Traits\Localizable;
@@ -25,19 +24,15 @@ final class WorkflowStageAudienceMessages
             $body = is_scalar($messages['staff_notification_message'] ?? null)
                 ? trim((string) $messages['staff_notification_message'])
                 : '';
-            $recipientIds = $messages['staff_recipient_ids'] ?? [];
 
-            if ($body === '' || ! is_array($recipientIds)) {
+            if ($body === '') {
                 return 0;
             }
 
-            $recipientIds = array_values(array_unique(array_filter($recipientIds,
-                fn (mixed $id): bool => (is_int($id) || is_string($id)) && ctype_digit((string) $id))));
             $event = 'stage_staff:'.$stageType->value;
             $sent = 0;
 
-            foreach (User::query()->where('registration_type', 'admin')->where('is_active', true)
-                ->whereKey($recipientIds)->whereKeyNot($entry->created_by)->get() as $recipient) {
+            foreach (WorkflowStaffRecipients::resolve($messages, $entry->created_by) as $recipient) {
                 try {
                     $notifications = fn () => $recipient->notifications()
                         ->where('data->viewData->workflow_entry_id', (string) $entry->getKey());
