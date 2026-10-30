@@ -160,7 +160,7 @@ final class WorkflowSubmissionMessages
             return null;
         }
 
-        $workflow = WorkflowNotification::forForm($entry->custom_form_id);
+        $workflow = WorkflowNotification::forEntry($entry);
         $stage = collect($workflow?->stages ?? [])
             ->map(fn (mixed $item): array => is_array($item) ? ($item['data'] ?? $item) : [])
             ->first(fn (array $data): bool => ($data['stage_type'] ?? null) === WorkflowStageType::FormSubmission->value);

@@ -110,7 +110,7 @@ class WorkflowStageAudienceMessagesTest extends TestCase
         $this->assertDatabaseCount('notifications', 0);
     }
 
-    public function test_staff_recipients_can_be_notified_after_the_candidate_result_was_already_sent(): void
+    public function test_editing_staff_recipients_only_applies_to_applications_started_after_the_edit(): void
     {
         $entry = $this->entry('passed');
         $this->pay($entry);
@@ -120,11 +120,17 @@ class WorkflowStageAudienceMessagesTest extends TestCase
 
         $this->assertFalse(WorkflowStageMessages::notifyResultStage($entry));
         $this->assertFalse(WorkflowStageMessages::notifyResultStage($entry));
-        $this->assertSame(1, $this->staff->notifications()->count());
+        $this->assertSame(0, $this->staff->notifications()->count());
         $this->assertSame(1, $this->candidate->notifications()->count());
+
+        $newEntry = $this->entry('passed');
+        $this->pay($newEntry);
+        $this->assertTrue(WorkflowStageMessages::notifyResultStage($newEntry));
+        $this->assertSame(1, $this->staff->notifications()->count());
+        $this->assertSame(2, $this->candidate->notifications()->count());
     }
 
-    public function test_replacing_staff_only_message_does_not_delete_an_existing_candidate_message(): void
+    public function test_replacing_a_notification_keeps_the_started_applications_original_messages_after_a_template_edit(): void
     {
         $type = WorkflowStageType::Payment;
         $this->configure($type);
@@ -132,8 +138,15 @@ class WorkflowStageAudienceMessagesTest extends TestCase
         $this->assertTrue(WorkflowStageMessages::notifyConfiguredStage($entry, $type));
         $this->configure($type, ['notification_message' => ''], ['staff_notification_message' => 'Updated staff notice']);
 
-        $this->assertFalse(WorkflowStageMessages::notifyConfiguredStage($entry, $type, replaceExisting: true));
-        $this->assertSame('Updated staff notice', $this->staff->notifications()->sole()->data['body']);
+        $this->assertTrue(WorkflowStageMessages::notifyConfiguredStage($entry, $type, replaceExisting: true));
+        $this->assertSame('Staff: payment', $this->staff->notifications()->sole()->data['body']);
+        $this->assertSame('Candidate: payment', $this->candidate->notifications()->sole()->data['body']);
+
+        $newEntry = $this->entry('approved');
+        $this->assertFalse(WorkflowStageMessages::notifyConfiguredStage($newEntry, $type, replaceExisting: true));
+        $newStaffNotice = $this->staff->notifications()
+            ->where('data->viewData->workflow_entry_id', (string) $newEntry->getKey())->sole();
+        $this->assertSame('Updated staff notice', $newStaffNotice->data['body']);
         $this->assertSame('Candidate: payment', $this->candidate->notifications()->sole()->data['body']);
     }
 

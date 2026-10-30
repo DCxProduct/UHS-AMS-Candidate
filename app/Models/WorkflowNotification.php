@@ -176,6 +176,12 @@ class WorkflowNotification extends Model
             ->first();
     }
 
+    /** Resolve an application's original configuration instead of the editable template. */
+    public static function forEntry(\Chanthoeun\FilamentCustomForms\Models\CustomFormEntry $entry): ?self
+    {
+        return \App\Support\WorkflowEntrySnapshot::workflowFor($entry);
+    }
+
     /** Read the configured source without changing payment processing or status. */
     public function paymentSource(): WorkflowPaymentSource
     {

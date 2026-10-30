@@ -686,7 +686,7 @@ class CustomFormEntriesTable
     {
         $record->loadMissing(['customForm', 'creator']);
         $workflow = filled($record->custom_form_id)
-            ? WorkflowNotification::forForm($record->custom_form_id)
+            ? WorkflowNotification::forEntry($record)
             : null;
 
         if ($workflow === null) {

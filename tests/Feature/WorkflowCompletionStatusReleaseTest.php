@@ -128,7 +128,6 @@ class WorkflowCompletionStatusReleaseTest extends TestCase
     #[DataProvider('unsuccessfulDeliveries')]
     public function test_unsuccessful_completed_notification_does_not_release_the_success_label(string $mode): void
     {
-        $entry = $this->entry();
         $stages = $this->workflow->stages;
         if ($mode === 'no_channels') {
             $stages[2]['data']['notification_channels'] = [];
@@ -139,6 +138,7 @@ class WorkflowCompletionStatusReleaseTest extends TestCase
             $this->smsShouldFail = true;
         }
         $this->workflow->update(['stages' => $stages]);
+        $entry = $this->entry();
 
         $this->notifyStudent($entry);
 
@@ -161,10 +161,10 @@ class WorkflowCompletionStatusReleaseTest extends TestCase
     #[DataProvider('nonBellChannels')]
     public function test_successful_sms_or_email_delivery_releases_success_without_a_bell_record(string $channel): void
     {
-        $entry = $this->entry();
         $stages = $this->workflow->stages;
         $stages[2]['data']['notification_channels'] = [$channel];
         $this->workflow->update(['stages' => $stages]);
+        $entry = $this->entry();
 
         $this->notifyStudent($entry);
 
@@ -210,7 +210,6 @@ class WorkflowCompletionStatusReleaseTest extends TestCase
     #[DataProvider('unconfiguredPassedStatuses')]
     public function test_missing_or_blank_passed_text_uses_default_passed_independently_of_pending_before_completed_delivery(string $mode): void
     {
-        $entry = $this->entry();
         $stages = $this->workflow->stages;
         if ($mode === 'missing') {
             unset($stages[1]['data']['status_message']);
@@ -218,6 +217,7 @@ class WorkflowCompletionStatusReleaseTest extends TestCase
             $stages[1]['data']['status_message'] = ' ';
         }
         $this->workflow->update(['stages' => $stages]);
+        $entry = $this->entry();
         $this->assertSame('កំពុងរង់ចាំ', WorkflowStageMessages::waitingResultStatusLabel($entry));
         $this->assertNull(WorkflowStageMessages::passedResultStatusLabel($entry));
         $this->assertSame(__('candidate_entrance_statistics.statuses.passed'), $this->candidateLabel($entry));
@@ -234,7 +234,6 @@ class WorkflowCompletionStatusReleaseTest extends TestCase
     #[DataProvider('unconfiguredCompletionStatuses')]
     public function test_no_configured_completion_status_keeps_the_existing_result_fallback(string $mode): void
     {
-        $entry = $this->entry();
         $stages = $this->workflow->stages;
         if ($mode === 'missing') {
             unset($stages[2]);
@@ -242,6 +241,7 @@ class WorkflowCompletionStatusReleaseTest extends TestCase
             $stages[2]['data']['status_message'] = ' ';
         }
         $this->workflow->update(['stages' => array_values($stages)]);
+        $entry = $this->entry();
         $this->assertSame('បានជាប់', $this->candidateLabel($entry));
     }
 

@@ -20,7 +20,7 @@ class AmsPaymentSync
     public static function usesAms(CustomFormEntry $entry): bool
     {
         return filled($entry->custom_form_id)
-            && WorkflowNotification::paymentSourceForForm($entry->custom_form_id) === WorkflowPaymentSource::Ams;
+            && WorkflowNotification::forEntry($entry)?->paymentSource() === WorkflowPaymentSource::Ams;
     }
 
     public function sync(CustomFormEntry $entry): ?AmsPaymentRequest
