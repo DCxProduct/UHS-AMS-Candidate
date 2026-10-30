@@ -32,6 +32,12 @@ class WorkflowStageAudienceMessagesTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        // Preserve coverage for the pre-existing status-driven notification behavior.
+        CustomFormEntry::creating(static function (CustomFormEntry $entry): void {
+            if (is_array($entry->workflow_snapshot)) {
+                $entry->workflow_snapshot = [...$entry->workflow_snapshot, 'schema_version' => 1];
+            }
+        });
         Filament::setCurrentPanel('app');
         app()->setLocale('en');
         Http::fake();

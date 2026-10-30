@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\WorkflowStageType;
 use App\Filament\Admin\Resources\CandidateEntranceStatistics\Pages\ListCandidateEntranceStatistics;
 use App\Filament\Admin\Resources\CandidateEntranceStatistics\Tables\CandidateEntranceStatisticsTable;
 use App\Filament\Admin\Resources\CandidateExitStatistics\Pages\ListCandidateExitStatistics;
@@ -12,7 +13,7 @@ use App\Models\Role;
 use App\Models\User;
 use App\Models\WorkflowNotification;
 use App\Support\StatisticsMenuOptions;
-use App\Enums\WorkflowStageType;
+use App\Support\WorkflowEntrySnapshot;
 use App\Support\WorkflowStageMessages;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
@@ -31,7 +32,9 @@ class WorkflowWaitingResultStatusTest extends TestCase
     use RefreshDatabase;
 
     private User $candidate;
+
     private CustomForm $form;
+
     private WorkflowNotification $workflow;
 
     protected function setUp(): void
@@ -274,10 +277,15 @@ class WorkflowWaitingResultStatusTest extends TestCase
 
     private function entry(?string $status, ?User $candidate = null): CustomFormEntry
     {
-        return CustomFormEntry::query()->forceCreate([
+        // Raw legacy result states must not be inferred as new ordered-stage events.
+        $snapshot = WorkflowEntrySnapshot::forForm($this->form->getKey());
+        $snapshot['schema_version'] = 1;
+
+        return CustomFormEntry::withoutEvents(fn (): CustomFormEntry => CustomFormEntry::query()->forceCreate([
             'custom_form_id' => $this->form->getKey(), 'created_by' => ($candidate ?? $this->candidate)->getKey(),
+            'workflow_snapshot' => $snapshot,
             'review_status' => 'approved', 'data' => ['registration_status' => 'approved', 'candidate_status' => $status],
-        ]);
+        ]));
     }
 
     private function pay(CustomFormEntry $entry): void

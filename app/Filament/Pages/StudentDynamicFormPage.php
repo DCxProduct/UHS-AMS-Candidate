@@ -11,6 +11,8 @@ use App\Support\NotificationLanguage;
 use App\Support\ProfileFormData;
 use App\Support\StudentDynamicFormSchema;
 use App\Support\WorkflowEntrySnapshot;
+use App\Support\WorkflowStageProgression;
+use App\Support\WorkflowSubmissionMessages;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -259,6 +261,13 @@ class StudentDynamicFormPage extends Page implements HasForms
         }
 
         $columns = DatabaseSchema::getColumnListing('custom_form_entries');
+        $snapshot = in_array('workflow_snapshot', $columns, true)
+            ? WorkflowEntrySnapshot::forForm($this->customForm->id)
+            : null;
+        if (($snapshot['schema_version'] ?? 1) >= 2 && ($snapshot['has_workflow'] ?? false)) {
+            $state['registration_status'] = 'pending';
+            $state['submitted_at'] = now()->toDateTimeString();
+        }
 
         $payload = [
             'custom_form_id' => $this->customForm->id,
@@ -276,7 +285,7 @@ class StudentDynamicFormPage extends Page implements HasForms
 
         if (in_array('workflow_snapshot', $columns, true)) {
             $payload['workflow_snapshot'] = json_encode(
-                WorkflowEntrySnapshot::forForm($this->customForm->id),
+                $snapshot,
                 JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR,
             );
         }
@@ -291,6 +300,9 @@ class StudentDynamicFormPage extends Page implements HasForms
             $entry = CustomFormEntry::query()->find($entryId);
 
             if ($entry) {
+                if (WorkflowStageProgression::enabled($entry)) {
+                    WorkflowSubmissionMessages::notify($entry);
+                }
                 AuditLogger::log(
                     action: 'submitted',
                     auditable: $entry,

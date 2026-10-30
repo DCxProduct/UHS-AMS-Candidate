@@ -36,6 +36,13 @@ class WorkflowStageMessagesTest extends TestCase
     {
         parent::setUp();
 
+        // These cases exercise applications saved before ordered workflow execution.
+        CustomFormEntry::creating(static function (CustomFormEntry $entry): void {
+            if (is_array($entry->workflow_snapshot)) {
+                $entry->workflow_snapshot = [...$entry->workflow_snapshot, 'schema_version' => 1];
+            }
+        });
+
         $this->student = $this->user('candidate_user', 'student');
         $this->form = $this->customForm();
 

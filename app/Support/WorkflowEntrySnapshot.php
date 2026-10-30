@@ -14,9 +14,15 @@ final class WorkflowEntrySnapshot
     public static function forForm(int|string|null $formId): array
     {
         $workflow = filled($formId) ? WorkflowNotification::forForm($formId) : null;
+        $types = collect($workflow?->stages ?? [])
+            ->map(fn (mixed $stage): mixed => is_array($stage) ? ($stage['data']['stage_type'] ?? $stage['stage_type'] ?? null) : null)
+            ->map(fn (mixed $type): mixed => $type === WorkflowStageType::Approval->value ? WorkflowStageType::Review->value : $type);
+        $ordered = $types->isNotEmpty()
+            && $types->every(fn (mixed $type): bool => is_string($type) && WorkflowStageType::tryFrom($type) !== null && $type !== WorkflowStageType::Rejected->value)
+            && $types->unique()->count() === $types->count();
 
         return [
-            'schema_version' => 1,
+            'schema_version' => $ordered ? 2 : 1,
             'captured_at' => now()->toIso8601String(),
             'workflow_id' => $workflow?->getKey(),
             'name' => $workflow?->name,
@@ -54,15 +60,7 @@ final class WorkflowEntrySnapshot
 
     public static function workflowFor(CustomFormEntry $entry): ?WorkflowNotification
     {
-        $snapshot = $entry->workflow_snapshot;
-
-        if ($snapshot === null
-            && $entry->exists
-            && Schema::hasColumn($entry->getTable(), 'workflow_snapshot')) {
-            $snapshot = self::decode(DB::table($entry->getTable())
-                ->where($entry->getKeyName(), $entry->getKey())
-                ->value('workflow_snapshot'));
-        }
+        $snapshot = self::snapshotFor($entry);
 
         // Older installations can deploy this code before running migrations.
         if (! is_array($snapshot)) {
@@ -81,6 +79,25 @@ final class WorkflowEntrySnapshot
             'name' => $snapshot['name'] ?? null,
             'stages' => $snapshot['stages'] ?? [],
         ]);
+    }
+
+    public static function snapshotFor(CustomFormEntry $entry): ?array
+    {
+        $snapshot = $entry->workflow_snapshot;
+
+        if ($snapshot === null
+            && $entry->exists
+            && Schema::hasColumn($entry->getTable(), 'workflow_snapshot')) {
+            $snapshot = self::decode(DB::table($entry->getTable())
+                ->where($entry->getKeyName(), $entry->getKey())
+                ->value('workflow_snapshot'));
+            if ($snapshot !== null) {
+                // Cache the immutable value for subsequent status/permission reads.
+                $entry->workflow_snapshot = $snapshot;
+            }
+        }
+
+        return is_array($snapshot) ? $snapshot : null;
     }
 
     private static function decode(mixed $snapshot): ?array

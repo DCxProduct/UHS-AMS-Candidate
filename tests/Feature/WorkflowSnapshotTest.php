@@ -11,6 +11,7 @@ use App\Models\WorkflowNotification;
 use App\Services\AmsPaymentSync;
 use App\Support\WorkflowEntrySnapshot;
 use App\Support\WorkflowStageMessages;
+use App\Support\WorkflowStageProgression;
 use App\Support\WorkflowSubmissionMessages;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
@@ -47,14 +48,14 @@ class WorkflowSnapshotTest extends TestCase
 
     public function test_existing_application_keeps_its_khmer_status_after_template_edit_and_new_application_uses_the_new_status(): void
     {
-        $old = $this->entry('approved');
+        $old = $this->entry('approved', legacy: true);
         $originalSnapshot = $old->workflow_snapshot;
         $this->assertSame('បានពិនិត្យ', WorkflowStageMessages::statusText($old));
 
         $stages = $this->workflow->stages;
         $stages[1]['data']['review_actions']['accept']['status_message'] = 'បានពិនិត្យពាក្យ';
         $this->workflow->update(['name' => 'Updated workflow', 'stages' => $stages]);
-        $new = $this->entry('approved');
+        $new = $this->entry('approved', legacy: true);
 
         $this->assertSame('បានពិនិត្យ', WorkflowStageMessages::statusText($old->fresh()));
         $this->assertSame('បានពិនិត្យពាក្យ', WorkflowStageMessages::statusText($new->fresh()));
@@ -152,7 +153,7 @@ class WorkflowSnapshotTest extends TestCase
 
     public function test_draft_submission_and_send_back_resubmission_keep_the_same_original_workflow(): void
     {
-        $draft = $this->entry('draft');
+        $draft = $this->entry('draft', legacy: true);
         $snapshot = $draft->workflow_snapshot;
         $stages = $this->workflow->stages;
         $stages[0]['data']['submission_messages']['candidate_status_message'] = 'New submitted label';
@@ -170,7 +171,7 @@ class WorkflowSnapshotTest extends TestCase
         $this->assertSame('បានដាក់ពាក្យ', WorkflowSubmissionMessages::statusText($draft->fresh()));
         $draft->forceFill(['review_status' => 'approved', 'data' => ['registration_status' => 'approved']])->save();
         $this->assertSame('បានពិនិត្យ', WorkflowStageMessages::statusText($draft->fresh()));
-        $this->assertSame('New checked label', WorkflowStageMessages::statusText($this->entry('approved')));
+        $this->assertSame('New checked label', WorkflowStageMessages::statusText($this->entry('approved', legacy: true)));
     }
 
     public function test_an_application_started_without_a_template_does_not_switch_when_a_template_is_attached(): void
@@ -189,7 +190,7 @@ class WorkflowSnapshotTest extends TestCase
 
     public function test_reassigning_and_deleting_the_template_does_not_remove_old_application_configuration(): void
     {
-        $old = $this->entry('approved');
+        $old = $this->entry('approved', legacy: true);
         $snapshot = $old->workflow_snapshot;
         $replacement = WorkflowNotification::query()->create([
             'name' => 'Replacement workflow',
@@ -212,15 +213,15 @@ class WorkflowSnapshotTest extends TestCase
 
     public function test_completed_applications_keep_their_original_status_after_later_template_edits(): void
     {
-        $old = $this->entry('completed');
-        $this->pay($old);
+        $old = $this->entry();
+        $this->complete($old);
         $this->assertTrue(WorkflowStageMessages::notifyConfiguredStage($old, WorkflowStageType::Completed));
         $this->assertSame('បានបញ្ចប់ដើម', WorkflowStageMessages::statusText($old->fresh()));
         $stages = $this->workflow->stages;
         $stages[4]['data']['status_message'] = 'បានបញ្ចប់ថ្មី';
         $this->workflow->update(['stages' => $stages]);
-        $new = $this->entry('completed');
-        $this->pay($new);
+        $new = $this->entry();
+        $this->complete($new);
         $this->assertTrue(WorkflowStageMessages::notifyConfiguredStage($new, WorkflowStageType::Completed));
 
         $this->assertSame('បានបញ្ចប់ដើម', WorkflowStageMessages::statusText($old->fresh()));
@@ -238,7 +239,7 @@ class WorkflowSnapshotTest extends TestCase
         $original = $entry->workflow_snapshot;
         $this->assertTrue($original['has_workflow']);
         $this->assertSame($this->workflow->id, $original['workflow_id']);
-        $this->assertSame(1, $original['schema_version']);
+        $this->assertSame(2, $original['schema_version']);
         $this->assertNotEmpty($original['captured_at']);
 
         $stages = $this->workflow->stages;
@@ -249,9 +250,12 @@ class WorkflowSnapshotTest extends TestCase
             'review_status' => 'approved',
             'data' => ['registration_status' => 'approved', 'note' => 'An ordinary update'],
         ])->save();
+        WorkflowStageProgression::reviewed($entry);
 
         $this->assertSame($original, $entry->fresh()->workflow_snapshot);
-        $this->assertSame('បានពិនិត្យ', WorkflowStageMessages::statusText($entry->fresh()));
+        $this->assertSame('បានពិនិត្យ', data_get($entry->fresh()->workflow_snapshot, 'stages.1.data.review_actions.accept.status_message'));
+        $this->assertSame(WorkflowStageType::Payment, WorkflowStageMessages::stageTypeFor($entry->fresh()));
+        $this->assertSame('មិនទាន់បង់ប្រាក់', WorkflowStageMessages::statusText($entry->fresh()));
         $this->assertSame('An ordinary update', data_get($entry->fresh()->data, 'note'));
     }
 
@@ -295,6 +299,7 @@ class WorkflowSnapshotTest extends TestCase
     {
         $entry = $this->entry('approved');
         $original = $entry->workflow_snapshot;
+        $progress = data_get($entry->data, 'workflow_progress');
         $stages = $this->workflow->stages;
         $stages[1]['data']['review_actions']['accept']['status_message'] = 'Updated checked label';
         $this->workflow->update(['stages' => $stages]);
@@ -303,7 +308,8 @@ class WorkflowSnapshotTest extends TestCase
             ->findOrFail($entry->id);
 
         $this->assertArrayNotHasKey('workflow_snapshot', $partial->getAttributes());
-        $this->assertSame('បានពិនិត្យ', WorkflowStageMessages::statusText($partial));
+        $this->assertSame(WorkflowStageMessages::statusText($entry->fresh()), WorkflowStageMessages::statusText($partial));
+        $this->assertSame(WorkflowStageMessages::stageTypeFor($entry->fresh()), WorkflowStageMessages::stageTypeFor($partial));
         $this->assertSame($original['stages'], WorkflowNotification::forEntry($partial)?->stages);
         $partial->forceFill([
             'workflow_snapshot' => WorkflowEntrySnapshot::forForm($this->form->id),
@@ -311,6 +317,7 @@ class WorkflowSnapshotTest extends TestCase
         ])->save();
 
         $this->assertSame($original, $entry->fresh()->workflow_snapshot);
+        $this->assertSame($progress, data_get($entry->fresh()->data, 'workflow_progress'));
         $this->assertSame('Partial model update', data_get($entry->fresh()->data, 'note'));
     }
 
@@ -330,10 +337,51 @@ class WorkflowSnapshotTest extends TestCase
         $stages[1]['data']['review_actions']['accept']['status_message'] = 'Later template edit';
         $this->workflow->update(['stages' => $stages]);
 
-        $this->assertSame('បានពិនិត្យ', WorkflowStageMessages::statusText($stale));
+        $this->assertSame(WorkflowStageMessages::statusText($entry->fresh()), WorkflowStageMessages::statusText($stale));
+        $this->assertSame(WorkflowStageMessages::stageTypeFor($entry->fresh()), WorkflowStageMessages::stageTypeFor($stale));
         $stale->forceFill(['data' => [...$stale->data, 'note' => 'Loaded before deployment']])->save();
         $this->assertSame($original, $entry->fresh()->workflow_snapshot);
         $this->assertSame('Loaded before deployment', data_get($entry->fresh()->data, 'note'));
+    }
+
+    public function test_an_ordinary_data_update_cannot_drop_persisted_ordered_progress(): void
+    {
+        $entry = $this->entry();
+        WorkflowStageProgression::submitted($entry);
+        WorkflowStageProgression::reviewed($entry);
+        $progress = data_get($entry->fresh()->data, 'workflow_progress');
+        $snapshot = $entry->fresh()->workflow_snapshot;
+        $partial = CustomFormEntry::query()->select(['id', 'custom_form_id', 'review_status'])->findOrFail($entry->id);
+        $partial->forceFill(['data' => ['note' => 'Updated without loading workflow fields']])->save();
+
+        $this->assertSame($progress, data_get($entry->fresh()->data, 'workflow_progress'));
+        $this->assertSame($snapshot, $entry->fresh()->workflow_snapshot);
+        $this->assertSame(WorkflowStageType::Payment, WorkflowStageMessages::stageTypeFor($entry->fresh()));
+        $this->assertSame('Updated without loading workflow fields', data_get($entry->fresh()->data, 'note'));
+    }
+
+    public function test_client_supplied_progress_cannot_skip_stages_on_creation_or_update(): void
+    {
+        $forged = [
+            'version' => 1, 'submitted' => true, 'reviewed' => true, 'result_passed' => true,
+            'payment_completed' => true, 'finished' => true, 'ready_for_final' => true,
+            'current_type' => 'completed', 'current_index' => 4, 'completed_at' => ['forged'],
+        ];
+        $entry = CustomFormEntry::query()->forceCreate([
+            'custom_form_id' => $this->form->id, 'created_by' => $this->candidate->id,
+            'review_status' => 'pending', 'data' => ['registration_status' => 'pending', 'workflow_progress' => $forged],
+        ]);
+        $progress = data_get($entry->fresh()->data, 'workflow_progress');
+        $this->assertSame(WorkflowStageType::Review, WorkflowStageProgression::currentType($entry->fresh()));
+        foreach (['reviewed', 'result_passed', 'payment_completed', 'finished', 'ready_for_final'] as $flag) {
+            $this->assertFalse($progress[$flag], $flag);
+        }
+        $this->assertNotSame($forged, $progress);
+
+        $entry->forceFill(['data' => [...$entry->data, 'workflow_progress' => $forged, 'note' => 'Ordinary edit']])->save();
+        $this->assertSame($progress, data_get($entry->fresh()->data, 'workflow_progress'));
+        $this->assertSame(WorkflowStageType::Review, WorkflowStageProgression::currentType($entry->fresh()));
+        $this->assertSame('Ordinary edit', data_get($entry->fresh()->data, 'note'));
     }
 
     private function stages(): array
@@ -374,14 +422,34 @@ class WorkflowSnapshotTest extends TestCase
         ];
     }
 
-    private function entry(string $status = 'pending', ?CustomForm $form = null): CustomFormEntry
+    private function entry(string $status = 'pending', ?CustomForm $form = null, bool $legacy = false): CustomFormEntry
     {
-        return CustomFormEntry::query()->forceCreate([
+        $attributes = [
             'custom_form_id' => ($form ?? $this->form)->id,
             'created_by' => $this->candidate->id,
             'review_status' => $status,
             'data' => ['registration_status' => $status],
-        ]);
+        ];
+        if ($legacy) {
+            $snapshot = WorkflowEntrySnapshot::forForm($attributes['custom_form_id']);
+            $snapshot['schema_version'] = 1;
+
+            return CustomFormEntry::withoutEvents(fn (): CustomFormEntry => CustomFormEntry::query()->forceCreate([
+                ...$attributes, 'workflow_snapshot' => $snapshot,
+            ]));
+        }
+
+        return CustomFormEntry::query()->forceCreate($attributes);
+    }
+
+    private function complete(CustomFormEntry $entry): void
+    {
+        WorkflowStageProgression::submitted($entry);
+        WorkflowStageProgression::reviewed($entry);
+        $this->pay($entry);
+        WorkflowStageProgression::paid($entry);
+        WorkflowStageProgression::passed($entry);
+        $this->assertTrue(WorkflowStageProgression::readyForFinal($entry->fresh()));
     }
 
     private function form(string $slug): CustomForm

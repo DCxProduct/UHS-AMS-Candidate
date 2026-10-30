@@ -7,9 +7,11 @@ use App\Enums\WorkflowStageType;
 use App\Models\EmailTemplate;
 use App\Models\Role;
 use App\Models\SmsTemplate;
+use App\Models\WorkflowNotification;
 use App\Support\WorkflowNotificationStageSummary;
 use App\Support\WorkflowStaffRecipients;
 use App\Support\WorkflowStageMessages;
+use Closure;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Builder;
 use Filament\Forms\Components\Builder\Block;
@@ -66,6 +68,9 @@ class WorkflowNotificationForm
                             ->blockNumbers(false)
                             ->minItems(1)
                             ->required()
+                            ->rules([
+                                fn (?WorkflowNotification $record): Closure => self::stageTypesRule($record),
+                            ])
                             ->validationMessages([
                                 'required' => __('workflow_notifications.validation.stages_required'),
                                 'min' => __('workflow_notifications.validation.stages_required'),
@@ -91,6 +96,52 @@ class WorkflowNotificationForm
                     ])
                     ->visible(fn (string $operation): bool => $operation === 'view'),
             ]);
+    }
+
+    private static function stageTypesRule(?WorkflowNotification $record): Closure
+    {
+        return function (string $attribute, mixed $value, Closure $fail) use ($record): void {
+            if (! is_array($value)) {
+                return;
+            }
+
+            $types = self::stageTypes($value);
+            // Preserve older templates when only their labels or messages are edited.
+            if ($record?->exists && $types === self::stageTypes($record->stages ?? [])) {
+                return;
+            }
+
+            $seen = [];
+            foreach ($types as $type) {
+                $stageType = WorkflowStageType::tryFrom($type);
+                if ($stageType === null) {
+                    $fail(__('workflow_notifications.validation.invalid_stage_type'));
+
+                    return;
+                }
+
+                if (isset($seen[$type])) {
+                    $fail(__('workflow_notifications.validation.duplicate_stage_type', ['stage' => $stageType->label()]));
+
+                    return;
+                }
+
+                $seen[$type] = true;
+            }
+        };
+    }
+
+    private static function stageTypes(array $stages): array
+    {
+        return array_values(array_map(function (mixed $stage): string {
+            if (! is_array($stage)) {
+                return '';
+            }
+
+            $data = is_array($stage['data'] ?? null) ? $stage['data'] : $stage;
+
+            return is_string($data['stage_type'] ?? null) ? $data['stage_type'] : '';
+        }, $stages));
     }
 
     private static function stageBlock(): Block

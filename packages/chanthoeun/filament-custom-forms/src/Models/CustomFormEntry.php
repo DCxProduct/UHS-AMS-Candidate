@@ -26,6 +26,24 @@ class CustomFormEntry extends Model
     {
         static::saving(function (self $entry): void {
             \App\Support\WorkflowEntrySnapshot::capture($entry);
+
+            if ($entry->isDirty('data') && \App\Support\WorkflowStageProgression::enabled($entry)) {
+                $data = is_array($entry->data) ? $entry->data : [];
+                unset($data['workflow_progress']);
+                if ($entry->exists) {
+                    $stored = \Illuminate\Support\Facades\DB::table($entry->getTable())
+                        ->where($entry->getKeyName(), $entry->getKey())->value('data');
+                    $stored = is_string($stored) ? json_decode($stored, true, flags: JSON_THROW_ON_ERROR) : $stored;
+                    if (is_array($stored['workflow_progress'] ?? null)) {
+                        $data['workflow_progress'] = $stored['workflow_progress'];
+                    }
+                }
+                $entry->data = $data;
+            }
+        });
+
+        static::created(function (self $entry): void {
+            \App\Support\WorkflowStageProgression::initialize($entry);
         });
     }
 

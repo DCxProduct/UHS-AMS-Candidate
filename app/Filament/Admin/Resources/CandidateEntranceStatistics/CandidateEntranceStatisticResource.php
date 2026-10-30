@@ -7,6 +7,7 @@ use App\Filament\Concerns\AdminOnly;
 use App\Models\CandidateEntranceStatistic;
 use App\Support\StatisticsPaymentEligibility;
 use App\Support\StatisticsMenuOptions;
+use App\Support\WorkflowProgressQuery;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -78,11 +79,13 @@ class CandidateEntranceStatisticResource extends Resource
                     ->where('slug', '!=', 'profile')
                     ->where('statistics_menu', StatisticsMenuOptions::ENTRANCE_EXAM_STATISTICS);
             })
-            ->whereIn('review_status', [
-                'accepted',
-                'approved',
-                'passed',
-            ])
+            ->where(function (Builder $query): void {
+                $query->where(fn (Builder $ordered): Builder => WorkflowProgressQuery::ordered($ordered))
+                    ->orWhere(function (Builder $legacy): void {
+                        WorkflowProgressQuery::legacy($legacy)
+                            ->whereIn('review_status', ['accepted', 'approved', 'passed']);
+                    });
+            })
             ->where(function (Builder $query): void {
                 $query
                     ->whereNull('data->candidate_status')

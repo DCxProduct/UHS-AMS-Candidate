@@ -6,6 +6,7 @@ use App\Enums\WorkflowStageType;
 use App\Models\Payment;
 use App\Support\StaticWorkflowMessages;
 use App\Support\WorkflowStageMessages;
+use App\Support\WorkflowStageProgression;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -39,7 +40,7 @@ class CandidatePaymentRecorder
             abort_unless(WorkflowStageMessages::canCurrentUserHandleStage($entry, WorkflowStageType::Payment), 403);
             $ownerId = $entry->created_by;
             $status = strtolower((string) (data_get($entry->data, 'registration_status') ?: $entry->review_status));
-            if (! $ownerId || ! in_array($status, ['approved', 'accepted', 'passed'], true)
+            if (! $ownerId || (! WorkflowStageProgression::enabled($entry) && ! in_array($status, ['approved', 'accepted', 'passed'], true))
                 || ! WorkflowStageMessages::requiresPayment($entry)) {
                 throw ValidationException::withMessages(['receipt_number' => 'This application is not eligible for payment.']);
             }
@@ -57,6 +58,11 @@ class CandidatePaymentRecorder
             $data['form_id'] = $entry->custom_form_id;
             $data['status_payt'] = 'paid';
             $payment = Payment::query()->create($data);
+            if (WorkflowStageProgression::enabled($entry)) {
+                WorkflowStageProgression::paid($entry);
+            } else {
+                WorkflowStageProgression::advance($entry);
+            }
 
             DB::afterCommit(function () use ($entry): void {
                 if (WorkflowStageMessages::hasConfiguredWorkflow($entry)) {

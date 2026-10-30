@@ -37,6 +37,12 @@ class WorkflowSubmissionMessagesTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        // Existing applications keep their saved status-driven workflow semantics.
+        CustomFormEntry::creating(static function (CustomFormEntry $entry): void {
+            if (is_array($entry->workflow_snapshot)) {
+                $entry->workflow_snapshot = [...$entry->workflow_snapshot, 'schema_version' => 1];
+            }
+        });
         Filament::setCurrentPanel('app');
         app()->setLocale('en');
         Http::fake();

@@ -8,6 +8,7 @@ use App\Models\AmsPaymentRequest;
 use App\Models\Payment;
 use App\Services\AmsPaymentSync;
 use App\Support\WorkflowStageMessages;
+use App\Support\WorkflowStageProgression;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -50,7 +51,10 @@ class AmsOtherFeePaymentController extends Controller
             abort_unless($entry && AmsPaymentSync::usesAms($entry)
                 && WorkflowStageMessages::requiresPayment($entry)
                 && filled($entry->created_by)
-                && in_array(strtolower((string) $entry->review_status), ['approved', 'accepted', 'passed'], true), 409);
+                && (WorkflowStageProgression::enabled($entry)
+                    ? (WorkflowStageProgression::isCurrent($entry, WorkflowStageType::Payment)
+                        || data_get($entry->data, 'workflow_progress.payment_completed', false))
+                    : in_array(strtolower((string) $entry->review_status), ['approved', 'accepted', 'passed'], true)), 409);
             $link = AmsPaymentRequest::query()->where('custom_form_entry_id', $entry->getKey())->lockForUpdate()->first();
             abort_unless($link && filled($link->ams_request_id) && (string) $link->ams_request_id === $data['ams_request_id'], 409);
 
@@ -84,11 +88,17 @@ class AmsOtherFeePaymentController extends Controller
                 ])->save();
                 $link->local_payment_id = $payment->getKey();
                 $link->external_payment_id = $data['payment_id'];
+                if (WorkflowStageProgression::enabled($entry)) {
+                    WorkflowStageProgression::paid($entry);
+                } else {
+                    WorkflowStageProgression::advance($entry);
+                }
                 DB::afterCommit(fn () => WorkflowStageMessages::notifyConfiguredStage($entry, WorkflowStageType::Payment));
             } elseif ($payment) {
                 // A reversal is allowed only for the currently bound AMS receipt.
                 abort_unless((string) $payment->integration_payment_id === $data['payment_id'], 409);
                 $payment->forceFill(['status_payt' => 'return'])->save();
+                WorkflowStageProgression::rollbackUnpaidAutoCompletion($entry);
             }
 
             $link->last_event_version = (int) $data['event_version'];

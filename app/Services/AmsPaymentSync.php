@@ -9,6 +9,7 @@ use App\Models\WorkflowNotification;
 use App\Support\CandidateDisplayName;
 use App\Support\FormEntryData;
 use App\Support\WorkflowStageMessages;
+use App\Support\WorkflowStageProgression;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
@@ -28,7 +29,9 @@ class AmsPaymentSync
         $entry->refresh();
 
         if (! self::usesAms($entry)
-            || ! in_array(strtolower((string) $entry->review_status), ['approved', 'accepted'], true)
+            || (WorkflowStageProgression::enabled($entry)
+                ? ! WorkflowStageProgression::isCurrent($entry, \App\Enums\WorkflowStageType::Payment)
+                : ! in_array(strtolower((string) $entry->review_status), ['approved', 'accepted'], true))
             || ! WorkflowStageMessages::requiresPayment($entry)
             || blank($entry->created_by)) {
             return null;
