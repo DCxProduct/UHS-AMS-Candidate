@@ -50,6 +50,7 @@ return [
         'notification_message' => 'Candidate Notification Message (Optional)',
         'staff_notification_message' => 'System User Notification Message (Optional)',
         'staff_recipient_ids' => 'Send Notification To',
+        'staff_recipient_roles' => 'Send Notification To',
     ],
 
     'payment_sources' => [
@@ -69,6 +70,7 @@ return [
         'submission_candidate_notification' => 'Example: Your application has been submitted successfully.',
         'submission_staff_notification' => 'Example: A new application is ready for review.',
         'staff_recipient_ids' => 'Select system users',
+        'staff_recipient_roles' => 'Select roles',
         'unpaid_status_message' => 'Example: Unpaid',
         'waiting_result_status_message' => 'Example: Pending',
         'stage_audiences' => [
@@ -135,18 +137,18 @@ return [
         'completed_responsible_role' => 'Select one or more roles. Leave empty to keep automatic handling.',
         'submission_status' => 'The same status is shown to candidates and system users after clicking Done. Leave blank to keep the existing status.',
         'submission_candidate_notification' => 'Sent to the candidate after submitting the application. Leave blank to keep the existing behavior.',
-        'review_outcomes' => 'Each action has one shared status. Configure separate notification messages for the candidate and selected system users. Blank fields keep the existing behavior.',
+        'review_outcomes' => 'Each action has one shared status. Configure separate notification messages for the candidate and system users in the selected roles. Blank fields keep the existing behavior.',
         'shared_review_status' => 'The same status label is shown to candidates and system users.',
         'review_candidate_notification' => 'Sent only to the candidate through the selected notification channels.',
-        'review_staff_notification' => 'Sent to the system bell of selected system users when this action is used. Leave blank to send no additional staff notification.',
-        'review_staff_recipients' => 'Only selected users receive this message. Leave empty to send no staff notification.',
+        'review_staff_notification' => 'Sent to the system bell of active system users in the selected roles when this action is used. Leave blank to send no additional staff notification.',
+        'review_staff_recipients' => 'All active system users in the selected roles receive this message. Leave empty to send no staff notification.',
         'shared_stage_status' => 'The same workflow status is shown to candidates and system users. Leave blank to keep the existing status.',
         'unpaid_status_message' => 'Shown in Payment Status List. In application lists, used after review when the Checked status message is blank. Leave blank to keep the existing status labels.',
         'paid_status_message' => 'Shown to candidates and system users after payment, and in both payment lists. Leave blank to keep the existing status labels.',
         'waiting_result_status_message' => 'Shown in the exam result table after payment while the result is pending. Leave blank to use the default Pending label.',
         'passed_result_status_message' => 'Shown in the exam result table after the candidate is marked Passed. Leave blank to use the default Passed label.',
         'stage_candidate_notification' => 'Sent to the candidate through the selected channels when this stage notification is triggered. Leave blank to keep the existing behavior.',
-        'stage_staff_notification' => 'Sent to the system bell of selected system users when this stage notification is triggered. Leave blank to send no additional staff notification.',
+        'stage_staff_notification' => 'Sent to the system bell of active system users in the selected roles when this stage notification is triggered. Leave blank to send no additional staff notification.',
     ],
 
     'view' => [

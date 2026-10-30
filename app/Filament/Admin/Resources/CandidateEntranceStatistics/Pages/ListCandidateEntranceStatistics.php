@@ -6,7 +6,6 @@ use App\Filament\Admin\Resources\CandidateEntranceStatistics\CandidateEntranceSt
 use App\Filament\Admin\Resources\CandidateEntranceStatistics\Tables\CandidateEntranceStatisticsTable;
 use App\Support\AuditLogger;
 use App\Support\FilamentActionPermissions;
-use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Contracts\Support\Htmlable;
@@ -124,7 +123,7 @@ class ListCandidateEntranceStatistics extends ListRecords
 
             $records = $query->get();
         } elseif (filled($selectedRecordKeys)) {
-            $records = CustomFormEntry::query()
+            $records = $this->getTableQueryForExport()
                 ->with('creator')
                 ->whereKey($selectedRecordKeys)
                 ->get();

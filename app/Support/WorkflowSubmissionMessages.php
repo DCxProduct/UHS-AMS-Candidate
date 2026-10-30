@@ -107,15 +107,12 @@ final class WorkflowSubmissionMessages
             }
 
             $body = self::text($messages['staff_notification_message'] ?? null);
-            $recipientIds = $messages['staff_recipient_ids'] ?? [];
 
-            if ($body === '' || ! is_array($recipientIds)) {
+            if ($body === '') {
                 return $sent;
             }
 
-            $recipientIds = array_values(array_unique(array_filter($recipientIds, fn (mixed $id): bool => (is_int($id) || is_string($id)) && ctype_digit((string) $id))));
-
-            foreach (self::recipientsQuery()->whereKey($recipientIds)->whereKeyNot($entry->created_by)->get() as $recipient) {
+            foreach (WorkflowStaffRecipients::resolve($messages, $entry->created_by) as $recipient) {
                 if ($recipient->notifications()
                     ->where('data->viewData->workflow_entry_id', (string) $entry->getKey())
                     ->where('data->viewData->workflow_event', 'submission_staff')

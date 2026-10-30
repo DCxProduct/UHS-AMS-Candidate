@@ -10,6 +10,7 @@ use App\Models\Role;
 use App\Models\User;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Database\Eloquent\Builder;
 use Livewire\Livewire;
@@ -126,6 +127,15 @@ class CandidateEntranceStatisticSearchTest extends TestCase
         ]);
 
         $entry->forceFill(['review_status' => 'accepted'])->saveQuietly();
+
+        DB::table('payments')->insert([
+            'users_id' => $user->id,
+            'form_id' => $form->id,
+            'custom_form_entry_id' => $entry->id,
+            'status_payt' => 'paid',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
 
         return $entry->fresh();
     }

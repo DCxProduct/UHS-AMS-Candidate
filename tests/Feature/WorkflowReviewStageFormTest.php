@@ -65,7 +65,7 @@ class WorkflowReviewStageFormTest extends TestCase
             $status = $actionFields->first(fn ($field): bool => str_ends_with($field->getStatePath(), '.review_actions.'.$action.'.status_message'));
             $notification = $actionFields->first(fn ($field): bool => str_ends_with($field->getStatePath(), '.review_actions.'.$action.'.notification_message'));
             $staffNotification = $actionFields->first(fn ($field): bool => str_ends_with($field->getStatePath(), '.review_actions.'.$action.'.staff_notification_message'));
-            $staffRecipients = $actionFields->first(fn ($field): bool => str_ends_with($field->getStatePath(), '.review_actions.'.$action.'.staff_recipient_ids'));
+            $staffRecipients = $actionFields->first(fn ($field): bool => str_ends_with($field->getStatePath(), '.review_actions.'.$action.'.staff_recipient_roles'));
 
             $this->assertNotNull($status);
             $this->assertNotNull($notification);
@@ -74,7 +74,7 @@ class WorkflowReviewStageFormTest extends TestCase
             $this->assertSame(__('workflow_notifications.fields.shared_status_message'), $status->getLabel());
             $this->assertSame(__('workflow_notifications.fields.notification_message'), $notification->getLabel());
             $this->assertSame(__('workflow_notifications.fields.staff_notification_message'), $staffNotification->getLabel());
-            $this->assertSame(__('workflow_notifications.fields.staff_recipient_ids'), $staffRecipients->getLabel());
+            $this->assertSame(__('workflow_notifications.fields.staff_recipient_roles'), $staffRecipients->getLabel());
             $this->assertEmpty($staffRecipients->getState());
 
             foreach (['status_message' => $status, 'notification_message' => $notification, 'staff_notification_message' => $staffNotification] as $name => $field) {
@@ -92,7 +92,6 @@ class WorkflowReviewStageFormTest extends TestCase
     {
         $workflow = $this->workflow();
         $original = $workflow->stages;
-        $staff = $this->user('selected_review_staff');
         $component = Livewire::test(EditWorkflowNotification::class, ['record' => $workflow->getRouteKey()]);
         $key = array_key_first($component->get('data.stages'));
         $path = "data.stages.{$key}.data";
@@ -106,7 +105,7 @@ class WorkflowReviewStageFormTest extends TestCase
         $component->set($path.'.review_actions.accept.status_message', 'Checked by staff')
             ->set($path.'.review_actions.send_back.notification_message', 'Please correct the attached document.')
             ->set($path.'.review_actions.accept.staff_notification_message', 'An application was checked by the reviewer.')
-            ->set($path.'.review_actions.accept.staff_recipient_ids', [$staff->getKey()])
+            ->set($path.'.review_actions.accept.staff_recipient_roles', ['registrar_officer'])
             ->call('save')
             ->assertHasNoFormErrors();
 
@@ -120,10 +119,10 @@ class WorkflowReviewStageFormTest extends TestCase
             }
         }
         $this->assertSame('An application was checked by the reviewer.', data_get($saved, '0.data.review_actions.accept.staff_notification_message'));
-        $this->assertEquals([$staff->getKey()], data_get($saved, '0.data.review_actions.accept.staff_recipient_ids'));
+        $this->assertEquals(['registrar_officer'], data_get($saved, '0.data.review_actions.accept.staff_recipient_roles'));
         foreach (['send_back', 'reject'] as $action) {
             $this->assertEmpty(data_get($saved, '0.data.review_actions.'.$action.'.staff_notification_message'));
-            $this->assertEmpty(data_get($saved, '0.data.review_actions.'.$action.'.staff_recipient_ids'));
+            $this->assertEmpty(data_get($saved, '0.data.review_actions.'.$action.'.staff_recipient_roles'));
         }
         $this->assertSame($original[0]['data']['responsible_role'], $saved[0]['data']['responsible_role']);
         $this->assertSame($original[0]['data']['stage_type'], $saved[0]['data']['stage_type']);
@@ -157,26 +156,26 @@ class WorkflowReviewStageFormTest extends TestCase
         }
     }
 
-    public function test_each_review_action_can_select_only_active_system_user_accounts(): void
+    public function test_each_review_action_selects_system_roles_instead_of_accounts(): void
     {
-        $active = $this->user('active_review_staff');
-        $inactive = $this->user('inactive_review_staff', active: false);
-        $candidate = $this->user('review_candidate', type: 'student');
-        $deleted = $this->user('deleted_review_staff');
-        $deleted->delete();
+        $staff = $this->user('personal_review_staff');
+        $staff->assignRole('registrar_officer');
+        Role::findOrCreate('candidate', 'web')->forceFill(['role_type_key' => 'candidate'])->save();
         $workflow = $this->workflow();
         $component = Livewire::test(EditWorkflowNotification::class, ['record' => $workflow->getRouteKey()]);
         $fields = collect($component->instance()->form->getFlatFields());
 
         foreach (['accept', 'send_back', 'reject'] as $action) {
-            $picker = $fields->first(fn ($field): bool => str_ends_with($field->getStatePath(), '.review_actions.'.$action.'.staff_recipient_ids'));
+            $picker = $fields->first(fn ($field): bool => str_ends_with($field->getStatePath(), '.review_actions.'.$action.'.staff_recipient_roles'));
             $this->assertNotNull($picker);
+            $this->assertTrue($picker->isMultiple());
             $this->assertEmpty($picker->getState());
             $options = $picker->getOptions();
-            $this->assertArrayHasKey($active->getKey(), $options);
-            $this->assertArrayNotHasKey($inactive->getKey(), $options);
-            $this->assertArrayNotHasKey($candidate->getKey(), $options);
-            $this->assertArrayNotHasKey($deleted->getKey(), $options);
+            $this->assertArrayHasKey('admin', $options);
+            $this->assertArrayHasKey('registrar_officer', $options);
+            $this->assertArrayNotHasKey('candidate', $options);
+            $this->assertArrayNotHasKey($staff->getKey(), $options);
+            $this->assertNotContains($staff->name, $options);
         }
     }
 
@@ -212,6 +211,7 @@ class WorkflowReviewStageFormTest extends TestCase
                 ['type' => 'stage', 'data' => [
                     'stage_name' => 'Payment',
                     'stage_type' => 'payment',
+                    'payment_source' => 'system',
                     'responsible_role' => ['cashier_officer'],
                     'notification_channels' => ['system'],
                     'status_message' => 'Waiting for payment',
