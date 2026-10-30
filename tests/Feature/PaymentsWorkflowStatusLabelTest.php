@@ -36,10 +36,6 @@ class PaymentsWorkflowStatusLabelTest extends TestCase
         $this->actingAs($admin);
         $this->candidate = $this->user('payment_record_label_candidate', 'student');
         $this->form = CustomForm::query()->create(['name' => 'Payment record labels', 'slug' => 'payment-record-labels', 'is_active' => true]);
-        $this->entry = CustomFormEntry::query()->forceCreate([
-            'custom_form_id' => $this->form->getKey(), 'created_by' => $this->candidate->getKey(),
-            'review_status' => 'approved', 'data' => ['registration_status' => 'approved'],
-        ]);
         $this->workflow = WorkflowNotification::query()->create([
             'name' => 'Payment record status workflow',
             'stages' => [['type' => 'stage', 'data' => [
@@ -49,6 +45,7 @@ class PaymentsWorkflowStatusLabelTest extends TestCase
             ]]],
         ]);
         $this->workflow->forms()->attach($this->form);
+        $this->entry = $this->createEntry();
     }
 
     public function test_payment_record_badge_shows_exact_applications_paid_label_and_preserves_state_and_amounts(): void
@@ -80,7 +77,7 @@ class PaymentsWorkflowStatusLabelTest extends TestCase
     }
 
     #[DataProvider('locales')]
-    public function test_legacy_unlinked_blank_or_unassigned_workflows_keep_existing_translated_paid_label(string $locale): void
+    public function test_paid_labels_are_frozen_while_new_blank_or_unassigned_workflows_keep_existing_fallbacks(string $locale): void
     {
         app()->setLocale($locale);
         $legacy = $this->payment(linked: false);
@@ -92,10 +89,19 @@ class PaymentsWorkflowStatusLabelTest extends TestCase
         $stages = $this->workflow->stages;
         $stages[0]['data']['status_message'] = ' ';
         $this->workflow->update(['stages' => $stages]);
-        $this->assertSame(__('payments.options.status_payt.paid'), $label->invoke(null, $linked));
+        $this->assertSame('បានបង់ប្រាក់រួចរាល់', $label->invoke(null, $linked));
+
+        $this->entry = $this->createEntry();
+        $blankWorkflowPayment = $this->payment();
+        $this->assertSame(__('payments.options.status_payt.paid'), $label->invoke(null, $blankWorkflowPayment));
 
         $this->workflow->forms()->detach($this->form);
-        $this->assertSame(__('payments.options.status_payt.paid'), $label->invoke(null, $linked));
+        $this->assertSame('បានបង់ប្រាក់រួចរាល់', $label->invoke(null, $linked));
+        $this->assertSame(__('payments.options.status_payt.paid'), $label->invoke(null, $blankWorkflowPayment));
+
+        $this->entry = $this->createEntry();
+        $unassignedWorkflowPayment = $this->payment();
+        $this->assertSame(__('payments.options.status_payt.paid'), $label->invoke(null, $unassignedWorkflowPayment));
     }
 
     public function test_other_canonical_payment_states_keep_their_existing_color_and_translation(): void
@@ -123,6 +129,14 @@ class PaymentsWorkflowStatusLabelTest extends TestCase
             'users_id' => $this->candidate->getKey(), 'form_id' => $this->form->getKey(),
             'receipt_number' => 'RECORD-LABEL-'.Payment::query()->count(),
             'status_payt' => $status, 'amount_usd' => 5, 'datetime_pay' => now(),
+        ]);
+    }
+
+    private function createEntry(): CustomFormEntry
+    {
+        return CustomFormEntry::query()->forceCreate([
+            'custom_form_id' => $this->form->getKey(), 'created_by' => $this->candidate->getKey(),
+            'review_status' => 'approved', 'data' => ['registration_status' => 'approved'],
         ]);
     }
 

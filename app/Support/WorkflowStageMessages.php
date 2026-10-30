@@ -339,7 +339,7 @@ final class WorkflowStageMessages
     {
         return blank($entry->custom_form_id)
             ? false
-            : WorkflowNotification::forForm($entry->custom_form_id) !== null;
+            : WorkflowNotification::forEntry($entry) !== null;
     }
 
     /**
@@ -561,7 +561,7 @@ final class WorkflowStageMessages
             return null;
         }
 
-        $workflow = WorkflowNotification::forForm($entry->custom_form_id);
+        $workflow = WorkflowNotification::forEntry($entry);
 
         if ($workflow === null) {
             return null;
@@ -802,7 +802,7 @@ final class WorkflowStageMessages
             return false;
         }
 
-        $workflow = WorkflowNotification::forForm($entry->custom_form_id);
+        $workflow = WorkflowNotification::forEntry($entry);
 
 
 

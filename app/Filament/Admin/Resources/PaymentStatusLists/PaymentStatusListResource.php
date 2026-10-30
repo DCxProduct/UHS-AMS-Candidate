@@ -109,7 +109,24 @@ class PaymentStatusListResource extends Resource
                 $query->where('is_active', true)
                     ->where('slug', '!=', 'profile');
             })
-            ->whereIn('custom_form_id', $paymentFormIds)
+            ->where(function (Builder $query) use ($paymentFormIds): void {
+                if (! DbSchema::hasColumn('custom_form_entries', 'workflow_snapshot')) {
+                    $query->whereIn('custom_form_id', $paymentFormIds);
+
+                    return;
+                }
+
+                $query->where(function (Builder $query): void {
+                    $query->where('workflow_snapshot->has_workflow', true)
+                        ->where('workflow_snapshot->requires_payment', true);
+                })->orWhere(function (Builder $query): void {
+                    $query->where('workflow_snapshot->has_workflow', false)
+                        ->whereHas('customForm', fn (Builder $formQuery): Builder => $formQuery->where('requires_payment', true));
+                })->orWhere(function (Builder $query) use ($paymentFormIds): void {
+                    $query->whereNull('workflow_snapshot')
+                        ->whereIn('custom_form_id', $paymentFormIds);
+                });
+            })
             ->where(function (Builder $query): void {
                 $query
                     ->where('data->candidate_status', 'passed')

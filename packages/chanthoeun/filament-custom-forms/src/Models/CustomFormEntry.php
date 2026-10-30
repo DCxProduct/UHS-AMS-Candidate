@@ -19,7 +19,15 @@ class CustomFormEntry extends Model
 
     protected $casts = [
         'data' => 'array',
+        'workflow_snapshot' => 'array',
     ];
+
+    protected static function booted(): void
+    {
+        static::saving(function (self $entry): void {
+            \App\Support\WorkflowEntrySnapshot::capture($entry);
+        });
+    }
 
     public function customForm(): BelongsTo
     {

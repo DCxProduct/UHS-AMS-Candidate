@@ -101,6 +101,9 @@ class WorkflowWaitingResultStatusTest extends TestCase
 
     public function test_generic_application_status_shows_paid_then_passed_until_completion_is_released(): void
     {
+        $stages = $this->workflow->stages;
+        $stages[2]['data']['notification_message'] = 'The final result is now available.';
+        $this->workflow->update(['stages' => $stages]);
         $entry = $this->entry('pending');
         $this->pay($entry);
 
@@ -115,21 +118,18 @@ class WorkflowWaitingResultStatusTest extends TestCase
 
         $this->assertSame(WorkflowStageType::AwaitingResults, WorkflowStageMessages::stageTypeFor($entry));
         $this->assertSame('បានជាប់', WorkflowStageMessages::statusText($entry));
-        $stages = $this->workflow->stages;
-        $stages[2]['data']['notification_message'] = 'The final result is now available.';
-        $this->workflow->update(['stages' => $stages]);
         $this->assertTrue(WorkflowStageMessages::notifyConfiguredStage($entry, WorkflowStageType::Completed));
         $this->assertSame('Completed label', WorkflowStageMessages::statusText($entry));
     }
 
     public function test_generic_application_status_with_blank_paid_label_uses_pending_fallback_and_preserves_legacy_result_labels(): void
     {
-        $entry = $this->entry('pending');
-        $this->pay($entry);
         $stages = $this->workflow->stages;
         $stages[0]['data']['status_message'] = ' ';
         $stages[1]['data']['result_statuses']['pending_status_message'] = ' ';
         $this->workflow->update(['stages' => $stages]);
+        $entry = $this->entry('pending');
+        $this->pay($entry);
 
         $this->assertSame(__('candidate_entrance_statistics.statuses.pending'), WorkflowStageMessages::statusText($entry));
         $this->assertSame('approved', $entry->fresh()->review_status);
@@ -137,11 +137,17 @@ class WorkflowWaitingResultStatusTest extends TestCase
 
         unset($stages[1]['data']['result_statuses']);
         $this->workflow->update(['stages' => $stages]);
-        $this->assertSame('បានជាប់', WorkflowStageMessages::statusText($entry));
+        $legacyEntry = $this->entry('pending');
+        $this->pay($legacyEntry);
+        $this->assertSame('បានជាប់', WorkflowStageMessages::statusText($legacyEntry));
+        $this->assertSame(__('candidate_entrance_statistics.statuses.pending'), WorkflowStageMessages::statusText($entry));
     }
 
     public function test_paid_entry_with_a_passed_candidate_result_shows_passed_before_completion_delivery_instead_of_paid_text(): void
     {
+        $stages = $this->workflow->stages;
+        $stages[2]['data']['notification_message'] = 'Final result released.';
+        $this->workflow->update(['stages' => $stages]);
         $entry = $this->entry('passed');
         $this->pay($entry);
 
@@ -149,10 +155,6 @@ class WorkflowWaitingResultStatusTest extends TestCase
         $this->assertSame('passed', data_get($entry->data, 'candidate_status'));
         $this->assertSame(WorkflowStageType::AwaitingResults, WorkflowStageMessages::stageTypeFor($entry));
         $this->assertSame('បានជាប់', WorkflowStageMessages::statusText($entry));
-        $stages = $this->workflow->stages;
-        $stages[2]['data']['notification_message'] = 'Final result released.';
-        $this->workflow->update(['stages' => $stages]);
-
         $this->assertTrue(WorkflowStageMessages::notifyConfiguredStage($entry, WorkflowStageType::Completed));
         $this->assertSame('Completed label', WorkflowStageMessages::statusText($entry));
         $this->assertSame('approved', $entry->fresh()->review_status);
@@ -183,10 +185,10 @@ class WorkflowWaitingResultStatusTest extends TestCase
 
     public function test_blank_passed_label_keeps_the_default_passed_text_and_does_not_use_pending_text(): void
     {
-        $entry = $this->entry('passed');
         $stages = $this->workflow->stages;
         $stages[1]['data']['status_message'] = ' ';
         $this->workflow->update(['stages' => $stages]);
+        $entry = $this->entry('passed');
         $this->assertNull(WorkflowStageMessages::passedResultStatusLabel($entry));
         $formatted = (new ReflectionMethod(CandidateEntranceStatisticsTable::class, 'excelRows'))->invoke(null, [$entry], ['data.candidate_status']);
         $this->assertSame(__('candidate_entrance_statistics.statuses.passed'), $formatted[1][0]);
@@ -214,10 +216,10 @@ class WorkflowWaitingResultStatusTest extends TestCase
     public function test_blank_unassigned_and_legacy_waiting_fields_keep_existing_translated_fallback(string $locale): void
     {
         app()->setLocale($locale);
-        $entry = $this->entry('pending');
         $stages = $this->workflow->stages;
         $stages[1]['data']['result_statuses']['pending_status_message'] = ' ';
         $this->workflow->update(['stages' => $stages]);
+        $entry = $this->entry('pending');
         $this->assertNull(WorkflowStageMessages::waitingResultStatusLabel($entry));
         $formatted = (new ReflectionMethod(CandidateEntranceStatisticsTable::class, 'excelRows'))
             ->invoke(null, [$entry], ['data.candidate_status']);
@@ -226,13 +228,13 @@ class WorkflowWaitingResultStatusTest extends TestCase
 
         unset($stages[1]['data']['result_statuses']);
         $this->workflow->update(['stages' => $stages]);
-        $this->assertNull(WorkflowStageMessages::waitingResultStatusLabel($entry));
+        $this->assertNull(WorkflowStageMessages::waitingResultStatusLabel($this->entry('pending')));
 
         unset($stages[1]);
         $this->workflow->update(['stages' => array_values($stages)]);
-        $this->assertNull(WorkflowStageMessages::waitingResultStatusLabel($entry));
+        $this->assertNull(WorkflowStageMessages::waitingResultStatusLabel($this->entry('pending')));
         $this->workflow->forms()->detach($this->form);
-        $this->assertNull(WorkflowStageMessages::waitingResultStatusLabel($entry));
+        $this->assertNull(WorkflowStageMessages::waitingResultStatusLabel($this->entry('pending')));
     }
 
     public function test_exit_statistics_reuse_linked_awaiting_stage_for_pending_badge_and_formatted_export_only(): void

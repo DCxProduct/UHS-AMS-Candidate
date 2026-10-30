@@ -140,8 +140,11 @@ class WorkflowPaymentStatusLabelTest extends TestCase
         $stages = $this->workflow->stages;
         $stages[1]['data']['payment_statuses']['unpaid_status_message'] = ' ';
         $this->workflow->update(['stages' => $stages]);
-        $this->assertNull(WorkflowStageMessages::paymentStatusLabel($entry, 'unpaid'));
+        $this->assertSame('រង់ចាំការបង់ប្រាក់', WorkflowStageMessages::paymentStatusLabel($entry, 'unpaid'));
         $this->assertSame('បានបង់ប្រាក់រួចរាល់', WorkflowStageMessages::paymentStatusLabel($entry, 'paid'));
+        $newEntry = $this->entry();
+        $this->assertNull(WorkflowStageMessages::paymentStatusLabel($newEntry, 'unpaid'));
+        $this->assertSame('បានបង់ប្រាក់រួចរាល់', WorkflowStageMessages::paymentStatusLabel($newEntry, 'paid'));
     }
 
     private function list()

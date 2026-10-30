@@ -10,6 +10,7 @@ use App\Support\ClosingDateWorkflow;
 use App\Support\NotificationLanguage;
 use App\Support\ProfileFormData;
 use App\Support\StudentDynamicFormSchema;
+use App\Support\WorkflowEntrySnapshot;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -271,6 +272,13 @@ class StudentDynamicFormPage extends Page implements HasForms
 
         if (in_array('review_status', $columns, true)) {
             $payload['review_status'] = 'pending';
+        }
+
+        if (in_array('workflow_snapshot', $columns, true)) {
+            $payload['workflow_snapshot'] = json_encode(
+                WorkflowEntrySnapshot::forForm($this->customForm->id),
+                JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR,
+            );
         }
 
         $payload = collect($payload)

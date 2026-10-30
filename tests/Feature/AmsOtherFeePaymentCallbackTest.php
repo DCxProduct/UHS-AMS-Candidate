@@ -221,14 +221,24 @@ class AmsOtherFeePaymentCallbackTest extends TestCase
         $this->assertNull($this->request->fresh()->local_payment_id);
     }
 
-    public function test_an_application_moved_to_this_system_cannot_receive_an_ams_payment(): void
+    public function test_template_source_change_preserves_existing_ams_applications_and_rejects_new_local_applications(): void
     {
         $stages = $this->workflow->stages;
         $stages[1]['data']['payment_source'] = 'system';
         $this->workflow->update(['stages' => $stages]);
-        $this->postCallback($this->payload())->assertStatus(409);
-        $this->assertDatabaseCount('payments', 0);
-        $this->assertSame(0, $this->request->fresh()->last_event_version);
+        $this->postCallback($this->payload())->assertOk();
+        $this->assertDatabaseCount('payments', 1);
+        $this->assertSame(1, $this->request->fresh()->last_event_version);
+
+        $new = $this->entry();
+        $newRequest = $this->requestFor($new, 'new-local-application');
+        $this->postCallback($this->payload([
+            'application_id' => (string) $new->getKey(),
+            'ams_request_id' => (string) $newRequest->ams_request_id,
+            'payment_id' => 'another-external-payment',
+        ]))->assertStatus(409);
+        $this->assertDatabaseMissing('payments', ['custom_form_entry_id' => $new->getKey()]);
+        $this->assertSame(0, $newRequest->fresh()->last_event_version);
     }
 
     public static function ineligibleStates(): array
