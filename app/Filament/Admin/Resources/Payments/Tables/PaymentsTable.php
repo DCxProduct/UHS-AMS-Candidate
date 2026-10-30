@@ -6,6 +6,7 @@ use App\Filament\Admin\Resources\Payments\PaymentResource;
 use App\Models\Payment;
 use App\Models\PaymentType;
 use App\Models\User;
+use App\Support\CandidateNumber;
 use App\Support\CaseInsensitiveSearch;
 use App\Support\FormEntryData;
 use App\Support\LocalizedDate;
@@ -441,7 +442,7 @@ class PaymentsTable
     {
         $candidateId = self::matchedEntry($record)?->candidate_id;
 
-        return blank($candidateId) ? '-' : (string) $candidateId;
+        return blank($candidateId) ? '-' : CandidateNumber::format($candidateId);
     }
 
     protected static function khmerName(Payment $record): string

@@ -2,6 +2,7 @@
 
 namespace Chanthoeun\FilamentDocumentBuilder\Services;
 
+use App\Support\CandidateNumber;
 use App\Support\FormEntryData;
 use App\Support\LocalizedDate;
 use Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate;
@@ -385,6 +386,10 @@ class DocumentRenderer
         }
 
         $fieldKey = str_contains($key, '.') ? str($key)->afterLast('.')->toString() : $key;
+
+        if (in_array($fieldKey, ['candidate_id', 'candidate_identifier'], true)) {
+            return CandidateNumber::format($value);
+        }
 
         if (in_array($fieldKey, FormEntryData::majorKeys(), true)) {
             return FormEntryData::majorKhmerOptionLabel((string) $value);

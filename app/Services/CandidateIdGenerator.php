@@ -48,7 +48,7 @@ class CandidateIdGenerator
             ->where('id', $sequence->id)
             ->update(['last_sequence' => $next, 'updated_at' => now()]);
 
-        return sprintf('%s%02d%04d', $abbreviation, $yearSuffix, $next);
+        return sprintf('%s-%04d', $abbreviation, $next);
     }
 
     /** Assign an ID once, at the point the application is checked. */
@@ -104,7 +104,8 @@ class CandidateIdGenerator
                 if (filled($accountMajorId?->candidate_id)) {
                     $candidateId = (string) $accountMajorId->candidate_id;
                 } else {
-                    $candidateId = $this->next($major->getKey(), $year, $formId);
+                    $candidateId = $this->existingAccountCandidateId($formId, (int) $current->created_by, $abbreviation, $year)
+                        ?? $this->next($major->getKey(), $year, $formId);
 
                     if (! $candidateId) {
                         return null;
@@ -118,13 +119,17 @@ class CandidateIdGenerator
                 $this->syncAccountMajorEntries($formId, (int) $current->created_by, $abbreviation, $year, $candidateId, (int) $current->id);
             } else {
                 $candidateId = filled($current->candidate_id)
-                    && $this->candidateIdMatches($current->candidate_id, $abbreviation, $year)
+                    && $this->candidateIdMatches($current->candidate_id, $abbreviation, $year, (int) $current->candidate_id_year)
                     ? (string) $current->candidate_id
                     : $this->next($major->getKey(), $year, $formId);
 
                 DB::table('custom_form_entries')
                     ->where('id', $current->id)
-                    ->update(['candidate_id' => $candidateId, 'updated_at' => now()]);
+                    ->update([
+                        'candidate_id' => $candidateId,
+                        'candidate_id_year' => $year,
+                        'updated_at' => now(),
+                    ]);
             }
 
             return $candidateId;
@@ -152,6 +157,7 @@ class CandidateIdGenerator
                     if ((int) $entry->id === $currentEntryId) {
                         DB::table('custom_form_entries')->where('id', $entry->id)->update([
                             'candidate_id' => $candidateId,
+                            'candidate_id_year' => $year,
                             'updated_at' => now(),
                         ]);
 
@@ -164,7 +170,8 @@ class CandidateIdGenerator
                         FormEntryData::majorKeys(),
                     );
                     $major = $this->resolveMajor($majorValue);
-                    $entryYear = (int) date('Y', strtotime((string) ($entry->reviewed_at ?: $entry->created_at) ?: 'now'));
+                    $entryYear = (int) ($entry->candidate_id_year
+                        ?: date('Y', strtotime((string) ($entry->reviewed_at ?: $entry->created_at) ?: 'now')));
 
                     if (strtoupper(trim((string) $major?->abbreviation)) !== $abbreviation || $entryYear !== $year) {
                         continue;
@@ -172,15 +179,36 @@ class CandidateIdGenerator
 
                     DB::table('custom_form_entries')->where('id', $entry->id)->update([
                         'candidate_id' => $candidateId,
+                        'candidate_id_year' => $year,
                         'updated_at' => now(),
                     ]);
                 }
             });
     }
 
-    private function candidateIdMatches(string $candidateId, string $abbreviation, int $year): bool
+    private function existingAccountCandidateId(int $formId, int $userId, string $abbreviation, int $year): ?string
     {
-        return preg_match('/^'.preg_quote($abbreviation, '/').sprintf('%02d', $year % 100).'\d{4,}$/', strtoupper($candidateId)) === 1;
+        foreach (DB::table('custom_form_entries')
+            ->where('custom_form_id', $formId)
+            ->where('created_by', $userId)
+            ->whereNotNull('candidate_id')
+            ->orderBy('id')
+            ->get(['candidate_id', 'candidate_id_year']) as $entry) {
+            if ($this->candidateIdMatches($entry->candidate_id, $abbreviation, $year, (int) $entry->candidate_id_year)) {
+                return (string) $entry->candidate_id;
+            }
+        }
+
+        return null;
+    }
+
+    private function candidateIdMatches(string $candidateId, string $abbreviation, int $year, int $assignedYear): bool
+    {
+        $candidateId = strtoupper($candidateId);
+        $prefix = preg_quote($abbreviation, '/');
+
+        return preg_match('/^'.$prefix.sprintf('%02d', $year % 100).'\d{4,}$/', $candidateId) === 1
+            || ($assignedYear === $year && preg_match('/^'.$prefix.'-\d{4,}$/', $candidateId) === 1);
     }
 
     private function resolveMajor(mixed $value): ?Major

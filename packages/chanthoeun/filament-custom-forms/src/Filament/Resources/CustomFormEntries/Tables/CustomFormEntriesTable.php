@@ -11,6 +11,7 @@ use App\Models\Payment;
 use App\Models\WorkflowNotification;
 use App\Services\CandidateIdGenerator;
 use App\Support\AuditLogger;
+use App\Support\CandidateNumber;
 use App\Support\CaseInsensitiveSearch;
 use App\Support\CustomFormEntryFiles;
 use App\Support\FilamentActionPermissions;
@@ -432,7 +433,8 @@ class CustomFormEntriesTable
 
             TextColumn::make('candidate_id')
                 ->label(__('app.custom_form_entry_ui.labels.candidate_id'))
-                ->searchable()
+                ->getStateUsing(fn ($record): string => CandidateNumber::format($record->candidate_id))
+                ->searchable(query: fn (Builder $query, string $search): Builder => CandidateNumber::applySearch($query, 'candidate_id', $search))
                 ->placeholder('-')
                 ->toggleable(isToggledHiddenByDefault: false),
 

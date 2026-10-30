@@ -8,6 +8,7 @@ use App\Enums\WorkflowStageType;
 use App\Filament\Admin\Resources\CandidateEntranceStatistics\CandidateEntranceStatisticResource;
 use App\Models\User;
 use App\Support\AuditLogger;
+use App\Support\CandidateNumber;
 use App\Support\CandidateTypeResolver;
 use App\Support\CandidateStatisticsSynchronizer;
 use App\Support\FilamentActionPermissions;
@@ -78,6 +79,7 @@ class CandidateEntranceStatisticsTable
 
                 TextColumn::make('candidate_id')
                     ->label(__('candidate_entrance_statistics.student_id'))
+                    ->formatStateUsing(fn (mixed $state): string => CandidateNumber::format($state))
                     ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: false),
 
@@ -579,8 +581,8 @@ class CandidateEntranceStatisticsTable
             'candidate_id' => [
                 'label' => __('candidate_entrance_statistics.student_id'),
                 'field_key' => 'candidate_id',
-                'value' => fn (CustomFormEntry $record): string => (string) ($record->candidate_id ?? ''),
-                'clean' => fn (CustomFormEntry $record): string => (string) ($record->candidate_id ?? ''),
+                'value' => fn (CustomFormEntry $record): string => CandidateNumber::format($record->candidate_id),
+                'clean' => fn (CustomFormEntry $record): string => CandidateNumber::format($record->candidate_id),
             ],
             'form_type' => [
                 'label' => __('candidate_entrance_statistics.form_type'),

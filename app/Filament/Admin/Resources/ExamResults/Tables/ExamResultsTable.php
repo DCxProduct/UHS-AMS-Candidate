@@ -8,6 +8,7 @@ use App\Filament\Admin\Resources\ExamResults\ExamResultResource;
 use App\Filament\Admin\Resources\ExitExamResults\ExitExamResultResource;
 use App\Models\Major;
 use App\Models\User;
+use App\Support\CandidateNumber;
 use App\Support\FilamentActionPermissions;
 use App\Support\FormEntryData;
 use App\Support\CaseInsensitiveSearch;
@@ -506,7 +507,7 @@ class ExamResultsTable
 
     protected static function candidateId(CustomFormEntry $record): string
     {
-        return (string) ($record->candidate_id ?: $record->creator?->candidate_id ?: '');
+        return CandidateNumber::format($record->candidate_id ?: $record->creator?->candidate_id ?: '');
     }
 
     protected static function contentTypesXml(array $sheets): string

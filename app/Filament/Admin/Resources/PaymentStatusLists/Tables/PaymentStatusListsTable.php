@@ -13,6 +13,7 @@ use App\Models\PaymentStatusList;
 use App\Models\User;
 use App\Rules\ValidMefInvoiceReceipt;
 use App\Services\CandidatePaymentRecorder;
+use App\Support\CandidateNumber;
 use App\Support\CaseInsensitiveSearch;
 use App\Support\FilamentActionPermissions;
 use App\Support\FormEntryData;
@@ -169,6 +170,7 @@ class PaymentStatusListsTable
 
                 TextColumn::make('candidate_id')
                     ->label(__('candidate_entrance_statistics.student_id'))
+                    ->formatStateUsing(fn (mixed $state): string => CandidateNumber::format($state))
                     ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: false),
 
@@ -368,7 +370,7 @@ class PaymentStatusListsTable
                         'users_id' => self::ownerId($record),
                         'form_id' => $record->custom_form_id,
                         'candidate_name' => self::candidateDisplayName($record),
-                        'candidate_id' => filled($record->candidate_id) ? (string) $record->candidate_id : '-',
+                        'candidate_id' => filled($record->candidate_id) ? CandidateNumber::format($record->candidate_id) : '-',
                         'exchange_rate' => self::defaultExchangeRate(),
                         'datetime_pay' => now()->toDateString(),
                         'status' => true,
@@ -671,7 +673,7 @@ class PaymentStatusListsTable
     {
         $values = [
             'row_number' => LocalizedNumber::digits($rowNumber),
-            'candidate_id' => (string) ($record->candidate_id ?? ''),
+            'candidate_id' => CandidateNumber::format($record->candidate_id),
             'form_name' => self::localizedFormName($record->customForm?->name),
             'name_khmer' => self::khmerName($record),
             'name_latin' => self::latinName($record),
@@ -692,7 +694,7 @@ class PaymentStatusListsTable
     {
         $values = [
             'row_number' => (string) $rowNumber,
-            'candidate_id' => (string) ($record->candidate_id ?? ''),
+            'candidate_id' => CandidateNumber::format($record->candidate_id),
             'form_name' => (string) $record->custom_form_id,
             'name_khmer' => trim((string) data_get($record->data, 'full_name_kh')) ?: self::khmerName($record),
             'name_latin' => trim((string) data_get($record->data, 'full_name_en')) ?: self::latinName($record),
