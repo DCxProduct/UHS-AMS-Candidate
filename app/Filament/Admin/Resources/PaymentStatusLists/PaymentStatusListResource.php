@@ -10,6 +10,7 @@ use App\Filament\Admin\Resources\PaymentStatusLists\Tables\PaymentStatusListsTab
 use App\Filament\Concerns\AdminOnly;
 use App\Models\PaymentStatusList;
 use App\Models\WorkflowNotification;
+use App\Support\WorkflowProgressQuery;
 use BackedEnum;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Filament\Resources\Resource;
@@ -116,22 +117,38 @@ class PaymentStatusListResource extends Resource
                     return;
                 }
 
-                $query->where(function (Builder $query): void {
-                    $query->where('workflow_snapshot->has_workflow', true)
-                        ->where('workflow_snapshot->requires_payment', true);
-                })->orWhere(function (Builder $query): void {
-                    $query->where('workflow_snapshot->has_workflow', false)
-                        ->whereHas('customForm', fn (Builder $formQuery): Builder => $formQuery->where('requires_payment', true));
-                })->orWhere(function (Builder $query) use ($paymentFormIds): void {
-                    $query->whereNull('workflow_snapshot')
-                        ->whereIn('custom_form_id', $paymentFormIds);
+                $query->where(function (Builder $ordered): void {
+                    WorkflowProgressQuery::ordered($ordered)
+                        ->where(function (Builder $progress): void {
+                            $progress->where('data->workflow_progress->current_type', WorkflowStageType::Payment->value)
+                                ->orWhere('data->workflow_progress->payment_completed', true);
+                        });
+                })->orWhere(function (Builder $legacy) use ($paymentFormIds): void {
+                    WorkflowProgressQuery::legacy($legacy)
+                        ->where(function (Builder $query) use ($paymentFormIds): void {
+                            $query->where(function (Builder $query): void {
+                                $query->where('workflow_snapshot->has_workflow', true)
+                                    ->where('workflow_snapshot->requires_payment', true);
+                            })->orWhere(function (Builder $query): void {
+                                $query->where('workflow_snapshot->has_workflow', false)
+                                    ->whereHas('customForm', fn (Builder $formQuery): Builder => $formQuery->where('requires_payment', true));
+                            })->orWhere(function (Builder $query) use ($paymentFormIds): void {
+                                $query->whereNull('workflow_snapshot')
+                                    ->whereIn('custom_form_id', $paymentFormIds);
+                            });
+                        });
                 });
             })
             ->where(function (Builder $query): void {
-                $query
-                    ->where('data->candidate_status', 'passed')
-                    ->orWhereIn('review_status', ['approved', 'accepted', 'passed'])
-                    ->orWhereIn('data->registration_status', ['approved', 'accepted', 'passed']);
+                $query->where(fn (Builder $ordered): Builder => WorkflowProgressQuery::ordered($ordered))
+                    ->orWhere(function (Builder $legacy): void {
+                        WorkflowProgressQuery::legacy($legacy)
+                            ->where(function (Builder $reviewed): void {
+                                $reviewed->where('data->candidate_status', 'passed')
+                                    ->orWhereIn('review_status', ['approved', 'accepted', 'passed'])
+                                    ->orWhereIn('data->registration_status', ['approved', 'accepted', 'passed']);
+                            });
+                    });
             })
             ->when(! $includeCleared, function (Builder $query): void {
                 $query->where(function (Builder $query): void {

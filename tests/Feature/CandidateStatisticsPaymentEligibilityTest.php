@@ -12,6 +12,7 @@ use App\Models\Role;
 use App\Models\User;
 use App\Models\WorkflowNotification;
 use App\Support\StatisticsMenuOptions;
+use App\Support\WorkflowEntrySnapshot;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Facades\Filament;
@@ -37,26 +38,84 @@ class CandidateStatisticsPaymentEligibilityTest extends TestCase
     }
 
     #[DataProvider('menus')]
-    public function test_payment_is_required_even_when_the_form_or_template_has_no_payment_stage(string $menu): void
+    public function test_reviewed_applications_without_payment_are_admitted_but_unreviewed_applications_are_hidden(string $menu): void
     {
-        foreach ([false, true] as $requiresPayment) {
-            $form = $this->form($menu, $requiresPayment);
-            if ($requiresPayment) {
-                $workflow = WorkflowNotification::query()->create([
-                    'name' => 'Review without a payment stage',
-                    'stages' => [
-                        ['type' => 'stage', 'data' => ['stage_name' => 'Review', 'stage_type' => 'review']],
-                        ['type' => 'stage', 'data' => ['stage_name' => 'Completed', 'stage_type' => 'completed']],
-                    ],
-                ]);
-                $workflow->forms()->attach($form);
+        foreach ([false, true] as $hasWorkflow) {
+            $form = $this->form($menu, $hasWorkflow);
+            if ($hasWorkflow) {
+                $this->workflow($form);
             }
 
-            $entry = $this->entry($form);
-            $this->assertVisible($menu, $entry, false);
-            $this->payment($entry);
-            $this->assertVisible($menu, $entry, true);
+            $snapshot = $this->legacySnapshot($form);
+            foreach (['pending', 'draft', 'sent_back', 'rejected', 'approved', 'accepted', 'passed'] as $status) {
+                $entry = $this->entry($form, snapshot: $snapshot);
+                DB::table('custom_form_entries')->where('id', $entry->id)->update(['review_status' => $status]);
+                $this->assertVisible($menu, $entry, in_array($status, ['approved', 'accepted', 'passed'], true));
+            }
         }
+
+        $this->assertDatabaseCount('payments', 0);
+    }
+
+    #[DataProvider('menus')]
+    public function test_frozen_payment_requirement_survives_adding_and_removing_template_payment_stages(string $menu): void
+    {
+        $form = $this->form($menu);
+        $workflow = $this->workflow($form);
+        $freeEntry = $this->entry($form, snapshot: $this->legacySnapshot($form));
+        $this->assertFalse($freeEntry->workflow_snapshot['requires_payment']);
+        $this->assertVisible($menu, $freeEntry, true);
+
+        $workflow->update(['stages' => array_merge($workflow->stages, [
+            ['type' => 'stage', 'data' => ['stage_name' => 'Payment', 'stage_type' => 'payment', 'payment_source' => 'ams']],
+        ])]);
+        $paymentEntry = $this->entry($form, snapshot: $this->legacySnapshot($form));
+        $this->assertTrue($paymentEntry->workflow_snapshot['requires_payment']);
+        $this->assertVisible($menu, $freeEntry, true);
+        $this->assertVisible($menu, $paymentEntry, false);
+
+        $workflow->update(['stages' => $freeEntry->workflow_snapshot['stages']]);
+        $newFreeEntry = $this->entry($form, snapshot: $this->legacySnapshot($form));
+        $this->assertVisible($menu, $newFreeEntry, true);
+        $this->assertVisible($menu, $paymentEntry, false);
+        $this->payment($paymentEntry, source: 'ams');
+        $this->assertVisible($menu, $paymentEntry, true);
+    }
+
+    #[DataProvider('menus')]
+    public function test_legacy_null_snapshot_uses_current_workflow_or_static_form_payment_requirement(string $menu): void
+    {
+        $form = $this->form($menu);
+        $entry = $this->entry($form);
+        $this->assertNull($entry->workflow_snapshot);
+        $this->assertVisible($menu, $entry, false);
+
+        $workflow = $this->workflow($form);
+        $this->assertVisible($menu, $entry, true);
+        $workflow->update(['stages' => array_merge($workflow->stages, [
+            ['type' => 'stage', 'data' => ['stage_name' => 'Payment', 'stage_type' => 'payment']],
+        ])]);
+        $this->assertVisible($menu, $entry, false);
+        $form->update(['requires_payment' => false]);
+        $this->assertVisible($menu, $entry, false);
+        $workflow->forms()->detach($form);
+        $this->assertVisible($menu, $entry, true);
+    }
+
+    #[DataProvider('menus')]
+    public function test_explicit_static_snapshot_uses_form_flag_when_a_template_is_later_attached(string $menu): void
+    {
+        $form = $this->form($menu, false);
+        $entry = $this->entry($form, snapshot: $this->legacySnapshot($form));
+        $this->assertFalse($entry->workflow_snapshot['has_workflow']);
+        $workflow = $this->workflow($form);
+        $workflow->update(['stages' => array_merge($workflow->stages, [
+            ['type' => 'stage', 'data' => ['stage_name' => 'Payment', 'stage_type' => 'payment']],
+        ])]);
+
+        $this->assertVisible($menu, $entry, true);
+        $form->update(['requires_payment' => true]);
+        $this->assertVisible($menu, $entry, false);
     }
 
     #[DataProvider('menus')]
@@ -160,17 +219,8 @@ class CandidateStatisticsPaymentEligibilityTest extends TestCase
     #[DataProvider('menus')]
     public function test_excel_selection_cannot_export_an_unpaid_application(string $menu): void
     {
-        Filament::setCurrentPanel('app');
-        app()->setLocale('en');
-        $subject = $menu === StatisticsMenuOptions::ENTRANCE_EXAM_STATISTICS ? 'CandidateEntranceStatistic' : 'CandidateExitStatistic';
+        $this->loginForMenu($menu);
         $page = $menu === StatisticsMenuOptions::ENTRANCE_EXAM_STATISTICS ? ListCandidateEntranceStatistics::class : ListCandidateExitStatistics::class;
-        $role = Role::findOrCreate('admin', 'web');
-        foreach (['ViewAny', 'DownloadExcel'] as $action) {
-            $role->givePermissionTo(Permission::findOrCreate($action.':'.$subject, 'web'));
-        }
-        $admin = $this->user('admin');
-        $admin->assignRole($role);
-        $this->actingAs($admin);
 
         $form = $this->form($menu);
         $paid = $this->entry($form, marker: 'EXPORT-PAID-ONLY');
@@ -186,16 +236,56 @@ class CandidateStatisticsPaymentEligibilityTest extends TestCase
             ->assertCanNotSeeTableRecords([$tableRecords->last()])
             ->call('downloadExcelFromTableSelection', $tableRecords->map(fn ($record) => $record->getKey())->all())
             ->assertFileDownloaded();
-        $path = tempnam(sys_get_temp_dir(), 'paid-statistics-export-');
+        $this->assertExportContains($component->effects['download']['content'], ['EXPORT-PAID-ONLY'], ['EXPORT-UNPAID-HIDDEN']);
+    }
+
+    #[DataProvider('menus')]
+    public function test_table_badge_and_excel_include_reviewed_free_applications_without_a_payment(string $menu): void
+    {
+        $this->loginForMenu($menu);
+        $page = $menu === StatisticsMenuOptions::ENTRANCE_EXAM_STATISTICS ? ListCandidateEntranceStatistics::class : ListCandidateExitStatistics::class;
+        $resource = $menu === StatisticsMenuOptions::ENTRANCE_EXAM_STATISTICS ? CandidateEntranceStatisticResource::class : CandidateExitStatisticResource::class;
+        $form = $this->form($menu);
+        $this->workflow($form);
+        $free = $this->entry($form, marker: 'EXPORT-REVIEWED-FREE', snapshot: $this->legacySnapshot($form));
+        $pending = $this->entry($form, marker: 'EXPORT-PENDING-FREE', snapshot: $this->legacySnapshot($form));
+        $rejected = $this->entry($form, marker: 'EXPORT-REJECTED-FREE', snapshot: $this->legacySnapshot($form));
+        $unpaid = $this->entry($this->form($menu), marker: 'EXPORT-REQUIRES-PAYMENT');
+        DB::table('custom_form_entries')->where('id', $pending->id)->update(['review_status' => 'pending']);
+        DB::table('custom_form_entries')->where('id', $rejected->id)->update(['review_status' => 'rejected']);
+        $entries = collect([$free, $pending, $rejected, $unpaid]);
+        $tableRecords = $menu === StatisticsMenuOptions::ENTRANCE_EXAM_STATISTICS
+            ? $entries
+            : CandidateExitStatistic::query()->whereIn('custom_form_entry_id', $entries->pluck('id')->all())->orderBy('id')->get();
+
+        $this->assertSame('1', $resource::getNavigationBadge());
+        $component = Livewire::test($page)
+            ->assertCanSeeTableRecords([$tableRecords->first()])
+            ->assertCanNotSeeTableRecords($tableRecords->skip(1))
+            ->call('downloadExcelFromTableSelection', $tableRecords->map(fn ($record) => $record->getKey())->all())
+            ->assertFileDownloaded();
+        $this->assertExportContains($component->effects['download']['content'], ['EXPORT-REVIEWED-FREE'], [
+            'EXPORT-PENDING-FREE', 'EXPORT-REJECTED-FREE', 'EXPORT-REQUIRES-PAYMENT',
+        ]);
+        $this->assertDatabaseCount('payments', 0);
+    }
+
+    private function assertExportContains(string $content, array $included, array $excluded): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'statistics-export-');
         try {
-            file_put_contents($path, base64_decode($component->effects['download']['content'], true));
+            file_put_contents($path, base64_decode($content, true));
             $zip = new \ZipArchive;
             $this->assertTrue($zip->open($path) === true);
             foreach (['xl/worksheets/sheet1.xml', 'xl/worksheets/sheet2.xml'] as $sheetName) {
                 $sheet = $zip->getFromName($sheetName);
                 $this->assertIsString($sheet);
-                $this->assertStringContainsString('EXPORT-PAID-ONLY', $sheet);
-                $this->assertStringNotContainsString('EXPORT-UNPAID-HIDDEN', $sheet);
+                foreach ($included as $marker) {
+                    $this->assertStringContainsString($marker, $sheet);
+                }
+                foreach ($excluded as $marker) {
+                    $this->assertStringNotContainsString($marker, $sheet);
+                }
             }
             $zip->close();
         } finally {
@@ -203,7 +293,41 @@ class CandidateStatisticsPaymentEligibilityTest extends TestCase
         }
     }
 
-    private function form(string $menu, bool $requiresPayment = false): CustomForm
+    private function loginForMenu(string $menu): void
+    {
+        Filament::setCurrentPanel('app');
+        app()->setLocale('en');
+        $subject = $menu === StatisticsMenuOptions::ENTRANCE_EXAM_STATISTICS ? 'CandidateEntranceStatistic' : 'CandidateExitStatistic';
+        $role = Role::findOrCreate('admin', 'web');
+        foreach (['ViewAny', 'DownloadExcel'] as $action) {
+            $role->givePermissionTo(Permission::findOrCreate($action.':'.$subject, 'web'));
+        }
+        $admin = $this->user('admin');
+        $admin->assignRole($role);
+        $this->actingAs($admin);
+    }
+
+    private function legacySnapshot(CustomForm $form): array
+    {
+        // Direct review-status fixtures represent the pre-ordered workflow contract.
+        return array_replace(WorkflowEntrySnapshot::forForm($form->id), ['schema_version' => 1]);
+    }
+
+    private function workflow(CustomForm $form): WorkflowNotification
+    {
+        $workflow = WorkflowNotification::query()->create([
+            'name' => 'Review without a payment stage',
+            'stages' => [
+                ['type' => 'stage', 'data' => ['stage_name' => 'Review', 'stage_type' => 'review']],
+                ['type' => 'stage', 'data' => ['stage_name' => 'Completed', 'stage_type' => 'completed']],
+            ],
+        ]);
+        $workflow->forms()->attach($form);
+
+        return $workflow;
+    }
+
+    private function form(string $menu, bool $requiresPayment = true): CustomForm
     {
         return CustomForm::query()->create([
             'name' => 'Statistics payment fixture',
@@ -229,13 +353,14 @@ class CandidateStatisticsPaymentEligibilityTest extends TestCase
         ]);
     }
 
-    private function entry(CustomForm $form, ?User $owner = null, string $marker = 'Eligible candidate'): CustomFormEntry
+    private function entry(CustomForm $form, ?User $owner = null, string $marker = 'Eligible candidate', ?array $snapshot = null): CustomFormEntry
     {
         $owner ??= $this->user();
         $entryId = DB::table('custom_form_entries')->insertGetId([
             'custom_form_id' => $form->id,
             'created_by' => $owner->id,
             'review_status' => 'accepted',
+            'workflow_snapshot' => $snapshot === null ? null : json_encode($snapshot),
             'data' => json_encode(['candidate_status' => 'pending', 'first_name_kh' => $marker]),
             'created_at' => now(),
             'updated_at' => now(),

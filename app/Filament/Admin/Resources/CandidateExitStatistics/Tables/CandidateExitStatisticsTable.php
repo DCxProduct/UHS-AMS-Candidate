@@ -16,6 +16,7 @@ use App\Support\FormEntryData;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
 use App\Support\WorkflowStageMessages;
+use App\Support\WorkflowStageProgression;
 use Carbon\Carbon;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
@@ -202,6 +203,9 @@ class CandidateExitStatisticsTable
                         && strtolower((string) $record->candidate_status) === 'pending')
                     ->action(function (CandidateExitStatistic $record): void {
                         FilamentActionPermissions::abortUnlessCanForResource(CandidateExitStatisticResource::class, 'passed');
+                        if ($record->customFormEntry && WorkflowStageProgression::enabled($record->customFormEntry)) {
+                            abort_unless(self::canHandleResultStage($record), 403);
+                        }
 
                         self::markPassed($record);
                         $entry = CustomFormEntry::query()->find($record->custom_form_entry_id);
@@ -388,6 +392,9 @@ class CandidateExitStatisticsTable
                 ]);
 
             $entry->refresh();
+            if (WorkflowStageProgression::enabled($entry)) {
+                WorkflowStageProgression::passed($entry);
+            }
             CandidateStatisticsSynchronizer::syncPassedEntry($entry);
         }
 

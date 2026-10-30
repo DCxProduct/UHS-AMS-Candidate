@@ -41,7 +41,7 @@ final class WorkflowStageAudienceMessages
                         $notifications()->where('data->viewData->workflow_event', $event)->delete();
                     }
 
-                    if ($stageType === WorkflowStageType::AwaitingResults) {
+                    if ($stageType === WorkflowStageType::AwaitingResults && ! WorkflowStageProgression::enabled($entry)) {
                         $notifications()->where('data->viewData->workflow_event', 'stage_staff:'.WorkflowStageType::Completed->value)->delete();
                     }
 

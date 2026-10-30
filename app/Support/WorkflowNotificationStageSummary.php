@@ -78,7 +78,7 @@ final class WorkflowNotificationStageSummary
     {
         $name ??= '';
 
-        if (app()->getLocale() !== 'km' || $type === null) {
+        if ($type === null || (app()->getLocale() !== 'km' && $type !== WorkflowStageType::Completed)) {
             return $name;
         }
 
@@ -94,7 +94,11 @@ final class WorkflowNotificationStageSummary
             WorkflowStageType::Approval => ['approval', 'approve', 'registrar approval'],
             WorkflowStageType::Payment => ['payment'],
             WorkflowStageType::AwaitingResults => ['awaiting result', 'awaiting results', 'results'],
-            WorkflowStageType::Completed => ['completion', 'complete', 'completed'],
+            WorkflowStageType::Completed => [
+                'completion', 'complete', 'completed', 'បញ្ចប់', 'បញ្ជប់',
+                'awaiting successful candidate notification',
+                'រង់ចាំសេចក្ដីជូនដំណឹងបេក្ខជនប្រឡងជាប់ជ័យលាភី',
+            ],
             WorkflowStageType::Rejected => ['rejected', 'reject', 'failed', 'failure'],
         };
 

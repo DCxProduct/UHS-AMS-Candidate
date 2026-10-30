@@ -16,6 +16,8 @@ use App\Support\PassedResultMenuOptions;
 use App\Support\LocalizedNumber;
 use App\Support\UserTypeOptions;
 use App\Support\WorkflowStageMessages;
+use App\Support\WorkflowStageProgression;
+use App\Support\WorkflowProgressQuery;
 use Carbon\Carbon;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
@@ -203,7 +205,7 @@ class ExamResultsTable
                     ) && ! CandidateEntranceStatisticsTable::hasStudentReviewResultNotification(
                         $record,
                         'passed',
-                        WorkflowStageType::Completed,
+                        self::notificationStageForRecord($record, $resultMenu),
                     ))
                     ->action(function (CustomFormEntry $record, $livewire) use ($resultMenu): void {
                         FilamentActionPermissions::abortUnlessCan(self::notificationPermissionForResultMenu($resultMenu));
@@ -249,7 +251,9 @@ class ExamResultsTable
         string $resultMenu,
     ): WorkflowStageType
     {
-        return WorkflowStageType::Completed;
+        return WorkflowStageProgression::enabled($record)
+            ? (WorkflowStageProgression::finalStageType($record) ?? WorkflowStageType::Completed)
+            : WorkflowStageType::Completed;
     }
 
     public static function downloadExcel(iterable $records, ?array $columnKeys = null, ?string $filenameLabel = null)
@@ -771,6 +775,16 @@ class ExamResultsTable
         $resultMenu = PassedResultMenuOptions::normalize($resultMenu);
 
         $query->where('data->candidate_status', 'passed')
+            ->where(function (Builder $query): void {
+                $query->where(fn (Builder $legacy): Builder => WorkflowProgressQuery::legacy($legacy))
+                    ->orWhere(function (Builder $ordered): void {
+                        WorkflowProgressQuery::ordered($ordered)
+                            ->where(function (Builder $progress): void {
+                                $progress->where('data->workflow_progress->ready_for_final', true)
+                                    ->orWhere('data->workflow_progress->finished', true);
+                            });
+                    });
+            })
             ->whereHas('customForm', function (Builder $query) use ($resultMenu): void {
                 $query->where('is_active', true)
                     ->where('slug', '!=', 'profile')

@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\WorkflowNotification;
 use App\Support\PassedResultMenuOptions;
 use App\Support\StatisticsMenuOptions;
+use App\Support\WorkflowEntrySnapshot;
 use App\Support\WorkflowStageMessages;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Pages\ListCustomFormEntries;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
@@ -30,9 +31,13 @@ class WorkflowCompletionStatusReleaseTest extends TestCase
     use RefreshDatabase;
 
     private User $admin;
+
     private User $candidate;
+
     private CustomForm $form;
+
     private WorkflowNotification $workflow;
+
     private bool $smsShouldFail = false;
 
     protected function setUp(): void
@@ -279,11 +284,15 @@ class WorkflowCompletionStatusReleaseTest extends TestCase
 
     private function entry(string $status = 'passed', ?User $candidate = null): CustomFormEntry
     {
-        $entry = CustomFormEntry::query()->forceCreate([
+        // These fixtures represent applications already running the original workflow.
+        $snapshot = WorkflowEntrySnapshot::forForm($this->form->getKey());
+        $snapshot['schema_version'] = 1;
+        $entry = CustomFormEntry::withoutEvents(fn (): CustomFormEntry => CustomFormEntry::query()->forceCreate([
             'custom_form_id' => $this->form->getKey(), 'created_by' => ($candidate ?? $this->candidate)->getKey(),
+            'workflow_snapshot' => $snapshot,
             'review_status' => $status === 'pending' ? 'approved' : 'passed',
             'data' => ['registration_status' => $status === 'pending' ? 'approved' : 'passed', 'candidate_status' => $status],
-        ]);
+        ]));
         Payment::query()->create([
             'custom_form_entry_id' => $entry->getKey(), 'users_id' => $entry->created_by, 'form_id' => $this->form->getKey(),
             'receipt_number' => 'COMPLETION-'.$entry->getKey(), 'status_payt' => 'paid', 'amount_usd' => 5, 'datetime_pay' => now(),

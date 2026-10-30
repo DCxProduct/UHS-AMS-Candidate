@@ -41,6 +41,12 @@ class AmsPaymentSyncTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        // Direct canonical-state fixtures represent applications captured before ordered execution.
+        CustomFormEntry::creating(static function (CustomFormEntry $entry): void {
+            if (is_array($entry->workflow_snapshot)) {
+                $entry->workflow_snapshot = [...$entry->workflow_snapshot, 'schema_version' => 1];
+            }
+        });
         Filament::setCurrentPanel('app');
         config()->set('services.ams', [
             'enabled' => true, 'base_url' => 'https://ams.example.test',

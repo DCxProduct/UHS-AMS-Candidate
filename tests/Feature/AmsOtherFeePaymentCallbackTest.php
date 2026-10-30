@@ -30,6 +30,12 @@ class AmsOtherFeePaymentCallbackTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        // Keep the original callback contract covered with frozen version 1 applications.
+        CustomFormEntry::creating(static function (CustomFormEntry $entry): void {
+            if (is_array($entry->workflow_snapshot)) {
+                $entry->workflow_snapshot = [...$entry->workflow_snapshot, 'schema_version' => 1];
+            }
+        });
         config()->set('services.ams', [
             'enabled' => true, 'base_url' => 'https://ams.example.test', 'token' => 'outbound-secret',
             'callback_token' => 'callback-secret', 'timeout' => 5,

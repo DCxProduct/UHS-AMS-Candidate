@@ -146,7 +146,7 @@ return [
         'review' => 'Review',
         'payment' => 'Payment',
         'awaiting_results' => 'Awaiting Results',
-        'completed' => 'Completed',
+        'completed' => 'Awaiting Successful Candidate Notification',
         'rejected' => 'Rejected',
         'approval' => 'Approval',
     ],
@@ -159,6 +159,8 @@ return [
     'validation' => [
         'ams_payment_only' => 'This application must be paid in AMS.',
         'stages_required' => 'Add at least one stage.',
+        'duplicate_stage_type' => 'Each stage type can be added only once. The ":stage" stage is duplicated.',
+        'invalid_stage_type' => 'Select a valid stage type for every stage.',
         'name_already_exists' => 'A workflow with this name already exists.',
         'could_not_save' => 'The workflow could not be saved.',
     ],

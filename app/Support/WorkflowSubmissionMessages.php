@@ -91,62 +91,106 @@ final class WorkflowSubmissionMessages
                 return 0;
             }
 
+            if (WorkflowStageProgression::enabled($entry)) {
+                WorkflowStageProgression::submitted($entry);
+
+                return self::notifyCheckpoint($entry);
+            }
+
             $stage = self::configuredStage($entry);
 
             if ($stage === null) {
                 return 0;
             }
 
-            $messages = $stage['submission_messages'];
-            $sent = 0;
-
-            if (self::text($messages['candidate_notification_message'] ?? null) !== ''
-                && ! WorkflowStageMessages::hasSentNotification($entry, WorkflowStageType::FormSubmission)
-                && WorkflowStageMessages::notifyConfiguredStage($entry, WorkflowStageType::FormSubmission)) {
-                $sent++;
-            }
-
-            $body = self::text($messages['staff_notification_message'] ?? null);
-
-            if ($body === '') {
-                return $sent;
-            }
-
-            foreach (WorkflowStaffRecipients::resolve($messages, $entry->created_by) as $recipient) {
-                if ($recipient->notifications()
-                    ->where('data->viewData->workflow_entry_id', (string) $entry->getKey())
-                    ->where('data->viewData->workflow_event', 'submission_staff')
-                    ->exists()) {
-                    continue;
-                }
-
-                (new self)->withLocale(NotificationLanguage::localeForUser($recipient), function () use ($entry, $stage, $body, $recipient): void {
-                    Notification::make()
-                        ->title(__('workflow_notifications.staff_notification_title', [
-                            'form' => (string) ($entry->customForm?->display_name ?? ''),
-                            'stage' => WorkflowNotificationStageSummary::localizedName($stage['stage_name'] ?? null, WorkflowStageType::FormSubmission),
-                        ]))
-                        ->body($body)
-                        ->info()
-                        ->icon('heroicon-o-check-circle')
-                        ->iconColor('success')
-                        ->viewData([
-                            'workflow_entry_id' => (string) $entry->getKey(),
-                            'workflow_stage_type' => WorkflowStageType::FormSubmission->value,
-                            'workflow_event' => 'submission_staff',
-                        ])
-                        ->sendToDatabase($recipient);
-                });
-
-                $sent++;
-            }
-
-            return $sent;
+            return self::deliver($entry, $stage);
         } catch (Throwable $exception) {
             report($exception);
 
             return 0;
         }
+    }
+
+    /** Deliver a deferred submission checkpoint only after its configured position is reached. */
+    public static function notifyCheckpoint(CustomFormEntry $entry): int
+    {
+        try {
+            $entry->refresh();
+            if (! WorkflowStageProgression::enabled($entry)
+                || $entry->customForm?->isProfileForm()
+                || blank(data_get($entry->data, 'submitted_at'))
+                || in_array(strtolower(trim((string) $entry->review_status)), ['draft', 'rejected', 'failed'], true)
+                || strtolower(trim((string) data_get($entry->data, 'registration_status'))) === 'draft'
+                || ! User::query()->whereKey($entry->created_by)->where('registration_type', 'student')->exists()) {
+                return 0;
+            }
+
+            $index = collect(WorkflowNotification::forEntry($entry)?->stages ?? [])
+                ->values()
+                ->search(fn (array $stage): bool => (($stage['data'] ?? $stage)['stage_type'] ?? null) === WorkflowStageType::FormSubmission->value);
+            if ($index === false
+                || (WorkflowStageProgression::completedAt($entry, $index) === null
+                    && ! WorkflowStageProgression::isCurrent($entry, WorkflowStageType::FormSubmission))) {
+                return 0;
+            }
+
+            $stage = self::configuredStage($entry);
+
+            return $stage === null ? 0 : self::deliver($entry, $stage);
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return 0;
+        }
+    }
+
+    private static function deliver(CustomFormEntry $entry, array $stage): int
+    {
+        $messages = $stage['submission_messages'];
+        $sent = 0;
+
+        if (self::text($messages['candidate_notification_message'] ?? null) !== ''
+            && ! WorkflowStageMessages::hasSentNotification($entry, WorkflowStageType::FormSubmission)
+            && WorkflowStageMessages::notifyConfiguredStage($entry, WorkflowStageType::FormSubmission)) {
+            $sent++;
+        }
+
+        $body = self::text($messages['staff_notification_message'] ?? null);
+
+        if ($body === '') {
+            return $sent;
+        }
+
+        foreach (WorkflowStaffRecipients::resolve($messages, $entry->created_by) as $recipient) {
+            if ($recipient->notifications()
+                ->where('data->viewData->workflow_entry_id', (string) $entry->getKey())
+                ->where('data->viewData->workflow_event', 'submission_staff')
+                ->exists()) {
+                continue;
+            }
+
+            (new self)->withLocale(NotificationLanguage::localeForUser($recipient), function () use ($entry, $stage, $body, $recipient): void {
+                Notification::make()
+                    ->title(__('workflow_notifications.staff_notification_title', [
+                        'form' => (string) ($entry->customForm?->display_name ?? ''),
+                        'stage' => WorkflowNotificationStageSummary::localizedName($stage['stage_name'] ?? null, WorkflowStageType::FormSubmission),
+                    ]))
+                    ->body($body)
+                    ->info()
+                    ->icon('heroicon-o-check-circle')
+                    ->iconColor('success')
+                    ->viewData([
+                        'workflow_entry_id' => (string) $entry->getKey(),
+                        'workflow_stage_type' => WorkflowStageType::FormSubmission->value,
+                        'workflow_event' => 'submission_staff',
+                    ])
+                    ->sendToDatabase($recipient);
+            });
+
+            $sent++;
+        }
+
+        return $sent;
     }
 
     private static function recipientsQuery(): Builder
@@ -174,7 +218,11 @@ final class WorkflowSubmissionMessages
 
         return ! $entry->customForm?->isProfileForm()
             && filled(data_get($entry->data, 'submitted_at'))
-            && strtolower(trim((string) $entry->review_status)) === 'pending'
+            && (WorkflowStageProgression::enabled($entry)
+                ? (! in_array(strtolower(trim((string) $entry->review_status)), ['draft', 'rejected', 'failed'], true)
+                    && ! data_get($entry->data, 'workflow_progress.reviewed', false)
+                    && ! data_get($entry->data, 'workflow_progress.result_passed', false))
+                : strtolower(trim((string) $entry->review_status)) === 'pending')
             && strtolower(trim((string) data_get($entry->data, 'registration_status'))) !== 'draft'
             && User::query()->whereKey($entry->created_by)->where('registration_type', 'student')->exists();
     }

@@ -670,6 +670,94 @@ class WorkflowNotificationResourceTest extends TestCase
             ->assertHasFormErrors(['stages']);
     }
 
+    public function test_new_workflow_rejects_duplicate_stage_types(): void
+    {
+        $this->actingAs($this->admin);
+
+        Livewire::test(CreateWorkflowNotification::class)
+            ->set('data.stages', [])
+            ->fillForm([
+                'name' => 'Duplicate review stages',
+                'stages' => collect(['First review', 'Second review'])->mapWithKeys(fn (string $name, int $index): array => [
+                    (string) $index => ['type' => 'stage', 'data' => [
+                        'stage_name' => $name,
+                        'stage_type' => 'review',
+                        'responsible_role' => ['registrar_officer'],
+                    ]],
+                ])->all(),
+            ])
+            ->call('create')
+            ->assertHasFormErrors(['stages']);
+
+        $this->assertDatabaseCount('workflow_notifications', 0);
+    }
+
+    public function test_new_workflow_rejects_unknown_stage_types(): void
+    {
+        $this->actingAs($this->admin);
+
+        Livewire::test(CreateWorkflowNotification::class)
+            ->set('data.stages', [])
+            ->fillForm([
+                'name' => 'Unknown stage',
+                'stages' => ['a' => ['type' => 'stage', 'data' => [
+                    'stage_name' => 'Unsupported action',
+                    'stage_type' => 'unsupported',
+                ]]],
+            ])
+            ->call('create')
+            ->assertHasFormErrors(['stages']);
+
+        $this->assertDatabaseCount('workflow_notifications', 0);
+    }
+
+    public function test_workflow_can_save_unique_stage_types_in_any_order(): void
+    {
+        $this->actingAs($this->admin);
+        $types = ['awaiting_results', 'payment', 'review', 'form_submission', 'completed'];
+
+        Livewire::test(CreateWorkflowNotification::class)
+            ->set('data.stages', [])
+            ->fillForm([
+                'name' => 'Custom stage order',
+                'stages' => collect($types)->mapWithKeys(fn (string $type, int $index): array => [
+                    'stage-'.$index => ['type' => 'stage', 'data' => [
+                        'stage_name' => $type,
+                        'stage_type' => $type,
+                        'responsible_role' => ['registrar_officer'],
+                        'payment_source' => 'system',
+                    ]],
+                ])->all(),
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $this->assertSame($types, collect(WorkflowNotification::query()->firstOrFail()->stages)->pluck('data.stage_type')->all());
+    }
+
+    public function test_unchanged_legacy_duplicate_types_can_save_message_edits(): void
+    {
+        $template = WorkflowNotification::query()->create([
+            'name' => 'Legacy repeated review',
+            'stages' => collect(['First review', 'Second review'])->map(fn (string $name): array => [
+                'type' => 'stage', 'data' => [
+                    'stage_name' => $name,
+                    'stage_type' => 'review',
+                    'responsible_role' => ['registrar_officer'],
+                ],
+            ])->all(),
+        ]);
+        $this->actingAs($this->admin);
+
+        $component = Livewire::test(EditWorkflowNotification::class, ['record' => $template->getRouteKey()]);
+        $first = array_key_first($component->get('data.stages'));
+        $component->set('data.stages.'.$first.'.data.review_actions.accept.status_message', 'Updated legacy message')
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertSame('Updated legacy message', data_get($template->fresh()->stages, '0.data.review_actions.accept.status_message'));
+    }
+
     public function test_add_stage_button_appends_a_stage(): void
     {
         $this->actingAs($this->admin);

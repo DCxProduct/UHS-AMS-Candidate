@@ -20,10 +20,11 @@ use Throwable;
 /**
  * Resolves shared workflow status labels and sends configured candidate messages.
  *
- * The existing review statuses stay in charge. This class only reads them to
- * find which stage a submission is at, then returns that stage's notification text or
- * sends its notification text. Forms without a workflow are left unchanged, and
- * any failure here is reported and skipped so the calling action still finishes.
+ * New applications follow their frozen stage cursor; older applications keep
+ * the existing status-driven behavior. Review, payment, and result actions
+ * advance ordered workflows and send each stage's configured audience messages.
+ * Forms without a workflow retain their existing behavior. Notification failures
+ * are reported and skipped so the calling action still finishes.
  */
 final class WorkflowStageMessages
 {
@@ -56,6 +57,11 @@ final class WorkflowStageMessages
             return WorkflowStageType::Rejected;
         }
 
+        if (WorkflowStageProgression::enabled($entry)) {
+            return WorkflowStageProgression::currentType($entry)
+                ?? WorkflowStageProgression::finalStageType($entry);
+        }
+
         if ($reviewStatus === 'pending' || $registrationStatus === 'pending' || $reviewStatus === '') {
             return WorkflowStageType::Review;
         }
@@ -70,7 +76,7 @@ final class WorkflowStageMessages
 
         if (! self::requiresPayment($entry)
             || self::hasPaid($entry)) {
-            return WorkflowStageType::AwaitingResults;
+            return self::resultStageFor($entry) ?? WorkflowStageType::AwaitingResults;
         }
 
         return WorkflowStageType::Payment;
@@ -79,8 +85,7 @@ final class WorkflowStageMessages
     /**
      * Resolve the stage used when a candidate passes an exam.
      *
-     * A pass first enters Awaiting Results. Completed is selected only after
-     * the entry receives an explicit completed status.
+     * Keep manual result handling when configured; otherwise use Completed.
      */
     public static function resultStageFor(CustomFormEntry $entry): ?WorkflowStageType
     {
@@ -98,6 +103,10 @@ final class WorkflowStageMessages
      */
     public static function currentStage(CustomFormEntry $entry): ?array
     {
+        if (WorkflowStageProgression::enabled($entry)) {
+            return WorkflowStageProgression::currentStage($entry);
+        }
+
         $type = self::stageTypeFor($entry);
 
         if ($type === null || blank($entry->custom_form_id)) {
@@ -110,6 +119,10 @@ final class WorkflowStageMessages
     public static function statusText(CustomFormEntry $entry): ?string
     {
         try {
+            if (WorkflowStageProgression::enabled($entry)) {
+                return self::orderedStatusText($entry);
+            }
+
             $stageType = self::stageTypeFor($entry);
 
             if ($stageType === WorkflowStageType::Review) {
@@ -154,7 +167,7 @@ final class WorkflowStageMessages
                     // Publish the final status only after the candidate has
                     // received the existing Notify Candidate action's message.
                     if (! self::hasSentNotification($entry, WorkflowStageType::Completed)) {
-                        if ($stageType === WorkflowStageType::AwaitingResults && self::isPassedResult($entry)) {
+                        if (self::isPassedResult($entry)) {
                             return self::passedResultStatusLabel($entry)
                                 ?? __('candidate_entrance_statistics.statuses.passed');
                         }
@@ -201,6 +214,45 @@ final class WorkflowStageMessages
         }
     }
 
+    private static function orderedStatusText(CustomFormEntry $entry): ?string
+    {
+        if (filled($reviewStatus = self::sharedReviewStatusText($entry))) {
+            return $reviewStatus;
+        }
+
+        if (WorkflowStageProgression::currentType($entry) === null && ! WorkflowStageProgression::finished($entry)) {
+            return null;
+        }
+
+        $stage = WorkflowStageProgression::currentStage($entry);
+        $type = WorkflowStageType::tryFrom((string) ($stage['stage_type'] ?? ''));
+        $text = match ($type) {
+            WorkflowStageType::FormSubmission => data_get($stage, 'submission_messages.candidate_status_message'),
+            WorkflowStageType::Review, WorkflowStageType::Approval => WorkflowStageProgression::finished($entry)
+                ? (self::reviewActionStage($entry, 'accept')['status_message'] ?? __('candidate_entrance_statistics.statuses.accepted'))
+                : (WorkflowSubmissionMessages::statusText($entry) ?? ($stage['status_message'] ?? null) ?? __('candidate_entrance_statistics.statuses.pending')),
+            WorkflowStageType::Payment => self::paymentStatusLabel($entry, $paymentStatus = self::orderedStageCompleted($entry, $type) ? 'paid' : 'unpaid')
+                ?? __('payments.options.status_payt.'.$paymentStatus),
+            WorkflowStageType::AwaitingResults => data_get($entry->data, 'workflow_progress.result_passed', false)
+                ? (self::passedResultStatusLabel($entry) ?? __('candidate_entrance_statistics.statuses.passed'))
+                : (self::waitingResultStatusLabel($entry) ?? __('candidate_entrance_statistics.statuses.pending')),
+            WorkflowStageType::Completed => self::hasSentNotification($entry, WorkflowStageType::Completed)
+                ? ($stage['status_message'] ?? null)
+                : (self::passedResultStatusLabel($entry) ?? __('candidate_entrance_statistics.statuses.passed')),
+            default => null,
+        };
+
+        return filled($text) ? (string) $text : null;
+    }
+
+    private static function orderedStageCompleted(CustomFormEntry $entry, WorkflowStageType $type): bool
+    {
+        $stage = self::configuredStage($entry, $type);
+
+        return $stage !== null
+            && WorkflowStageProgression::completedAt($entry, (int) $stage['_index']) !== null;
+    }
+
     /** Pending and passed result labels are configured separately on Awaiting Results. */
     public static function waitingResultStatusLabel(CustomFormEntry $entry): ?string
     {
@@ -236,6 +288,14 @@ final class WorkflowStageMessages
     public static function sharedReviewStatusText(CustomFormEntry $entry): ?string
     {
         try {
+            if (WorkflowStageProgression::enabled($entry)) {
+                return match (strtolower(trim((string) $entry->review_status))) {
+                    'failed' => self::reviewActionStage($entry, 'reject')['status_message'] ?? null,
+                    'rejected' => self::reviewActionStage($entry, 'send_back')['status_message'] ?? null,
+                    default => null,
+                };
+            }
+
             $stageType = self::stageTypeFor($entry);
 
             $action = match ($stageType) {
@@ -289,7 +349,12 @@ final class WorkflowStageMessages
             $action = self::normalizeReviewAction($action);
 
             if ($action === 'accept') {
-                app(\App\Services\AmsPaymentSync::class)->sync($entry);
+                if (WorkflowStageProgression::enabled($entry)) {
+                    WorkflowStageProgression::reviewed($entry);
+                } else {
+                    WorkflowStageProgression::advance($entry);
+                    app(\App\Services\AmsPaymentSync::class)->sync($entry);
+                }
             }
 
             if ($action === null) {
@@ -368,6 +433,13 @@ final class WorkflowStageMessages
             return true;
         }
 
+        if (WorkflowStageProgression::enabled($entry)) {
+            $requestedType = $stageType ?? WorkflowStageProgression::currentType($entry);
+            if ($requestedType === null || ! WorkflowStageProgression::isCurrent($entry, $requestedType)) {
+                return false;
+            }
+        }
+
         $entry->loadMissing('customForm');
         $stageType ??= self::stageTypeFor($entry);
 
@@ -435,6 +507,27 @@ final class WorkflowStageMessages
         }
     }
 
+    /** Notify an automatic checkpoint without releasing a later final status. */
+    public static function notifyCheckpoint(CustomFormEntry $entry, WorkflowStageType $stageType): bool
+    {
+        try {
+            $entry->refresh();
+            if (! WorkflowStageProgression::enabled($entry)
+                || $stageType !== WorkflowStageType::Completed
+                || WorkflowStageProgression::finalStageType($entry) === $stageType
+                || ! self::orderedStageCompleted($entry, $stageType)
+                || self::hasSentNotification($entry, $stageType)) {
+                return false;
+            }
+
+            return self::notifyConfiguredStage($entry, $stageType);
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return false;
+        }
+    }
+
     /**
      * Send a configured stage message when the stage is recorded outside the
      * form entry status, such as an exit-exam result.
@@ -473,7 +566,7 @@ final class WorkflowStageMessages
                 self::deleteStageNotification($entry, $stageType, $student);
             }
 
-            if ($stageType === WorkflowStageType::AwaitingResults) {
+            if ($stageType === WorkflowStageType::AwaitingResults && ! WorkflowStageProgression::enabled($entry)) {
                 self::deleteStageNotification($entry, WorkflowStageType::Completed, $student);
             }
 
@@ -530,6 +623,16 @@ final class WorkflowStageMessages
             || self::hasDelivery($entry, $student, 'stage_type', $stageType->value);
     }
 
+    /** Withdraw a final-status release when its automatic completion is reversed. */
+    public static function resetCompletedNotification(CustomFormEntry $entry): void
+    {
+        $student = self::owner($entry);
+
+        if ($student !== null) {
+            self::deleteStageNotification($entry, WorkflowStageType::Completed, $student);
+        }
+    }
+
     private static function deleteStageNotification(
         CustomFormEntry $entry,
         WorkflowStageType $stageType,
@@ -573,7 +676,8 @@ final class WorkflowStageMessages
             : [$type->value];
 
         $stage = collect($workflow->stages ?? [])
-            ->map(fn (array $item): array => $item['data'] ?? $item)
+            ->values()
+            ->map(fn (array $item, int $index): array => [...($item['data'] ?? $item), '_index' => $index])
             ->first(fn (array $stage): bool => in_array($stage['stage_type'] ?? null, $types, true));
 
         if ($stage === null) {
@@ -679,6 +783,9 @@ final class WorkflowStageMessages
         }
 
         self::recordDelivery($entry, $student, $stageType, $workflowEvent, $delivered);
+        if (WorkflowStageProgression::enabled($entry)) {
+            WorkflowStageProgression::notified($entry, $stageType);
+        }
 
         return true;
     }
@@ -821,6 +928,21 @@ final class WorkflowStageMessages
 
     private static function candidateCanReceiveStage(CustomFormEntry $entry, WorkflowStageType $stageType): bool
     {
+        if (WorkflowStageProgression::enabled($entry)) {
+            $stage = self::configuredStage($entry, $stageType);
+            if ($stage === null) {
+                return false;
+            }
+
+            if ($stageType === WorkflowStageType::Completed
+                && WorkflowStageProgression::finalStageType($entry) === WorkflowStageType::Completed) {
+                return WorkflowStageProgression::readyForFinal($entry);
+            }
+
+            return WorkflowStageProgression::isCurrent($entry, $stageType)
+                || self::orderedStageCompleted($entry, $stageType);
+        }
+
         if (! in_array($stageType, [WorkflowStageType::AwaitingResults, WorkflowStageType::Completed], true)) {
             return true;
         }

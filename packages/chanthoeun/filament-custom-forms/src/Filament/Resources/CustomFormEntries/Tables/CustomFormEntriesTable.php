@@ -3,6 +3,7 @@
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Tables;
 
 use App\Support\WorkflowStageMessages;
+use App\Support\WorkflowStageProgression;
 use App\Support\WorkflowSubmissionMessages;
 use App\Support\StaticWorkflowMessages;
 use App\Enums\WorkflowStageType;
@@ -544,6 +545,11 @@ class CustomFormEntriesTable
             ->badge()
             ->getStateUsing(fn ($record): string => self::displayStatus($record))
             ->formatStateUsing(function ($state, $record): string {
+                if (WorkflowStageProgression::enabled($record)
+                    && filled($workflowStatus = WorkflowStageMessages::statusText($record))) {
+                    return $workflowStatus;
+                }
+
                 if (filled($submissionStatus = WorkflowSubmissionMessages::statusText($record))) {
                     return $submissionStatus;
                 }
@@ -694,6 +700,7 @@ class CustomFormEntriesTable
         }
 
         $currentType = WorkflowStageMessages::stageTypeFor($record);
+        $ordered = WorkflowStageProgression::enabled($record);
         $notificationTimes = self::workflowStageNotificationTimes($record);
 
         $stages = collect($workflow->stages ?? [])
@@ -702,16 +709,18 @@ class CustomFormEntriesTable
                 : (is_array($stage) ? $stage : []))
             ->filter(fn (array $stage): bool => filled($stage['stage_type'] ?? null))
             ->values()
-            ->map(function (array $stage, int $index) use ($record, $currentType, $notificationTimes): array {
+            ->map(function (array $stage, int $index) use ($record, $currentType, $notificationTimes, $ordered): array {
                 $type = WorkflowStageType::tryFrom((string) ($stage['stage_type'] ?? ''));
                 $typeValue = $type?->value ?? (string) $stage['stage_type'];
-                $completedAt = $notificationTimes[$typeValue] ?? null;
+                $completedAt = $ordered
+                    ? WorkflowStageProgression::completedAt($record, $index)
+                    : ($notificationTimes[$typeValue] ?? null);
 
-                if ($type === WorkflowStageType::FormSubmission) {
+                if (! $ordered && $type === WorkflowStageType::FormSubmission) {
                     $completedAt ??= $record->created_at;
                 }
 
-                if ($type === WorkflowStageType::Review
+                if (! $ordered && $type === WorkflowStageType::Review
                     && in_array(strtolower((string) $record->review_status), ['accepted', 'approved', 'passed', 'rejected', 'failed'], true)) {
                     $completedAt ??= $record->reviewed_at;
                 }

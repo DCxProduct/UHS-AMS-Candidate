@@ -6,6 +6,8 @@ use App\Models\CandidateSubmitPopupSetting;
 use App\Models\User;
 use App\Support\NotificationLanguage;
 use App\Support\ProfileFormData;
+use App\Support\WorkflowStageProgression;
+use App\Support\WorkflowSubmissionMessages;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
@@ -176,6 +178,7 @@ class EditCustomFormEntry extends EditRecord
 
         $oldStatus = $this->entryStatus();
         $slug = $this->record->customForm?->slug;
+        $data['data'] = $this->preserveWorkflowProgress($data['data'] ?? []);
 
         if ($slug === 'profile' || in_array($oldStatus, ['rejected', 'failed', 'draft'], true)) {
             $this->shouldResetToPendingAfterSave = true;
@@ -218,6 +221,7 @@ class EditCustomFormEntry extends EditRecord
             : json_decode((string) $this->record->data, true);
 
         $data = is_array($data) ? $data : [];
+        $data = $this->preserveWorkflowProgress($data);
         $data['registration_status'] = 'pending';
         $data['candidate_status'] = 'pending';
         $data['submitted_at'] = $data['submitted_at'] ?? now()->toDateTimeString();
@@ -249,7 +253,25 @@ class EditCustomFormEntry extends EditRecord
 
         $this->record->refresh();
         $this->isEditingProfile = false;
+        if (WorkflowStageProgression::enabled($this->record)) {
+            WorkflowStageProgression::submitted($this->record);
+            WorkflowSubmissionMessages::notify($this->record);
+        }
         $this->notifyAdminsAboutResubmissionIfNeeded($this->record);
+    }
+
+    /** Form fields must not overwrite the application's server-owned stage cursor. */
+    protected function preserveWorkflowProgress(array $data): array
+    {
+        $entry = CustomFormEntry::query()->find($this->record->getKey());
+        if ($entry && WorkflowStageProgression::enabled($entry)) {
+            $progress = data_get($entry->data, 'workflow_progress');
+            if (is_array($progress)) {
+                $data['workflow_progress'] = $progress;
+            }
+        }
+
+        return $data;
     }
 
     protected function canEditSubmittedProfile(): bool

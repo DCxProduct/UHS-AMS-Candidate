@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\CandidateEntranceStatistics\Tables;
 
 use App\Support\WorkflowStageMessages;
+use App\Support\WorkflowStageProgression;
 use App\Support\StaticWorkflowMessages;
 use App\Enums\WorkflowStageType;
 use App\Filament\Admin\Resources\CandidateEntranceStatistics\CandidateEntranceStatisticResource;
@@ -293,6 +294,9 @@ class CandidateEntranceStatisticsTable
                         && strtolower((string) data_get($record->data, 'candidate_status', 'pending')) === 'pending')
                     ->action(function (CustomFormEntry $record): void {
                         FilamentActionPermissions::abortUnlessCanForResource(CandidateEntranceStatisticResource::class, 'passed');
+                        if (WorkflowStageProgression::enabled($record)) {
+                            abort_unless(WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::AwaitingResults), 403);
+                        }
 
                         self::markPassed($record);
                         WorkflowStageMessages::notifyResultStage($record);
@@ -881,6 +885,9 @@ class CandidateEntranceStatisticsTable
             ]);
 
         $record->refresh();
+        if (WorkflowStageProgression::enabled($record)) {
+            WorkflowStageProgression::passed($record);
+        }
         CandidateStatisticsSynchronizer::syncPassedEntry($record);
 
         AuditLogger::log(
