@@ -46,7 +46,7 @@ final class WorkflowReviewStaffMessages
                                 'form' => (string) ($entry->customForm?->display_name ?? ''),
                                 'stage' => __('workflow_notifications.review_actions.'.$action.'.title'),
                             ]))
-                            ->body($body)
+                            ->body(WorkflowMessagePlaceholders::render($body, $entry))
                             ->info()
                             ->icon(match ($action) {
                                 'send_back' => 'heroicon-o-arrow-uturn-left',

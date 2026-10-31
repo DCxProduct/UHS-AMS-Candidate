@@ -34,8 +34,8 @@ class WorkflowNotification extends Model
     }
 
     /**
-     * Normalize the builder wrapper without merging status and notification
-     * messages. They are separate candidate-facing outputs.
+     * Keep stage statuses, delivered notifications, and immediate action alerts
+     * independent while normalizing the builder wrapper.
      */
     public static function normalizeStages(?array $stages): array
     {
@@ -47,6 +47,10 @@ class WorkflowNotification extends Model
 
                 $hasDataWrapper = is_array($stage['data'] ?? null);
                 $data = $hasDataWrapper ? $stage['data'] : $stage;
+
+                if (array_key_exists('alert_message', $data)) {
+                    $data['alert_message'] = self::normalizeAlertMessage($data['alert_message']);
+                }
 
                 if (array_key_exists('responsible_role', $data)) {
                     $roles = self::normalizeResponsibleRoles($data['responsible_role']);
@@ -67,7 +71,15 @@ class WorkflowNotification extends Model
                 foreach (['accept', 'send_back', 'reject'] as $action) {
                     if (is_array($data['review_actions'][$action] ?? null)) {
                         $data['review_actions'][$action] = self::normalizeStaffRecipients($data['review_actions'][$action]);
+                        if (array_key_exists('alert_message', $data['review_actions'][$action])) {
+                            $data['review_actions'][$action]['alert_message'] = self::normalizeAlertMessage($data['review_actions'][$action]['alert_message']);
+                        }
                     }
+                }
+
+                if (is_array($data['result_statuses'] ?? null)
+                    && array_key_exists('pending_alert_message', $data['result_statuses'])) {
+                    $data['result_statuses']['pending_alert_message'] = self::normalizeAlertMessage($data['result_statuses']['pending_alert_message']);
                 }
 
                 if ($hasDataWrapper) {
@@ -79,6 +91,13 @@ class WorkflowNotification extends Model
                 return $data;
             })
             ->all();
+    }
+
+    private static function normalizeAlertMessage(mixed $value): ?string
+    {
+        $value = is_scalar($value) ? trim((string) $value) : '';
+
+        return $value === '' ? null : $value;
     }
 
     private static function normalizeStaffRecipients(array $messages): array

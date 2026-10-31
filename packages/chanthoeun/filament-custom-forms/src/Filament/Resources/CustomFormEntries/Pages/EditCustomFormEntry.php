@@ -6,6 +6,7 @@ use App\Models\CandidateSubmitPopupSetting;
 use App\Models\User;
 use App\Support\NotificationLanguage;
 use App\Support\ProfileFormData;
+use App\Support\WorkflowActionFeedback;
 use App\Support\WorkflowStageProgression;
 use App\Support\WorkflowSubmissionMessages;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
@@ -609,15 +610,21 @@ class EditCustomFormEntry extends EditRecord
     protected function getSavedNotificationTitle(): ?string
     {
         $customForm = $this->record->customForm;
+        $fallback = parent::getSavedNotificationTitle();
         if ($customForm) {
             $formName = $this->transText($customForm->name);
 
-            return app()->getLocale() === 'km'
+            $fallback = app()->getLocale() === 'km'
                 ? "បានរក្សាទុក {$formName} ដោយជោគជ័យ"
                 : "Saved {$formName} successfully";
         }
 
-        return parent::getSavedNotificationTitle();
+        if ($this->shouldResetToPendingAfterSave
+            && filled(data_get($this->record->data, 'submitted_at'))) {
+            return WorkflowActionFeedback::title($this->record, 'submission', (string) $fallback);
+        }
+
+        return $fallback;
     }
 
     protected function handleSubmitValidationException(ValidationException $exception): never

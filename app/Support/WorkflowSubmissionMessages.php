@@ -175,7 +175,7 @@ final class WorkflowSubmissionMessages
                         'form' => (string) ($entry->customForm?->display_name ?? ''),
                         'stage' => WorkflowNotificationStageSummary::localizedName($stage['stage_name'] ?? null, WorkflowStageType::FormSubmission),
                     ]))
-                    ->body($body)
+                    ->body(WorkflowMessagePlaceholders::render($body, $entry))
                     ->info()
                     ->icon('heroicon-o-check-circle')
                     ->iconColor('success')

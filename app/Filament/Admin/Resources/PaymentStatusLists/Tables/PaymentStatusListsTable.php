@@ -23,6 +23,7 @@ use App\Support\OfficialReport;
 use App\Support\PaymentValidation;
 use App\Support\TablePdfExporter;
 use App\Support\WorkflowStageMessages;
+use App\Support\WorkflowActionFeedback;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormField;
 use Filament\Actions\Action;
@@ -560,10 +561,10 @@ class PaymentStatusListsTable
 
                             throw $exception;
                         }
-                        Notification::make()
-                            ->title(__('payments.actions.record_payment'))
-                            ->success()
-                            ->send();
+                        WorkflowActionFeedback::send(
+                            Notification::make()->success(),
+                            WorkflowActionFeedback::title($record->fresh(), 'payment', __('payments.actions.record_payment')),
+                        );
                     })
                     ->visible(fn (PaymentStatusList $record): bool => FilamentActionPermissions::canForResource(PaymentStatusListResource::class, 'pay')
                         && ! \App\Services\AmsPaymentSync::usesAms($record)

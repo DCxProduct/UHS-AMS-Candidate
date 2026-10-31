@@ -55,7 +55,7 @@ final class WorkflowStageAudienceMessages
                                 'form' => (string) ($entry->customForm?->display_name ?? ''),
                                 'stage' => WorkflowNotificationStageSummary::localizedName($stage['stage_name'] ?? null, $stageType),
                             ]))
-                            ->body($body)
+                            ->body(WorkflowMessagePlaceholders::render($body, $entry))
                             ->info()
                             ->icon('heroicon-o-check-circle')
                             ->iconColor('success')

@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Resources\PaymentStatusLists\Pages;
 use App\Filament\Admin\Resources\PaymentStatusLists\PaymentStatusListResource;
 use App\Models\Payment;
 use App\Services\CandidatePaymentRecorder;
+use App\Support\WorkflowActionFeedback;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Model;
@@ -51,5 +52,15 @@ class CreatePaymentStatusList extends CreateRecord
     protected function getRedirectUrl(): string
     {
         return PaymentStatusListResource::getUrl('index');
+    }
+
+    protected function getCreatedNotificationTitle(): ?string
+    {
+        $fallback = parent::getCreatedNotificationTitle();
+        $entry = $this->record instanceof Payment ? $this->record->customFormEntry : null;
+
+        return $entry
+            ? WorkflowActionFeedback::title($entry, 'payment', (string) $fallback)
+            : $fallback;
     }
 }

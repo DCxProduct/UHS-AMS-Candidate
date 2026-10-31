@@ -6,11 +6,13 @@ use App\Enums\WorkflowStageType;
 use App\Support\AuditLogger;
 use App\Support\FilamentActionPermissions;
 use App\Support\StaticWorkflowMessages;
+use App\Support\WorkflowActionFeedback;
 use App\Support\WorkflowStageMessages;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate;
 use Chanthoeun\FilamentDocumentBuilder\Services\DocumentRenderer;
+use Filament\Notifications\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -85,6 +87,10 @@ class AdminEntryPdfReviewController extends Controller
                 if (WorkflowStageMessages::hasConfiguredWorkflow($entry)) {
                     WorkflowStageMessages::notifyReviewAction($entry, 'accept')
                         || WorkflowStageMessages::notifyConfiguredStage($entry, WorkflowStageType::Review);
+                    WorkflowActionFeedback::send(
+                        Notification::make()->success(),
+                        WorkflowActionFeedback::title($entry, 'accept', __('candidate_entrance_statistics.notifications.admin_accept_success_title')),
+                    );
                 } else {
                     StaticWorkflowMessages::notifyApplicationResult($entry, 'approved');
                 }
@@ -140,6 +146,10 @@ class AdminEntryPdfReviewController extends Controller
                 if (WorkflowStageMessages::hasConfiguredWorkflow($entry)) {
                     WorkflowStageMessages::notifyReviewAction($entry, 'send_back', $request->review_note)
                         || WorkflowStageMessages::notify($entry, WorkflowStageType::Rejected);
+                    WorkflowActionFeedback::send(
+                        Notification::make()->warning(),
+                        WorkflowActionFeedback::title($entry, 'send_back', __('candidate_entrance_statistics.notifications.admin_send_back_success_title')),
+                    );
                 } else {
                     StaticWorkflowMessages::notifyApplicationResult($entry, 'rejected', $request->review_note);
                 }
