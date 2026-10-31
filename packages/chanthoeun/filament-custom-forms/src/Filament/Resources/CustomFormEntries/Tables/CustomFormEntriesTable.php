@@ -3,6 +3,7 @@
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Tables;
 
 use App\Support\WorkflowStageMessages;
+use App\Support\WorkflowActionFeedback;
 use App\Support\WorkflowStageProgression;
 use App\Support\WorkflowSubmissionMessages;
 use App\Support\StaticWorkflowMessages;
@@ -1240,10 +1241,10 @@ class CustomFormEntriesTable
 
                     self::notifyStudentNationalExamResult($record, 'approved');
 
-                    Notification::make()
-                        ->title(__('candidate_entrance_statistics.notifications.admin_accept_success_title'))
-                        ->success()
-                        ->send();
+                    WorkflowActionFeedback::send(
+                        Notification::make()->success(),
+                        WorkflowActionFeedback::title($record, 'accept', __('candidate_entrance_statistics.notifications.admin_accept_success_title')),
+                    );
                 });
 
             $actions[] = Action::make('rejected')
@@ -1303,10 +1304,10 @@ class CustomFormEntriesTable
 
                     self::notifyStudentNationalExamResult($record, 'rejected', $data['review_note'] ?? null);
 
-                    Notification::make()
-                        ->title(__('candidate_entrance_statistics.notifications.admin_send_back_success_title'))
-                        ->warning()
-                        ->send();
+                    WorkflowActionFeedback::send(
+                        Notification::make()->warning(),
+                        WorkflowActionFeedback::title($record, 'send_back', __('candidate_entrance_statistics.notifications.admin_send_back_success_title')),
+                    );
                 });
 
             $actions[] = Action::make('send_back_after_reject')
@@ -1391,10 +1392,10 @@ class CustomFormEntriesTable
 
                     self::notifyStudentNationalExamResult($record, 'failed', $data['review_note'] ?? null);
 
-                    Notification::make()
-                        ->title(__('candidate_entrance_statistics.notifications.admin_reject_success_title'))
-                        ->danger()
-                        ->send();
+                    WorkflowActionFeedback::send(
+                        Notification::make()->danger(),
+                        WorkflowActionFeedback::title($record, 'reject', __('candidate_entrance_statistics.notifications.admin_reject_success_title')),
+                    );
                 });
         }
 
@@ -1553,10 +1554,10 @@ class CustomFormEntriesTable
 
                         self::notifyStudentNationalExamResult($record, 'approved');
 
-                        Notification::make()
-                            ->title(__('candidate_entrance_statistics.notifications.admin_accept_success_title'))
-                            ->success()
-                            ->send();
+                        WorkflowActionFeedback::send(
+                            Notification::make()->success(),
+                            WorkflowActionFeedback::title($record, 'accept', __('candidate_entrance_statistics.notifications.admin_accept_success_title')),
+                        );
 
                         redirect(request()->header('Referer') ?: request()->fullUrl());
                     }),
@@ -1614,10 +1615,10 @@ class CustomFormEntriesTable
 
                         self::notifyStudentNationalExamResult($record, 'rejected', $data['review_note'] ?? null);
 
-                        Notification::make()
-                            ->title(__('candidate_entrance_statistics.notifications.admin_send_back_success_title'))
-                            ->warning()
-                            ->send();
+                        WorkflowActionFeedback::send(
+                            Notification::make()->warning(),
+                            WorkflowActionFeedback::title($record, 'send_back', __('candidate_entrance_statistics.notifications.admin_send_back_success_title')),
+                        );
 
                         redirect(request()->header('Referer') ?: request()->fullUrl());
                     }),
@@ -1676,10 +1677,10 @@ class CustomFormEntriesTable
 
                         self::notifyStudentNationalExamResult($record, 'failed', $data['review_note'] ?? null);
 
-                        Notification::make()
-                            ->title(__('candidate_entrance_statistics.notifications.admin_reject_success_title'))
-                            ->danger()
-                            ->send();
+                        WorkflowActionFeedback::send(
+                            Notification::make()->danger(),
+                            WorkflowActionFeedback::title($record, 'reject', __('candidate_entrance_statistics.notifications.admin_reject_success_title')),
+                        );
 
                         redirect(request()->header('Referer') ?: request()->fullUrl());
                     }),
@@ -1908,10 +1909,10 @@ class CustomFormEntriesTable
 
         self::notifyStudentNationalExamResult($record, 'rejected', $reviewNote);
 
-        Notification::make()
-            ->title(__('candidate_entrance_statistics.notifications.admin_send_back_success_title'))
-            ->warning()
-            ->send();
+        WorkflowActionFeedback::send(
+            Notification::make()->warning(),
+            WorkflowActionFeedback::title($record, 'send_back', __('candidate_entrance_statistics.notifications.admin_send_back_success_title')),
+        );
     }
 
     protected static function entryRequiresPayment($record): bool

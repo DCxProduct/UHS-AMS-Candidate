@@ -10,6 +10,7 @@ use App\Support\ClosingDateWorkflow;
 use App\Support\NotificationLanguage;
 use App\Support\ProfileFormData;
 use App\Support\StudentDynamicFormSchema;
+use App\Support\WorkflowActionFeedback;
 use App\Support\WorkflowEntrySnapshot;
 use App\Support\WorkflowStageProgression;
 use App\Support\WorkflowSubmissionMessages;
@@ -44,6 +45,8 @@ class StudentDynamicFormPage extends Page implements HasForms
     public array $sections = [];
 
     public int $activeSectionIndex = 0;
+
+    protected ?CustomFormEntry $submittedEntry = null;
 
     public static function shouldRegisterNavigation(): bool
     {
@@ -189,10 +192,10 @@ class StudentDynamicFormPage extends Page implements HasForms
 
         $this->resetFormState();
 
-        Notification::make()
-            ->title(NotificationLanguage::trans('app.saved_successfully'))
-            ->success()
-            ->send();
+        WorkflowActionFeedback::send(
+            Notification::make()->success(),
+            $this->submissionFeedbackTitle(),
+        );
 
         $this->redirect($this->listUrl(), navigate: true);
     }
@@ -233,10 +236,10 @@ class StudentDynamicFormPage extends Page implements HasForms
 
         $this->resetFormState();
 
-        Notification::make()
-            ->title(NotificationLanguage::trans('app.saved_successfully'))
-            ->success()
-            ->send();
+        WorkflowActionFeedback::send(
+            Notification::make()->success(),
+            $this->submissionFeedbackTitle(),
+        );
     }
 
     protected function getCleanState(): array
@@ -251,6 +254,8 @@ class StudentDynamicFormPage extends Page implements HasForms
 
     protected function storeEntry(array $state): bool
     {
+        $this->submittedEntry = null;
+
         if (! DatabaseSchema::hasTable('custom_form_entries')) {
             Notification::make()
                 ->title(NotificationLanguage::trans('app.custom_form_entries_table_not_found'))
@@ -300,6 +305,7 @@ class StudentDynamicFormPage extends Page implements HasForms
             $entry = CustomFormEntry::query()->find($entryId);
 
             if ($entry) {
+                $this->submittedEntry = $entry;
                 if (WorkflowStageProgression::enabled($entry)) {
                     WorkflowSubmissionMessages::notify($entry);
                 }
@@ -317,6 +323,15 @@ class StudentDynamicFormPage extends Page implements HasForms
         }
 
         return true;
+    }
+
+    protected function submissionFeedbackTitle(): ?string
+    {
+        $fallback = NotificationLanguage::trans('app.saved_successfully');
+
+        return $this->submittedEntry
+            ? WorkflowActionFeedback::title($this->submittedEntry, 'submission', $fallback)
+            : $fallback;
     }
 
     protected function resetFormState(): void

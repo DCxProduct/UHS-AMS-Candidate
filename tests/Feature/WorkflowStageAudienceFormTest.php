@@ -80,14 +80,20 @@ class WorkflowStageAudienceFormTest extends TestCase
             $this->assertSame(__('workflow_notifications.placeholders.waiting_result_status_message'), (string) $pendingStatus->getPlaceholder());
             $this->assertFalse($pendingStatus->isRequired());
             $this->assertEmpty($pendingStatus->getState());
-            $component->assertSee(__('workflow_notifications.helpers.waiting_result_status_message'));
+            $this->assertFalse(app('translator')->has('workflow_notifications.helpers.waiting_result_status_message', $locale, false));
+            $this->assertStringNotContainsString('workflow_notifications.helpers.waiting_result_status_message', $pendingStatus->toHtml());
         }
 
         foreach (['status_message' => $status, 'notification_message' => $candidateNotification, 'staff_notification_message' => $staffNotification] as $name => $field) {
             $placeholder = (string) $field->getPlaceholder();
             $this->assertSame(__('workflow_notifications.placeholders.stage_audiences.'.$type.'.'.$name), $placeholder);
-            $this->assertStringNotContainsString(':form', $placeholder);
-            $this->assertStringNotContainsString(':candidate', $placeholder);
+            if ($name === 'staff_notification_message') {
+                $this->assertStringContainsString(':form', $placeholder);
+                $this->assertStringContainsString(':candidate', $placeholder);
+            } else {
+                $this->assertStringNotContainsString(':form', $placeholder);
+                $this->assertStringNotContainsString(':candidate', $placeholder);
+            }
         }
 
         $component->assertSee(__('workflow_notifications.sections.for_candidates'))

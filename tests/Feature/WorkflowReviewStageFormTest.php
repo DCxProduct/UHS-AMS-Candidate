@@ -50,7 +50,7 @@ class WorkflowReviewStageFormTest extends TestCase
         $component = Livewire::test(EditWorkflowNotification::class, ['record' => $workflow->getRouteKey()]);
         $fields = collect($component->instance()->form->getFlatFields());
         $actionFields = $fields->filter(fn ($field): bool => str_contains($field->getStatePath(), '.review_actions.'));
-        $this->assertCount(12, $actionFields);
+        $this->assertCount(15, $actionFields);
         $component->assertSee(__('workflow_notifications.sections.for_candidates'))
             ->assertSee(__('workflow_notifications.sections.for_system_users'));
 
@@ -58,15 +58,21 @@ class WorkflowReviewStageFormTest extends TestCase
             $component->assertSee(__('workflow_notifications.review_actions.'.$action.'.title'));
 
             $status = $actionFields->first(fn ($field): bool => str_ends_with($field->getStatePath(), '.review_actions.'.$action.'.status_message'));
+            $alert = $actionFields->first(fn ($field): bool => str_ends_with($field->getStatePath(), '.review_actions.'.$action.'.alert_message'));
             $notification = $actionFields->first(fn ($field): bool => str_ends_with($field->getStatePath(), '.review_actions.'.$action.'.notification_message'));
             $staffNotification = $actionFields->first(fn ($field): bool => str_ends_with($field->getStatePath(), '.review_actions.'.$action.'.staff_notification_message'));
             $staffRecipients = $actionFields->first(fn ($field): bool => str_ends_with($field->getStatePath(), '.review_actions.'.$action.'.staff_recipient_roles'));
 
             $this->assertNotNull($status);
+            $this->assertNotNull($alert);
             $this->assertNotNull($notification);
             $this->assertNotNull($staffNotification);
             $this->assertNotNull($staffRecipients);
             $this->assertSame(__('workflow_notifications.fields.shared_status_message'), $status->getLabel());
+            $this->assertSame(__('workflow_notifications.fields.alert_message'), $alert->getLabel());
+            $this->assertSame(__('workflow_notifications.placeholders.alert_message'), (string) $alert->getPlaceholder());
+            $this->assertFalse($alert->isRequired());
+            $this->assertEmpty($alert->getState());
             $this->assertSame(__('workflow_notifications.fields.notification_message'), $notification->getLabel());
             $this->assertSame(__('workflow_notifications.fields.staff_notification_message'), $staffNotification->getLabel());
             $this->assertSame(__('workflow_notifications.fields.staff_recipient_roles'), $staffRecipients->getLabel());
@@ -75,12 +81,18 @@ class WorkflowReviewStageFormTest extends TestCase
             foreach (['status_message' => $status, 'notification_message' => $notification, 'staff_notification_message' => $staffNotification] as $name => $field) {
                 $placeholder = (string) $field->getPlaceholder();
                 $this->assertSame(__('workflow_notifications.placeholders.review_actions.'.$action.'.'.$name), $placeholder);
-                $this->assertStringNotContainsString(':form', $placeholder);
-                $this->assertStringNotContainsString(':candidate', $placeholder);
+                if ($name === 'staff_notification_message') {
+                    $this->assertStringContainsString(':form', $placeholder);
+                    $this->assertStringContainsString(':candidate', $placeholder);
+                } else {
+                    $this->assertStringNotContainsString(':form', $placeholder);
+                    $this->assertStringNotContainsString(':candidate', $placeholder);
+                }
             }
         }
 
         $this->assertCount(3, $actionFields->filter(fn ($field): bool => str_ends_with($field->getStatePath(), '.status_message')));
+        $this->assertCount(3, $actionFields->filter(fn ($field): bool => str_ends_with($field->getStatePath(), '.alert_message')));
     }
 
     public function test_saved_review_action_status_and_notification_edit_independently_and_preserve_other_stages(): void
@@ -126,6 +138,8 @@ class WorkflowReviewStageFormTest extends TestCase
             $this->assertEmpty(array_filter((array) ($payment[$namespace] ?? [])));
             unset($payment[$namespace]);
         }
+        $this->assertNull($payment['alert_message']);
+        unset($payment['alert_message']);
         $this->assertEquals($original[1]['data'], $payment);
     }
 

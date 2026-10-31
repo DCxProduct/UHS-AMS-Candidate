@@ -18,6 +18,7 @@ use App\Support\UserTypeOptions;
 use App\Support\WorkflowStageMessages;
 use App\Support\WorkflowStageProgression;
 use App\Support\WorkflowProgressQuery;
+use App\Support\WorkflowActionFeedback;
 use Carbon\Carbon;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
@@ -217,14 +218,17 @@ class ExamResultsTable
                             notificationStage: self::notificationStageForRecord($record, $resultMenu),
                         );
 
-                        $notification = Notification::make()
-                            ->title($sent ? __('exam_results.notification_sent') : __('exam_results.notification_already_sent'));
-
-                        $sent
-                            ? $notification->success()
-                            : $notification->warning();
-
-                        $notification->send();
+                        if ($sent) {
+                            WorkflowActionFeedback::send(
+                                Notification::make()->success(),
+                                WorkflowActionFeedback::title($record->fresh(), 'completed', __('exam_results.notification_sent')),
+                            );
+                        } else {
+                            Notification::make()
+                                ->title(__('exam_results.notification_already_sent'))
+                                ->warning()
+                                ->send();
+                        }
 
                         if (method_exists($livewire, 'flushCachedTableRecords')) {
                             $livewire->flushCachedTableRecords();

@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Resources\CandidateEntranceStatistics\Tables;
 
 use App\Support\WorkflowStageMessages;
 use App\Support\WorkflowStageProgression;
+use App\Support\WorkflowActionFeedback;
 use App\Support\StaticWorkflowMessages;
 use App\Enums\WorkflowStageType;
 use App\Filament\Admin\Resources\CandidateEntranceStatistics\CandidateEntranceStatisticResource;
@@ -301,11 +302,12 @@ class CandidateEntranceStatisticsTable
                         self::markPassed($record);
                         WorkflowStageMessages::notifyResultStage($record);
 
-                        Notification::make()
-                            ->title(NotificationLanguage::trans('candidate_entrance_statistics.notifications.admin_passed_success_title'))
-                            ->body(NotificationLanguage::trans('candidate_entrance_statistics.notifications.admin_passed_success_body'))
-                            ->success()
-                            ->send();
+                        WorkflowActionFeedback::send(
+                            Notification::make()
+                                ->body(NotificationLanguage::trans('candidate_entrance_statistics.notifications.admin_passed_success_body'))
+                                ->success(),
+                            WorkflowActionFeedback::title($record, 'passed', NotificationLanguage::trans('candidate_entrance_statistics.notifications.admin_passed_success_title')),
+                        );
                     }),
 
                 Action::make('edit_result')
@@ -326,10 +328,10 @@ class CandidateEntranceStatisticsTable
 
                         self::markCandidatePending($record);
 
-                        Notification::make()
-                            ->title(NotificationLanguage::trans('candidate_entrance_statistics.actions.edit_result'))
-                            ->success()
-                            ->send();
+                        WorkflowActionFeedback::send(
+                            Notification::make()->success(),
+                            WorkflowActionFeedback::title($record, 'pending', NotificationLanguage::trans('candidate_entrance_statistics.actions.edit_result')),
+                        );
                     }),
             ])
             ->toolbarActions([
@@ -349,8 +351,9 @@ class CandidateEntranceStatisticsTable
                         FilamentActionPermissions::abortUnlessCanForResource(CandidateEntranceStatisticResource::class, 'bulk_passed');
 
                         $passedCount = 0;
+                        $affectedEntries = [];
 
-                        $records->each(function (CustomFormEntry $record) use (&$passedCount): void {
+                        $records->each(function (CustomFormEntry $record) use (&$passedCount, &$affectedEntries): void {
                             if (strtolower((string) data_get($record->data, 'candidate_status', 'pending')) !== 'pending') {
                                 return;
                             }
@@ -361,16 +364,19 @@ class CandidateEntranceStatisticsTable
 
                             self::markPassed($record);
                             WorkflowStageMessages::notifyResultStage($record);
+                            $affectedEntries[] = $record;
                             $passedCount++;
                         });
 
-                        Notification::make()
-                            ->title(NotificationLanguage::trans(
-                                'candidate_entrance_statistics.notifications.bulk_passed_success_title',
-                                ['count' => $passedCount]
-                            ))
-                            ->success()
-                            ->send();
+                        $summary = NotificationLanguage::trans(
+                            'candidate_entrance_statistics.notifications.bulk_passed_success_title',
+                            ['count' => $passedCount],
+                        );
+                        $title = WorkflowActionFeedback::bulkTitle($affectedEntries, 'passed', $summary);
+                        WorkflowActionFeedback::send(
+                            Notification::make()->body($title !== $summary ? $summary : null)->success(),
+                            $title,
+                        );
                     }),
 
                 BulkAction::make('bulk_pending')
@@ -389,8 +395,9 @@ class CandidateEntranceStatisticsTable
                         FilamentActionPermissions::abortUnlessCanForResource(CandidateEntranceStatisticResource::class, 'bulk_pending');
 
                         $editedCount = 0;
+                        $affectedEntries = [];
 
-                        $records->each(function (CustomFormEntry $record) use (&$editedCount): void {
+                        $records->each(function (CustomFormEntry $record) use (&$editedCount, &$affectedEntries): void {
                             if (
                                 strtolower((string) data_get($record->data, 'candidate_status', 'pending')) !== 'passed'
                                 || ! WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::AwaitingResults)
@@ -399,14 +406,16 @@ class CandidateEntranceStatisticsTable
                             }
 
                             self::markCandidatePending($record);
+                            $affectedEntries[] = $record;
                             $editedCount++;
                         });
 
-                        Notification::make()
-                            ->title(NotificationLanguage::trans('candidate_entrance_statistics.actions.edit_result'))
-                            ->body(__('candidate_entrance_statistics.notifications.bulk_pending_success_body', ['count' => $editedCount]))
-                            ->success()
-                            ->send();
+                        WorkflowActionFeedback::send(
+                            Notification::make()
+                                ->body(__('candidate_entrance_statistics.notifications.bulk_pending_success_body', ['count' => $editedCount]))
+                                ->success(),
+                            WorkflowActionFeedback::bulkTitle($affectedEntries, 'pending', NotificationLanguage::trans('candidate_entrance_statistics.actions.edit_result')),
+                        );
                     }),
             ]);
     }

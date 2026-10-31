@@ -6,6 +6,7 @@ use App\Filament\Admin\Resources\Payments\PaymentResource;
 use App\Models\Payment;
 use App\Models\PaymentType;
 use App\Services\CandidatePaymentRecorder;
+use App\Support\WorkflowActionFeedback;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Model;
@@ -62,5 +63,15 @@ class CreatePayment extends CreateRecord
     protected function getRedirectUrl(): string
     {
         return static::getResource()::getUrl('index');
+    }
+
+    protected function getCreatedNotificationTitle(): ?string
+    {
+        $fallback = parent::getCreatedNotificationTitle();
+        $entry = $this->record instanceof Payment ? $this->record->customFormEntry : null;
+
+        return $entry
+            ? WorkflowActionFeedback::title($entry, 'payment', (string) $fallback)
+            : $fallback;
     }
 }

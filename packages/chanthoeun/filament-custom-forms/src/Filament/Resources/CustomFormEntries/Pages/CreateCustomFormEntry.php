@@ -4,6 +4,7 @@ namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Pa
 
 use App\Models\CandidateSubmitPopupSetting;
 use App\Support\ProfileFormData;
+use App\Support\WorkflowActionFeedback;
 use App\Support\WorkflowSubmissionMessages;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
@@ -186,6 +187,7 @@ class CreateCustomFormEntry extends CreateRecord
 
                         if ($this->record) {
                             WorkflowSubmissionMessages::notify($this->record);
+                            $this->getCreatedNotification()?->send();
                         }
 
                         $this->redirect($this->getRedirectUrl());
@@ -456,12 +458,17 @@ class CreateCustomFormEntry extends CreateRecord
     protected function getCreatedNotificationTitle(): ?string
     {
         $customForm = $this->form_id ? CustomForm::find($this->form_id) : null;
+        $fallback = $customForm
+            ? __('filament-actions::create.single.notifications.created.title')
+            : parent::getCreatedNotificationTitle();
 
-        if ($customForm) {
-            return __('filament-actions::create.single.notifications.created.title');
+        if (! $this->isSavingDraft
+            && $this->record instanceof CustomFormEntry
+            && filled(data_get($this->record->data, 'submitted_at'))) {
+            return WorkflowActionFeedback::title($this->record, 'submission', (string) $fallback);
         }
 
-        return parent::getCreatedNotificationTitle();
+        return $fallback;
     }
 
     protected function handleSubmitValidationException(ValidationException $exception): never

@@ -6,6 +6,7 @@ use App\Filament\Admin\Resources\ExamResults\ExamResultResource;
 use App\Filament\Admin\Resources\ExamResults\Tables\ExamResultsTable;
 use App\Support\AuditLogger;
 use App\Support\FilamentActionPermissions;
+use App\Support\WorkflowActionFeedback;
 use Carbon\Carbon;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Actions\Action;
@@ -309,10 +310,15 @@ class ListExamResults extends ListRecords
         $this->flushCachedTableRecords();
         $this->dispatch('$refresh');
 
-        Notification::make()
-            ->title(__('exam_results.notifications_sent', ['count' => $sentCount]))
-            ->success()
-            ->send();
+        $summary = __('exam_results.notifications_sent', ['count' => $sentCount]);
+        $title = WorkflowActionFeedback::bulkTitle($records, 'completed', $summary);
+        if ($title !== null && ($sentCount === 0 || $sentCount !== $records->count())) {
+            $title = $summary;
+        }
+        WorkflowActionFeedback::send(
+            Notification::make()->body($title !== $summary ? $summary : null)->success(),
+            $title,
+        );
     }
 
     protected function formTypeLabel(?string $state): string

@@ -150,8 +150,13 @@ class WorkflowSubmissionStageFormTest extends TestCase
 
         foreach ($fields as $field) {
             if (str_contains($field->getStatePath(), '.submission_messages.') && method_exists($field, 'getPlaceholder')) {
-                $this->assertStringNotContainsString(':form', (string) $field->getPlaceholder());
-                $this->assertStringNotContainsString(':candidate', (string) $field->getPlaceholder());
+                if (str_ends_with($field->getStatePath(), '.staff_notification_message')) {
+                    $this->assertStringContainsString(':form', (string) $field->getPlaceholder());
+                    $this->assertStringContainsString(':candidate', (string) $field->getPlaceholder());
+                } else {
+                    $this->assertStringNotContainsString(':form', (string) $field->getPlaceholder());
+                    $this->assertStringNotContainsString(':candidate', (string) $field->getPlaceholder());
+                }
             }
         }
     }

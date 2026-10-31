@@ -43,6 +43,8 @@ return [
         'responsible_role' => 'តួនាទីទទួលខុសត្រូវ',
         'status_message' => 'សារស្ថានភាពសម្រាប់បេក្ខជន (ជាជម្រើស)',
         'shared_status_message' => 'សារស្ថានភាព (ជាជម្រើស)',
+        'alert_message' => 'សារ Alert (ជាជម្រើស)',
+        'pending_alert_message' => 'សារ Alert ពេលកំពុងរង់ចាំ (ជាជម្រើស)',
         'unpaid_status_message' => 'សារស្ថានភាពបន្ទាប់នៅក្នុងមុឺនុយ បញ្ជីស្ថានភាពបង់ប្រាក់ (ជាជម្រើស)',
         'paid_status_message' => 'សារស្ថានភាព (ជាជម្រើស)',
         'waiting_result_status_message' => 'សារស្ថានភាពបន្ទាប់នៅក្នុងមុឺនុយស្ថិតិបេក្ខជន (ជាជម្រើស)',
@@ -65,10 +67,12 @@ return [
         'stage_name' => 'ឧទាហរណ៍៖ ពិនិត្យពាក្យស្នើសុំ',
         'automatic_role' => 'ស្វ័យប្រវត្តិ',
         'status_message' => 'ឧទាហរណ៍៖ កំពុងពិនិត្យ',
+        'alert_message' => 'ឧទាហរណ៍៖ បានអនុវត្តដោយជោគជ័យ។',
+        'pending_alert_message' => 'ឧទាហរណ៍៖ បានកំណត់លទ្ធផលឱ្យកំពុងរង់ចាំ។',
         'notification_message' => 'ឧទាហរណ៍៖ ឯកសាររបស់អ្នកកំពុងត្រូវបានពិនិត្យ។',
         'submission_status' => 'ឧទាហរណ៍៖ បានដាក់ពាក្យស្នើសុំ និងកំពុងរង់ចាំការពិនិត្យ',
         'submission_candidate_notification' => 'ឧទាហរណ៍៖ ពាក្យស្នើសុំរបស់អ្នកត្រូវបានដាក់ស្នើដោយជោគជ័យ។',
-        'submission_staff_notification' => 'ឧទាហរណ៍៖ មានពាក្យស្នើសុំថ្មីសម្រាប់ពិនិត្យ។',
+        'submission_staff_notification' => 'ឧទាហរណ៍៖ :candidate បានដាក់ពាក្យ :form។',
         'staff_recipient_ids' => 'ជ្រើសរើសអ្នកប្រើប្រាស់ប្រព័ន្ធ',
         'staff_recipient_roles' => 'ជ្រើសរើសតួនាទី',
         'unpaid_status_message' => 'ឧទាហរណ៍៖ មិនទាន់បង់ប្រាក់',
@@ -77,34 +81,34 @@ return [
             'payment' => [
                 'status_message' => 'ឧទាហរណ៍៖ បានបង់ប្រាក់រួចរាល់',
                 'notification_message' => 'ឧទាហរណ៍៖ ព័ត៌មានបង់ប្រាក់របស់អ្នកត្រូវបានធ្វើបច្ចុប្បន្នភាព។',
-                'staff_notification_message' => 'ឧទាហរណ៍៖ ការបង់ប្រាក់សម្រាប់ពាក្យស្នើសុំមួយត្រូវបានធ្វើបច្ចុប្បន្នភាព។',
+                'staff_notification_message' => 'ឧទាហរណ៍៖ :candidate បានបង់ប្រាក់សម្រាប់ :form រួចរាល់។',
             ],
             'awaiting_results' => [
                 'status_message' => 'ឧទាហរណ៍៖ បានជាប់',
                 'notification_message' => 'ឧទាហរណ៍៖ សូមពិនិត្យលទ្ធផលពាក្យស្នើសុំរបស់អ្នក។',
-                'staff_notification_message' => 'ឧទាហរណ៍៖ លទ្ធផលពាក្យស្នើសុំមួយត្រូវបានធ្វើបច្ចុប្បន្នភាព។',
+                'staff_notification_message' => 'ឧទាហរណ៍៖ លទ្ធផល :form របស់ :candidate ត្រូវបានធ្វើបច្ចុប្បន្នភាព។',
             ],
             'completed' => [
                 'status_message' => 'ឧទាហរណ៍៖ បានបញ្ចប់',
                 'notification_message' => 'ឧទាហរណ៍៖ ដំណើរការពាក្យស្នើសុំរបស់អ្នកបានបញ្ចប់។',
-                'staff_notification_message' => 'ឧទាហរណ៍៖ ដំណើរការពាក្យស្នើសុំមួយបានបញ្ចប់។',
+                'staff_notification_message' => 'ឧទាហរណ៍៖ ដំណើរការ :form របស់ :candidate បានបញ្ចប់។',
             ],
         ],
         'review_actions' => [
             'accept' => [
                 'status_message' => 'ឧទាហរណ៍៖ បានពិនិត្យ',
                 'notification_message' => 'ឧទាហរណ៍៖ ពាក្យស្នើសុំរបស់អ្នកត្រូវបានពិនិត្យរួចរាល់។',
-                'staff_notification_message' => 'ឧទាហរណ៍៖ ពាក្យស្នើសុំមួយត្រូវបានពិនិត្យរួចរាល់។',
+                'staff_notification_message' => 'ឧទាហរណ៍៖ ពាក្យ :form របស់ :candidate ត្រូវបានពិនិត្យរួចរាល់។',
             ],
             'send_back' => [
                 'status_message' => 'ឧទាហរណ៍៖ បញ្ជូនត្រឡប់ដើម្បីកែតម្រូវ',
                 'notification_message' => 'ឧទាហរណ៍៖ សូមកែតម្រូវពាក្យស្នើសុំរបស់អ្នក ហើយដាក់ស្នើម្ដងទៀត។',
-                'staff_notification_message' => 'ឧទាហរណ៍៖ ពាក្យស្នើសុំមួយត្រូវបានបញ្ជូនត្រឡប់ដើម្បីកែតម្រូវ។',
+                'staff_notification_message' => 'ឧទាហរណ៍៖ ពាក្យ :form របស់ :candidate ត្រូវបានបញ្ជូនត្រឡប់ដើម្បីកែតម្រូវ។',
             ],
             'reject' => [
                 'status_message' => 'ឧទាហរណ៍៖ បានបដិសេធ',
                 'notification_message' => 'ឧទាហរណ៍៖ ពាក្យស្នើសុំរបស់អ្នកត្រូវបានបដិសេធ។',
-                'staff_notification_message' => 'ឧទាហរណ៍៖ ពាក្យស្នើសុំមួយត្រូវបានបដិសេធ។',
+                'staff_notification_message' => 'ឧទាហរណ៍៖ ពាក្យ :form របស់ :candidate ត្រូវបានបដិសេធ។',
             ],
         ],
     ],
@@ -128,8 +132,8 @@ return [
     ],
 
     'helpers' => [
+        'staff_message_placeholders' => ':candidate = ឈ្មោះបេក្ខជន; :form = ឈ្មោះទម្រង់ពាក្យស្នើសុំ។ ឧទាហរណ៍៖ :candidate បានដាក់ស្នើទម្រង់ :form។',
         'assigned_forms' => 'ទម្រង់ដែលប្រើដំណើរការនេះ។ ទម្រង់មួយអាចភ្ជាប់ជាមួយគំរូតែមួយប៉ុណ្ណោះ។',
-        'waiting_result_status_message' => 'បង្ហាញក្នុងតារាងលទ្ធផលប្រឡងក្រោយបង់ប្រាក់ និងកំពុងរង់ចាំលទ្ធផល។ ទុកទទេដើម្បីប្រើស្ថានភាពកំពុងរង់ចាំលំនាំដើម។',
         'passed_result_status_message' => 'បង្ហាញក្នុងតារាងលទ្ធផលប្រឡង ក្រោយកំណត់លទ្ធផលថាបានជាប់។ ទុកទទេដើម្បីប្រើស្ថានភាពបានជាប់លំនាំដើម។',
     ],
 

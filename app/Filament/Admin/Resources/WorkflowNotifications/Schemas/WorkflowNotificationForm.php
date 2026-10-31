@@ -270,7 +270,7 @@ class WorkflowNotificationForm
                     ->placeholder(__('workflow_notifications.placeholders.submission_status'))
                     ->maxLength(255)
                     ->visible($isSubmissionStage)
-                    ->columnSpanFull(),
+                    ->columnSpan(1),
 
                 TextInput::make('status_message')
                     ->label(fn (Get $get): string => __($isPaymentStage($get)
@@ -290,7 +290,14 @@ class WorkflowNotificationForm
                             : __('workflow_notifications.placeholders.status_message')))
                     ->maxLength(255)
                     ->visible(fn (Get $get): bool => $handledByStaff($get) && ! $isReviewStage($get))
-                    ->columnSpanFull(),
+                    ->columnSpan(1),
+
+                TextInput::make('alert_message')
+                    ->label(__('workflow_notifications.fields.alert_message'))
+                    ->placeholder(__('workflow_notifications.placeholders.alert_message'))
+                    ->maxLength(255)
+                    ->visible(fn (Get $get): bool => filled($get('stage_type')) && ! $isReviewStage($get))
+                    ->columnSpan(1),
 
                 Select::make('responsible_role')
                     ->label(__('workflow_notifications.fields.responsible_role'))
@@ -326,6 +333,7 @@ class WorkflowNotificationForm
                             Textarea::make('submission_messages.staff_notification_message')
                                 ->label(__('workflow_notifications.fields.staff_notification_message'))
                                 ->placeholder(__('workflow_notifications.placeholders.submission_staff_notification'))
+                                ->helperText(__('workflow_notifications.helpers.staff_message_placeholders'))
                                 ->rows(1)
                                 ->autosize()
                                 ->maxLength(1000),
@@ -375,16 +383,24 @@ class WorkflowNotificationForm
                                 ->maxLength(255)
                                 ->visible($isPaymentStage),
 
-                            TextInput::make('result_statuses.pending_status_message')
-                                ->label(__('workflow_notifications.fields.waiting_result_status_message'))
-                                ->placeholder(__('workflow_notifications.placeholders.waiting_result_status_message'))
-                                ->helperText(__('workflow_notifications.helpers.waiting_result_status_message'))
-                                ->maxLength(255)
+                            Grid::make(['default' => 1, 'lg' => 2])
+                                ->schema([
+                                    TextInput::make('result_statuses.pending_status_message')
+                                        ->label(__('workflow_notifications.fields.waiting_result_status_message'))
+                                        ->placeholder(__('workflow_notifications.placeholders.waiting_result_status_message'))
+                                        ->maxLength(255),
+
+                                    TextInput::make('result_statuses.pending_alert_message')
+                                        ->label(__('workflow_notifications.fields.pending_alert_message'))
+                                        ->placeholder(__('workflow_notifications.placeholders.pending_alert_message'))
+                                        ->maxLength(255),
+                                ])
                                 ->visible($isAwaitingResultsStage),
 
                             Textarea::make('audience_messages.staff_notification_message')
                                 ->label(__('workflow_notifications.fields.staff_notification_message'))
                                 ->placeholder(fn (Get $get): string => __('workflow_notifications.placeholders.stage_audiences.'.$get('stage_type').'.staff_notification_message'))
+                                ->helperText(__('workflow_notifications.helpers.staff_message_placeholders'))
                                 ->rows(2)
                                 ->autosize()
                                 ->maxLength(1000),
@@ -430,10 +446,18 @@ class WorkflowNotificationForm
                     ->content(new HtmlString('<div class="font-semibold">'.e(__('workflow_notifications.review_actions.'.$action.'.title')).'</div>'))
                     ->hiddenLabel(),
 
-                TextInput::make('review_actions.'.$action.'.status_message')
-                    ->label(__('workflow_notifications.fields.shared_status_message'))
-                    ->placeholder(__('workflow_notifications.placeholders.review_actions.'.$action.'.status_message'))
-                    ->maxLength(255),
+                Grid::make(['default' => 1, 'lg' => 2])
+                    ->schema([
+                        TextInput::make('review_actions.'.$action.'.status_message')
+                            ->label(__('workflow_notifications.fields.shared_status_message'))
+                            ->placeholder(__('workflow_notifications.placeholders.review_actions.'.$action.'.status_message'))
+                            ->maxLength(255),
+
+                        TextInput::make('review_actions.'.$action.'.alert_message')
+                            ->label(__('workflow_notifications.fields.alert_message'))
+                            ->placeholder(__('workflow_notifications.placeholders.alert_message'))
+                            ->maxLength(255),
+                    ]),
 
                 Grid::make(['default' => 1, 'lg' => 2])
                     ->schema([
@@ -458,6 +482,7 @@ class WorkflowNotificationForm
                             Textarea::make('review_actions.'.$action.'.staff_notification_message')
                                 ->label(__('workflow_notifications.fields.staff_notification_message'))
                                 ->placeholder(__('workflow_notifications.placeholders.review_actions.'.$action.'.staff_notification_message'))
+                                ->helperText(__('workflow_notifications.helpers.staff_message_placeholders'))
                                 ->rows(2)
                                 ->autosize()
                                 ->maxLength(1000),
@@ -505,6 +530,7 @@ class WorkflowNotificationForm
             'stage_type' => null,
             'responsible_role' => [],
             'status_message' => null,
+            'alert_message' => null,
             'notification_message' => null,
             'review_actions' => [],
             'notification_channels' => ['system'],

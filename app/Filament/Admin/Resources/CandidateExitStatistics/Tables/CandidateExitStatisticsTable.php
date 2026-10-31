@@ -17,6 +17,7 @@ use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
 use App\Support\WorkflowStageMessages;
 use App\Support\WorkflowStageProgression;
+use App\Support\WorkflowActionFeedback;
 use Carbon\Carbon;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
@@ -214,10 +215,12 @@ class CandidateExitStatisticsTable
                             WorkflowStageMessages::notifyResultStage($entry);
                         }
 
-                        Notification::make()
-                            ->title(__('candidate_exit_statistics.notifications.passed'))
-                            ->success()
-                            ->send();
+                        WorkflowActionFeedback::send(
+                            Notification::make()->success(),
+                            $entry
+                                ? WorkflowActionFeedback::title($entry, 'passed', __('candidate_exit_statistics.notifications.passed'))
+                                : __('candidate_exit_statistics.notifications.passed'),
+                        );
                     }),
 
                 Action::make('edit_result')
@@ -241,11 +244,14 @@ class CandidateExitStatisticsTable
                         FilamentActionPermissions::abortUnlessCanForResource(CandidateExitStatisticResource::class, 'edit_result');
 
                         self::markCandidatePending($record);
+                        $entry = $record->customFormEntry?->fresh();
 
-                        Notification::make()
-                            ->title(__('candidate_exit_statistics.notifications.pending'))
-                            ->success()
-                            ->send();
+                        WorkflowActionFeedback::send(
+                            Notification::make()->success(),
+                            $entry
+                                ? WorkflowActionFeedback::title($entry, 'pending', __('candidate_exit_statistics.notifications.pending'))
+                                : __('candidate_exit_statistics.notifications.pending'),
+                        );
                     }),
 
             ])
@@ -266,8 +272,9 @@ class CandidateExitStatisticsTable
                         FilamentActionPermissions::abortUnlessCanForResource(CandidateExitStatisticResource::class, 'bulk_passed');
 
                         $passedCount = 0;
+                        $affectedEntries = [];
 
-                        $records->each(function (CandidateExitStatistic $record) use (&$passedCount): void {
+                        $records->each(function (CandidateExitStatistic $record) use (&$passedCount, &$affectedEntries): void {
                             if (
                                 strtolower((string) $record->candidate_status) !== 'pending'
                                 || ! self::canHandleResultStage($record)
@@ -280,14 +287,19 @@ class CandidateExitStatisticsTable
 
                             if ($entry !== null) {
                                 WorkflowStageMessages::notifyResultStage($entry);
+                                $affectedEntries[] = $entry;
                             }
                             $passedCount++;
                         });
 
-                        Notification::make()
-                            ->title(__('candidate_exit_statistics.notifications.bulk_passed', ['count' => $passedCount]))
-                            ->success()
-                            ->send();
+                        $summary = __('candidate_exit_statistics.notifications.bulk_passed', ['count' => $passedCount]);
+                        $title = count($affectedEntries) === $passedCount
+                            ? WorkflowActionFeedback::bulkTitle($affectedEntries, 'passed', $summary)
+                            : $summary;
+                        WorkflowActionFeedback::send(
+                            Notification::make()->body($title !== $summary ? $summary : null)->success(),
+                            $title,
+                        );
                     }),
 
                 BulkAction::make('bulk_pending')
@@ -306,8 +318,9 @@ class CandidateExitStatisticsTable
                         FilamentActionPermissions::abortUnlessCanForResource(CandidateExitStatisticResource::class, 'bulk_pending');
 
                         $editedCount = 0;
+                        $affectedEntries = [];
 
-                        $records->each(function (CandidateExitStatistic $record) use (&$editedCount): void {
+                        $records->each(function (CandidateExitStatistic $record) use (&$editedCount, &$affectedEntries): void {
                             if (
                                 strtolower((string) $record->candidate_status) !== 'passed'
                                 || ! self::canHandleResultStage($record)
@@ -316,14 +329,20 @@ class CandidateExitStatisticsTable
                             }
 
                             self::markCandidatePending($record);
+                            if ($entry = $record->customFormEntry?->fresh()) {
+                                $affectedEntries[] = $entry;
+                            }
                             $editedCount++;
                         });
 
-                        Notification::make()
-                            ->title(__('candidate_exit_statistics.notifications.pending'))
-                            ->body(__('candidate_exit_statistics.notifications.bulk_pending', ['count' => $editedCount]))
-                            ->success()
-                            ->send();
+                        WorkflowActionFeedback::send(
+                            Notification::make()
+                                ->body(__('candidate_exit_statistics.notifications.bulk_pending', ['count' => $editedCount]))
+                                ->success(),
+                            count($affectedEntries) === $editedCount
+                                ? WorkflowActionFeedback::bulkTitle($affectedEntries, 'pending', __('candidate_exit_statistics.notifications.pending'))
+                                : __('candidate_exit_statistics.notifications.pending'),
+                        );
                     }),
             ]);
     }

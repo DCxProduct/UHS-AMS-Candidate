@@ -43,6 +43,8 @@ return [
         'responsible_role' => 'Responsible Role',
         'status_message' => 'Candidate Status Message (Optional)',
         'shared_status_message' => 'Status Message (Optional)',
+        'alert_message' => 'Alert Message (Optional)',
+        'pending_alert_message' => 'Pending Alert Message (Optional)',
         'unpaid_status_message' => 'Next Status Message in Payment Status List (Optional)',
         'paid_status_message' => 'Status Message (Optional)',
         'waiting_result_status_message' => 'Next Status Message in Candidate Statistics (Optional)',
@@ -65,10 +67,12 @@ return [
         'stage_name' => 'Example: Review application',
         'automatic_role' => 'Automatic',
         'status_message' => 'Example: Under review',
+        'alert_message' => 'Example: Action completed successfully.',
+        'pending_alert_message' => 'Example: Result set to pending.',
         'notification_message' => 'Example: Your documents are being checked.',
         'submission_status' => 'Example: Application submitted and awaiting review',
         'submission_candidate_notification' => 'Example: Your application has been submitted successfully.',
-        'submission_staff_notification' => 'Example: A new application is ready for review.',
+        'submission_staff_notification' => 'Example: :candidate submitted :form.',
         'staff_recipient_ids' => 'Select system users',
         'staff_recipient_roles' => 'Select roles',
         'unpaid_status_message' => 'Example: Unpaid',
@@ -77,34 +81,34 @@ return [
             'payment' => [
                 'status_message' => 'Example: Paid successfully',
                 'notification_message' => 'Example: Your payment information has been updated.',
-                'staff_notification_message' => 'Example: An application payment has been updated.',
+                'staff_notification_message' => 'Example: :candidate completed payment for :form.',
             ],
             'awaiting_results' => [
                 'status_message' => 'Example: Passed',
                 'notification_message' => 'Example: Please check your application results.',
-                'staff_notification_message' => 'Example: An application has a results update.',
+                'staff_notification_message' => 'Example: Results for :candidate in :form have been updated.',
             ],
             'completed' => [
                 'status_message' => 'Example: Completed',
                 'notification_message' => 'Example: Your application process is complete.',
-                'staff_notification_message' => 'Example: An application process is complete.',
+                'staff_notification_message' => 'Example: :candidate completed :form.',
             ],
         ],
         'review_actions' => [
             'accept' => [
                 'status_message' => 'Example: Checked',
                 'notification_message' => 'Example: Your application has been checked.',
-                'staff_notification_message' => 'Example: An application has been checked.',
+                'staff_notification_message' => 'Example: The :form application from :candidate has been checked.',
             ],
             'send_back' => [
                 'status_message' => 'Example: Returned for correction',
                 'notification_message' => 'Example: Please correct your application and submit it again.',
-                'staff_notification_message' => 'Example: An application was returned for correction.',
+                'staff_notification_message' => 'Example: The :form application from :candidate was returned for correction.',
             ],
             'reject' => [
                 'status_message' => 'Example: Rejected',
                 'notification_message' => 'Example: Your application has been rejected.',
-                'staff_notification_message' => 'Example: An application has been rejected.',
+                'staff_notification_message' => 'Example: The :form application from :candidate has been rejected.',
             ],
         ],
     ],
@@ -128,8 +132,8 @@ return [
     ],
 
     'helpers' => [
+        'staff_message_placeholders' => ':candidate = candidate name; :form = application form name. Example: :candidate submitted :form.',
         'assigned_forms' => 'Forms that follow this workflow. A form can belong to only one template.',
-        'waiting_result_status_message' => 'Shown in the exam result table after payment while the result is pending. Leave blank to use the default Pending label.',
         'passed_result_status_message' => 'Shown in the exam result table after the candidate is marked Passed. Leave blank to use the default Passed label.',
     ],
 
