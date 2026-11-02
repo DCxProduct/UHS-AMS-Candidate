@@ -20,6 +20,7 @@ use App\Support\FilamentActionPermissions;
 use App\Support\FormEntryData;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
+use App\Support\MenuRecordVisibility;
 use App\Support\WorkflowNotificationStageSummary;
 use App\Models\GeoLocation;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
@@ -56,7 +57,10 @@ class CustomFormEntriesTable
             ->filtersFormColumns(4)
             ->defaultSort('created_at', 'desc')
             ->recordActions(self::getRecordActions())
-            ->modifyQueryUsing(fn (Builder $query) => self::applyQueryConstraints($query, $formId));
+            ->modifyQueryUsing(fn (Builder $query) => self::applyQueryConstraints(
+                MenuRecordVisibility::visible($query, CustomFormEntryResource::HIDDEN_FLAG),
+                $formId,
+            ));
     }
 
     public static function downloadExcel(iterable $records, ?array $columnKeys = null, ?string $formId = null, ?Table $table = null)

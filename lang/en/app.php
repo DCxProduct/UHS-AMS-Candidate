@@ -425,6 +425,7 @@ return [
     'export_data' => 'Export Data',
     'clear_data' => 'Clear Data',
     'clear_data_confirm' => 'Are you sure you want to clear this data?',
+    'clear_data_menu_confirm' => 'Are you sure you want to clear this data?',
     'create_form_entry' => 'Create :name',
     'no_entries' => 'No :name Entries',
     'yes' => 'Yes',
@@ -463,6 +464,5 @@ return [
     'login_wrong_password' => 'Your password is incorrect. Please try again.',
     'register_success_title' => 'Registration successful',
     'register_success_body' => 'Your account has been created successfully.',
-
 
 ];

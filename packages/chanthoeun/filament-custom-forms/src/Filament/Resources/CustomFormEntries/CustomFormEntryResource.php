@@ -5,6 +5,7 @@ namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries;
 use App\Models\ClosingDate;
 use App\Support\ClosingDateWorkflow;
 use App\Support\CustomFormRoleAccess;
+use App\Support\MenuRecordVisibility;
 use App\Support\UserTypeOptions;
 use BackedEnum;
 use BezhanSalleh\FilamentShield\Facades\FilamentShield;
@@ -22,6 +23,8 @@ use Illuminate\Support\Facades\Schema as DatabaseSchema;
 
 class CustomFormEntryResource extends Resource
 {
+    public const HIDDEN_FLAG = 'hidden_from_form_entries';
+
     public function getTitle(): string
     {
         return app()->getLocale() === 'km'
@@ -367,7 +370,7 @@ class CustomFormEntryResource extends Resource
             return '0';
         }
 
-        $count = static::getModel()::query()
+        $count = MenuRecordVisibility::visible(static::getModel()::query(), static::HIDDEN_FLAG)
             ->where('custom_form_id', $formId)
             ->where(function ($query): void {
                 $query

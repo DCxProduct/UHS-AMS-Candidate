@@ -11,6 +11,11 @@ class MefInvoiceCode extends Model
         'invoice_code',
     ];
 
+    protected function casts(): array
+    {
+        return ['records_cleared_at' => 'datetime'];
+    }
+
     public static function sanitizeInvoiceCode(mixed $value): string
     {
         return preg_replace('/[^\p{N}\p{P}\p{S}]/u', '', trim((string) $value)) ?? '';

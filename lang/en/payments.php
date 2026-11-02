@@ -139,6 +139,7 @@ return [
     ],
 
     'actions' => [
+        'clear_data_confirm' => 'Are you sure you want to clear this data?',
         'new' => 'Create New',
         'create_payment' => 'Create Record Payment',
         'record_payment' => 'Record Payment',

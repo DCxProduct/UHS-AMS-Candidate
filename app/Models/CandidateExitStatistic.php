@@ -32,6 +32,7 @@ class CandidateExitStatistic extends Model
             'date_of_birth' => 'date',
             'candidate_reviewed_at' => 'datetime',
             'hidden_from_statistics' => 'boolean',
+            'statistics_deleted_at' => 'datetime',
         ];
     }
 

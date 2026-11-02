@@ -23,6 +23,7 @@ class AuditLog extends Model
     protected function casts(): array
     {
         return [
+            'records_cleared_at' => 'datetime',
             'old_values' => 'array',
             'new_values' => 'array',
             'metadata' => 'array',

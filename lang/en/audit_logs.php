@@ -18,7 +18,7 @@ return [
         'clear_data' => 'Clear Data',
     ],
     'messages' => [
-        'clear_confirm' => 'This will permanently delete your audit log data.',
+        'clear_confirm' => 'This will permanently delete the filtered audit logs, including previously cleared records. Deleted audit history cannot be restored.',
     ],
     'values' => [
         'system' => 'System',

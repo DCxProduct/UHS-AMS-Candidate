@@ -14,6 +14,7 @@ use App\Support\FormEntryData;
 use App\Support\CaseInsensitiveSearch;
 use App\Support\PassedResultMenuOptions;
 use App\Support\LocalizedNumber;
+use App\Support\MenuRecordVisibility;
 use App\Support\UserTypeOptions;
 use App\Support\WorkflowStageMessages;
 use App\Support\WorkflowStageProgression;
@@ -796,13 +797,7 @@ class ExamResultsTable
             });
 
         if ($hiddenFlag) {
-            $query->where(function (Builder $query) use ($hiddenFlag): void {
-                $query->whereNull('data->' . $hiddenFlag)
-                    ->orWhere('data->' . $hiddenFlag, false)
-                    ->orWhere('data->' . $hiddenFlag, 'false')
-                    ->orWhere('data->' . $hiddenFlag, 0)
-                    ->orWhere('data->' . $hiddenFlag, '0');
-            });
+            MenuRecordVisibility::visible($query, $hiddenFlag);
         }
 
         return $query;

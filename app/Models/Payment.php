@@ -2,12 +2,12 @@
 
 namespace App\Models;
 
+use App\Support\PaymentValidation;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\QueryException;
-use App\Support\PaymentValidation;
 use Throwable;
 
 class Payment extends Model
@@ -36,6 +36,7 @@ class Payment extends Model
             'amount_usd' => 'decimal:2',
             'amount_kh' => 'decimal:2',
             'datetime_pay' => 'datetime',
+            'records_cleared_at' => 'datetime',
             'status' => 'boolean',
         ];
     }

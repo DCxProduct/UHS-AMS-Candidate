@@ -425,6 +425,7 @@ return [
     'export_data' => 'នាំចេញទិន្នន័យ',
     'clear_data' => 'សម្អាតទិន្នន័យ',
     'clear_data_confirm' => 'តើអ្នកចង់លុបទិន្នន័យទាំងនេះមែនទេ?',
+    'clear_data_menu_confirm' => 'តើអ្នកចង់លុបទិន្នន័យទាំងនេះមែនទេ?',
     'create_form_entry' => 'បង្កើត :name',
     'no_entries' => 'មិនមានទិន្នន័យ :name',
     'yes' => 'បាទ/ចាស',

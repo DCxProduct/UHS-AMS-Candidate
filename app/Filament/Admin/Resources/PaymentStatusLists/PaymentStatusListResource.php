@@ -3,13 +3,14 @@
 namespace App\Filament\Admin\Resources\PaymentStatusLists;
 
 use App\Enums\WorkflowStageType;
+use App\Filament\Admin\Resources\Payments\Schemas\PaymentForm;
 use App\Filament\Admin\Resources\PaymentStatusLists\Pages\CreatePaymentStatusList;
 use App\Filament\Admin\Resources\PaymentStatusLists\Pages\ListPaymentStatusLists;
-use App\Filament\Admin\Resources\Payments\Schemas\PaymentForm;
 use App\Filament\Admin\Resources\PaymentStatusLists\Tables\PaymentStatusListsTable;
 use App\Filament\Concerns\AdminOnly;
 use App\Models\PaymentStatusList;
 use App\Models\WorkflowNotification;
+use App\Support\MenuRecordVisibility;
 use App\Support\WorkflowProgressQuery;
 use BackedEnum;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
@@ -31,7 +32,7 @@ class PaymentStatusListResource extends Resource
 
     protected static ?string $slug = 'payment-status-lists';
 
-    protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-currency-dollar';
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-currency-dollar';
 
     protected static ?int $navigationSort = 2;
 
@@ -45,7 +46,7 @@ class PaymentStatusListResource extends Resource
         return number_format(static::getEloquentQuery()->count());
     }
 
-    public static function getNavigationGroup(): string | UnitEnum | null
+    public static function getNavigationGroup(): string|UnitEnum|null
     {
         return __('navigation.groups.cashier');
     }
@@ -151,13 +152,7 @@ class PaymentStatusListResource extends Resource
                     });
             })
             ->when(! $includeCleared, function (Builder $query): void {
-                $query->where(function (Builder $query): void {
-                    $query->whereNull('data->' . static::HIDDEN_FLAG)
-                        ->orWhere('data->' . static::HIDDEN_FLAG, false)
-                        ->orWhere('data->' . static::HIDDEN_FLAG, 'false')
-                        ->orWhere('data->' . static::HIDDEN_FLAG, 0)
-                        ->orWhere('data->' . static::HIDDEN_FLAG, '0');
-                });
+                MenuRecordVisibility::visible($query, static::HIDDEN_FLAG);
             })
             ->latest('id');
 

@@ -8,10 +8,12 @@ use App\Models\MefInvoiceCode;
 use App\Models\Payment;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\MefInvoiceCodeImportService;
 use App\Support\FilamentActionPermissions;
 use BezhanSalleh\FilamentShield\Facades\FilamentShield;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Once;
 use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -30,7 +32,7 @@ class MefInvoiceCodeClearDataTest extends TestCase
         $this->actingAs($this->staff());
     }
 
-    public function test_clear_without_selection_removes_all_codes_but_preserves_payments(): void
+    public function test_clear_without_selection_permanently_deletes_codes_but_preserves_unrelated_payments(): void
     {
         $first = $this->code('MEF1', 1);
         $second = $this->code('MEF2', 2);
@@ -47,6 +49,11 @@ class MefInvoiceCodeClearDataTest extends TestCase
             ->assertCanNotSeeTableRecords([$first, $second]);
 
         $this->assertDatabaseCount('mef_invoice_codes', 0);
+        $this->assertSame(0, MefInvoiceCodeResource::getEloquentQuery()->count());
+        $this->assertNull($first->fresh());
+        $this->assertNull($second->fresh());
+        $this->assertNull(MefInvoiceCode::resolveReceiptNumber($first->mef_code));
+        $this->assertNull(MefInvoiceCode::resolveReceiptNumber($first->invoice_code));
         $this->assertSame($paymentBefore, $payment->fresh()->getAttributes());
         $this->assertDatabaseCount('payments', 1);
     }
@@ -67,7 +74,7 @@ class MefInvoiceCodeClearDataTest extends TestCase
         $this->assertFalse(MefInvoiceCode::query()->whereKey($selected)->exists());
         $this->assertEqualsCanonicalizing(
             $codes->slice(1, 10)->pluck('id')->all(),
-            MefInvoiceCode::query()->pluck('id')->all(),
+            MefInvoiceCodeResource::getEloquentQuery()->pluck('id')->all(),
         );
     }
 
@@ -83,9 +90,11 @@ class MefInvoiceCodeClearDataTest extends TestCase
             ->searchTable('')
             ->assertCanSeeTableRecords([$keep]);
 
-        $this->assertDatabaseMissing('mef_invoice_codes', ['id' => $remove->getKey()]);
-        $this->assertDatabaseMissing('mef_invoice_codes', ['id' => $removeAlso->getKey()]);
+        $this->assertNull($remove->fresh());
+        $this->assertNull($removeAlso->fresh());
+        $this->assertNull($keep->fresh()->records_cleared_at);
         $this->assertDatabaseCount('mef_invoice_codes', 1);
+        $this->assertSame(1, MefInvoiceCodeResource::getEloquentQuery()->count());
     }
 
     public function test_select_all_can_exclude_rows_and_does_not_clear_outside_the_search(): void
@@ -98,10 +107,11 @@ class MefInvoiceCodeClearDataTest extends TestCase
             ->searchTable('MATCH')
             ->call('clearDataFromTableSelection', [], true, [$excluded->getKey()]);
 
-        $this->assertDatabaseMissing('mef_invoice_codes', ['id' => $remove->getKey()]);
-        $this->assertDatabaseHas('mef_invoice_codes', ['id' => $excluded->getKey()]);
-        $this->assertDatabaseHas('mef_invoice_codes', ['id' => $outside->getKey()]);
+        $this->assertNull($remove->fresh());
+        $this->assertNull($excluded->fresh()->records_cleared_at);
+        $this->assertNull($outside->fresh()->records_cleared_at);
         $this->assertDatabaseCount('mef_invoice_codes', 2);
+        $this->assertSame(2, MefInvoiceCodeResource::getEloquentQuery()->count());
     }
 
     public function test_stale_selected_rows_cannot_bypass_the_current_search(): void
@@ -116,6 +126,64 @@ class MefInvoiceCodeClearDataTest extends TestCase
         $this->assertDatabaseCount('mef_invoice_codes', 2);
         $this->assertDatabaseHas('mef_invoice_codes', ['id' => $inside->getKey()]);
         $this->assertDatabaseHas('mef_invoice_codes', ['id' => $outside->getKey()]);
+        $this->assertNull($inside->fresh()->records_cleared_at);
+        $this->assertNull($outside->fresh()->records_cleared_at);
+    }
+
+    public function test_clear_all_includes_previously_cleared_rows_and_keeps_the_search_boundary(): void
+    {
+        $visible = $this->code('MATCH-1', 1);
+        $archived = $this->code('MATCH-2', 2);
+        $archived->forceFill(['records_cleared_at' => now()->subMonth()])->save();
+        $outside = $this->code('OTHER-3', 3);
+        $outsideArchived = $this->code('OTHER-4', 4);
+        $outsideArchived->forceFill(['records_cleared_at' => now()->subMonth()])->save();
+
+        Livewire::test(ListMefInvoiceCodes::class)
+            ->searchTable('MATCH')
+            ->assertCanSeeTableRecords([$visible])
+            ->assertCanNotSeeTableRecords([$archived])
+            ->call('clearDataFromTableSelection')
+            ->searchTable('')
+            ->assertCanSeeTableRecords([$outside])
+            ->assertCanNotSeeTableRecords([$outsideArchived]);
+
+        $this->assertNull($visible->fresh());
+        $this->assertNull($archived->fresh());
+        $this->assertDatabaseCount('mef_invoice_codes', 2);
+        $this->assertNotNull($outsideArchived->fresh()->records_cleared_at);
+    }
+
+    public function test_selected_rows_do_not_expand_to_previously_cleared_unselected_rows(): void
+    {
+        $selected = $this->code('MEF1', 1);
+        $archived = $this->code('MEF2', 2);
+        $archived->forceFill(['records_cleared_at' => now()->subMonth()])->save();
+
+        Livewire::test(ListMefInvoiceCodes::class)
+            ->call('clearDataFromTableSelection', [$selected->id]);
+
+        $this->assertNull($selected->fresh());
+        $this->assertNotNull($archived->fresh());
+        $this->assertDatabaseCount('mef_invoice_codes', 1);
+    }
+
+    public function test_permanently_deleted_codes_can_be_imported_again_as_new_records(): void
+    {
+        $code = $this->code('MEF1', 1);
+        Livewire::test(ListMefInvoiceCodes::class)
+            ->call('clearDataFromTableSelection', [$code->getKey()]);
+        $this->assertNull($code->fresh());
+        $result = app(MefInvoiceCodeImportService::class)->import(UploadedFile::fake()->createWithContent(
+            'codes.csv',
+            "mef_code,invoice_code\nMEF1,120--1\n",
+        ));
+
+        $this->assertSame(['created' => 1, 'existing' => 0], $result);
+        $this->assertDatabaseCount('mef_invoice_codes', 1);
+        $this->assertSame(1, MefInvoiceCodeResource::getEloquentQuery()->count());
+        $this->assertFalse(MefInvoiceCode::query()->whereKey($code->id)->exists());
+        $this->assertSame('120--1', MefInvoiceCode::resolveReceiptNumber('MEF1'));
     }
 
     public function test_view_only_users_cannot_clear_codes_even_by_calling_the_method_directly(): void
