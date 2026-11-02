@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Enums\WorkflowStageType;
+use App\Models\AmsPaymentRequest;
 use App\Models\Payment;
 use App\Models\WorkflowNotification;
 use App\Services\AmsPaymentSync;
@@ -456,11 +457,12 @@ final class WorkflowStageProgression
 
     private static function latestPaymentIsPaid(CustomFormEntry $entry): bool
     {
-        return strtolower(trim((string) Payment::query()
-            ->where('custom_form_entry_id', $entry->getKey())
-            ->where('form_id', $entry->custom_form_id)
-            ->latest('id')
-            ->value('status_payt'))) === 'paid';
+        return AmsPaymentRequest::hasPaidForEntry($entry->getKey())
+            || strtolower(trim((string) Payment::query()
+                ->where('custom_form_entry_id', $entry->getKey())
+                ->where('form_id', $entry->custom_form_id)
+                ->latest('id')
+                ->value('status_payt'))) === 'paid';
     }
 
     private static function store(CustomFormEntry $entry, array $data, string $reviewStatus, string $action): void

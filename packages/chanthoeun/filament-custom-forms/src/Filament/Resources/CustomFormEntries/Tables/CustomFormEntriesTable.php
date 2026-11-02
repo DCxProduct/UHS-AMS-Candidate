@@ -655,6 +655,10 @@ class CustomFormEntriesTable
 
     protected static function entryHasPaidPayment($record): bool
     {
+        if (\App\Models\AmsPaymentRequest::hasPaidForEntry($record->getKey())) {
+            return true;
+        }
+
         if (! Schema::hasTable('payments')) {
             return false;
         }

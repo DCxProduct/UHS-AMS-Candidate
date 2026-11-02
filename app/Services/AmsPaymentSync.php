@@ -38,7 +38,8 @@ class AmsPaymentSync
         }
 
         // Never send an already collected local application for a second collection.
-        if (Payment::query()->where('custom_form_entry_id', $entry->getKey())->where('status_payt', 'paid')->exists()) {
+        if (AmsPaymentRequest::hasPaidForEntry($entry->getKey())
+            || Payment::query()->where('custom_form_entry_id', $entry->getKey())->where('status_payt', 'paid')->exists()) {
             return AmsPaymentRequest::query()->where('custom_form_entry_id', $entry->getKey())->first();
         }
 

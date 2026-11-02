@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\WorkflowStageType;
+use App\Filament\Admin\Resources\PaymentStatusLists\PaymentStatusListResource;
 use App\Models\AmsPaymentRequest;
 use App\Models\Payment;
 use App\Models\Role;
@@ -81,29 +82,21 @@ class AmsOtherFeePaymentCallbackTest extends TestCase
 
         $this->postCallback($body)->assertOk();
 
-        $payment = Payment::query()->sole();
-        $this->assertSame((int) $this->entry->getKey(), (int) $payment->custom_form_entry_id);
-        $this->assertSame((int) $this->candidate->getKey(), (int) $payment->users_id);
-        $this->assertSame((int) $this->form->getKey(), (int) $payment->form_id);
-        $this->assertSame('paid', $payment->status_payt);
-        $this->assertSame('ams', $payment->integration_source);
-        $this->assertSame('external-payment-1', $payment->integration_payment_id);
-        $this->assertSame('AMS Cashier', $payment->integration_cashier_name);
-        $this->assertNull($payment->received_by);
-        $this->assertNull($payment->amount_usd);
-        $this->assertSame('120000.00', $payment->amount_kh);
-        $this->assertSame('4100.00', $payment->exchange_rate);
-        $this->assertSame('AMS-RECEIPT-1', $payment->receipt_number);
-        $this->assertSame('2026-10-29 10:15:00', $payment->datetime_pay->format('Y-m-d H:i:s'));
-        $this->assertSame((int) $payment->getKey(), (int) $this->request->fresh()->local_payment_id);
+        $this->assertDatabaseCount('payments', 0);
+        $this->assertSame('paid', $this->request->fresh()->payment_status);
+        $this->assertNull($this->request->fresh()->local_payment_id);
         $this->assertSame('external-payment-1', $this->request->fresh()->external_payment_id);
         $this->assertSame(1, $this->request->fresh()->last_event_version);
+        $this->assertSame(['application_id' => (string) $this->entry->getKey()], $this->request->fresh()->payload);
         $this->assertSame(WorkflowStageType::AwaitingResults, WorkflowStageMessages::stageTypeFor($this->entry->fresh()));
         $this->assertSame('Paid successfully', WorkflowStageMessages::statusText($this->entry->fresh()));
         $this->assertSame(WorkflowStageType::Payment, WorkflowStageMessages::stageTypeFor($other->fresh()));
         $this->assertDatabaseMissing('payments', ['custom_form_entry_id' => $other->getKey()]);
         $this->assertSame('approved', $this->entry->fresh()->review_status);
         $this->assertSame('approved', data_get($this->entry->fresh()->data, 'registration_status'));
+        $this->actingAs($this->candidate);
+        $this->assertFalse(PaymentStatusListResource::getEloquentQuery()->whereKey($this->entry->getKey())->exists());
+        $this->assertTrue(PaymentStatusListResource::getEloquentQuery()->whereKey($other->getKey())->exists());
         Http::assertNothingSent();
         Mail::assertNothingSent();
     }
@@ -112,23 +105,23 @@ class AmsOtherFeePaymentCallbackTest extends TestCase
     {
         $paid = $this->payload();
         $this->postCallback($paid)->assertOk();
-        $paymentId = Payment::query()->sole()->getKey();
+        $requestId = $this->request->getKey();
         $notifications = $this->candidate->notifications()->count();
         $this->postCallback($paid)->assertOk();
         $this->postCallback($this->payload(['event_version' => 2, 'status' => 'unpaid']))->assertOk();
         $this->postCallback($paid)->assertOk();
 
-        $payment = Payment::query()->sole();
-        $this->assertSame($paymentId, $payment->getKey());
-        $this->assertSame('return', $payment->status_payt);
+        $this->assertDatabaseCount('payments', 0);
+        $this->assertSame($requestId, $this->request->fresh()->getKey());
+        $this->assertSame('unpaid', $this->request->fresh()->payment_status);
         $this->assertSame(2, $this->request->fresh()->last_event_version);
         $this->assertSame($notifications, $this->candidate->notifications()->count());
         $this->assertSame(WorkflowStageType::Payment, WorkflowStageMessages::stageTypeFor($this->entry->fresh()));
 
         $this->postCallback($this->payload(['event_version' => 3]))->assertOk();
-        $this->assertDatabaseCount('payments', 1);
-        $this->assertSame($paymentId, Payment::query()->sole()->getKey());
-        $this->assertSame('paid', Payment::query()->sole()->status_payt);
+        $this->assertDatabaseCount('payments', 0);
+        $this->assertSame($requestId, $this->request->fresh()->getKey());
+        $this->assertSame('paid', $this->request->fresh()->payment_status);
         $this->assertSame(3, $this->request->fresh()->last_event_version);
     }
 
@@ -140,6 +133,7 @@ class AmsOtherFeePaymentCallbackTest extends TestCase
 
         $this->assertDatabaseCount('payments', 0);
         $this->assertNull($this->request->fresh()->local_payment_id);
+        $this->assertSame('unpaid', $this->request->fresh()->payment_status);
         $this->assertSame(1, $this->request->fresh()->last_event_version);
         $this->assertSame(WorkflowStageType::Payment, WorkflowStageMessages::stageTypeFor($this->entry->fresh()));
         $this->assertDatabaseCount('notifications', 0);
@@ -233,7 +227,8 @@ class AmsOtherFeePaymentCallbackTest extends TestCase
         $stages[1]['data']['payment_source'] = 'system';
         $this->workflow->update(['stages' => $stages]);
         $this->postCallback($this->payload())->assertOk();
-        $this->assertDatabaseCount('payments', 1);
+        $this->assertDatabaseCount('payments', 0);
+        $this->assertSame('paid', $this->request->fresh()->payment_status);
         $this->assertSame(1, $this->request->fresh()->last_event_version);
 
         $new = $this->entry();
@@ -283,9 +278,43 @@ class AmsOtherFeePaymentCallbackTest extends TestCase
     {
         $this->postCallback($this->payload())->assertOk();
         $this->postCallback($this->payload(['event_version' => 2, 'payment_id' => 'different-payment']))->assertStatus(409);
-        $this->assertDatabaseCount('payments', 1);
-        $this->assertSame('external-payment-1', Payment::query()->sole()->integration_payment_id);
+        $this->assertDatabaseCount('payments', 0);
+        $this->assertSame('external-payment-1', $this->request->fresh()->external_payment_id);
+        $this->assertSame('paid', $this->request->fresh()->payment_status);
         $this->assertSame(1, $this->request->fresh()->last_event_version);
+    }
+
+    public function test_an_external_payment_id_cannot_be_reused_for_another_application(): void
+    {
+        $this->postCallback($this->payload())->assertOk();
+        $other = $this->entry();
+        $otherRequest = $this->requestFor($other, 'other-ams-request');
+
+        $this->postCallback($this->payload([
+            'application_id' => (string) $other->getKey(), 'ams_request_id' => 'other-ams-request',
+        ]))->assertStatus(409);
+
+        $this->assertSame('unpaid', $otherRequest->fresh()->payment_status);
+        $this->assertSame(0, $otherRequest->fresh()->last_event_version);
+        $this->assertDatabaseCount('payments', 0);
+    }
+
+    public function test_ams_receipt_numbers_are_independent_of_local_receipts(): void
+    {
+        $other = $this->entry();
+        $manual = Payment::query()->create([
+            'custom_form_entry_id' => $other->getKey(), 'users_id' => $this->candidate->getKey(),
+            'form_id' => $this->form->getKey(), 'receipt_number' => 'AMS-RECEIPT-1',
+            'status_payt' => 'paid', 'amount_usd' => 15, 'datetime_pay' => now(),
+        ]);
+        $before = $manual->getRawOriginal();
+
+        $this->postCallback($this->payload())->assertOk();
+
+        $this->assertSame($before, $manual->fresh()->getRawOriginal());
+        $this->assertDatabaseCount('payments', 1);
+        $this->assertDatabaseMissing('payments', ['custom_form_entry_id' => $this->entry->getKey()]);
+        $this->assertSame('paid', $this->request->fresh()->payment_status);
     }
 
     public function test_numeric_ams_ids_are_normalized_without_losing_exact_application_binding(): void
@@ -295,27 +324,26 @@ class AmsOtherFeePaymentCallbackTest extends TestCase
             'application_id' => $this->entry->getKey(), 'ams_request_id' => 42, 'payment_id' => 99,
         ]))->assertOk();
 
-        $payment = Payment::query()->sole();
-        $this->assertSame('99', $payment->integration_payment_id);
-        $this->assertSame((int) $this->entry->getKey(), (int) $payment->custom_form_entry_id);
+        $this->assertDatabaseCount('payments', 0);
+        $this->assertSame((int) $this->entry->getKey(), (int) $this->request->fresh()->custom_form_entry_id);
+        $this->assertSame('paid', $this->request->fresh()->payment_status);
         $this->assertSame('99', $this->request->fresh()->external_payment_id);
     }
 
     public function test_repayment_after_a_return_can_bind_a_new_receipt_but_an_old_receipt_cannot_reverse_it(): void
     {
         $this->postCallback($this->payload())->assertOk();
-        $paymentId = Payment::query()->sole()->getKey();
+        $requestId = $this->request->getKey();
         $this->postCallback($this->payload(['event_version' => 2, 'status' => 'unpaid']))->assertOk();
         $this->postCallback($this->payload([
             'event_version' => 3, 'payment_id' => 'replacement-payment', 'receipt_number' => 'AMS-RECEIPT-2',
         ]))->assertOk();
         $this->postCallback($this->payload(['event_version' => 4, 'status' => 'unpaid']))->assertStatus(409);
 
-        $payment = Payment::query()->sole();
-        $this->assertSame($paymentId, $payment->getKey());
-        $this->assertSame('paid', $payment->status_payt);
-        $this->assertSame('replacement-payment', $payment->integration_payment_id);
-        $this->assertSame('AMS-RECEIPT-2', $payment->receipt_number);
+        $this->assertDatabaseCount('payments', 0);
+        $this->assertSame($requestId, $this->request->fresh()->getKey());
+        $this->assertSame('paid', $this->request->fresh()->payment_status);
+        $this->assertSame('replacement-payment', $this->request->fresh()->external_payment_id);
         $this->assertSame(3, $this->request->fresh()->last_event_version);
     }
 
