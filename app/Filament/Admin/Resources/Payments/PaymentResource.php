@@ -9,11 +9,12 @@ use App\Filament\Admin\Resources\Payments\Tables\PaymentsTable;
 use App\Filament\Concerns\AdminOnly;
 use App\Models\Payment;
 use App\Models\User;
+use App\Support\MenuRecordVisibility;
 use BackedEnum;
-use Illuminate\Database\Eloquent\Builder;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Schema as DatabaseSchema;
 use UnitEnum;
 
@@ -25,7 +26,7 @@ class PaymentResource extends Resource
 
     protected static ?string $slug = 'payment-records';
 
-    protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-banknotes';
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-banknotes';
 
     protected static ?int $navigationSort = 3;
 
@@ -39,7 +40,7 @@ class PaymentResource extends Resource
         return number_format(static::getEloquentQuery()->count());
     }
 
-    public static function getNavigationGroup(): string | UnitEnum | null
+    public static function getNavigationGroup(): string|UnitEnum|null
     {
         return __('navigation.groups.cashier');
     }
@@ -67,6 +68,10 @@ class PaymentResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         $query = parent::getEloquentQuery();
+
+        if (MenuRecordVisibility::excludesCleared() && DatabaseSchema::hasColumn('payments', 'records_cleared_at')) {
+            $query->whereNull('payments.records_cleared_at');
+        }
 
         if (DatabaseSchema::hasColumn('payments', 'integration_source')) {
             $query->whereRaw("LOWER(COALESCE(payments.integration_source, '')) <> ?", ['ams']);

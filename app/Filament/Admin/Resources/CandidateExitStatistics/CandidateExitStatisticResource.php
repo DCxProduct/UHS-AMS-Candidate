@@ -6,6 +6,7 @@ use App\Filament\Admin\Resources\CandidateExitStatistics\Schemas\CandidateExitSt
 use App\Filament\Admin\Resources\CandidateExitStatistics\Tables\CandidateExitStatisticsTable;
 use App\Filament\Concerns\AdminOnly;
 use App\Models\CandidateExitStatistic;
+use App\Support\MenuRecordVisibility;
 use App\Support\StatisticsPaymentEligibility;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -64,11 +65,7 @@ class CandidateExitStatisticResource extends Resource
         return parent::getEloquentQuery()
             ->with('customFormEntry.customForm')
             ->whereHas('customFormEntry', fn (Builder $query): Builder => StatisticsPaymentEligibility::apply($query))
-            ->where(function (Builder $query): void {
-                $query
-                    ->whereNull('hidden_from_statistics')
-                    ->orWhere('hidden_from_statistics', false);
-            });
+            ->tap(fn (Builder $query): Builder => MenuRecordVisibility::visible($query, 'hidden_from_statistics'));
     }
 
     public static function form(Schema $schema): Schema

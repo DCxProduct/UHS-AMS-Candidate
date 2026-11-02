@@ -193,10 +193,7 @@ class CandidateEntranceStatisticsTable
 
                         Select::make('review_status')
                             ->label(__('candidate_entrance_statistics.review_status'))
-                            ->options([
-                                'pending' => self::statusLabel('pending'),
-                                'passed' => self::statusLabel('passed'),
-                            ])
+                            ->options(fn (): array => self::dynamicReviewStatusOptions())
                             ->native(false)
                             ->live(),
 
@@ -233,20 +230,7 @@ class CandidateEntranceStatisticsTable
                             )
                             ->when(
                                 filled($data['review_status'] ?? null),
-                                function (Builder $query) use ($data): Builder {
-                                    return match ($data['review_status']) {
-                                        'passed' => $query->where('data->candidate_status', 'passed'),
-
-                                        'pending' => $query->where(function (Builder $query): void {
-                                            $query
-                                                ->whereNull('data->candidate_status')
-                                                ->orWhere('data->candidate_status', '')
-                                                ->orWhere('data->candidate_status', 'pending');
-                                        }),
-
-                                        default => $query,
-                                    };
-                                }
+                                fn (Builder $query): Builder => self::applyReviewStatusFilter($query, (string) $data['review_status'])
                             )
                             ->when(
                                 filled($data['user_type'] ?? null),
@@ -651,7 +635,7 @@ class CandidateEntranceStatisticsTable
                 'label' => __('exam_results.date_of_birth'),
                 'field_key' => 'date_of_birth',
                 'value' => fn (CustomFormEntry $record): string => self::dateValue(self::entryValue($record, 'date_of_birth', $record->creator?->date_of_birth)),
-                'clean' => fn (CustomFormEntry $record): string => self::entryValue($record, 'date_of_birth', $record->creator?->date_of_birth),
+                'clean' => fn (CustomFormEntry $record): string => self::dateValue(self::entryValue($record, 'date_of_birth', $record->creator?->date_of_birth)),
             ],
             'data.candidate_status' => [
                 'label' => __('candidate_entrance_statistics.review_status_result'),
@@ -968,6 +952,41 @@ class CandidateEntranceStatisticsTable
         return CandidateTypeResolver::resolve($user, $data);
     }
 
+    protected static function dynamicReviewStatusOptions(): array
+    {
+        return CandidateEntranceStatisticResource::getEloquentQuery()
+            ->get()
+            ->map(fn (CustomFormEntry $record): string => self::resultStatusLabel($record, data_get($record->data, 'candidate_status') ?: 'pending'))
+            ->unique()
+            ->mapWithKeys(fn (string $label): array => ['label:'.sha1($label) => $label])
+            ->all();
+    }
+
+    protected static function applyReviewStatusFilter(Builder $query, string $status): Builder
+    {
+        if (str_starts_with($status, 'label:')) {
+            $ids = (clone $query)->get()
+                ->filter(function (CustomFormEntry $record) use ($status): bool {
+                    $label = self::resultStatusLabel($record, data_get($record->data, 'candidate_status') ?: 'pending');
+
+                    return 'label:'.sha1($label) === $status;
+                })
+                ->modelKeys();
+
+            return $query->whereKey($ids);
+        }
+
+        return match ($status) {
+            'passed' => $query->where('data->candidate_status', 'passed'),
+            'pending' => $query->where(function (Builder $query): void {
+                $query->whereNull('data->candidate_status')
+                    ->orWhere('data->candidate_status', '')
+                    ->orWhere('data->candidate_status', 'pending');
+            }),
+            default => $query,
+        };
+    }
+
     protected static function statusLabel(?string $state): string
     {
         return match ($state) {
@@ -1026,15 +1045,7 @@ class CandidateEntranceStatisticsTable
 
     protected static function dateValue(mixed $state): string
     {
-        if (blank($state) || $state === '-') {
-            return '-';
-        }
-
-        try {
-            return Carbon::parse($state)->format('d-m-Y');
-        } catch (\Throwable) {
-            return (string) $state;
-        }
+        return LocalizedDate::dayMonthYear($state);
     }
 
     protected static function resultStatusLabel(CustomFormEntry $record, ?string $status): string

@@ -20,6 +20,7 @@ use App\Support\FilamentActionPermissions;
 use App\Support\FormEntryData;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
+use App\Support\MenuRecordVisibility;
 use App\Support\WorkflowNotificationStageSummary;
 use App\Models\GeoLocation;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
@@ -56,7 +57,10 @@ class CustomFormEntriesTable
             ->filtersFormColumns(4)
             ->defaultSort('created_at', 'desc')
             ->recordActions(self::getRecordActions())
-            ->modifyQueryUsing(fn (Builder $query) => self::applyQueryConstraints($query, $formId));
+            ->modifyQueryUsing(fn (Builder $query) => self::applyQueryConstraints(
+                MenuRecordVisibility::visible($query, CustomFormEntryResource::HIDDEN_FLAG),
+                $formId,
+            ));
     }
 
     public static function downloadExcel(iterable $records, ?array $columnKeys = null, ?string $formId = null, ?Table $table = null)
@@ -145,6 +149,10 @@ class CustomFormEntriesTable
                 $column->clearCachedState();
 
                 $state = $column->getState();
+
+                if (in_array($key, ['data.date_of_birth', 'date_of_birth'], true)) {
+                    return LocalizedDate::dayMonthYear($state);
+                }
 
                 if (! $formatted) {
                     return self::normalizeExportValue($state);
@@ -406,7 +414,9 @@ class CustomFormEntriesTable
                 }
 
                 // Format Date Columns
-                if (in_array($field->type, ['date_picker', 'date_time_picker'], true)) {
+                if ($key === 'date_of_birth') {
+                    $column->formatStateUsing(fn (mixed $state): string => LocalizedDate::dayMonthYear($state));
+                } elseif (in_array($field->type, ['date_picker', 'date_time_picker'], true)) {
                     $column->formatStateUsing(function (mixed $state): string {
                         if (blank($state)) {
                             return '-';
@@ -801,7 +811,7 @@ class CustomFormEntriesTable
         return [
             TextColumn::make('data.first_name_kh')->label('First Name (Khmer)')->placeholder('-'),
             TextColumn::make('data.last_name_kh')->label('Last Name (Khmer)')->placeholder('-'),
-            TextColumn::make('data.date_of_birth')->label('Date of Birth')->formatStateUsing(fn (mixed $state): string => self::formatProfileDate($state))->placeholder('-'),
+            TextColumn::make('data.date_of_birth')->label('Date of Birth')->formatStateUsing(fn (mixed $state): string => LocalizedDate::dayMonthYear($state))->placeholder('-'),
             TextColumn::make('data.exam_period')->label('Exam Date')->formatStateUsing(fn (mixed $state): string => self::formatProfileDate($state))->placeholder('-'),
             TextColumn::make('data.exam_center')->label('Exam Center')->placeholder('-'),
             TextColumn::make('data.current_occupation')->label('Current Occupation')->placeholder('-'),
@@ -840,11 +850,7 @@ class CustomFormEntriesTable
 
                     Select::make('review_status')
                         ->label(__('candidate_entrance_statistics.review_status'))
-                        ->options([
-                            'pending' => __('candidate_entrance_statistics.statuses.pending'),
-                            'accepted' => __('candidate_entrance_statistics.statuses.accepted'),
-                            'rejected' => __('candidate_entrance_statistics.statuses.rejected'),
-                        ])
+                        ->options(fn (): array => self::dynamicReviewStatusOptions($formId))
                         ->native(false)
                         ->live(),
 
@@ -862,6 +868,14 @@ class CustomFormEntriesTable
                             filled($data['review_status'] ?? null),
                             function (Builder $query) use ($data): Builder {
                                 $status = $data['review_status'];
+
+                                if (str_starts_with($status, 'label:')) {
+                                    $ids = (clone $query)->with(['creator', 'customForm'])->get()
+                                        ->filter(fn ($record): bool => 'label:'.sha1(self::reviewStatusLabel($record)) === $status)
+                                        ->modelKeys();
+
+                                    return $query->whereKey($ids);
+                                }
 
                                 if ($status === 'accepted') {
                                     return $query->whereIn('review_status', ['accepted', 'passed', 'approved']);
@@ -897,6 +911,26 @@ class CustomFormEntriesTable
                         );
                 }),
         ];
+    }
+
+    protected static function dynamicReviewStatusOptions(?string $formId): array
+    {
+        return self::applyQueryConstraints(
+            MenuRecordVisibility::visible(CustomFormEntryResource::getEloquentQuery(), CustomFormEntryResource::HIDDEN_FLAG),
+            $formId,
+        )
+            ->get()
+            ->map(fn ($record): string => self::reviewStatusLabel($record))
+            ->unique()
+            ->mapWithKeys(fn (string $label): array => ['label:'.sha1($label) => $label])
+            ->all();
+    }
+
+    protected static function reviewStatusLabel($record): string
+    {
+        return (string) self::reviewStatusColumn()
+            ->record($record)
+            ->formatState(self::displayStatus($record));
     }
 
     protected static function dynamicRequestReviewedYears(?string $formId): array

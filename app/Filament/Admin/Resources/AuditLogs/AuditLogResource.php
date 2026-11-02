@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Resources\AuditLogs;
 use App\Filament\Admin\Resources\AuditLogs\Pages\ListAuditLogs;
 use App\Filament\Admin\Resources\AuditLogs\Tables\AuditLogsTable;
 use App\Models\AuditLog;
+use App\Support\MenuRecordVisibility;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -17,7 +18,7 @@ class AuditLogResource extends Resource
 {
     protected static ?string $model = AuditLog::class;
 
-    protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-clock';
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-clock';
 
     protected static ?int $navigationSort = 30;
 
@@ -26,7 +27,7 @@ class AuditLogResource extends Resource
         return __('audit_logs.navigation_label');
     }
 
-    public static function getNavigationGroup(): string | UnitEnum | null
+    public static function getNavigationGroup(): string|UnitEnum|null
     {
         return __('audit_logs.activity_navigation_label');
     }
@@ -58,6 +59,10 @@ class AuditLogResource extends Resource
         }
 
         return parent::getEloquentQuery()
+            ->when(
+                MenuRecordVisibility::excludesCleared() && SchemaFacade::hasColumn('audit_logs', 'records_cleared_at'),
+                fn (Builder $query): Builder => $query->whereNull('audit_logs.records_cleared_at'),
+            )
             ->with('actor');
     }
 

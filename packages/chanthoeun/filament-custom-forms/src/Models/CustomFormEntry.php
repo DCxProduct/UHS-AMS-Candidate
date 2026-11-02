@@ -20,6 +20,11 @@ class CustomFormEntry extends Model
     protected $casts = [
         'data' => 'array',
         'workflow_snapshot' => 'array',
+        'form_entries_deleted_at' => 'datetime',
+        'payment_status_lists_deleted_at' => 'datetime',
+        'entrance_statistics_deleted_at' => 'datetime',
+        'passed_entrance_deleted_at' => 'datetime',
+        'passed_exit_deleted_at' => 'datetime',
     ];
 
     protected static function booted(): void

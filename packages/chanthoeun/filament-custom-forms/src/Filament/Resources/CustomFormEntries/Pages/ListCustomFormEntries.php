@@ -3,7 +3,9 @@
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Pages;
 
 use App\Models\ClosingDate;
+use App\Support\AuditLogger;
 use App\Support\FilamentActionPermissions;
+use App\Support\MenuRecordVisibility;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Tables\CustomFormEntriesTable;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
@@ -24,8 +26,8 @@ class ListCustomFormEntries extends ListRecords
     {
         parent::mount();
 
-        $requestedFormId = \Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource::requestedFormId();
-        $this->activeFormId = \Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource::normalizeFormId($requestedFormId);
+        $requestedFormId = CustomFormEntryResource::requestedFormId();
+        $this->activeFormId = CustomFormEntryResource::normalizeFormId($requestedFormId);
 
         if ($requestedFormId !== null && $this->activeFormId === null) {
             abort(404);
@@ -54,7 +56,7 @@ class ListCustomFormEntries extends ListRecords
         */
         if (ClosingDate::shouldShowContact($customForm->id)) {
             $this->redirect(
-                url('/contact-us?form_id=' . $customForm->id)
+                url('/contact-us?form_id='.$customForm->id)
             );
 
             return;
@@ -158,7 +160,7 @@ class ListCustomFormEntries extends ListRecords
             'custom_form_id.value'
         );
 
-        $normalizedFilterFormId = \Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource::normalizeFormId($filterFormId);
+        $normalizedFilterFormId = CustomFormEntryResource::normalizeFormId($filterFormId);
 
         if ($normalizedFilterFormId) {
             $this->activeFormId = $normalizedFilterFormId;
@@ -176,7 +178,7 @@ class ListCustomFormEntries extends ListRecords
             ?? request()->query('form_id')
             ?? $this->activeFormId;
 
-        $this->activeFormId = \Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource::normalizeFormId($requestedFormId);
+        $this->activeFormId = CustomFormEntryResource::normalizeFormId($requestedFormId);
 
         if ($requestedFormId !== null && $this->activeFormId === null) {
             abort(404);
@@ -196,11 +198,9 @@ class ListCustomFormEntries extends ListRecords
                 return match ($slug) {
                     'profile' => __('navigation.forms.profile'),
 
-                    'national-examination-registration' =>
-                    __('navigation.national_examination_registration'),
+                    'national-examination-registration' => __('navigation.national_examination_registration'),
 
-                    default =>
-                    $customForm->display_name
+                    default => $customForm->display_name
                         ?: __('navigation.forms.untitled'),
                 };
             }
@@ -264,8 +264,8 @@ class ListCustomFormEntries extends ListRecords
                 ->visible(fn (): bool => FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'clear_data'))
                 ->requiresConfirmation()
                 ->modalHeading(__('app.clear_data'))
-                ->modalDescription(__('app.clear_data_confirm'))
-                ->modalSubmitActionLabel(__('app.delete'))
+                ->modalDescription(__('app.clear_data_menu_confirm'))
+                ->modalSubmitActionLabel(__('app.clear_data'))
                 ->modalCancelActionLabel(__('app.cancel'))
                 ->alpineClickHandler(<<<'JS'
                     const table = document.querySelector('.fi-ta');
@@ -304,8 +304,7 @@ class ListCustomFormEntries extends ListRecords
         array $selectedRecordKeys = [],
         bool $isTrackingDeselectedRecords = false,
         array $deselectedRecordKeys = [],
-    )
-    {
+    ) {
         return CustomFormEntriesTable::downloadExcel(
             $this->selectedOrFilteredQuery(
                 $selectedRecordKeys,
@@ -323,15 +322,20 @@ class ListCustomFormEntries extends ListRecords
         bool $isTrackingDeselectedRecords = false,
         array $deselectedRecordKeys = [],
     ): void {
-        $this->selectedOrFilteredQuery(
+        FilamentActionPermissions::abortUnlessCanForResource(CustomFormEntryResource::class, 'clear_data');
+
+        $query = $this->selectedOrFilteredQuery(
             $selectedRecordKeys,
             $isTrackingDeselectedRecords,
             $deselectedRecordKeys,
-        )->delete();
+        );
+        $count = MenuRecordVisibility::clearRecords($query, CustomFormEntryResource::HIDDEN_FLAG);
 
-        if ($this->activeFormId) {
-            app(\App\Services\CandidateIdGenerator::class)->resetFormSequenceIfEmpty($this->activeFormId);
-        }
+        AuditLogger::log(
+            action: 'cleared',
+            description: 'Cleared Form Entries from this list ('.$count.' records)',
+            metadata: ['module' => 'Form Entries', 'menu_only' => true],
+        );
 
         $this->selectedTableRecords = [];
         $this->deselectedTableRecords = [];
@@ -458,8 +462,7 @@ class ListCustomFormEntries extends ListRecords
                 $translated = match ($slug) {
                     'profile' => __('navigation.forms.profile'),
 
-                    'national-examination-registration' =>
-                    __('navigation.national_examination_registration'),
+                    'national-examination-registration' => __('navigation.national_examination_registration'),
 
                     default => $customForm->display_name,
                 };
@@ -502,8 +505,7 @@ class ListCustomFormEntries extends ListRecords
             })
             ->get()
             ->contains(
-                fn (CustomFormEntry $entry): bool =>
-                ! $this->isDraftEntry($entry)
+                fn (CustomFormEntry $entry): bool => ! $this->isDraftEntry($entry)
             );
     }
 

@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
-use App\Filament\Admin\Resources\PaymentStatusLists\PaymentStatusListResource;
+use App\Filament\Admin\Resources\Payments\Pages\ListPayments;
+use App\Filament\Admin\Resources\Payments\PaymentResource;
 use App\Filament\Admin\Resources\PaymentStatusLists\Pages\ListPaymentStatusLists;
+use App\Filament\Admin\Resources\PaymentStatusLists\PaymentStatusListResource;
 use App\Filament\Pages\Dashboard;
 use App\Filament\Widgets\AdminStatsOverview;
 use App\Filament\Widgets\CashierStatsOverview;
@@ -14,6 +16,7 @@ use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\DataProvider;
 use ReflectionMethod;
@@ -64,7 +67,7 @@ class CashierReviewedDashboardTest extends TestCase
             __('dashboard.paid_records'),
             __('dashboard.unpaid_statuses'),
         ], array_map(fn ($stat) => $stat->getLabel(), $stats));
-        $this->assertSame(['4', '2', '2'], array_map(fn ($stat) => $stat->getValue(), $stats));
+        $this->assertSame(['3', '2', '1'], array_map(fn ($stat) => $stat->getValue(), $stats));
         $this->assertNotContains(__('dashboard.payment_records'), array_map(fn ($stat) => $stat->getLabel(), $stats));
         $this->assertNotContains(__('dashboard.cashier_reviewed_applicants'), array_map(fn ($stat) => $stat->getLabel(), $stats));
 
@@ -79,67 +82,125 @@ class CashierReviewedDashboardTest extends TestCase
             ->assertSee(__('dashboard.unpaid_statuses'));
 
         $this->pay($passed);
-        $this->assertSame(['4', '3', '1'], array_map(fn ($stat) => $stat->getValue(), $this->stats()));
+        $this->assertSame(['3', '3', '0'], array_map(fn ($stat) => $stat->getValue(), $this->stats()));
     }
 
     #[DataProvider('cashierRoles')]
-    public function test_all_dashboard_counts_survive_menu_clear_and_follow_new_applications_and_payments(string $role): void
+    public function test_dashboard_counts_follow_visible_payment_status_rows_and_new_data_without_changing_source_records(string $role): void
     {
         $cashier = $this->staff($role);
         $cashier->givePermissionTo(Permission::findOrCreate('ClearData:PaymentStatusList', 'web'));
         $this->actingAs($cashier);
-        $form = $this->form('cumulative-total');
+        $form = $this->form('menu-only-clear-total');
         $paid = $this->entry($form, 'approved');
         $unpaid = $this->entry($form, 'approved');
         $outsideFilter = $this->entry($this->form('outside-clear-filter'), 'approved');
         $this->pay($paid);
-        $paymentBefore = Payment::query()->sole()->getAttributes();
+        $paidPaymentId = Payment::query()->sole()->id;
+        $archivedBefore = (array) DB::table('cashier_dashboard_totals')->sole();
 
         $this->assertSame(['3', '1', '2'], array_map(fn ($stat) => $stat->getValue(), $this->stats()));
         $component = Livewire::test(ListPaymentStatusLists::class)
             ->assertCanSeeTableRecords([$paid, $unpaid, $outsideFilter])
             ->call('clearDataFromTableSelection', [$paid->getKey()])
-            ->assertCanNotSeeTableRecords([$paid])
-            ->assertCanSeeTableRecords([$unpaid, $outsideFilter]);
-
-        $this->assertTrue($paid->fresh()->data[PaymentStatusListResource::HIDDEN_FLAG]);
+            ->assertCanNotSeeTableRecords([$paid])->assertCanSeeTableRecords([$unpaid, $outsideFilter]);
+        $this->assertDatabaseHas('custom_form_entries', ['id' => $paid->id]);
+        $this->assertNotNull($paid->fresh()->payment_status_lists_deleted_at);
+        $this->assertDatabaseHas('payments', ['id' => $paidPaymentId, 'status_payt' => 'paid']);
         $this->assertSame('2', PaymentStatusListResource::getNavigationBadge());
-        $this->assertSame(['3', '1', '2'], array_map(fn ($stat) => $stat->getValue(), $this->stats()));
+        $this->assertSame(['2', '1', '2'], array_map(fn ($stat) => $stat->getValue(), $this->stats()));
 
         $component->set('tableFilters.payment_status_list_filters.form_id', (string) $form->getKey())
-            ->assertCanSeeTableRecords([$unpaid])
-            ->assertCanNotSeeTableRecords([$outsideFilter])
-            ->call('clearDataFromTableSelection', [], true, [])
-            ->assertCanNotSeeTableRecords([$paid, $unpaid]);
-
-        $this->assertTrue($unpaid->fresh()->data[PaymentStatusListResource::HIDDEN_FLAG]);
-        $this->assertArrayNotHasKey(PaymentStatusListResource::HIDDEN_FLAG, $outsideFilter->fresh()->data);
+            ->assertCanSeeTableRecords([$unpaid])->assertCanNotSeeTableRecords([$outsideFilter])
+            ->call('clearDataFromTableSelection', [], true, [])->assertCanNotSeeTableRecords([$paid, $unpaid]);
+        $this->assertDatabaseHas('custom_form_entries', ['id' => $unpaid->id]);
+        $this->assertNotNull($unpaid->fresh()->payment_status_lists_deleted_at);
+        $this->assertDatabaseHas('custom_form_entries', ['id' => $outsideFilter->id]);
         $this->assertSame('1', PaymentStatusListResource::getNavigationBadge());
-        $this->assertSame(['3', '1', '2'], array_map(fn ($stat) => $stat->getValue(), $this->stats()));
-
-        $this->entry($form, 'approved');
-        $this->assertSame(['4', '1', '3'], array_map(fn ($stat) => $stat->getValue(), $this->stats()));
-        $this->assertSame('2', PaymentStatusListResource::getNavigationBadge());
-        $this->assertSame($paymentBefore, Payment::query()->sole()->getAttributes());
-        $this->assertDatabaseCount('custom_form_entries', 4);
-
-        Livewire::test(ListPaymentStatusLists::class)
-            ->call('clearDataFromTableSelection', [], true, [])
-            ->assertCanNotSeeTableRecords([$paid, $unpaid, $outsideFilter]);
-        $this->assertSame('0', PaymentStatusListResource::getNavigationBadge());
-        $this->assertSame(['4', '1', '3'], array_map(fn ($stat) => $stat->getValue(), $this->stats()));
-        $this->assertSame($paymentBefore, Payment::query()->sole()->getAttributes());
-
-        $this->pay($unpaid);
-        $this->assertSame(['4', '2', '2'], array_map(fn ($stat) => $stat->getValue(), $this->stats()));
-        $this->assertSame('0', PaymentStatusListResource::getNavigationBadge());
+        $this->assertSame(['1', '1', '1'], array_map(fn ($stat) => $stat->getValue(), $this->stats()));
 
         $newPaid = $this->entry($form, 'approved');
+        $this->assertSame(['2', '1', '2'], array_map(fn ($stat) => $stat->getValue(), $this->stats()));
         $this->pay($newPaid);
-        $this->assertSame(['5', '3', '2'], array_map(fn ($stat) => $stat->getValue(), $this->stats()));
-        $this->entry($form, 'approved');
-        $this->assertSame(['6', '3', '3'], array_map(fn ($stat) => $stat->getValue(), $this->stats()));
-        $this->assertSame('2', PaymentStatusListResource::getNavigationBadge());
+        $this->assertSame(['2', '2', '1'], array_map(fn ($stat) => $stat->getValue(), $this->stats()));
+        $newUnpaid = $this->entry($form, 'approved');
+        $this->assertSame(['3', '2', '2'], array_map(fn ($stat) => $stat->getValue(), $this->stats()));
+
+        Livewire::test(ListPaymentStatusLists::class)->call('clearDataFromTableSelection', [], true, [])
+            ->assertCanNotSeeTableRecords([$outsideFilter, $newPaid, $newUnpaid]);
+        $this->assertSame('0', PaymentStatusListResource::getNavigationBadge());
+        $this->assertSame(['0', '2', '0'], array_map(fn ($stat) => $stat->getValue(), $this->stats()));
+        $this->assertDatabaseCount('custom_form_entries', 5);
+        $this->assertDatabaseCount('payments', 2);
+        $this->assertSame($archivedBefore, (array) DB::table('cashier_dashboard_totals')->sole());
+        Livewire::test(ListPaymentStatusLists::class)->call('clearDataFromTableSelection');
+        $this->assertSame(['0', '2', '0'], $this->totals());
+        $this->assertDatabaseHas('custom_forms', ['id' => $form->id]);
+        $this->assertDatabaseHas('users', ['id' => $cashier->id]);
+        $afterCleanup = $this->entry($form, 'approved');
+        $this->assertSame(['1', '2', '1'], array_map(fn ($stat) => $stat->getValue(), $this->stats()));
+        $this->pay($afterCleanup);
+        $this->assertSame(['1', '3', '0'], array_map(fn ($stat) => $stat->getValue(), $this->stats()));
+    }
+
+    public function test_payment_menu_clears_reduce_only_the_paid_card_and_repeated_clears_do_not_change_it_again(): void
+    {
+        $cashier = $this->staff('cashier_manager');
+        $cashier->givePermissionTo(Permission::findOrCreate('ClearData:Payment', 'web'));
+        $this->actingAs($cashier);
+        $paid = Payment::query()->create(['receipt_number' => 'MENU-PAID', 'status_payt' => 'paid', 'amount_usd' => 5, 'datetime_pay' => now()]);
+        $returned = Payment::query()->create(['receipt_number' => 'MENU-RETURNED', 'status_payt' => 'return', 'amount_usd' => 5, 'datetime_pay' => now()]);
+        $archivedBefore = (array) DB::table('cashier_dashboard_totals')->sole();
+        $this->assertSame(['0', '1', '0'], $this->totals());
+        $component = Livewire::test(ListPayments::class)->call('clearDataFromTableSelection')->assertCanNotSeeTableRecords([$paid, $returned]);
+        $after = Payment::query()->orderBy('id')->get()->map->getAttributes()->all();
+        $this->assertDatabaseCount('payments', 2);
+        $this->assertSame(['0', '0', '0'], $this->totals());
+        $this->travel(1)->hour();
+        $component->call('clearDataFromTableSelection')->call('clearDataFromTableSelection', [$paid->id]);
+        $this->assertSame($after, Payment::query()->orderBy('id')->get()->map->getAttributes()->all());
+        $this->assertSame(['0', '0', '0'], $this->totals());
+        $this->assertSame($archivedBefore, (array) DB::table('cashier_dashboard_totals')->sole());
+        Payment::query()->create(['receipt_number' => 'MENU-NEXT', 'status_payt' => 'paid', 'amount_usd' => 5, 'datetime_pay' => now()]);
+        $this->assertSame(['0', '1', '0'], $this->totals());
+    }
+
+    public function test_preexisting_historical_offsets_are_ignored_and_do_not_prevent_dashboard_counts_from_decreasing(): void
+    {
+        $cashier = $this->staff('cashier_manager');
+        $cashier->givePermissionTo(Permission::findOrCreate('ClearData:PaymentStatusList', 'web'));
+        $this->actingAs($cashier);
+        DB::table('cashier_dashboard_totals')->where('id', 1)->update(['applications' => 10, 'paid' => 4, 'unpaid' => 6]);
+        $form = $this->form('historical-offsets');
+        $paid = $this->entry($form, 'approved');
+        $unpaid = $this->entry($form, 'approved');
+        $this->pay($paid);
+        $this->assertSame(['2', '1', '1'], $this->totals());
+        Livewire::test(ListPaymentStatusLists::class)->call('clearDataFromTableSelection')->assertCanNotSeeTableRecords([$paid, $unpaid]);
+        $this->assertSame(['0', '1', '0'], $this->totals());
+        $this->assertSame(['id' => 1, 'applications' => 10, 'paid' => 4, 'unpaid' => 6], (array) DB::table('cashier_dashboard_totals')->sole());
+        $this->assertDatabaseCount('custom_form_entries', 2);
+        $this->assertDatabaseCount('payments', 1);
+    }
+
+    #[DataProvider('cashierRoles')]
+    public function test_paid_card_excludes_ams_receipts_and_is_zero_when_cashier_menus_are_empty(string $role): void
+    {
+        $cashier = $this->staff($role);
+        $cashier->givePermissionTo(Permission::findOrCreate('ClearData:Payment', 'web'));
+        $this->actingAs($cashier);
+        $local = Payment::query()->create(['receipt_number' => 'LOCAL-CARD', 'status_payt' => 'paid', 'amount_usd' => 5, 'datetime_pay' => now()]);
+        $ams = Payment::query()->create(['receipt_number' => 'AMS-CARD', 'status_payt' => 'paid', 'amount_usd' => 5, 'datetime_pay' => now()]);
+        $ams->forceFill(['integration_source' => 'ams'])->saveQuietly();
+        $this->assertSame('1', PaymentResource::getNavigationBadge());
+        $this->assertSame(['0', '1', '0'], $this->totals());
+        Livewire::test(ListPayments::class)->assertCanSeeTableRecords([$local])->assertCanNotSeeTableRecords([$ams])->call('clearDataFromTableSelection');
+        $this->assertSame('0', PaymentResource::getNavigationBadge());
+        $this->assertSame('0', PaymentStatusListResource::getNavigationBadge());
+        $this->assertSame(['0', '0', '0'], $this->totals());
+        $this->assertSame('paid', $local->fresh()->status_payt);
+        $this->assertSame('paid', $ams->fresh()->status_payt);
+        $this->assertNull($ams->fresh()->records_cleared_at);
     }
 
     public function test_cumulative_query_retains_application_owner_scope(): void
@@ -198,6 +259,11 @@ class CashierReviewedDashboardTest extends TestCase
             'amount_usd' => 5,
             'datetime_pay' => now(),
         ]);
+    }
+
+    private function totals(): array
+    {
+        return array_map(fn ($stat): string => (string) $stat->getValue(), $this->stats());
     }
 
     private function stats(): array

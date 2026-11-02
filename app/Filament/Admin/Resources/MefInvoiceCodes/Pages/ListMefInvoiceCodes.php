@@ -6,6 +6,7 @@ use App\Filament\Admin\Resources\MefInvoiceCodes\MefInvoiceCodeResource;
 use App\Services\MefInvoiceCodeImportService;
 use App\Support\AuditLogger;
 use App\Support\FilamentActionPermissions;
+use App\Support\MenuRecordVisibility;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Forms\Components\FileUpload;
@@ -65,8 +66,8 @@ class ListMefInvoiceCodes extends ListRecords
                 ->visible(fn (): bool => FilamentActionPermissions::canForResource(MefInvoiceCodeResource::class, 'clear_data'))
                 ->requiresConfirmation()
                 ->modalHeading(__('app.clear_data'))
-                ->modalDescription(__('app.clear_data_confirm'))
-                ->modalSubmitActionLabel(__('app.delete'))
+                ->modalDescription(__('mef_invoice_codes.messages.clear_confirm'))
+                ->modalSubmitActionLabel(__('app.clear_data'))
                 ->modalCancelActionLabel(__('app.cancel'))
                 ->alpineClickHandler(<<<'JS'
                     const table = document.querySelector('.fi-ta');
@@ -93,7 +94,7 @@ class ListMefInvoiceCodes extends ListRecords
     ): void {
         FilamentActionPermissions::abortUnlessCanForResource(MefInvoiceCodeResource::class, 'clear_data');
 
-        $query = $this->getFilteredTableQuery();
+        $query = MenuRecordVisibility::includingCleared(fn () => $this->getFilteredTableQuery());
 
         if ($isTrackingDeselectedRecords) {
             if (filled($deselectedRecordKeys)) {
@@ -103,8 +104,7 @@ class ListMefInvoiceCodes extends ListRecords
             $query->whereKey($selectedRecordKeys);
         }
 
-        $count = (clone $query)->count();
-        $query->delete();
+        $count = $query->toBase()->delete();
 
         AuditLogger::log(
             action: 'cleared',

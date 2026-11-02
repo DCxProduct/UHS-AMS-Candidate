@@ -47,16 +47,15 @@ class ClosingDateWorkflow
             Str::slug((string) $form->name),
         ];
 
-        $closingDate = ClosingDate::query()
-            ->where(function ($query) use ($typeKeys, $form): void {
+        $closingDate = ClosingDate::resolveDeadline(
+            ClosingDate::query()->where(function ($query) use ($typeKeys, $form): void {
                 $query
                     ->whereIn('type', $typeKeys)
                     ->orWhere('name', $form->name)
                     ->orWhere('name', $form->slug)
                     ->orWhere('name', Str::slug((string) $form->name));
             })
-            ->latest('id')
-            ->first();
+        );
 
         if (! $closingDate) {
             return self::openWithoutRule();
@@ -73,16 +72,15 @@ class ClosingDateWorkflow
 
         $type = trim((string) $type);
 
-        $closingDate = ClosingDate::query()
-            ->where(function ($query) use ($type): void {
+        $closingDate = ClosingDate::resolveDeadline(
+            ClosingDate::query()->where(function ($query) use ($type): void {
                 $query
                     ->where('type', $type)
                     ->orWhere('type', Str::slug($type))
                     ->orWhere('name', $type)
                     ->orWhere('name', Str::slug($type));
             })
-            ->latest('id')
-            ->first();
+        );
 
         if (! $closingDate) {
             return self::openWithoutRule();

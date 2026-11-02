@@ -7,6 +7,7 @@ use App\Filament\Admin\Resources\Payments\Tables\PaymentsTable;
 use App\Support\AuditLogger;
 use App\Support\FilamentActionPermissions;
 use App\Support\LocalizedNumber;
+use App\Support\MenuRecordVisibility;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
@@ -84,8 +85,8 @@ class ListPayments extends ListRecords
                 ->visible(fn (): bool => FilamentActionPermissions::canForResource(PaymentResource::class, 'clear_data'))
                 ->requiresConfirmation()
                 ->modalHeading(__('app.clear_data'))
-                ->modalDescription(__('app.clear_data_confirm'))
-                ->modalSubmitActionLabel(__('app.delete'))
+                ->modalDescription(__('payments.actions.clear_data_confirm'))
+                ->modalSubmitActionLabel(__('app.clear_data'))
                 ->modalCancelActionLabel(__('app.cancel'))
                 ->alpineClickHandler(<<<'JS'
                     const table = document.querySelector('.fi-ta');
@@ -294,14 +295,12 @@ class ListPayments extends ListRecords
             $isTrackingDeselectedRecords,
             $deselectedRecordKeys,
         );
-        $count = (clone $query)->count();
-
-        $query->delete();
+        $count = MenuRecordVisibility::clearPayments($query);
 
         AuditLogger::log(
             action: 'cleared',
-            description: 'Cleared Payments data ('.$count.' records)',
-            metadata: ['module' => 'Payments'],
+            description: 'Cleared Payments from this list ('.$count.' records)',
+            metadata: ['module' => 'Payments', 'menu_only' => true],
         );
 
         $this->selectedTableRecords = [];

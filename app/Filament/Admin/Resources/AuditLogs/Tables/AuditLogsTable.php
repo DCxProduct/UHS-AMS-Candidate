@@ -2,7 +2,7 @@
 
 namespace App\Filament\Admin\Resources\AuditLogs\Tables;
 
-use App\Models\AuditLog;
+use App\Filament\Admin\Resources\AuditLogs\AuditLogResource;
 use App\Models\SystemUser;
 use App\Models\User;
 use App\Support\LocalizedDate;
@@ -14,8 +14,8 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\HtmlString;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\HtmlString;
 
 class AuditLogsTable
 {
@@ -122,9 +122,9 @@ class AuditLogsTable
         }
 
         $key = str($value)->snake()->toString();
-        $translated = __('audit_logs.values.actions.' . $key);
+        $translated = __('audit_logs.values.actions.'.$key);
 
-        return $translated === 'audit_logs.values.actions.' . $key ? (string) $value : $translated;
+        return $translated === 'audit_logs.values.actions.'.$key ? (string) $value : $translated;
     }
 
     protected static function translateModule(?string $value): string
@@ -134,14 +134,14 @@ class AuditLogsTable
         }
 
         $key = str($value)->snake()->toString();
-        $translated = __('audit_logs.values.modules.' . $key);
+        $translated = __('audit_logs.values.modules.'.$key);
 
-        return $translated === 'audit_logs.values.modules.' . $key ? (string) $value : $translated;
+        return $translated === 'audit_logs.values.modules.'.$key ? (string) $value : $translated;
     }
 
     protected static function scopedQuery(): Builder
     {
-        return AuditLog::query();
+        return AuditLogResource::getEloquentQuery();
     }
 
     protected static function privilegedActivityQuery(Builder $query): Builder

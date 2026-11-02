@@ -6,10 +6,10 @@ use App\Filament\Admin\Resources\PaymentStatusLists\PaymentStatusListResource;
 use App\Filament\Admin\Resources\PaymentStatusLists\Tables\PaymentStatusListsTable;
 use App\Support\AuditLogger;
 use App\Support\FilamentActionPermissions;
+use App\Support\MenuRecordVisibility;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
-use Illuminate\Database\Eloquent\Model;
 
 class ListPaymentStatusLists extends ListRecords
 {
@@ -54,8 +54,8 @@ class ListPaymentStatusLists extends ListRecords
                 ->visible(fn (): bool => FilamentActionPermissions::canForResource(PaymentStatusListResource::class, 'clear_data'))
                 ->requiresConfirmation()
                 ->modalHeading(__('app.clear_data'))
-                ->modalDescription(__('app.clear_data_confirm'))
-                ->modalSubmitActionLabel(__('app.delete'))
+                ->modalDescription(__('app.clear_data_menu_confirm'))
+                ->modalSubmitActionLabel(__('app.clear_data'))
                 ->modalCancelActionLabel(__('app.cancel'))
                 ->alpineClickHandler(<<<'JS'
                     const table = document.querySelector('.fi-ta');
@@ -100,30 +100,18 @@ class ListPaymentStatusLists extends ListRecords
     ): void {
         FilamentActionPermissions::abortUnlessCanForResource(PaymentStatusListResource::class, 'clear_data');
 
-        $this->selectedOrFilteredQuery(
+        $query = $this->selectedOrFilteredQuery(
             $selectedRecordKeys,
             $isTrackingDeselectedRecords,
             $deselectedRecordKeys,
-        )->get()->each(function (Model $record): void {
-            $data = $record->data ?? [];
+        );
+        $count = MenuRecordVisibility::clearRecords($query, PaymentStatusListResource::HIDDEN_FLAG);
 
-            if (! is_array($data)) {
-                $data = [];
-            }
-
-            $data[PaymentStatusListResource::HIDDEN_FLAG] = true;
-
-            $record->forceFill([
-                'data' => $data,
-            ])->saveQuietly();
-
-            AuditLogger::log(
-                action: 'cleared',
-                auditable: $record,
-                description: 'Cleared from Payment Status List',
-                metadata: ['module' => 'Payment Status List'],
-            );
-        });
+        AuditLogger::log(
+            action: 'cleared',
+            description: 'Cleared Payment Status List from this list ('.$count.' records)',
+            metadata: ['module' => 'Payment Status List', 'menu_only' => true],
+        );
 
         $this->selectedTableRecords = [];
         $this->deselectedTableRecords = [];
@@ -136,8 +124,7 @@ class ListPaymentStatusLists extends ListRecords
         array $selectedRecordKeys = [],
         bool $isTrackingDeselectedRecords = false,
         array $deselectedRecordKeys = [],
-    )
-    {
+    ) {
         FilamentActionPermissions::abortUnlessCanForResource(PaymentStatusListResource::class, 'download_excel');
 
         $records = $this->selectedOrFilteredQuery(
@@ -150,7 +137,7 @@ class ListPaymentStatusLists extends ListRecords
 
         AuditLogger::log(
             action: 'downloaded',
-            description: 'Downloaded Payment Status List Excel (' . $records->count() . ' records)',
+            description: 'Downloaded Payment Status List Excel ('.$records->count().' records)',
             metadata: ['module' => 'Payment Status List'],
         );
 
@@ -164,8 +151,7 @@ class ListPaymentStatusLists extends ListRecords
         array $selectedRecordKeys = [],
         bool $isTrackingDeselectedRecords = false,
         array $deselectedRecordKeys = [],
-    )
-    {
+    ) {
         FilamentActionPermissions::abortUnlessCanForResource(PaymentStatusListResource::class, 'download_pdf');
 
         $records = $this->selectedOrFilteredQuery(
@@ -187,7 +173,7 @@ class ListPaymentStatusLists extends ListRecords
 
         AuditLogger::log(
             action: 'downloaded',
-            description: 'Downloaded Payment Status List PDF (' . $records->count() . ' records)',
+            description: 'Downloaded Payment Status List PDF ('.$records->count().' records)',
             metadata: ['module' => 'Payment Status List'],
         );
 

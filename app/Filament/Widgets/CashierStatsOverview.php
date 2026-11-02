@@ -2,8 +2,7 @@
 
 namespace App\Filament\Widgets;
 
-use App\Filament\Admin\Resources\PaymentStatusLists\PaymentStatusListResource;
-use App\Models\Payment;
+use App\Support\CashierDashboardTotals;
 use App\Support\StaffRoles;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
@@ -23,14 +22,10 @@ class CashierStatsOverview extends StatsOverviewWidget
 
     protected function getStats(): array
     {
-        $paymentLists = PaymentStatusListResource::getDashboardEloquentQuery()->count();
-        $paidRecords = Payment::query()
-            ->whereRaw('LOWER(COALESCE(status_payt, \'\')) = ?', ['paid'])
-            ->count();
-        $unpaidApplications = PaymentStatusListResource::getUnpaidEloquentQuery(includeCleared: true)->count();
+        $totals = CashierDashboardTotals::get();
 
         $stats = [
-            Stat::make(__('dashboard.payment_status_lists'), number_format($paymentLists))
+            Stat::make(__('dashboard.payment_status_lists'), number_format($totals['applications']))
                 ->icon('heroicon-m-currency-dollar')
                 ->description(__('dashboard.cashier_payment_status_lists_hint'))
                 ->color('info')
@@ -38,7 +33,7 @@ class CashierStatsOverview extends StatsOverviewWidget
                     'class' => 'uhs-admin-stat-card uhs-admin-stat-card--primary',
                 ]),
 
-            Stat::make(__('dashboard.paid_records'), number_format($paidRecords))
+            Stat::make(__('dashboard.paid_records'), number_format($totals['paid']))
                 ->icon('heroicon-m-check-badge')
                 ->description(__('dashboard.cashier_paid_records_hint'))
                 ->color('success')
@@ -46,7 +41,7 @@ class CashierStatsOverview extends StatsOverviewWidget
                     'class' => 'uhs-admin-stat-card uhs-admin-stat-card--success',
                 ]),
 
-            Stat::make(__('dashboard.unpaid_statuses'), number_format($unpaidApplications))
+            Stat::make(__('dashboard.unpaid_statuses'), number_format($totals['unpaid']))
                 ->icon('heroicon-m-clock')
                 ->description(__('dashboard.cashier_unpaid_statuses_hint'))
                 ->color('warning')

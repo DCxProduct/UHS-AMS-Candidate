@@ -6,9 +6,9 @@ use App\Filament\Admin\Resources\CandidateExitStatistics\CandidateExitStatisticR
 use App\Filament\Admin\Resources\CandidateExitStatistics\Tables\CandidateExitStatisticsTable;
 use App\Support\AuditLogger;
 use App\Support\FilamentActionPermissions;
+use App\Support\MenuRecordVisibility;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\ListRecords;
-use Illuminate\Database\Eloquent\Model;
 
 class ListCandidateExitStatistics extends ListRecords
 {
@@ -38,8 +38,8 @@ class ListCandidateExitStatistics extends ListRecords
                 ->visible(fn (): bool => FilamentActionPermissions::canForResource(CandidateExitStatisticResource::class, 'clear_data'))
                 ->requiresConfirmation()
                 ->modalHeading(__('app.clear_data'))
-                ->modalDescription(__('app.clear_data_confirm'))
-                ->modalSubmitActionLabel(__('app.delete'))
+                ->modalDescription(__('app.clear_data_menu_confirm'))
+                ->modalSubmitActionLabel(__('app.clear_data'))
                 ->modalCancelActionLabel(__('app.cancel'))
                 ->alpineClickHandler(<<<'JS'
                     const table = document.querySelector('.fi-ta');
@@ -100,22 +100,18 @@ class ListCandidateExitStatistics extends ListRecords
     ): void {
         FilamentActionPermissions::abortUnlessCanForResource(CandidateExitStatisticResource::class, 'clear_data');
 
-        $this->selectedOrFilteredQuery(
+        $query = $this->selectedOrFilteredQuery(
             $selectedRecordKeys,
             $isTrackingDeselectedRecords,
             $deselectedRecordKeys,
-        )->get()->each(function (Model $record): void {
-            $record->forceFill([
-                'hidden_from_statistics' => true,
-            ])->saveQuietly();
+        );
+        $count = MenuRecordVisibility::clearRecords($query, 'hidden_from_statistics');
 
-            AuditLogger::log(
-                action: 'cleared',
-                auditable: $record,
-                description: 'Cleared from Candidate Entrance Statistics',
-                metadata: ['module' => 'Candidate Entrance Statistics'],
-            );
-        });
+        AuditLogger::log(
+            action: 'cleared',
+            description: 'Cleared Candidate Exit Statistics from this list ('.$count.' records)',
+            metadata: ['module' => 'Candidate Exit Statistics', 'menu_only' => true],
+        );
 
         $this->selectedTableRecords = [];
         $this->deselectedTableRecords = [];

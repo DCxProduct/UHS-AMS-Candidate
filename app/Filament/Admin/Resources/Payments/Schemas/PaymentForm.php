@@ -473,7 +473,7 @@ class PaymentForm
 
     protected static function unpaidCandidateOptions(): array
     {
-        return PaymentStatusListResource::getUnpaidEloquentQuery()
+        return PaymentStatusListResource::getUnpaidEloquentQuery(includeCleared: true)
             ->with(['creator'])
             ->get()
             ->map(function ($record): array {
@@ -498,7 +498,7 @@ class PaymentForm
 
     protected static function unpaidFormOptions(): array
     {
-        return PaymentStatusListResource::getUnpaidEloquentQuery()
+        return PaymentStatusListResource::getUnpaidEloquentQuery(includeCleared: true)
             ->with(['customForm'])
             ->get()
             ->filter(fn ($record): bool => filled($record->custom_form_id) && $record->customForm !== null)

@@ -5,8 +5,9 @@ namespace App\Filament\Admin\Resources\CandidateEntranceStatistics;
 use App\Filament\Admin\Resources\CandidateEntranceStatistics\Tables\CandidateEntranceStatisticsTable;
 use App\Filament\Concerns\AdminOnly;
 use App\Models\CandidateEntranceStatistic;
-use App\Support\StatisticsPaymentEligibility;
+use App\Support\MenuRecordVisibility;
 use App\Support\StatisticsMenuOptions;
+use App\Support\StatisticsPaymentEligibility;
 use App\Support\WorkflowProgressQuery;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -24,7 +25,7 @@ class CandidateEntranceStatisticResource extends Resource
 
     protected static ?string $slug = 'entrance-exam-statistics';
 
-    protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-chart-bar';
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-chart-bar';
 
     protected static ?int $navigationSort = 30;
 
@@ -93,13 +94,7 @@ class CandidateEntranceStatisticResource extends Resource
                     ->orWhere('data->candidate_status', 'pending')
                     ->orWhere('data->candidate_status', 'passed');
             })
-            ->where(function (Builder $query): void {
-                $query->whereNull('data->' . static::HIDDEN_FLAG)
-                    ->orWhere('data->' . static::HIDDEN_FLAG, false)
-                    ->orWhere('data->' . static::HIDDEN_FLAG, 'false')
-                    ->orWhere('data->' . static::HIDDEN_FLAG, 0)
-                    ->orWhere('data->' . static::HIDDEN_FLAG, '0');
-            })
+            ->tap(fn (Builder $query): Builder => MenuRecordVisibility::visible($query, static::HIDDEN_FLAG))
             ->latest('id');
     }
 

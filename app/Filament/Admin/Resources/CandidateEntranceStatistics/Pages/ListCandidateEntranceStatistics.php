@@ -6,10 +6,10 @@ use App\Filament\Admin\Resources\CandidateEntranceStatistics\CandidateEntranceSt
 use App\Filament\Admin\Resources\CandidateEntranceStatistics\Tables\CandidateEntranceStatisticsTable;
 use App\Support\AuditLogger;
 use App\Support\FilamentActionPermissions;
+use App\Support\MenuRecordVisibility;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Contracts\Support\Htmlable;
-use Illuminate\Database\Eloquent\Model;
 
 class ListCandidateEntranceStatistics extends ListRecords
 {
@@ -38,7 +38,7 @@ class ListCandidateEntranceStatistics extends ListRecords
         $this->flushCachedTableRecords();
     }
 
-    public function getTitle(): string | Htmlable
+    public function getTitle(): string|Htmlable
     {
         return __('candidate_entrance_statistics.list_title');
     }
@@ -72,8 +72,8 @@ class ListCandidateEntranceStatistics extends ListRecords
                 ->visible(fn (): bool => FilamentActionPermissions::canForResource(CandidateEntranceStatisticResource::class, 'clear_data'))
                 ->requiresConfirmation()
                 ->modalHeading(__('app.clear_data'))
-                ->modalDescription(__('app.clear_data_confirm'))
-                ->modalSubmitActionLabel(__('app.delete'))
+                ->modalDescription(__('app.clear_data_menu_confirm'))
+                ->modalSubmitActionLabel(__('app.clear_data'))
                 ->modalCancelActionLabel(__('app.cancel'))
                 ->alpineClickHandler(<<<'JS'
                     const table = document.querySelector('.fi-ta');
@@ -106,8 +106,7 @@ class ListCandidateEntranceStatistics extends ListRecords
         array $selectedRecordKeys = [],
         bool $isTrackingDeselectedRecords = false,
         array $deselectedRecordKeys = [],
-    )
-    {
+    ) {
         FilamentActionPermissions::abortUnlessCanForResource(CandidateEntranceStatisticResource::class, 'download_excel');
 
         $selectedRecordKeys = array_values(array_filter($selectedRecordKeys));
@@ -135,7 +134,7 @@ class ListCandidateEntranceStatistics extends ListRecords
 
         AuditLogger::log(
             action: 'downloaded',
-            description: 'Downloaded Entrance Exam Statistics Excel (' . $records->count() . ' records)',
+            description: 'Downloaded Entrance Exam Statistics Excel ('.$records->count().' records)',
             metadata: ['module' => 'Entrance Exam Statistics'],
         );
 
@@ -149,30 +148,18 @@ class ListCandidateEntranceStatistics extends ListRecords
     ): void {
         FilamentActionPermissions::abortUnlessCanForResource(CandidateEntranceStatisticResource::class, 'clear_data');
 
-        $this->selectedOrFilteredQuery(
+        $query = $this->selectedOrFilteredQuery(
             $selectedRecordKeys,
             $isTrackingDeselectedRecords,
             $deselectedRecordKeys,
-        )->get()->each(function (Model $record): void {
-            $data = $record->data ?? [];
+        );
+        $count = MenuRecordVisibility::clearRecords($query, CandidateEntranceStatisticResource::HIDDEN_FLAG);
 
-            if (! is_array($data)) {
-                $data = [];
-            }
-
-            $data[CandidateEntranceStatisticResource::HIDDEN_FLAG] = true;
-
-            $record->forceFill([
-                'data' => $data,
-            ])->saveQuietly();
-
-            AuditLogger::log(
-                action: 'cleared',
-                auditable: $record,
-                description: 'Cleared from Entrance Exam Statistics',
-                metadata: ['module' => 'Entrance Exam Statistics'],
-            );
-        });
+        AuditLogger::log(
+            action: 'cleared',
+            description: 'Cleared Entrance Exam Statistics from this list ('.$count.' records)',
+            metadata: ['module' => 'Entrance Exam Statistics', 'menu_only' => true],
+        );
 
         $this->selectedTableRecords = [];
         $this->deselectedTableRecords = [];

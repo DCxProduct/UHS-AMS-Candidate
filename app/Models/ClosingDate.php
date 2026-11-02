@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -100,19 +101,8 @@ class ClosingDate extends Model
             ->map(fn ($id): string => self::customFormTypeKey($id))
             ->all();
 
-        $takenTypeKeys = self::query()
-            ->when(
-                filled($ignoreClosingDateId),
-                fn ($query) => $query->whereKeyNot($ignoreClosingDateId)
-            )
-            ->pluck('type')
-            ->filter(fn ($type): bool => filled($type))
-            ->map(fn ($type): string => (string) $type)
-            ->all();
-
         return collect(self::typeOptions())
-            ->reject(fn ($label, string $typeKey): bool => in_array($typeKey, $profileTypeKeys, true)
-                || in_array($typeKey, $takenTypeKeys, true))
+            ->reject(fn ($label, string $typeKey): bool => in_array($typeKey, $profileTypeKeys, true))
             ->toArray();
     }
 
@@ -201,13 +191,27 @@ class ClosingDate extends Model
             return null;
         }
 
-        return self::query()
-            ->where(
-                'type',
-                self::customFormTypeKey($customFormId)
-            )
-            ->latest('id')
+        return self::resolveDeadline(
+            self::query()->where('type', self::customFormTypeKey($customFormId))
+        );
+    }
+
+    /** Prefer a current opening with the furthest closing date, regardless of creation order. */
+    public static function resolveDeadline(Builder $query): ?self
+    {
+        $today = today()->toDateString();
+
+        $open = (clone $query)
+            ->where('status', self::STATUS_OPEN)
+            ->where(fn (Builder $dates) => $dates->whereNull('start_date')->orWhereDate('start_date', '<=', $today))
+            ->where(fn (Builder $dates) => $dates->whereNull('end_date')->orWhereDate('end_date', '>=', $today))
+            ->orderByRaw('CASE WHEN end_date IS NULL THEN 0 ELSE 1 END')
+            ->orderByDesc('end_date')
+            ->orderByDesc('id')
             ->first();
+
+        // Keep the existing closed, expired, and future-date behavior when no opening is current.
+        return $open ?? (clone $query)->latest('id')->first();
     }
 
     public static function isCustomFormOpen(

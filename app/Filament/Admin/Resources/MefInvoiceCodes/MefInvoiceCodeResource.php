@@ -9,10 +9,13 @@ use App\Filament\Admin\Resources\MefInvoiceCodes\Schemas\MefInvoiceCodeForm;
 use App\Filament\Admin\Resources\MefInvoiceCodes\Tables\MefInvoiceCodesTable;
 use App\Filament\Concerns\AdminOnly;
 use App\Models\MefInvoiceCode;
+use App\Support\MenuRecordVisibility;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Schema as SchemaFacade;
 use UnitEnum;
 
 class MefInvoiceCodeResource extends Resource
@@ -53,6 +56,15 @@ class MefInvoiceCodeResource extends Resource
     public static function table(Table $table): Table
     {
         return MefInvoiceCodesTable::configure($table);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->when(
+                MenuRecordVisibility::excludesCleared() && SchemaFacade::hasColumn('mef_invoice_codes', 'records_cleared_at'),
+                fn (Builder $query): Builder => $query->whereNull('mef_invoice_codes.records_cleared_at'),
+            );
     }
 
     public static function getPages(): array

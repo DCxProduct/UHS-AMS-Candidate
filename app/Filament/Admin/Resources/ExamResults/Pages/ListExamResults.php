@@ -6,6 +6,7 @@ use App\Filament\Admin\Resources\ExamResults\ExamResultResource;
 use App\Filament\Admin\Resources\ExamResults\Tables\ExamResultsTable;
 use App\Support\AuditLogger;
 use App\Support\FilamentActionPermissions;
+use App\Support\MenuRecordVisibility;
 use App\Support\WorkflowActionFeedback;
 use Carbon\Carbon;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
@@ -13,13 +14,12 @@ use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Contracts\Support\Htmlable;
-use Illuminate\Database\Eloquent\Model;
 
 class ListExamResults extends ListRecords
 {
     protected static string $resource = ExamResultResource::class;
 
-    public function getTitle(): string | Htmlable
+    public function getTitle(): string|Htmlable
     {
         return __('exam_results.list_title');
     }
@@ -81,8 +81,8 @@ class ListExamResults extends ListRecords
                 ->visible(fn (): bool => FilamentActionPermissions::canForResource(static::getResource(), 'clear_data'))
                 ->requiresConfirmation()
                 ->modalHeading(__('app.clear_data'))
-                ->modalDescription(__('app.clear_data_confirm'))
-                ->modalSubmitActionLabel(__('app.delete'))
+                ->modalDescription(__('app.clear_data_menu_confirm'))
+                ->modalSubmitActionLabel(__('app.clear_data'))
                 ->modalCancelActionLabel(__('app.cancel'))
                 ->alpineClickHandler(<<<'JS'
                     const table = document.querySelector('.fi-ta');
@@ -143,7 +143,7 @@ class ListExamResults extends ListRecords
 
         AuditLogger::log(
             action: 'downloaded',
-            description: 'Downloaded ' . static::getResource()::getResultModuleLabel() . ' Excel (' . $records->count() . ' records)',
+            description: 'Downloaded '.static::getResource()::getResultModuleLabel().' Excel ('.$records->count().' records)',
             metadata: ['module' => static::getResource()::getResultModuleLabel()],
         );
 
@@ -161,30 +161,18 @@ class ListExamResults extends ListRecords
     ): void {
         FilamentActionPermissions::abortUnlessCanForResource(static::getResource(), 'clear_data');
 
-        $this->selectedOrFilteredQuery(
+        $query = $this->selectedOrFilteredQuery(
             $selectedRecordKeys,
             $isTrackingDeselectedRecords,
             $deselectedRecordKeys,
-        )->get()->each(function (Model $record): void {
-            $data = $record->data ?? [];
+        );
+        $count = MenuRecordVisibility::clearRecords($query, static::getResource()::HIDDEN_FLAG);
 
-            if (! is_array($data)) {
-                $data = [];
-            }
-
-            $data[static::getResource()::HIDDEN_FLAG] = true;
-
-            $record->forceFill([
-                'data' => $data,
-            ])->saveQuietly();
-
-            AuditLogger::log(
-                action: 'cleared',
-                auditable: $record,
-                description: 'Cleared from ' . static::getResource()::getResultModuleLabel(),
-                metadata: ['module' => static::getResource()::getResultModuleLabel()],
-            );
-        });
+        AuditLogger::log(
+            action: 'cleared',
+            description: 'Cleared '.static::getResource()::getResultModuleLabel().' from this list ('.$count.' records)',
+            metadata: ['module' => static::getResource()::getResultModuleLabel(), 'menu_only' => true],
+        );
 
         $this->selectedTableRecords = [];
         $this->deselectedTableRecords = [];
@@ -300,7 +288,7 @@ class ListExamResults extends ListRecords
 
         AuditLogger::log(
             action: 'notified',
-            description: 'Sent ' . static::getResource()::getResultModuleLabel() . ' notifications (' . $sentCount . ' candidates)',
+            description: 'Sent '.static::getResource()::getResultModuleLabel().' notifications ('.$sentCount.' candidates)',
             metadata: ['module' => static::getResource()::getResultModuleLabel()],
         );
 

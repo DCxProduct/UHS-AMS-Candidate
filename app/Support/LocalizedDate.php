@@ -29,7 +29,7 @@ class LocalizedDate
 
     public static function dayMonthYear(mixed $value): string
     {
-        if (blank($value)) {
+        if (blank($value) || $value === '-') {
             return '-';
         }
 

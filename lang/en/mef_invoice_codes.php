@@ -16,6 +16,9 @@ return [
     'validation' => [
         'invoice_code_symbols_only' => 'Invoice Code can contain numbers and symbols only.',
     ],
+    'messages' => [
+        'clear_confirm' => 'This will permanently delete the selected records, or all filtered records when none are selected, including previously cleared records. Deleted data cannot be restored.',
+    ],
     'table' => [
         'no' => 'No',
         'created_at' => 'Created At',
