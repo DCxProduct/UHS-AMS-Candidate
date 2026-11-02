@@ -96,7 +96,7 @@ class AmsOtherFeePaymentCallbackTest extends TestCase
         $this->assertSame('approved', data_get($this->entry->fresh()->data, 'registration_status'));
         $this->actingAs($this->candidate);
         $this->assertFalse(PaymentStatusListResource::getEloquentQuery()->whereKey($this->entry->getKey())->exists());
-        $this->assertTrue(PaymentStatusListResource::getEloquentQuery()->whereKey($other->getKey())->exists());
+        $this->assertFalse(PaymentStatusListResource::getEloquentQuery()->whereKey($other->getKey())->exists());
         Http::assertNothingSent();
         Mail::assertNothingSent();
     }

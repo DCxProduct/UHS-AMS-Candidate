@@ -70,6 +70,46 @@ class WorkflowOrderedStagesTest extends TestCase
         return [['system'], ['ams']];
     }
 
+    public static function reviewActionStatuses(): array
+    {
+        return [
+            ['approved', 'accept', 'បានពិនិត្យពាក្យ'],
+            ['rejected', 'send_back', 'បញ្ជូនត្រឡប់កែពាក្យ'],
+            ['failed', 'reject', 'បានបដិសេធ'],
+        ];
+    }
+
+    #[DataProvider('reviewActionStatuses')]
+    public function test_ordered_review_action_label_is_shared_by_candidate_and_staff(string $status, string $action, string $label): void
+    {
+        [$form, $workflow] = $this->workflow([
+            WorkflowStageType::FormSubmission, WorkflowStageType::Review,
+            WorkflowStageType::Payment, WorkflowStageType::AwaitingResults,
+        ]);
+        $stages = $workflow->stages;
+        $stages[1]['data']['review_actions'][$action]['status_message'] = $label;
+        $workflow->update(['stages' => $stages]);
+        $entry = $this->entry($form);
+        WorkflowStageProgression::submitted($entry);
+        if ($action === 'accept') {
+            $this->performEngineEvent($entry, WorkflowStageType::Review);
+            $this->assertSame(WorkflowStageType::Payment, WorkflowStageProgression::currentType($entry->fresh()));
+        } else {
+            $entry->forceFill([
+                'review_status' => $status,
+                'data' => [...$entry->data, 'registration_status' => $status],
+            ])->save();
+        }
+
+        foreach ([$this->admin, $this->candidate] as $viewer) {
+            $this->actingAs($viewer);
+            $column = (new ReflectionMethod(CustomFormEntriesTable::class, 'reviewStatusColumn'))->invoke(null)->record($entry->fresh());
+            $this->assertSame($label, $column->formatState($column->getState()));
+        }
+        $this->assertSame($status, $entry->fresh()->review_status);
+        $this->assertDatabaseMissing('payments', ['custom_form_entry_id' => $entry->id]);
+    }
+
     #[DataProvider('paymentSources')]
     public function test_paid_label_remains_in_application_table_until_results_pass_for_both_audiences(string $source): void
     {
@@ -105,7 +145,7 @@ class WorkflowOrderedStagesTest extends TestCase
         AmsPaymentRequest::query()->where('custom_form_entry_id', $ams->id)->update(['payment_status' => 'unpaid']);
         WorkflowStageProgression::rollbackUnpaidAutoCompletion($ams);
         $this->assertSame(WorkflowStageType::Payment, WorkflowStageProgression::currentType($ams->fresh()));
-        $this->assertSame('Not paid yet', WorkflowStageMessages::statusText($ams->fresh()));
+        $this->assertSame('Checked', WorkflowStageMessages::statusText($ams->fresh()));
         $this->assertNull($this->completedAt($ams->fresh(), WorkflowStageType::Payment));
     }
 

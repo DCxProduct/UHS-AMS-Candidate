@@ -299,6 +299,13 @@ final class WorkflowStageMessages
                 return match (strtolower(trim((string) $entry->review_status))) {
                     'failed' => self::reviewActionStage($entry, 'reject')['status_message'] ?? null,
                     'rejected' => self::reviewActionStage($entry, 'send_back')['status_message'] ?? null,
+                    // Application lists retain the Checked action's configured
+                    // label while the next payment gate is still unpaid.
+                    'approved', 'accepted' => WorkflowStageProgression::isCurrent($entry, WorkflowStageType::Payment)
+                        && self::orderedStageCompleted($entry, WorkflowStageType::Review)
+                        && ! self::hasPaid($entry)
+                            ? data_get(self::configuredStage($entry, WorkflowStageType::Review), 'review_actions.accept.status_message')
+                            : null,
                     default => null,
                 };
             }

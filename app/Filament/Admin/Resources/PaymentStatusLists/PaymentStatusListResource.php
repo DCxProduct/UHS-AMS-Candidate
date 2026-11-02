@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources\PaymentStatusLists;
 
+use App\Enums\WorkflowPaymentSource;
 use App\Enums\WorkflowStageType;
 use App\Filament\Admin\Resources\Payments\Schemas\PaymentForm;
 use App\Filament\Admin\Resources\PaymentStatusLists\Pages\CreatePaymentStatusList;
@@ -20,6 +21,7 @@ use Filament\Schemas\Schema;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema as DbSchema;
 use UnitEnum;
 
@@ -74,9 +76,7 @@ class PaymentStatusListResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        // Completed AMS collections belong only to AMS, including exports and badges.
-        return static::getPaymentApplicationsQuery(includeCleared: false)
-            ->whereNotExists(AmsPaymentRequest::paidForApplicationQuery()->toBase());
+        return static::getPaymentApplicationsQuery(includeCleared: false);
     }
 
     public static function getDashboardEloquentQuery(): Builder
@@ -179,7 +179,60 @@ class PaymentStatusListResource extends Resource
             });
         }
 
-        return $query;
+        return static::excludeAmsPaymentApplications($query);
+    }
+
+    protected static function excludeAmsPaymentApplications(Builder $query): Builder
+    {
+        $amsWorkflowIds = WorkflowNotification::query()->get(['id', 'stages'])
+            ->filter(fn (WorkflowNotification $workflow): bool => $workflow->paymentSource() === WorkflowPaymentSource::Ams)
+            ->modelKeys();
+        $amsFormIds = DB::table('workflow_notification_forms')
+            ->whereIn('workflow_notification_id', $amsWorkflowIds)
+            ->pluck('custom_form_id')->all();
+
+        // Cashier lists contain only local collections, whether paid or unpaid.
+        $query->whereNotExists(AmsPaymentRequest::paidForApplicationQuery()->toBase());
+
+        if (! DbSchema::hasColumn('custom_form_entries', 'workflow_snapshot')) {
+            return $query->whereNotIn('custom_form_id', $amsFormIds);
+        }
+
+        return $query->where(function (Builder $local) use ($amsFormIds): void {
+            // Only entries without a snapshot use the current form configuration.
+            $local->where(function (Builder $legacy) use ($amsFormIds): void {
+                $legacy->whereNull('workflow_snapshot')
+                    ->whereNotIn('custom_form_id', $amsFormIds);
+            })->orWhere(function (Builder $frozen): void {
+                $frozen->whereNotNull('workflow_snapshot')
+                    ->where(function (Builder $source): void {
+                        $source->where('workflow_snapshot->has_workflow', false)
+                            ->orWhereNull('workflow_snapshot->has_workflow')
+                            ->orWhereNull('workflow_snapshot->stages')
+                            ->orWhere(function (Builder $stages): void {
+                                if ($stages->getConnection()->getDriverName() === 'sqlite') {
+                                    $stages->whereNotExists(function (QueryBuilder $stage): void {
+                                        $stage->selectRaw('1')
+                                            ->fromRaw("json_each(custom_form_entries.workflow_snapshot, '$.stages') as payment_stage")
+                                            ->where(function (QueryBuilder $wrapped): void {
+                                                $wrapped->where('payment_stage.value->data->stage_type', WorkflowStageType::Payment->value)
+                                                    ->where('payment_stage.value->data->payment_source', WorkflowPaymentSource::Ams->value);
+                                            })->orWhere(function (QueryBuilder $flat): void {
+                                                $flat->where('payment_stage.value->stage_type', WorkflowStageType::Payment->value)
+                                                    ->where('payment_stage.value->payment_source', WorkflowPaymentSource::Ams->value);
+                                            });
+                                    });
+
+                                    return;
+                                }
+
+                                $amsStage = ['stage_type' => WorkflowStageType::Payment->value, 'payment_source' => WorkflowPaymentSource::Ams->value];
+                                $stages->whereJsonDoesntContain('workflow_snapshot->stages', [['data' => $amsStage]])
+                                    ->whereJsonDoesntContain('workflow_snapshot->stages', [$amsStage]);
+                            });
+                    });
+            });
+        });
     }
 
     public static function getUnpaidEloquentQuery(bool $includeCleared = false): Builder
