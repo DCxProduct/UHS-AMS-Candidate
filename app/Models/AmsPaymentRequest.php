@@ -12,6 +12,15 @@ class AmsPaymentRequest extends Model
 {
     protected $guarded = [];
 
+    protected static function booted(): void
+    {
+        static::saving(function (self $request): void {
+            // The application remains the source for outbound data. AMS owns
+            // receipts and amounts; its local link stores only a correlation key.
+            $request->payload = ['application_id' => (string) $request->custom_form_entry_id];
+        });
+    }
+
     protected function casts(): array
     {
         return ['payload' => 'array', 'attempts' => 'integer', 'last_event_version' => 'integer', 'synced_at' => 'datetime'];

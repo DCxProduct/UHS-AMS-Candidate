@@ -35,6 +35,12 @@ return new class extends Migration
                             'updated_at' => now(),
                         ];
 
+                        // A newer authenticated callback is authoritative over
+                        // a historic receipt copy awaiting cleanup.
+                        if ($link && (int) $link->last_event_version > 0) {
+                            unset($state['payment_status'], $state['external_payment_id']);
+                        }
+
                         if ($link) {
                             DB::table('ams_payment_requests')->where('id', $link->id)->update($state);
                         } else {

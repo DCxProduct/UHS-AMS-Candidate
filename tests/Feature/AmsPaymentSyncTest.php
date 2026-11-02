@@ -99,6 +99,7 @@ class AmsPaymentSyncTest extends TestCase
         $this->assertSame('ams-request-1', $request->ams_request_id);
         $this->assertSame('unpaid', $request->payment_status);
         $this->assertNull($request->local_payment_id);
+        $this->assertSame(['application_id' => (string) $entry->getKey()], $request->payload);
         $this->assertSame('approved', $entry->review_status);
         $this->assertSame('approved', data_get($entry->data, 'registration_status'));
         $this->assertSame(WorkflowStageType::Payment, WorkflowStageMessages::stageTypeFor($entry));
@@ -228,6 +229,7 @@ class AmsPaymentSyncTest extends TestCase
         $this->assertSame('failed', $request->sync_status);
         $this->assertSame(1, $request->attempts);
         $this->assertNotEmpty($request->last_error);
+        $this->assertSame(['application_id' => (string) $entry->getKey()], $request->payload);
         $entry->refresh();
         $this->assertSame('approved', $entry->review_status);
         $this->assertSame(WorkflowStageType::Payment, WorkflowStageMessages::stageTypeFor($entry));
@@ -240,6 +242,7 @@ class AmsPaymentSyncTest extends TestCase
         $this->assertSame($requestId, AmsPaymentRequest::query()->sole()->getKey());
         $this->assertSame('synced', $request->fresh()->sync_status);
         $this->assertSame(2, $request->fresh()->attempts);
+        $this->assertSame(['application_id' => (string) $entry->getKey()], $request->fresh()->payload);
         Http::assertSentCount(2);
         $requests = Http::recorded()->map(fn ($pair) => $pair[0]->data())->all();
         $this->assertSame($requests[0], $requests[1]);
