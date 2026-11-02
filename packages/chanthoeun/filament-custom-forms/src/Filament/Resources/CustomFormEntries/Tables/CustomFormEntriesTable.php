@@ -844,11 +844,7 @@ class CustomFormEntriesTable
 
                     Select::make('review_status')
                         ->label(__('candidate_entrance_statistics.review_status'))
-                        ->options([
-                            'pending' => __('candidate_entrance_statistics.statuses.pending'),
-                            'accepted' => __('candidate_entrance_statistics.statuses.accepted'),
-                            'rejected' => __('candidate_entrance_statistics.statuses.rejected'),
-                        ])
+                        ->options(fn (): array => self::dynamicReviewStatusOptions($formId))
                         ->native(false)
                         ->live(),
 
@@ -866,6 +862,14 @@ class CustomFormEntriesTable
                             filled($data['review_status'] ?? null),
                             function (Builder $query) use ($data): Builder {
                                 $status = $data['review_status'];
+
+                                if (str_starts_with($status, 'label:')) {
+                                    $ids = (clone $query)->with(['creator', 'customForm'])->get()
+                                        ->filter(fn ($record): bool => 'label:'.sha1(self::reviewStatusLabel($record)) === $status)
+                                        ->modelKeys();
+
+                                    return $query->whereKey($ids);
+                                }
 
                                 if ($status === 'accepted') {
                                     return $query->whereIn('review_status', ['accepted', 'passed', 'approved']);
@@ -901,6 +905,26 @@ class CustomFormEntriesTable
                         );
                 }),
         ];
+    }
+
+    protected static function dynamicReviewStatusOptions(?string $formId): array
+    {
+        return self::applyQueryConstraints(
+            MenuRecordVisibility::visible(CustomFormEntryResource::getEloquentQuery(), CustomFormEntryResource::HIDDEN_FLAG),
+            $formId,
+        )
+            ->get()
+            ->map(fn ($record): string => self::reviewStatusLabel($record))
+            ->unique()
+            ->mapWithKeys(fn (string $label): array => ['label:'.sha1($label) => $label])
+            ->all();
+    }
+
+    protected static function reviewStatusLabel($record): string
+    {
+        return (string) self::reviewStatusColumn()
+            ->record($record)
+            ->formatState(self::displayStatus($record));
     }
 
     protected static function dynamicRequestReviewedYears(?string $formId): array

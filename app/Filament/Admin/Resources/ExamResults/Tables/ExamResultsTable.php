@@ -148,7 +148,7 @@ class ExamResultsTable
                     ->schema([
                         Select::make('degree_level')
                             ->label(__('exam_results.degree_level'))
-                            ->options(fn (): array => UserTypeOptions::groupOptions())
+                            ->options(fn (): array => self::dynamicDegreeLevelOptions($resultMenu))
                             ->native(false)
                             ->searchable()
                             ->live(),
@@ -705,20 +705,37 @@ class ExamResultsTable
             ->toArray();
     }
 
+    protected static function dynamicDegreeLevelOptions(string $resultMenu = PassedResultMenuOptions::EXAM_RESULTS): array
+    {
+        $query = PassedResultMenuOptions::normalize($resultMenu) === PassedResultMenuOptions::EXIT_EXAM_RESULTS
+            ? ExitExamResultResource::getEloquentQuery()
+            : ExamResultResource::getEloquentQuery();
+
+        return self::degreeLevelCreators($query)
+            ->map(fn (User $user): ?string => self::resolveCandidateGroupName($user))
+            ->filter(fn (?string $group): bool => filled($group))
+            ->map(fn (string $group): string => trim($group))
+            ->unique()
+            ->sort()
+            ->mapWithKeys(fn (string $group): array => [$group => UserTypeOptions::formatGroupLabel($group)])
+            ->all();
+    }
+
     protected static function applyDegreeLevelFilter(Builder $query, string $degreeLevel): Builder
     {
-        $roleKeys = UserTypeOptions::customQuery()
-            ->where('group_name', $degreeLevel)
-            ->pluck('key');
+        $creatorIds = self::degreeLevelCreators($query)
+            ->filter(fn (User $user): bool => trim((string) self::resolveCandidateGroupName($user)) === trim($degreeLevel))
+            ->modelKeys();
 
-        if ($roleKeys->isEmpty()) {
-            return $query->whereRaw('1 = 0');
-        }
+        return $query->whereIn('created_by', $creatorIds);
+    }
 
-        return $query->whereHas(
-            'creator.roles',
-            fn (Builder $roleQuery): Builder => $roleQuery->whereIn('name', $roleKeys),
-        );
+    protected static function degreeLevelCreators(Builder $query): \Illuminate\Database\Eloquent\Collection
+    {
+        return User::query()
+            ->with('roles')
+            ->whereIn('id', (clone $query)->reorder()->select('custom_form_entries.created_by'))
+            ->get();
     }
 
     protected static function dynamicFormTypeOptions(): array

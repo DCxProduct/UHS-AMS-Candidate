@@ -45,7 +45,7 @@ class CandidateExitStatisticsTable
                 true,
             ))
             ->defaultSort('id', 'desc')
-            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with('customFormEntry:id,candidate_id,custom_form_id'))
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with('customFormEntry.customForm'))
             ->recordUrl(null)
             ->recordAction(null)
             ->columns([
@@ -149,7 +149,7 @@ class CandidateExitStatisticsTable
 
                         Select::make('candidate_status')
                             ->label(__('candidate_exit_statistics.filters.review_status'))
-                            ->options(__('candidate_exit_statistics.options.candidate_status'))
+                            ->options(fn (): array => self::dynamicReviewStatusOptions())
                             ->native(false)
                             ->live(),
 
@@ -181,7 +181,7 @@ class CandidateExitStatisticsTable
                                 filled($data['form_type'] ?? null),
                                 fn (Builder $query): Builder => self::applyFormTypeFilter($query, (string) $data['form_type'])
                             )
-                            ->when(filled($data['candidate_status'] ?? null), fn (Builder $query): Builder => $query->where('candidate_status', $data['candidate_status']))
+                            ->when(filled($data['candidate_status'] ?? null), fn (Builder $query): Builder => self::applyReviewStatusFilter($query, (string) $data['candidate_status']))
                             ->when(filled($data['user_type'] ?? null), fn (Builder $query): Builder => $query->where('user_type', $data['user_type']))
                             ->when(filled($data['major'] ?? null), fn (Builder $query): Builder => $query->where('major', $data['major']))
                             ->when(filled($data['reviewed_year'] ?? null), fn (Builder $query): Builder => $query->whereYear('candidate_reviewed_at', $data['reviewed_year']));
@@ -806,6 +806,32 @@ class CandidateExitStatisticsTable
         $form = $record->customFormEntry?->customForm;
 
         return $form?->display_name ?: self::optionLabel('form_type', $record->form_type);
+    }
+
+    protected static function dynamicReviewStatusOptions(): array
+    {
+        return CandidateExitStatisticResource::getEloquentQuery()
+            ->get()
+            ->map(fn (CandidateExitStatistic $record): string => self::resultStatusLabel($record, $record->candidate_status ?: 'pending'))
+            ->unique()
+            ->sort()
+            ->mapWithKeys(fn (string $label): array => ['label:'.sha1($label) => $label])
+            ->all();
+    }
+
+    protected static function applyReviewStatusFilter(Builder $query, string $status): Builder
+    {
+        if (! str_starts_with($status, 'label:')) {
+            return $status === 'pending'
+                ? $query->where(fn (Builder $pending): Builder => $pending->whereNull('candidate_status')->orWhere('candidate_status', '')->orWhere('candidate_status', 'pending'))
+                : $query->where('candidate_status', $status);
+        }
+
+        $ids = (clone $query)->get()
+            ->filter(fn (CandidateExitStatistic $record): bool => 'label:'.sha1(self::resultStatusLabel($record, $record->candidate_status ?: 'pending')) === $status)
+            ->modelKeys();
+
+        return $query->whereKey($ids);
     }
 
     protected static function dynamicFormTypeOptions(): array
