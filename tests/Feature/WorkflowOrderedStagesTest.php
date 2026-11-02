@@ -19,6 +19,7 @@ use App\Support\WorkflowStageProgression;
 use App\Support\WorkflowSubmissionMessages;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Pages\EditCustomFormEntry;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Pages\ListCustomFormEntries;
+use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Tables\CustomFormEntriesTable;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate;
@@ -31,6 +32,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\DataProvider;
+use ReflectionMethod;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
@@ -61,6 +63,68 @@ class WorkflowOrderedStagesTest extends TestCase
         $this->admin->assignRole($role);
         $this->candidate = $this->user('student');
         $this->actingAs($this->admin);
+    }
+
+    public static function paymentSources(): array
+    {
+        return [['system'], ['ams']];
+    }
+
+    #[DataProvider('paymentSources')]
+    public function test_paid_label_remains_in_application_table_until_results_pass_for_both_audiences(string $source): void
+    {
+        [$entry, $workflow] = $this->paidAwaitingResultsEntry($source, 'បង់លុយរួច');
+        $before = $entry->getRawOriginal('data');
+
+        foreach ([$this->admin, $this->candidate] as $viewer) {
+            $this->actingAs($viewer);
+            $column = (new ReflectionMethod(CustomFormEntriesTable::class, 'reviewStatusColumn'))->invoke(null)->record($entry);
+            $this->assertSame('បង់លុយរួច', $column->formatState($column->getState()));
+        }
+        $this->assertSame(WorkflowStageType::AwaitingResults, WorkflowStageProgression::currentType($entry));
+        $this->assertSame('Waiting for result', WorkflowStageMessages::waitingResultStatusLabel($entry));
+        $this->assertSame($before, $entry->fresh()->getRawOriginal('data'));
+        $this->assertDatabaseCount('payments', $source === 'ams' ? 0 : 1);
+
+        // Active applications retain their original configured label after template edits.
+        $stages = $workflow->stages;
+        $stages[2]['data']['status_message'] = 'Changed payment label';
+        $workflow->update(['stages' => $stages]);
+        $this->assertSame('បង់លុយរួច', WorkflowStageMessages::statusText($entry->fresh()));
+
+        $this->performEngineEvent($entry, WorkflowStageType::AwaitingResults);
+        $this->assertSame('Passed result', WorkflowStageMessages::statusText($entry->fresh()));
+    }
+
+    public function test_blank_paid_label_keeps_waiting_fallback_and_reversed_ams_payment_returns_to_payment_gate(): void
+    {
+        [$blank] = $this->paidAwaitingResultsEntry('system', ' ');
+        $this->assertSame('Waiting for result', WorkflowStageMessages::statusText($blank->fresh()));
+
+        [$ams] = $this->paidAwaitingResultsEntry('ams', 'បង់លុយរួច');
+        AmsPaymentRequest::query()->where('custom_form_entry_id', $ams->id)->update(['payment_status' => 'unpaid']);
+        WorkflowStageProgression::rollbackUnpaidAutoCompletion($ams);
+        $this->assertSame(WorkflowStageType::Payment, WorkflowStageProgression::currentType($ams->fresh()));
+        $this->assertSame('Not paid yet', WorkflowStageMessages::statusText($ams->fresh()));
+        $this->assertNull($this->completedAt($ams->fresh(), WorkflowStageType::Payment));
+    }
+
+    public function test_results_before_payment_cannot_display_a_paid_label_before_the_payment_checkpoint_completes(): void
+    {
+        [$form, $workflow] = $this->workflow([
+            WorkflowStageType::FormSubmission, WorkflowStageType::AwaitingResults, WorkflowStageType::Payment,
+        ]);
+        $stages = $workflow->stages;
+        $stages[1]['data']['result_statuses'] = ['pending_status_message' => 'Waiting for result'];
+        $stages[2]['data']['status_message'] = 'បង់លុយរួច';
+        $workflow->update(['stages' => $stages]);
+        $entry = $this->entry($form);
+        WorkflowStageProgression::submitted($entry);
+        AmsPaymentRequest::query()->create(['custom_form_entry_id' => $entry->id, 'payment_status' => 'paid']);
+
+        $this->assertSame('Waiting for result', WorkflowStageMessages::statusText($entry->fresh()));
+        $this->assertNull($this->completedAt($entry->fresh(), WorkflowStageType::Payment));
+        $this->assertSame(WorkflowStageType::AwaitingResults, WorkflowStageProgression::currentType($entry->fresh()));
     }
 
     public function test_all_120_unique_stage_orders_only_advance_the_current_gate_and_finish_at_the_end(): void
@@ -326,7 +390,8 @@ class WorkflowOrderedStagesTest extends TestCase
         $this->assertFalse(WorkflowStageProgression::readyForFinal($entry->fresh()));
         $this->assertFalse(WorkflowStageProgression::finished($entry->fresh()));
         $this->assertFalse(ExamResultResource::getEloquentQuery()->whereKey($entry->id)->exists());
-        $this->assertDatabaseHas('payments', ['custom_form_entry_id' => $entry->id, 'integration_source' => 'ams', 'status_payt' => 'paid']);
+        $this->assertDatabaseMissing('payments', ['custom_form_entry_id' => $entry->id]);
+        $this->assertDatabaseHas('ams_payment_requests', ['custom_form_entry_id' => $entry->id, 'payment_status' => 'paid']);
         $this->post(route('admin.custom-form-entries.approve', $entry))->assertRedirect();
         $this->assertSame(WorkflowStageType::Completed, WorkflowStageProgression::currentType($entry->fresh()));
         $this->assertTrue(WorkflowStageProgression::readyForFinal($entry->fresh()));
@@ -589,6 +654,43 @@ class WorkflowOrderedStagesTest extends TestCase
             WorkflowStageType::AwaitingResults => WorkflowStageProgression::passed($entry),
             default => null,
         };
+    }
+
+    private function paidAwaitingResultsEntry(string $source, string $paidLabel): array
+    {
+        config()->set('services.ams', [
+            'enabled' => true, 'base_url' => 'https://ams.example.test', 'token' => 'outbound-secret',
+            'callback_token' => 'callback-secret', 'timeout' => 5,
+        ]);
+        Http::swap(new HttpFactory);
+        Http::fake(fn ($request) => Http::response([
+            'application_id' => $request['application_id'],
+            'ams_request_id' => 'paid-label-'.$request['application_id'], 'payment_status' => 'unpaid',
+        ], 201));
+        [$form, $workflow] = $this->workflow([
+            WorkflowStageType::FormSubmission, WorkflowStageType::Review,
+            WorkflowStageType::Payment, WorkflowStageType::AwaitingResults,
+        ]);
+        $stages = $workflow->stages;
+        $stages[2]['data']['payment_source'] = $source;
+        $stages[2]['data']['status_message'] = $paidLabel;
+        $stages[2]['data']['payment_statuses'] = ['unpaid_status_message' => 'Not paid yet'];
+        $stages[3]['data']['status_message'] = 'Passed result';
+        $stages[3]['data']['result_statuses'] = ['pending_status_message' => 'Waiting for result'];
+        $workflow->update(['stages' => $stages]);
+        $entry = $this->entry($form);
+        WorkflowStageProgression::submitted($entry);
+        $this->performEngineEvent($entry, WorkflowStageType::Review);
+        if ($source === 'ams') {
+            AmsPaymentRequest::query()->updateOrCreate(['custom_form_entry_id' => $entry->id], [
+                'payment_status' => 'paid', 'external_payment_id' => 'external-'.$entry->id,
+            ]);
+        } else {
+            $this->payment($entry);
+        }
+        WorkflowStageProgression::paid($entry);
+
+        return [$entry->fresh(), $workflow];
     }
 
     private function completedAt(CustomFormEntry $entry, WorkflowStageType $type): ?string

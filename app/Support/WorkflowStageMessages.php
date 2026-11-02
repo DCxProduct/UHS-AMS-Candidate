@@ -236,7 +236,13 @@ final class WorkflowStageMessages
                 ?? __('payments.options.status_payt.'.$paymentStatus),
             WorkflowStageType::AwaitingResults => data_get($entry->data, 'workflow_progress.result_passed', false)
                 ? (self::passedResultStatusLabel($entry) ?? __('candidate_entrance_statistics.statuses.passed'))
-                : (self::waitingResultStatusLabel($entry) ?? __('candidate_entrance_statistics.statuses.pending')),
+                // Advancing the cursor must not replace the payment confirmation
+                // in application lists. Statistics keep their separate waiting label.
+                : ((self::orderedStageCompleted($entry, WorkflowStageType::Payment) && self::hasPaid($entry)
+                    ? self::paymentStatusLabel($entry, 'paid')
+                    : null)
+                    ?? self::waitingResultStatusLabel($entry)
+                    ?? __('candidate_entrance_statistics.statuses.pending')),
             WorkflowStageType::Completed => self::hasSentNotification($entry, WorkflowStageType::Completed)
                 ? ($stage['status_message'] ?? null)
                 : (self::passedResultStatusLabel($entry) ?? __('candidate_entrance_statistics.statuses.passed')),
