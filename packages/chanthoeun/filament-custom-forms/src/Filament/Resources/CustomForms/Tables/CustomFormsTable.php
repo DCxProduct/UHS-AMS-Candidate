@@ -9,6 +9,7 @@ use App\Support\FilamentActionPermissions;
 use App\Support\LocalizedDate;
 use App\Support\StatisticsMenuOptions;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomForms\CustomFormResource;
+use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -27,6 +28,7 @@ class CustomFormsTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->checkIfRecordIsSelectableUsing(fn (Model $record): bool => ! CustomForm::isProfileSlug($record->slug))
             ->columns([
                 TextColumn::make('name')
                     ->label(__('filament-custom-forms::fcf.form.name'))
@@ -150,6 +152,7 @@ class CustomFormsTable
 
                 EditAction::make(),
                 DeleteAction::make()
+                    ->visible(fn (Model $record): bool => ! CustomForm::isProfileSlug($record->slug))
                     ->using(fn (Model $record): ?bool => $record->forceDelete()),
             ])
             ->bulkActions([
@@ -157,7 +160,7 @@ class CustomFormsTable
                     DeleteBulkAction::make()
                         ->fetchSelectedRecords()
                         ->using(function (DeleteBulkAction $action, EloquentCollection | Collection | LazyCollection $records): void {
-                            $records->each(function (Model $record) use ($action): void {
+                            $records->reject(fn (Model $record): bool => CustomForm::isProfileSlug($record->slug))->each(function (Model $record) use ($action): void {
                                 $record->forceDelete() || $action->reportBulkProcessingFailure();
                             });
                         }),

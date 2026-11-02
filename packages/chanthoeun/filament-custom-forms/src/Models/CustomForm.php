@@ -50,6 +50,8 @@ class CustomForm extends Model
 
     protected static function booted(): void
     {
+        static::deleting(fn (CustomForm $customForm): bool => ! $customForm->isProfileForm());
+
         static::creating(function (CustomForm $customForm): void {
             if (blank($customForm->display_order)) {
                 $customForm->display_order = ((int) static::query()->max('display_order')) + 1;
