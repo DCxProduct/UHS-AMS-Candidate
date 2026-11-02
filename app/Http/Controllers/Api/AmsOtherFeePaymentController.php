@@ -62,47 +62,39 @@ class AmsOtherFeePaymentController extends Controller
                 return response()->json(['application_id' => (string) $entry->getKey(), 'ignored' => true]);
             }
 
-            $payment = Payment::query()->where('custom_form_entry_id', $entry->getKey())->lockForUpdate()->first();
-            abort_if($payment && ($payment->integration_source !== 'ams'
-                || ($link->local_payment_id && (int) $payment->id !== (int) $link->local_payment_id)
-                || (int) $payment->users_id !== (int) $entry->created_by
-                || (int) $payment->form_id !== (int) $entry->custom_form_id), 409);
+            // A locally collected receipt must never be replaced by an AMS event.
+            abort_if(Payment::query()->where('custom_form_entry_id', $entry->getKey())
+                ->where(fn ($query) => $query->whereNull('integration_source')->orWhere('integration_source', '!=', 'ams'))
+                ->exists(), 409);
 
             if ($data['status'] === 'paid') {
-                abort_if($payment && $payment->status_payt === 'paid'
-                    && (string) $payment->integration_payment_id !== $data['payment_id'], 409);
-                abort_if(Payment::query()->where('integration_source', 'ams')->where('integration_payment_id', $data['payment_id'])
-                    ->when($payment, fn ($query) => $query->whereKeyNot($payment->getKey()))->exists(), 409);
-                abort_if(Payment::query()->where('receipt_number', trim($data['receipt_number']))
-                    ->when($payment, fn ($query) => $query->whereKeyNot($payment->getKey()))->exists(), 409);
-                $payment ??= new Payment;
-                $payment->forceFill([
-                    'users_id' => $entry->created_by, 'form_id' => $entry->custom_form_id,
-                    'custom_form_entry_id' => $entry->getKey(), 'received_by' => null,
-                    'receipt_number' => trim($data['receipt_number']), 'status_payt' => 'paid', 'status' => true,
-                    'amount_usd' => (float) ($data['amount_usd'] ?? 0) > 0 ? $data['amount_usd'] : null,
-                    'amount_kh' => (float) ($data['amount_khr'] ?? 0) > 0 ? $data['amount_khr'] : null,
-                    'exchange_rate' => $data['exchange_rate'] ?? null, 'datetime_pay' => $data['paid_at'],
-                    'integration_source' => 'ams', 'integration_payment_id' => $data['payment_id'],
-                    'integration_cashier_name' => $data['cashier_name'] ?? null,
-                ])->save();
-                $link->local_payment_id = $payment->getKey();
-                $link->external_payment_id = $data['payment_id'];
+                abort_if($link->payment_status === 'paid' && (string) $link->external_payment_id !== $data['payment_id'], 409);
+                abort_if(AmsPaymentRequest::query()->where('external_payment_id', $data['payment_id'])
+                    ->whereKeyNot($link->getKey())->exists(), 409);
+            } elseif (filled($link->external_payment_id)) {
+                // A reversal is allowed only for the currently bound AMS payment.
+                abort_unless((string) $link->external_payment_id === $data['payment_id'], 409);
+            }
+
+            // AMS owns the financial record. Keep only the reference and workflow gate.
+            $wasPaid = $link->payment_status === 'paid';
+            $link->forceFill([
+                'payment_status' => $data['status'],
+                'external_payment_id' => $data['payment_id'],
+                'local_payment_id' => null,
+                'last_event_version' => (int) $data['event_version'],
+            ])->save();
+
+            if ($data['status'] === 'paid') {
                 if (WorkflowStageProgression::enabled($entry)) {
                     WorkflowStageProgression::paid($entry);
                 } else {
                     WorkflowStageProgression::advance($entry);
                 }
                 DB::afterCommit(fn () => WorkflowStageMessages::notifyConfiguredStage($entry, WorkflowStageType::Payment));
-            } elseif ($payment) {
-                // A reversal is allowed only for the currently bound AMS receipt.
-                abort_unless((string) $payment->integration_payment_id === $data['payment_id'], 409);
-                $payment->forceFill(['status_payt' => 'return'])->save();
+            } elseif ($wasPaid) {
                 WorkflowStageProgression::rollbackUnpaidAutoCompletion($entry);
             }
-
-            $link->last_event_version = (int) $data['event_version'];
-            $link->save();
 
             return response()->json(['application_id' => (string) $entry->getKey(), 'payment_status' => $data['status']]);
         }, attempts: 3);

@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Enums\WorkflowStageType;
+use App\Models\AmsPaymentRequest;
 use App\Models\Payment;
 use App\Models\WorkflowNotification;
 use Illuminate\Database\Eloquent\Builder;
@@ -56,6 +57,8 @@ final class StatisticsPaymentEligibility
             } else {
                 $eligible->whereRaw('1 = 0');
             }
+
+            $eligible->orWhereExists(AmsPaymentRequest::paidForApplicationQuery()->toBase());
 
             $eligible->orWhere(function (Builder $reviewed): void {
                 $reviewed->whereIn('custom_form_entries.review_status', ['approved', 'accepted', 'passed'])

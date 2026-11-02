@@ -97,6 +97,8 @@ class AmsPaymentSyncTest extends TestCase
         $this->assertSame((int) $entry->getKey(), (int) $request->custom_form_entry_id);
         $this->assertSame('synced', $request->sync_status);
         $this->assertSame('ams-request-1', $request->ams_request_id);
+        $this->assertSame('unpaid', $request->payment_status);
+        $this->assertNull($request->local_payment_id);
         $this->assertSame('approved', $entry->review_status);
         $this->assertSame('approved', data_get($entry->data, 'registration_status'));
         $this->assertSame(WorkflowStageType::Payment, WorkflowStageMessages::stageTypeFor($entry));
@@ -289,6 +291,26 @@ class AmsPaymentSyncTest extends TestCase
         $this->assertDatabaseCount('ams_payment_requests', 0);
         $this->assertDatabaseCount('payments', 1);
         $this->assertSame(WorkflowStageType::AwaitingResults, WorkflowStageMessages::stageTypeFor($entry->fresh()));
+    }
+
+    public function test_retrying_an_ams_paid_application_uses_only_its_external_status_without_collecting_again(): void
+    {
+        $entry = $this->entry('approved');
+        $request = AmsPaymentRequest::query()->create([
+            'custom_form_entry_id' => $entry->getKey(), 'ams_request_id' => 'already-paid-ams-request',
+            'sync_status' => 'failed', 'payment_status' => 'paid', 'external_payment_id' => 'already-paid-ams-payment',
+            'last_event_version' => 1,
+        ]);
+
+        $result = app(AmsPaymentSync::class)->sync($entry);
+
+        $this->assertSame($request->getKey(), $result?->getKey());
+        $this->assertSame('paid', $request->fresh()->payment_status);
+        $this->assertNull($request->fresh()->local_payment_id);
+        $this->assertDatabaseCount('payments', 0);
+        $this->assertDatabaseCount('ams_payment_requests', 1);
+        $this->assertSame(WorkflowStageType::AwaitingResults, WorkflowStageMessages::stageTypeFor($entry->fresh()));
+        Http::assertNothingSent();
     }
 
     public function test_ams_payment_action_is_hidden_and_local_server_recording_is_blocked(): void

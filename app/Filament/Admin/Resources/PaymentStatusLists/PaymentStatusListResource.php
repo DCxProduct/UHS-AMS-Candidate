@@ -8,6 +8,7 @@ use App\Filament\Admin\Resources\PaymentStatusLists\Pages\CreatePaymentStatusLis
 use App\Filament\Admin\Resources\PaymentStatusLists\Pages\ListPaymentStatusLists;
 use App\Filament\Admin\Resources\PaymentStatusLists\Tables\PaymentStatusListsTable;
 use App\Filament\Concerns\AdminOnly;
+use App\Models\AmsPaymentRequest;
 use App\Models\PaymentStatusList;
 use App\Models\WorkflowNotification;
 use App\Support\MenuRecordVisibility;
@@ -73,7 +74,9 @@ class PaymentStatusListResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return static::getPaymentApplicationsQuery(includeCleared: false);
+        // Completed AMS collections belong only to AMS, including exports and badges.
+        return static::getPaymentApplicationsQuery(includeCleared: false)
+            ->whereNotExists(AmsPaymentRequest::paidForApplicationQuery()->toBase());
     }
 
     public static function getDashboardEloquentQuery(): Builder
@@ -186,6 +189,7 @@ class PaymentStatusListResource extends Resource
             : static::getEloquentQuery();
 
         return $query
+            ->whereNotExists(AmsPaymentRequest::paidForApplicationQuery()->toBase())
             ->whereNotExists(function (QueryBuilder $subQuery): void {
                 $subQuery->selectRaw('1')
                     ->from('payments')

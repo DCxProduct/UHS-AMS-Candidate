@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Enums\WorkflowStageType;
 use App\Mail\WorkflowStageMail;
+use App\Models\AmsPaymentRequest;
 use App\Models\EmailTemplate;
 use App\Models\SmsTemplate;
 use App\Models\Payment;
@@ -920,10 +921,11 @@ final class WorkflowStageMessages
 
     private static function hasPaid(CustomFormEntry $entry): bool
     {
-        return Payment::query()
-            ->where('custom_form_entry_id', $entry->getKey())
-            ->where('status_payt', 'paid')
-            ->exists();
+        return AmsPaymentRequest::hasPaidForEntry($entry->getKey())
+            || Payment::query()
+                ->where('custom_form_entry_id', $entry->getKey())
+                ->where('status_payt', 'paid')
+                ->exists();
     }
 
     private static function candidateCanReceiveStage(CustomFormEntry $entry, WorkflowStageType $stageType): bool
