@@ -635,7 +635,7 @@ class CandidateEntranceStatisticsTable
                 'label' => __('exam_results.date_of_birth'),
                 'field_key' => 'date_of_birth',
                 'value' => fn (CustomFormEntry $record): string => self::dateValue(self::entryValue($record, 'date_of_birth', $record->creator?->date_of_birth)),
-                'clean' => fn (CustomFormEntry $record): string => self::entryValue($record, 'date_of_birth', $record->creator?->date_of_birth),
+                'clean' => fn (CustomFormEntry $record): string => self::dateValue(self::entryValue($record, 'date_of_birth', $record->creator?->date_of_birth)),
             ],
             'data.candidate_status' => [
                 'label' => __('candidate_entrance_statistics.review_status_result'),
@@ -1045,15 +1045,7 @@ class CandidateEntranceStatisticsTable
 
     protected static function dateValue(mixed $state): string
     {
-        if (blank($state) || $state === '-') {
-            return '-';
-        }
-
-        try {
-            return Carbon::parse($state)->format('d-m-Y');
-        } catch (\Throwable) {
-            return (string) $state;
-        }
+        return LocalizedDate::dayMonthYear($state);
     }
 
     protected static function resultStatusLabel(CustomFormEntry $record, ?string $status): string

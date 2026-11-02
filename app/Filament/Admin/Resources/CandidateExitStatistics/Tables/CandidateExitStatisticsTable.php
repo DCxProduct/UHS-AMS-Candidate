@@ -585,7 +585,7 @@ class CandidateExitStatisticsTable
                 'label' => __('candidate_exit_statistics.fields.date_of_birth'),
                 'field_key' => 'date_of_birth',
                 'value' => fn (CandidateExitStatistic $record): string => LocalizedDate::dayMonthYear($record->date_of_birth),
-                'clean' => fn (CandidateExitStatistic $record): string => (string) $record->date_of_birth,
+                'clean' => fn (CandidateExitStatistic $record): string => LocalizedDate::dayMonthYear($record->date_of_birth),
             ],
             'candidate_status' => [
                 'label' => __('candidate_exit_statistics.fields.candidate_status'),

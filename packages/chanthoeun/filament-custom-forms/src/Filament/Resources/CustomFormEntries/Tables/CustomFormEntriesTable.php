@@ -150,6 +150,10 @@ class CustomFormEntriesTable
 
                 $state = $column->getState();
 
+                if (in_array($key, ['data.date_of_birth', 'date_of_birth'], true)) {
+                    return LocalizedDate::dayMonthYear($state);
+                }
+
                 if (! $formatted) {
                     return self::normalizeExportValue($state);
                 }
@@ -410,7 +414,9 @@ class CustomFormEntriesTable
                 }
 
                 // Format Date Columns
-                if (in_array($field->type, ['date_picker', 'date_time_picker'], true)) {
+                if ($key === 'date_of_birth') {
+                    $column->formatStateUsing(fn (mixed $state): string => LocalizedDate::dayMonthYear($state));
+                } elseif (in_array($field->type, ['date_picker', 'date_time_picker'], true)) {
                     $column->formatStateUsing(function (mixed $state): string {
                         if (blank($state)) {
                             return '-';
@@ -805,7 +811,7 @@ class CustomFormEntriesTable
         return [
             TextColumn::make('data.first_name_kh')->label('First Name (Khmer)')->placeholder('-'),
             TextColumn::make('data.last_name_kh')->label('Last Name (Khmer)')->placeholder('-'),
-            TextColumn::make('data.date_of_birth')->label('Date of Birth')->formatStateUsing(fn (mixed $state): string => self::formatProfileDate($state))->placeholder('-'),
+            TextColumn::make('data.date_of_birth')->label('Date of Birth')->formatStateUsing(fn (mixed $state): string => LocalizedDate::dayMonthYear($state))->placeholder('-'),
             TextColumn::make('data.exam_period')->label('Exam Date')->formatStateUsing(fn (mixed $state): string => self::formatProfileDate($state))->placeholder('-'),
             TextColumn::make('data.exam_center')->label('Exam Center')->placeholder('-'),
             TextColumn::make('data.current_occupation')->label('Current Occupation')->placeholder('-'),

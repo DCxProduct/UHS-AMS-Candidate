@@ -487,9 +487,7 @@ class PaymentsTable
             return '-';
         }
 
-        $timestamp = strtotime($value);
-
-        return $timestamp ? date('d-m-Y', $timestamp) : $value;
+        return LocalizedDate::dayMonthYear($value);
     }
 
     protected static function major(Payment $record): string
@@ -1076,7 +1074,7 @@ class PaymentsTable
                 'label' => __('payments.table.date_of_birth'),
                 'field_key' => 'date_of_birth',
                 'value' => fn (Payment $record): string => self::dateOfBirth($record),
-                'clean' => fn (Payment $record): string => self::entryValue($record, 'date_of_birth', $record->user?->date_of_birth),
+                'clean' => fn (Payment $record): string => self::dateOfBirth($record),
             ],
             'major' => [
                 'label' => __('payments.table.major'),

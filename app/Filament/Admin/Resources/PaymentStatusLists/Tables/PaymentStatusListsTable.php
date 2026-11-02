@@ -700,7 +700,7 @@ class PaymentStatusListsTable
             'name_khmer' => trim((string) data_get($record->data, 'full_name_kh')) ?: self::khmerName($record),
             'name_latin' => trim((string) data_get($record->data, 'full_name_en')) ?: self::latinName($record),
             'gender' => self::entryValue($record, 'gender'),
-            'date_of_birth' => self::entryValue($record, 'date_of_birth', $record->creator?->date_of_birth),
+            'date_of_birth' => self::dateOfBirth($record),
             'major' => (string) FormEntryData::firstFilled($record->data, FormEntryData::majorKeys(), '-'),
             'payment_source' => ($payment = self::latestPaymentRecord($record)) && strtolower((string) $payment->status_payt) === 'paid'
                 ? ($payment->paidViaAms() ? 'ams' : 'candidate') : '-',
@@ -1101,9 +1101,7 @@ class PaymentStatusListsTable
             return '-';
         }
 
-        $timestamp = strtotime($value);
-
-        return $timestamp ? date('d-m-Y', $timestamp) : $value;
+        return LocalizedDate::dayMonthYear($value);
     }
 
     protected static function candidateDisplayName(PaymentStatusList $record): string

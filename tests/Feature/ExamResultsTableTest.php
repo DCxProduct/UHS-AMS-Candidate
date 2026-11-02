@@ -47,7 +47,7 @@ class ExamResultsTableTest extends TestCase
                             $sheet->xpath('//s:row[@r="2"]/s:c/s:is/s:t'),
                         );
 
-                        $this->assertSame([$expectedMajor, '21-03-2000'], $values);
+                        $this->assertSame([$expectedMajor, $locale === 'km' ? '២១-មីនា-២០០០' : '21-Mar-2000'], $values);
                     }
                 } finally {
                     $zip->close();
@@ -59,13 +59,14 @@ class ExamResultsTableTest extends TestCase
 
     public function test_excel_birth_date_uses_creator_fallback_and_preserves_missing_values(): void
     {
+        app()->setLocale('en');
         $record = new CustomFormEntry;
         $record->data = [];
         $record->setRelation('creator', new User(['date_of_birth' => '2001-12-05']));
 
         $definitions = $this->exportDefinitions();
 
-        $this->assertSame('05-12-2001', $definitions['date_of_birth']['clean']($record));
+        $this->assertSame('05-Dec-2001', $definitions['date_of_birth']['clean']($record));
 
         $record->setRelation('creator', null);
         $this->assertSame('-', $definitions['date_of_birth']['clean']($record));

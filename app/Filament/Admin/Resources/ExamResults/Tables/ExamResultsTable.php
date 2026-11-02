@@ -14,6 +14,7 @@ use App\Support\FormEntryData;
 use App\Support\CaseInsensitiveSearch;
 use App\Support\PassedResultMenuOptions;
 use App\Support\LocalizedNumber;
+use App\Support\LocalizedDate;
 use App\Support\MenuRecordVisibility;
 use App\Support\UserTypeOptions;
 use App\Support\WorkflowStageMessages;
@@ -107,7 +108,7 @@ class ExamResultsTable
 
                 TextColumn::make('date_of_birth')
                     ->label(__('exam_results.date_of_birth'))
-                    ->getStateUsing(fn ($record): string => self::dateValue(self::entryValue($record, 'date_of_birth', $record->creator?->date_of_birth)))
+                    ->getStateUsing(fn ($record): string => LocalizedDate::dayMonthYear(self::entryValue($record, 'date_of_birth', $record->creator?->date_of_birth)))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('academic_year')
@@ -493,10 +494,10 @@ class ExamResultsTable
             'date_of_birth' => [
                 'label' => __('exam_results.date_of_birth'),
                 'field_key' => 'date_of_birth',
-                'value' => fn (CustomFormEntry $record): string => self::dateValue(
+                'value' => fn (CustomFormEntry $record): string => LocalizedDate::dayMonthYear(
                     self::entryValue($record, 'date_of_birth', $record->creator?->date_of_birth)
                 ),
-                'clean' => fn (CustomFormEntry $record): string => self::dateValue(
+                'clean' => fn (CustomFormEntry $record): string => LocalizedDate::dayMonthYear(
                     self::entryValue($record, 'date_of_birth', $record->creator?->date_of_birth)
                 ),
             ],
