@@ -11,19 +11,24 @@ class CustomFormEntryFiles
 {
     public function fieldNames(CustomFormEntry $entry): array
     {
+        return array_map('strval', array_keys($this->fieldLabels($entry)));
+    }
+
+    protected function fieldLabels(CustomFormEntry $entry): array
+    {
         return CustomFormField::query()
             ->where('custom_form_id', $entry->custom_form_id)
             ->whereIn('type', ['file', 'file_upload', 'fileupload'])
-            ->pluck('name')
-            ->filter()
-            ->map(fn ($name): string => (string) $name)
-            ->values()
+            ->get(['name', 'label'])
+            ->filter(fn (CustomFormField $field): bool => filled($field->name))
+            ->mapWithKeys(fn (CustomFormField $field): array => [(string) $field->name => $field->label])
             ->all();
     }
 
     public function files(CustomFormEntry $entry): array
     {
-        $fieldNames = $this->fieldNames($entry);
+        $fieldLabels = $this->fieldLabels($entry);
+        $fieldNames = array_map('strval', array_keys($fieldLabels));
 
         if ($fieldNames === []) {
             return [];
@@ -44,7 +49,11 @@ class CustomFormEntryFiles
             }
 
             $seenPaths[$resolved['path']] = true;
-            $files[] = ['field_name' => $file['field_name'], ...$resolved];
+            $files[] = [
+                'field_name' => $file['field_name'],
+                'field_label' => $fieldLabels[$file['field_name']] ?? null,
+                ...$resolved,
+            ];
         }
 
         return $files;

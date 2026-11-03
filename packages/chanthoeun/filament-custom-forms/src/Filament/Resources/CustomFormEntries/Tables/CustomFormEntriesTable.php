@@ -1528,7 +1528,14 @@ class CustomFormEntriesTable
             ->extraModalFooterActions(function ($record): array {
                 $downloadActions = collect(app(CustomFormEntryFiles::class)->files($record))
                     ->map(function (array $file, int $index) use ($record): Action {
-                        $fileLabel = app(CustomFormEntryFiles::class)->displayLabel($file['path']);
+                        $fileLabel = trim(self::transText($file['field_label'] ?? null));
+                        if ($fileLabel === '') {
+                            $fileLabel = $file['field_name'];
+                        }
+                        $extension = strtolower(pathinfo($file['path'], PATHINFO_EXTENSION));
+                        if ($extension !== '') {
+                            $fileLabel .= ' (.'.$extension.')';
+                        }
 
                         return Action::make('download_file_'.$index)
                             ->label(__('candidate_entrance_statistics.download_file', ['file' => $fileLabel]))
