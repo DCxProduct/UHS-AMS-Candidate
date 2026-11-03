@@ -6,6 +6,7 @@ use App\Enums\WorkflowPaymentSource;
 use App\Enums\WorkflowStageType;
 use App\Models\EmailTemplate;
 use App\Models\Role;
+use App\Services\AmsWorkflowRoles;
 use App\Models\SmsTemplate;
 use App\Models\WorkflowNotification;
 use App\Support\WorkflowNotificationStageSummary;
@@ -260,6 +261,11 @@ class WorkflowNotificationForm
                     ->in(fn (): array => array_keys(WorkflowPaymentSource::options()))
                     ->default(WorkflowPaymentSource::System->value)
                     ->afterStateHydrated(fn (Select $component, mixed $state) => $component->state(WorkflowPaymentSource::resolve($state)->value))
+                    ->live()
+                    ->afterStateUpdated(function (Set $set): void {
+                        $set('responsible_role', []);
+                        $set('audience_messages.staff_recipient_roles', []);
+                    })
                     ->required($isPaymentStage)
                     ->visible($isPaymentStage)
                     ->native(false)
@@ -294,6 +300,7 @@ class WorkflowNotificationForm
 
                 TextInput::make('alert_message')
                     ->label(__('workflow_notifications.fields.alert_message'))
+                    ->helperText(fn (Get $get): ?string => self::isAmsPayment($get) ? __('workflow_notifications.helpers.ams_alert') : null)
                     ->placeholder(__('workflow_notifications.placeholders.alert_message'))
                     ->maxLength(255)
                     ->visible(fn (Get $get): bool => filled($get('stage_type')) && ! $isReviewStage($get))
@@ -301,11 +308,12 @@ class WorkflowNotificationForm
 
                 Select::make('responsible_role')
                     ->label(__('workflow_notifications.fields.responsible_role'))
-                    ->options(fn (Get $get): array => self::responsibleRoleOptions($get('stage_type')))
+                    ->options(fn (Get $get): array => self::stageRoleOptions($get))
+                    ->helperText(fn (Get $get): ?string => self::amsRoleHelp($get))
                     ->multiple()
                     ->searchable()
                     ->preload()
-                    ->in(fn (Get $get): array => array_keys(self::responsibleRoleOptions($get('stage_type'))))
+                    ->in(fn (Get $get): array => array_keys(self::stageRoleOptions($get)))
                     ->required($requiresManualRole)
                     ->visible($handledByStaff)
                     ->columnSpanFull(),
@@ -374,7 +382,7 @@ class WorkflowNotificationForm
 
                         Group::make()->schema([
                             Placeholder::make('stage_staff_heading')
-                                ->content(new HtmlString('<div class="border-b border-gray-200 pb-3 font-semibold dark:border-gray-700">'.e(__('workflow_notifications.sections.for_system_users')).'</div>'))
+                                ->content(fn (Get $get): HtmlString => new HtmlString('<div class="border-b border-gray-200 pb-3 font-semibold dark:border-gray-700">'.e(__(self::isAmsPayment($get) ? 'workflow_notifications.sections.for_ams_users' : 'workflow_notifications.sections.for_system_users')).'</div>'))
                                 ->hiddenLabel(),
 
                             TextInput::make('payment_statuses.unpaid_status_message')
@@ -408,11 +416,12 @@ class WorkflowNotificationForm
                             Select::make('audience_messages.staff_recipient_roles')
                                 ->label(__('workflow_notifications.fields.staff_recipient_roles'))
                                 ->placeholder(__('workflow_notifications.placeholders.staff_recipient_roles'))
-                                ->options(fn (): array => WorkflowStaffRecipients::roleOptions())
+                                ->options(fn (Get $get): array => self::stageRecipientRoleOptions($get))
+                                ->helperText(fn (Get $get): ?string => self::amsRoleHelp($get))
                                 ->multiple()
                                 ->searchable()
                                 ->preload()
-                                ->in(fn (): array => array_keys(WorkflowStaffRecipients::roleOptions()))
+                                ->in(fn (Get $get): array => array_keys(self::stageRecipientRoleOptions($get)))
                                 ->default([])
                                 ->native(false),
                         ])->visible($usesStageAudienceLayout)->columnSpan(1),
@@ -500,6 +509,37 @@ class WorkflowNotificationForm
                         ])->columnSpan(1),
                     ]),
             ]);
+    }
+
+    private static function isAmsPayment(Get $get): bool
+    {
+        return $get('stage_type') === WorkflowStageType::Payment->value
+            && WorkflowPaymentSource::resolve($get('payment_source')) === WorkflowPaymentSource::Ams;
+    }
+
+    private static function stageRoleOptions(Get $get): array
+    {
+        return self::isAmsPayment($get)
+            ? AmsWorkflowRoles::options()
+            : self::responsibleRoleOptions($get('stage_type'));
+    }
+
+    private static function stageRecipientRoleOptions(Get $get): array
+    {
+        return self::isAmsPayment($get)
+            ? AmsWorkflowRoles::options()
+            : WorkflowStaffRecipients::roleOptions();
+    }
+
+    private static function amsRoleHelp(Get $get): ?string
+    {
+        if (! self::isAmsPayment($get)) {
+            return null;
+        }
+
+        return __(AmsWorkflowRoles::options() === []
+            ? 'workflow_notifications.helpers.ams_roles_unavailable'
+            : 'workflow_notifications.helpers.ams_roles');
     }
 
     /**

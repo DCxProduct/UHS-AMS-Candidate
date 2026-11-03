@@ -9,9 +9,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('ams_payment_requests', function (Blueprint $table): void {
-            $table->string('payment_status')->default('unpaid')->index();
-        });
+        if (! Schema::hasColumn('ams_payment_requests', 'payment_status')) {
+            Schema::table('ams_payment_requests', function (Blueprint $table): void {
+                $table->string('payment_status')->default('unpaid')->index();
+            });
+        }
 
         // Retain the workflow gate before removing old Candidate copies of AMS receipts.
         // Query-builder writes intentionally avoid payment events and workflow rollback.
@@ -33,6 +35,12 @@ return new class extends Migration
                             'updated_at' => now(),
                         ];
 
+                        // A newer authenticated callback is authoritative over
+                        // a historic receipt copy awaiting cleanup.
+                        if ($link && (int) $link->last_event_version > 0) {
+                            unset($state['payment_status'], $state['external_payment_id']);
+                        }
+
                         if ($link) {
                             DB::table('ams_payment_requests')->where('id', $link->id)->update($state);
                         } else {
@@ -48,9 +56,11 @@ return new class extends Migration
                 });
         });
 
-        Schema::table('ams_payment_requests', function (Blueprint $table): void {
-            $table->unique('external_payment_id', 'ams_payment_requests_external_payment_unique');
-        });
+        if (! Schema::hasIndex('ams_payment_requests', 'ams_payment_requests_external_payment_unique')) {
+            Schema::table('ams_payment_requests', function (Blueprint $table): void {
+                $table->unique('external_payment_id', 'ams_payment_requests_external_payment_unique');
+            });
+        }
     }
 
     public function down(): void

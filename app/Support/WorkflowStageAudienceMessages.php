@@ -3,6 +3,8 @@
 namespace App\Support;
 
 use App\Enums\WorkflowStageType;
+use App\Enums\WorkflowPaymentSource;
+use App\Models\WorkflowNotification;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Traits\Localizable;
@@ -17,6 +19,13 @@ final class WorkflowStageAudienceMessages
     {
         try {
             if (! in_array($stageType, [WorkflowStageType::Payment, WorkflowStageType::AwaitingResults, WorkflowStageType::Completed], true)) {
+                return 0;
+            }
+
+            // AMS owns the staff roles and bells for its payment stage. The
+            // callback still delivers the candidate's own stage message here.
+            if ($stageType === WorkflowStageType::Payment
+                && WorkflowNotification::forEntry($entry)?->paymentSource() === WorkflowPaymentSource::Ams) {
                 return 0;
             }
 

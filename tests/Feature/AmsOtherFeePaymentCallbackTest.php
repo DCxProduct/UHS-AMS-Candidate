@@ -13,6 +13,7 @@ use App\Support\WorkflowStageMessages;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -78,6 +79,16 @@ class AmsOtherFeePaymentCallbackTest extends TestCase
         $other->forceFill(['candidate_id' => 'SHARED-CANDIDATE-ID'])->save();
         $this->entry->forceFill(['candidate_id' => 'SHARED-CANDIDATE-ID'])->save();
         $this->requestFor($other, 'different-ams-request');
+        // An older cached payload is removed when the verified callback saves its gate.
+        DB::table('ams_payment_requests')->where('id', $this->request->getKey())->update([
+            'payload' => json_encode([
+                'application_id' => (string) $this->entry->getKey(),
+                'candidate' => ['name_kh' => 'Cached candidate name'],
+                'receipt_number' => 'OLD-AMS-RECEIPT',
+                'amount_khr' => 120000,
+                'cashier_name' => 'AMS Cashier',
+            ]),
+        ]);
         $body = $this->payload(['amount_usd' => 0, 'amount_khr' => 120000]);
 
         $this->postCallback($body)->assertOk();
@@ -96,7 +107,7 @@ class AmsOtherFeePaymentCallbackTest extends TestCase
         $this->assertSame('approved', data_get($this->entry->fresh()->data, 'registration_status'));
         $this->actingAs($this->candidate);
         $this->assertFalse(PaymentStatusListResource::getEloquentQuery()->whereKey($this->entry->getKey())->exists());
-        $this->assertTrue(PaymentStatusListResource::getEloquentQuery()->whereKey($other->getKey())->exists());
+        $this->assertFalse(PaymentStatusListResource::getEloquentQuery()->whereKey($other->getKey())->exists());
         Http::assertNothingSent();
         Mail::assertNothingSent();
     }

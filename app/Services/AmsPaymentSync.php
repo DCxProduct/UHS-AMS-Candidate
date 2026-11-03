@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\WorkflowPaymentSource;
+use App\Enums\WorkflowStageType;
 use App\Models\AmsPaymentRequest;
 use App\Models\Payment;
 use App\Models\WorkflowNotification;
@@ -24,7 +25,7 @@ class AmsPaymentSync
             && WorkflowNotification::forEntry($entry)?->paymentSource() === WorkflowPaymentSource::Ams;
     }
 
-    public function sync(CustomFormEntry $entry): ?AmsPaymentRequest
+    public function sync(CustomFormEntry $entry, bool $refreshWorkflow = false): ?AmsPaymentRequest
     {
         $entry->refresh();
 
@@ -45,7 +46,7 @@ class AmsPaymentSync
 
         $request = AmsPaymentRequest::query()->firstOrCreate(['custom_form_entry_id' => $entry->getKey()]);
 
-        if ($request->sync_status === 'synced' && filled($request->ams_request_id)) {
+        if (! $refreshWorkflow && $request->sync_status === 'synced' && filled($request->ams_request_id)) {
             return $request;
         }
 
@@ -109,6 +110,7 @@ class AmsPaymentSync
             'candidate_identifier' => filled($entry->candidate_id) ? (string) $entry->candidate_id : null,
             'form_id' => (string) $entry->custom_form_id,
             'form_name' => (string) ($entry->customForm?->display_name ?: $entry->customForm?->name),
+            'workflow_payment' => $this->workflowPayment($entry),
             'candidate' => [
                 'name_kh' => $nameKh ?: self::text(FormEntryData::firstFilled($data, ['full_name_kh', 'name_kh'], $owner?->name)),
                 'name_en' => self::text($nameEn) ?: CandidateDisplayName::for($owner),
@@ -123,6 +125,22 @@ class AmsPaymentSync
                 'generation' => self::text(FormEntryData::firstFilled($data, ['generation'])),
                 'year_level' => self::text(FormEntryData::firstFilled($data, ['year_level', 'year'])),
             ],
+        ];
+    }
+
+    private function workflowPayment(CustomFormEntry $entry): array
+    {
+        // Send the application's frozen stage, never the subsequently edited template.
+        $stage = collect(WorkflowNotification::forEntry($entry)?->stages ?? [])
+            ->map(fn (array $item): array => $item['data'] ?? $item)
+            ->first(fn (array $item): bool => ($item['stage_type'] ?? null) === WorkflowStageType::Payment->value) ?? [];
+
+        return [
+            'stage_name' => (string) ($stage['stage_name'] ?? WorkflowStageType::Payment->label()),
+            'responsible_roles' => WorkflowNotification::normalizeResponsibleRoles($stage['responsible_role'] ?? []),
+            'alert_message' => self::text($stage['alert_message'] ?? null),
+            'staff_notification_message' => self::text(data_get($stage, 'audience_messages.staff_notification_message')),
+            'staff_recipient_roles' => WorkflowNotification::normalizeResponsibleRoles(data_get($stage, 'audience_messages.staff_recipient_roles', [])),
         ];
     }
 

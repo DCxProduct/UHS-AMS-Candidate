@@ -20,6 +20,7 @@ return [
         'stages_description' => 'Add the stages in order. Drag stages to rearrange them.',
         'for_candidates' => 'For Candidates',
         'for_system_users' => 'For System Users',
+        'for_ams_users' => 'For AMS System Users',
         'review_outcomes' => 'Review Actions',
     ],
 
@@ -132,6 +133,9 @@ return [
     ],
 
     'helpers' => [
+        'ams_alert' => 'Shown in AMS after payment succeeds. Leave blank for no alert.',
+        'ams_roles' => 'Roles from the AMS Roles menu. Applies to this AMS payment stage.',
+        'ams_roles_unavailable' => 'AMS roles could not be loaded. Check the AMS API connection and refresh this page.',
         'staff_message_placeholders' => ':candidate = candidate name; :form = application form name. Example: :candidate submitted :form.',
         'assigned_forms' => 'Forms that follow this workflow. A form can belong to only one template.',
         'passed_result_status_message' => 'Shown in the exam result table after the candidate is marked Passed. Leave blank to use the default Passed label.',
