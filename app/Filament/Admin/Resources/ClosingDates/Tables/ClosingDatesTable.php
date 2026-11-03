@@ -2,7 +2,9 @@
 
 namespace App\Filament\Admin\Resources\ClosingDates\Tables;
 
+use App\Filament\Admin\Resources\ClosingDates\ClosingDateResource;
 use App\Models\ClosingDate;
+use App\Support\FilamentActionPermissions;
 use App\Support\LocalizedDate;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
@@ -15,6 +17,7 @@ class ClosingDatesTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->selectable(fn (): bool => FilamentActionPermissions::canForResource(ClosingDateResource::class, 'clear_data'))
             ->columns([
                 TextColumn::make('localized_name')
                     ->label(__('closing_dates.table_name'))
