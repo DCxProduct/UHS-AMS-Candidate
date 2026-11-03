@@ -6,6 +6,7 @@ use App\Filament\Admin\Resources\AuditLogs\AuditLogResource;
 use App\Filament\Admin\Resources\CandidateEntranceStatistics\CandidateEntranceStatisticResource;
 use App\Filament\Admin\Resources\CandidateExitStatistics\CandidateExitStatisticResource;
 use App\Filament\Admin\Resources\CandidateLists\CandidateListResource;
+use App\Filament\Admin\Resources\ClosingDates\ClosingDateResource;
 use App\Filament\Admin\Resources\PaymentStatusLists\PaymentStatusListResource;
 use App\Filament\Admin\Resources\CandidateSubmitPopupSettings\CandidateSubmitPopupSettingResource;
 use App\Filament\Admin\Resources\ExamResults\ExamResultResource;
@@ -29,6 +30,9 @@ class FilamentActionPermissions
     public static function resourceActions(): array
     {
         return [
+            ClosingDateResource::class => [
+                'clear_data',
+            ],
             PaymentResource::class => [
                 'download_excel',
                 'download_pdf',

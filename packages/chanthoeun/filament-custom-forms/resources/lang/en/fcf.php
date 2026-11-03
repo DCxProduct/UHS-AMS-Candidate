@@ -4,6 +4,9 @@
      'admin' => [
          'parent_container' => 'Parent Container',
          'configuration' => 'Configuration',
+         'accepted_file_types' => 'Accepted file types',
+         'word_document_type' => 'Word document (.doc/.docx)',
+         'default_file_types' => 'Use default file types',
          'columns' => 'Columns',
          'select_options' => 'Select Options',
          'field_input' => 'Field Input',
@@ -27,6 +30,8 @@
          'selection_tab' => 'Select Input Field',
          'selection_form' => 'Selection Form Builder',
          'select_field' => 'Select Field',
+         'select_all_fields' => 'Select all',
+         'reset_all_fields' => 'Reset all',
          'key' => 'Key',
          'choice_rows_help' => 'Key is saved to database. English and Khmer are display labels.',
          'data_source_table' => 'Data Source Table',

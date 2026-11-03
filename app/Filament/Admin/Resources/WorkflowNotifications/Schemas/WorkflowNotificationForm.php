@@ -5,7 +5,6 @@ namespace App\Filament\Admin\Resources\WorkflowNotifications\Schemas;
 use App\Enums\WorkflowPaymentSource;
 use App\Enums\WorkflowStageType;
 use App\Models\EmailTemplate;
-use App\Models\Role;
 use App\Services\AmsWorkflowRoles;
 use App\Models\SmsTemplate;
 use App\Models\WorkflowNotification;
@@ -553,14 +552,7 @@ class WorkflowNotificationForm
             return [];
         }
 
-        return Role::query()
-            ->where(fn ($query) => $query
-                ->whereNull('role_type_key')
-                ->orWhere('role_type_key', '!=', 'candidate'))
-            ->orderBy('id')
-            ->get()
-            ->mapWithKeys(fn (Role $role): array => [$role->name => $role->localized_name])
-            ->all();
+        return WorkflowStaffRecipients::roleOptions();
     }
 
     private static function emptyStage(): array

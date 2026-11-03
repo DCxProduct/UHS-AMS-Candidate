@@ -51,6 +51,7 @@ return [
     'create' => 'Create New',
     'edit' => 'Edit',
     'delete' => 'Delete',
+    'clear_data_confirm' => 'Permanently delete the selected closing dates? If no rows are selected, all closing dates matching the current search will be deleted.',
     'save' => 'Save',
     'save_and_create_another' => 'Save and create another',
     'cancel' => 'Cancel',

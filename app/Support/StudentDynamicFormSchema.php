@@ -174,9 +174,7 @@ class StudentDynamicFormSchema
                         'image/jpeg',
                         'image/png',
                     ])
-                    : (array) config('filament-custom-forms.uploads.accepted_mime_types', [
-                        'application/pdf',
-                    ]))
+                    : CustomFormUploadTypes::acceptedMimeTypes($config))
                 ->maxSize(in_array($type, ['image', 'image_upload'], true)
                     ? 5120
                     : (int) config('filament-custom-forms.uploads.max_size_kb', 10240))

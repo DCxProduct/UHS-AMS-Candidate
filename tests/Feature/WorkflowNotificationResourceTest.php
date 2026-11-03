@@ -10,6 +10,7 @@ use App\Filament\Admin\Resources\WorkflowNotifications\WorkflowNotificationResou
 use App\Models\Role;
 use App\Models\User;
 use App\Models\WorkflowNotification;
+use App\Support\UserTypeOptions;
 use App\Support\WorkflowNotificationStageSummary;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomForms\Pages\EditCustomForm;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomForms\Pages\ListCustomForms;
@@ -586,6 +587,47 @@ class WorkflowNotificationResourceTest extends TestCase
         }
 
         $this->assertSame([], WorkflowNotificationForm::responsibleRoleOptions('form_submission'));
+    }
+
+    public function test_responsible_roles_exclude_untyped_candidate_catalog_roles_and_preserve_localized_staff_roles(): void
+    {
+        DB::table('user_types')->insert([
+            'key' => 'inactive_custom_candidate', 'label_en' => 'Inactive custom candidate',
+            'label_kh' => 'ប្រភេទបេក្ខជនផ្ទាល់ខ្លួន', 'is_active' => false,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $candidateRoles = collect(UserTypeOptions::defaultRecords())->pluck('key')->merge([
+            'candidate', 'student', 'inactive_custom_candidate',
+            'national_entrance_exam_application_legacy', 'NATIONAL_EXIT_EXAM_APPLICATION_LEGACY',
+        ]);
+        foreach ($candidateRoles as $name) {
+            Role::findOrCreate($name, 'web')->forceFill(['role_type_key' => null])->save();
+        }
+        Role::query()->create(['name' => 'api_staff', 'guard_name' => 'api']);
+        Role::query()->create([
+            'name' => 'custom_staff_role', 'guard_name' => 'web',
+            'label_en' => 'Custom Staff', 'name_kh' => 'បុគ្គលិកផ្ទាល់ខ្លួន',
+        ]);
+        $staffRoles = ['admin', 'registrar_officer', 'cashier_officer', 'custom_staff_role'];
+        $originalLocale = app()->getLocale();
+
+        try {
+            foreach (['en' => 'Custom Staff', 'km' => 'បុគ្គលិកផ្ទាល់ខ្លួន'] as $locale => $label) {
+                app()->setLocale($locale);
+                foreach (WorkflowStageType::cases() as $type) {
+                    $options = WorkflowNotificationForm::responsibleRoleOptions($type->value);
+                    if (! $type->requiresRole()) {
+                        $this->assertSame([], $options);
+                        continue;
+                    }
+
+                    $this->assertSame($staffRoles, array_keys($options));
+                    $this->assertSame($label, $options['custom_staff_role']);
+                }
+            }
+        } finally {
+            app()->setLocale($originalLocale);
+        }
     }
 
     public function test_the_candidate_role_cannot_be_responsible_for_a_stage(): void
