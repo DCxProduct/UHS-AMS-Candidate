@@ -27,6 +27,14 @@ return [
     'submitted_at' => 'Submitted At',
     'uploaded_files' => 'Uploaded Files',
     'download_files_count' => 'Download :count',
+    'download_all_files' => 'Download all (ZIP)',
+    'file_preview' => [
+        'open_in_new_tab' => 'Open in new tab',
+        'download' => 'Download',
+        'previous' => 'Previous',
+        'next' => 'Next',
+        'unavailable' => 'Preview is not available for this file type. Download the file to view it.',
+    ],
 
     'details_title' => 'Application Details',
     'application_information' => 'Application Information',

@@ -342,6 +342,7 @@ class CustomFormEntriesTable
 
             $hasFileUploadFields = $fields->contains(
                 fn ($field): bool => self::isDocumentFieldType((string) $field->type)
+                    || self::isImageFieldType((string) $field->type)
             );
 
             $imageFieldKeys = $fields
@@ -541,7 +542,24 @@ class CustomFormEntriesTable
                         ? __('candidate_entrance_statistics.download_files_count', ['count' => $count])
                         : null;
                 })
-                ->url(fn ($record): ?string => app(CustomFormEntryFiles::class)->protectedZipUrl($record))
+                ->action(
+                    Action::make('preview_uploaded_files')
+                        ->modalHeading(__('candidate_entrance_statistics.uploaded_files'))
+                        ->modalWidth('7xl')
+                        ->modalSubmitAction(false)
+                        ->modalCancelActionLabel(__('candidate_entrance_statistics.actions.close'))
+                        ->disabled(fn ($record): bool => app(CustomFormEntryFiles::class)->files($record) === [])
+                        ->modalContent(fn ($record) => view('filament.custom-form-entries.uploaded-files-preview', [
+                            'files' => app(CustomFormEntryFiles::class)->previewFiles($record),
+                        ]))
+                        ->extraModalFooterActions([
+                            Action::make('download_all_uploaded_files')
+                                ->label(__('candidate_entrance_statistics.download_all_files'))
+                                ->icon('heroicon-o-arrow-down-tray')
+                                ->color('gray')
+                                ->url(fn ($record): ?string => app(CustomFormEntryFiles::class)->protectedZipUrl($record)),
+                        ])
+                )
                 ->placeholder('-')
                 ->toggleable(isToggledHiddenByDefault: false);
         }

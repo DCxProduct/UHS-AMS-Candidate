@@ -27,6 +27,14 @@ return [
     'submitted_at' => 'បានដាក់ស្នើនៅ',
     'uploaded_files' => 'ឯកសារដែលបានបញ្ចូល',
     'download_files_count' => 'ទាញយក :count',
+    'download_all_files' => 'ទាញយកទាំងអស់ (ZIP)',
+    'file_preview' => [
+        'open_in_new_tab' => 'បើកក្នុងផ្ទាំងថ្មី',
+        'download' => 'ទាញយក',
+        'previous' => 'មុន',
+        'next' => 'បន្ទាប់',
+        'unavailable' => 'មិនអាចមើលឯកសារប្រភេទនេះជាមុនបានទេ។ សូមទាញយកឯកសារដើម្បីមើល។',
+    ],
 
     'details_title' => 'ព័ត៌មានលម្អិតពាក្យស្នើសុំ',
     'application_information' => 'ព័ត៌មានពាក្យស្នើសុំ',
