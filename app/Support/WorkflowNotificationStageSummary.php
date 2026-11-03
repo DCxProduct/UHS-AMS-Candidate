@@ -6,6 +6,7 @@ use App\Enums\WorkflowPaymentSource;
 use App\Enums\WorkflowStageType;
 use App\Models\Role;
 use App\Models\WorkflowNotification;
+use App\Services\AmsWorkflowRoles;
 use Illuminate\Support\Str;
 
 final class WorkflowNotificationStageSummary
@@ -37,15 +38,22 @@ final class WorkflowNotificationStageSummary
                 return [$role->name => $label];
             });
 
+        $amsRoleLabels = $stageData->contains(fn (array $stage): bool => ($stage['stage_type'] ?? null) === WorkflowStageType::Payment->value
+            && WorkflowPaymentSource::resolve($stage['payment_source'] ?? null) === WorkflowPaymentSource::Ams)
+            ? collect(AmsWorkflowRoles::options()) : collect();
+
         return $stageData
-            ->map(function (array $stage) use ($roleLabels): array {
+            ->map(function (array $stage) use ($roleLabels, $amsRoleLabels): array {
                 $type = WorkflowStageType::tryFrom((string) ($stage['stage_type'] ?? null));
                 $responsibleRoles = WorkflowNotification::normalizeResponsibleRoles($stage['responsible_role'] ?? null);
+                $stageRoleLabels = $type === WorkflowStageType::Payment
+                    && WorkflowPaymentSource::resolve($stage['payment_source'] ?? null) === WorkflowPaymentSource::Ams
+                    ? $amsRoleLabels : $roleLabels;
 
                 $responsibleLabel = match ($type) {
                     WorkflowStageType::FormSubmission => __('workflow_notifications.view.candidate'),
                     default => count($responsibleRoles) > 0
-                        ? collect($responsibleRoles)->map(fn (string $role): string => $roleLabels->get(
+                        ? collect($responsibleRoles)->map(fn (string $role): string => $stageRoleLabels->get(
                             $role,
                             Str::of($role)
                                 ->replace(['_', '-'], ' ')
