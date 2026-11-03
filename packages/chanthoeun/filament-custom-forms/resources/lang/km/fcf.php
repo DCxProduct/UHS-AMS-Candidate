@@ -4,6 +4,9 @@
      'admin' => [
          'parent_container' => 'ធុងផ្ទុកមេ',
          'configuration' => 'ការកំណត់រចនាសម្ព័ន្ធ',
+         'accepted_file_types' => 'ប្រភេទឯកសារដែលអនុញ្ញាត',
+         'word_document_type' => 'ឯកសារ Word (.doc/.docx)',
+         'default_file_types' => 'ប្រើប្រភេទឯកសារលំនាំដើម',
          'columns' => 'ជួរឈរ',
          'select_options' => 'ជម្រើសជ្រើសរើស',
          'field_input' => 'បញ្ចូលទិន្នន័យ',

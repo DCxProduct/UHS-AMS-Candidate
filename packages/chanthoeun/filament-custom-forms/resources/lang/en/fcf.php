@@ -4,6 +4,9 @@
      'admin' => [
          'parent_container' => 'Parent Container',
          'configuration' => 'Configuration',
+         'accepted_file_types' => 'Accepted file types',
+         'word_document_type' => 'Word document (.doc/.docx)',
+         'default_file_types' => 'Use default file types',
          'columns' => 'Columns',
          'select_options' => 'Select Options',
          'field_input' => 'Field Input',

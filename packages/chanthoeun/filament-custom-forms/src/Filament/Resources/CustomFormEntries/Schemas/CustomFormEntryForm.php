@@ -5,6 +5,7 @@ namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Sc
 use App\Models\GeoLocation;
 use App\Models\Major;
 use App\Support\CustomFormEntryFiles;
+use App\Support\CustomFormUploadTypes;
 use App\Support\DatePickerKeyboardInput;
 use App\Support\UserTypeOptions;
 use Chanthoeun\FilamentCustomForms\CustomFormPlugin;
@@ -405,9 +406,7 @@ class CustomFormEntryForm
                             ->directory((string) config('filament-custom-forms.uploads.directory', CustomFormPlugin::get()->getUploadDirectory()))
                             ->visibility((string) config('filament-custom-forms.uploads.visibility', CustomFormPlugin::get()->getUploadVisibility()))
                             ->acceptedFileTypes($type === 'file_upload'
-                                ? (array) config('filament-custom-forms.uploads.accepted_mime_types', [
-                                    'application/pdf',
-                                ])
+                                ? CustomFormUploadTypes::acceptedMimeTypes($options)
                                 : (array) config('filament-custom-forms.uploads.image_mime_types', [
                                     'image/jpeg',
                                     'image/png',

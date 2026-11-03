@@ -3,6 +3,7 @@
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomForms\RelationManagers;
 
 use App\Models\Major;
+use App\Support\CustomFormUploadTypes;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
@@ -135,6 +136,16 @@ class FieldsRelationManager extends RelationManager
                             ->live()
                             ->required(fn ($get, ?object $record = null): bool => filled($record) || self::isCreatingMode($get))
                             ->visible(fn ($get, ?object $record = null): bool => filled($record) || self::isCreatingMode($get)),
+
+                        \Filament\Forms\Components\Select::make('options.accepted_file_types')
+                            ->label(__('filament-custom-forms::fcf.admin.accepted_file_types'))
+                            ->options(CustomFormUploadTypes::options())
+                            ->multiple()
+                            ->native(false)
+                            ->placeholder(__('filament-custom-forms::fcf.admin.default_file_types'))
+                            ->columnSpanFull()
+                            ->visible(fn ($get, ?object $record = null): bool => (filled($record) || self::isCreatingMode($get))
+                                && in_array((string) $get('type'), ['file', 'file_upload', 'fileupload'], true)),
 
                         \Filament\Forms\Components\TextInput::make('options.min_value')
                             ->label(__('filament-custom-forms::fcf.admin.minimum_value'))
