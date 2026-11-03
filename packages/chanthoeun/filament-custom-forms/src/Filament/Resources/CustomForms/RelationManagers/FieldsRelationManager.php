@@ -3,6 +3,7 @@
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomForms\RelationManagers;
 
 use App\Models\Major;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
@@ -274,6 +275,26 @@ class FieldsRelationManager extends RelationManager
 
                                 \Filament\Forms\Components\Select::make('options.visible_when.fields')
                                     ->label(__('filament-custom-forms::fcf.admin.select_field'))
+                                    ->hintActions([
+                                        Action::make('reset_all_fields')
+                                            ->label(__('filament-custom-forms::fcf.admin.reset_all_fields'))
+                                            ->color('danger')
+                                            ->action(function (\Filament\Forms\Components\Select $component): void {
+                                                $component->state([]);
+                                                $component->callAfterStateUpdated();
+                                            }),
+                                        Action::make('select_all_fields')
+                                            ->label(__('filament-custom-forms::fcf.admin.select_all_fields'))
+                                            ->action(function (\Filament\Forms\Components\Select $component): void {
+                                                $selected = $component->getState();
+
+                                                $component->state(array_values(array_unique(array_merge(
+                                                    is_array($selected) ? $selected : [],
+                                                    array_keys($component->getOptions()),
+                                                ))));
+                                                $component->callAfterStateUpdated();
+                                            }),
+                                    ])
                                     ->key(function ($get): string {
                                         $selectedFormId = $get('selection_source_forms');
 

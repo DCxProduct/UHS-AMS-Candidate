@@ -27,6 +27,8 @@
          'selection_tab' => 'ជ្រើសរើសប្រអប់បំពេញ',
          'selection_form' => 'ជ្រើសរើសប្រភេទទម្រង់',
          'select_field' => 'ជ្រើសរើសវាល',
+         'select_all_fields' => 'ជ្រើសរើសទាំងអស់',
+         'reset_all_fields' => 'ដកការជ្រើសរើសទាំងអស់',
          'key' => 'គន្លឹះ',
          'choice_rows_help' => 'Key ត្រូវបានរក្សាទុកក្នុង database។ English និង Khmer គឺជាស្លាកបង្ហាញ។',
          'data_source_table' => 'តារាងប្រភពទិន្នន័យ',

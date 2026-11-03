@@ -27,6 +27,8 @@
          'selection_tab' => 'Select Input Field',
          'selection_form' => 'Selection Form Builder',
          'select_field' => 'Select Field',
+         'select_all_fields' => 'Select all',
+         'reset_all_fields' => 'Reset all',
          'key' => 'Key',
          'choice_rows_help' => 'Key is saved to database. English and Khmer are display labels.',
          'data_source_table' => 'Data Source Table',
