@@ -530,7 +530,7 @@ class CustomFormEntriesTable
             ->color('gray')
             ->toggleable(isToggledHiddenByDefault: false);
 
-        if ($hasFileUploadFields && self::currentPanelIsAdmin()) {
+        if ($hasFileUploadFields) {
             $columns[] = TextColumn::make('uploaded_files')
                 ->label(__('candidate_entrance_statistics.uploaded_files'))
                 ->badge()

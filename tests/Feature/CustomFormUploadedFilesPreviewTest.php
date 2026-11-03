@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\ClosingDate;
 use App\Models\Role;
 use App\Models\User;
 use App\Support\CustomFormEntryFiles;
@@ -13,6 +14,7 @@ use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
+use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
 class CustomFormUploadedFilesPreviewTest extends TestCase
@@ -206,6 +208,106 @@ class CustomFormUploadedFilesPreviewTest extends TestCase
         $this->assertSame('image', $files[0]['preview_type']);
         $this->assertSame('Portrait.jpg', $files[0]['name']);
         $this->assertSame('Portrait.jpg', $files[0]['download_name']);
+    }
+
+    public function test_candidate_can_preview_own_uploaded_files_but_cannot_mount_another_candidates_preview(): void
+    {
+        Filament::setCurrentPanel('app');
+        $candidate = $this->candidate('uploaded-files-candidate');
+        $role = Role::findOrCreate('candidate', 'web');
+        $role->givePermissionTo([
+            Permission::findOrCreate('ViewAny:CustomFormEntry', 'web'),
+            Permission::findOrCreate('View:CustomFormEntry', 'web'),
+        ]);
+        $candidate->assignRole($role, Role::findOrCreate('upload_applicant', 'web'));
+        $this->actingAs($candidate);
+
+        $profile = CustomForm::query()->create([
+            'name' => 'Profile',
+            'slug' => 'profile',
+            'schema' => [],
+            'is_active' => true,
+        ]);
+        CustomFormEntry::query()->create([
+            'custom_form_id' => $profile->getKey(),
+            'created_by' => $candidate->getKey(),
+            'review_status' => 'pending',
+            'data' => ['registration_status' => 'submitted'],
+        ]);
+        $form = $this->form();
+        $form->update(['allowed_roles' => ['upload_applicant']]);
+        ClosingDate::query()->create([
+            'name' => 'Candidate upload application period',
+            'type' => ClosingDate::customFormTypeKey($form->getKey()),
+            'status' => ClosingDate::STATUS_OPEN,
+            'start_date' => today(),
+            'end_date' => today()->addWeek(),
+        ]);
+        $form->fields()->create(['name' => 'document', 'label' => 'File', 'type' => 'file_upload']);
+        $form->fields()->create(['name' => 'photo', 'label' => 'Image', 'type' => 'image_upload']);
+        $form->fields()->create(['name' => 'letter', 'label' => 'Letter', 'type' => 'file_upload']);
+        $paths = [
+            'document' => 'custom-form-uploads/candidate-application.pdf',
+            'photo' => 'custom-form-uploads/candidate-photo.png',
+            'letter' => 'custom-form-uploads/candidate-letter.docx',
+        ];
+        foreach ($paths as $path) {
+            Storage::disk('private')->put($path, 'candidate-file-data');
+        }
+        $entry = CustomFormEntry::query()->create([
+            'custom_form_id' => $form->getKey(),
+            'created_by' => $candidate->getKey(),
+            'data' => $paths,
+        ]);
+        $otherCandidate = $this->candidate('uploaded-files-other-candidate');
+        Storage::disk('private')->put('custom-form-uploads/private-other-candidate.docx', 'other-candidate-private-data');
+        $otherEntry = CustomFormEntry::query()->create([
+            'custom_form_id' => $form->getKey(),
+            'created_by' => $otherCandidate->getKey(),
+            'data' => ['letter' => 'custom-form-uploads/private-other-candidate.docx'],
+        ]);
+
+        $component = Livewire::withQueryParams(['form_id' => $form->getKey()])
+            ->test(ListCustomFormEntries::class)
+            ->assertSuccessful()
+            ->assertCanSeeTableRecords([$entry])
+            ->assertCanNotSeeTableRecords([$otherEntry]);
+        $column = $component->instance()->getTable()->getColumn('uploaded_files');
+        $this->assertNotNull($column);
+        $column->record($entry);
+        $this->assertSame('Download 3', $column->getState());
+        $this->assertInstanceOf(Action::class, $column->getAction());
+
+        $component->call('mountTableAction', 'preview_uploaded_files', (string) $entry->getKey());
+        $action = $component->instance()->getMountedAction();
+        $this->assertNotNull($action);
+        $this->assertSame('preview_uploaded_files', $action->getName());
+        $files = $action->getModalContent()->getData()['files'];
+        $this->assertSame(['File.pdf', 'Image.png', 'Letter.docx'], array_column($files, 'name'));
+        $this->assertSame(['pdf', 'image', 'word'], array_column($files, 'preview_type'));
+        $footerActions = $action->getExtraModalFooterActions();
+        $this->assertCount(1, $footerActions);
+        $this->assertSame(route('protected.custom-form-entry-files-zip', ['entry' => $entry]), reset($footerActions)->getUrl());
+
+        $component->call('unmountAction');
+        $this->assertNull($component->instance()->getMountedAction());
+        $component->call('mountTableAction', 'preview_uploaded_files', (string) $otherEntry->getKey());
+        $this->assertNull($component->instance()->getMountedAction());
+        $this->assertSame([], $component->instance()->mountedActions);
+        $component->assertDontSee(route('protected.custom-form-entry-document-preview', ['entry' => $otherEntry, 'fileIndex' => 0]));
+    }
+
+    private function candidate(string $username): User
+    {
+        return User::query()->create([
+            'registration_type' => 'student',
+            'name' => $username,
+            'username' => $username,
+            'email' => $username.'@example.test',
+            'password' => 'password',
+            'date_of_birth' => '2000-01-01',
+            'is_active' => true,
+        ]);
     }
 
     private function signInAdmin(): User

@@ -105,7 +105,7 @@ class ProtectedFileAccessTest extends TestCase
         $uploadedFilesColumn = collect($columns)->first(
             fn ($column): bool => $column->getName() === 'uploaded_files'
         );
-        $this->assertNull($uploadedFilesColumn);
+        $this->assertNotNull($uploadedFilesColumn);
 
         Storage::disk('private')->put('custom-form-uploads/application.docx', 'word-data');
         Storage::disk('private')->put('custom-form-uploads/notes.pdf', 'pdf-data');
