@@ -1,0 +1,133 @@
+:root {
+    color-scheme: light;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Khmer Sangam MN', 'Noto Sans Khmer', 'Khmer OS Siemreap', sans-serif;
+    color: #374151;
+    background: #f3f4f6;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body,
+.word-preview {
+    width: 100%;
+    min-height: 100%;
+    margin: 0;
+}
+
+body {
+    overflow: hidden;
+}
+
+[hidden] {
+    display: none !important;
+}
+
+.word-preview {
+    height: 100dvh;
+}
+
+.word-preview-state {
+    display: flex;
+    min-height: 100%;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 2rem;
+    text-align: center;
+}
+
+.word-preview-state p {
+    max-width: 30rem;
+    margin: 0;
+    font-size: .875rem;
+    line-height: 1.8;
+}
+
+.word-preview-spinner {
+    width: 1.75rem;
+    height: 1.75rem;
+    border: 3px solid #d1d5db;
+    border-top-color: #2563eb;
+    border-radius: 50%;
+    animation: word-preview-spin .8s linear infinite;
+}
+
+.word-preview-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: .75rem;
+}
+
+.word-preview-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.5rem;
+    padding: .5rem 1rem;
+    border: 1px solid #d1d5db;
+    border-radius: .5rem;
+    color: #374151;
+    background: white;
+    font: inherit;
+    font-size: .875rem;
+    line-height: 1.5;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.word-preview-button:hover {
+    background: #f9fafb;
+}
+
+.word-preview-button:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 3px;
+}
+
+.word-preview-content {
+    height: 100%;
+    overflow: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Preserve Word's page dimensions and readable text; narrow screens can scroll the page. */
+.word-preview-content .docx-wrapper {
+    display: flex;
+    width: max-content;
+    min-width: 100%;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem;
+    background: #f3f4f6;
+}
+
+.word-preview-content .docx-wrapper > section.docx {
+    flex-shrink: 0;
+    margin-bottom: 1rem;
+    box-shadow: 0 1px 5px #0002;
+}
+
+.word-preview-content .docx-wrapper > section.docx:last-child {
+    margin-bottom: 0;
+}
+
+.word-preview-content a {
+    pointer-events: none;
+    cursor: text;
+}
+
+@keyframes word-preview-spin {
+    to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .word-preview-spinner {
+        animation: none;
+    }
+}

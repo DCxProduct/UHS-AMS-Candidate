@@ -62,6 +62,24 @@ class ProtectedFileController extends Controller
         );
     }
 
+    public function customFormEntryDocumentPreview(CustomFormEntry $entry, int $fileIndex): Response
+    {
+        $this->authorizeEntryFileAccess($entry);
+
+        $fileService = app(CustomFormEntryFiles::class);
+        $file = $fileService->file($entry, $fileIndex);
+
+        abort_if($file === null || strtolower(pathinfo($file['path'], PATHINFO_EXTENSION)) !== 'docx', 404);
+
+        $parameters = ['entry' => $entry, 'fileIndex' => $fileIndex];
+
+        return response()->view('protected-files.word-preview', [
+            'filename' => $fileService->downloadFilename($file),
+            'documentUrl' => route('protected.custom-form-entry-document', [...$parameters, 'inline' => 1]),
+            'downloadUrl' => route('protected.custom-form-entry-document', $parameters),
+        ])->header('Cache-Control', 'private, no-store');
+    }
+
     public function customFormEntryFilesZip(CustomFormEntry $entry): BinaryFileResponse
     {
         $this->authorizeEntryFileAccess($entry);

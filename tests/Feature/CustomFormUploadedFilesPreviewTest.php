@@ -44,9 +44,11 @@ class CustomFormUploadedFilesPreviewTest extends TestCase
         $paths = [
             'custom-form-uploads/application.PDF',
             'custom-form-uploads/photo.png',
+            'custom-form-uploads/letter.DOCX',
             'custom-form-uploads/results.xlsx',
             'custom-form-uploads/page.html',
             'custom-form-uploads/image.svg',
+            'custom-form-uploads/legacy.doc',
         ];
         foreach ($paths as $path) {
             Storage::disk('private')->put($path, 'uploaded-file');
@@ -59,8 +61,8 @@ class CustomFormUploadedFilesPreviewTest extends TestCase
 
         $files = app(CustomFormEntryFiles::class)->previewFiles($entry);
 
-        $this->assertCount(5, $files);
-        $this->assertSame(['pdf', 'image', null, null, null], array_column($files, 'preview_type'));
+        $this->assertCount(7, $files);
+        $this->assertSame(['pdf', 'image', 'word', null, null, null, null], array_column($files, 'preview_type'));
 
         foreach ($files as $index => $file) {
             $this->assertSame('Supporting documents', $file['label']);
@@ -70,11 +72,12 @@ class CustomFormUploadedFilesPreviewTest extends TestCase
                 'entry' => $entry,
                 'fileIndex' => $index,
             ]), $file['download_url']);
-            $this->assertSame($index < 2 ? route('protected.custom-form-entry-document', [
-                'entry' => $entry,
-                'fileIndex' => $index,
-                'inline' => 1,
-            ]) : null, $file['preview_url']);
+            $expectedPreviewUrl = match ($file['preview_type']) {
+                'word' => route('protected.custom-form-entry-document-preview', ['entry' => $entry, 'fileIndex' => $index]),
+                'pdf', 'image' => route('protected.custom-form-entry-document', ['entry' => $entry, 'fileIndex' => $index, 'inline' => 1]),
+                default => null,
+            };
+            $this->assertSame($expectedPreviewUrl, $file['preview_url']);
         }
 
         app()->setLocale('km');
@@ -144,7 +147,7 @@ class CustomFormUploadedFilesPreviewTest extends TestCase
         $files = app(CustomFormEntryFiles::class)->previewFiles($entry);
         $this->assertCount(3, $files);
         $this->assertSame(['Application document.pdf', 'Candidate photo.png', 'Supporting letter.docx'], array_column($files, 'name'));
-        $this->assertSame(['pdf', 'image', null], array_column($files, 'preview_type'));
+        $this->assertSame(['pdf', 'image', 'word'], array_column($files, 'preview_type'));
         $this->assertSame('Candidate photo', $files[1]['label']);
         $this->assertSame('Candidate photo.png', $files[1]['download_name']);
         $this->assertSame(route('protected.custom-form-entry-document', [
@@ -152,6 +155,10 @@ class CustomFormUploadedFilesPreviewTest extends TestCase
             'fileIndex' => 1,
             'inline' => 1,
         ]), $files[1]['preview_url']);
+        $this->assertSame(route('protected.custom-form-entry-document-preview', [
+            'entry' => $entry,
+            'fileIndex' => 2,
+        ]), $files[2]['preview_url']);
 
         // Action-backed columns render this mounting call; callTableColumnAction only executes closures.
         $component->call('mountTableAction', 'preview_uploaded_files', (string) $entry->getKey());

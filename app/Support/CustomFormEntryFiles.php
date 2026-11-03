@@ -72,6 +72,7 @@ class CustomFormEntryFiles
             $extension = strtolower(pathinfo($file['path'], PATHINFO_EXTENSION));
             $previewType = match ($extension) {
                 'pdf' => 'pdf',
+                'docx' => 'word',
                 'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'avif' => 'image',
                 default => null,
             };
@@ -82,9 +83,11 @@ class CustomFormEntryFiles
                 'name' => $this->downloadFilename($file),
                 'download_name' => $this->downloadFilename($file),
                 'preview_type' => $previewType,
-                'preview_url' => $previewType !== null
-                    ? route('protected.custom-form-entry-document', [...$parameters, 'inline' => 1])
-                    : null,
+                'preview_url' => match ($previewType) {
+                    'word' => route('protected.custom-form-entry-document-preview', $parameters),
+                    null => null,
+                    default => route('protected.custom-form-entry-document', [...$parameters, 'inline' => 1]),
+                },
                 'download_url' => route('protected.custom-form-entry-document', $parameters),
             ];
         }

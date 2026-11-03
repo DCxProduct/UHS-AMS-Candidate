@@ -71,6 +71,10 @@ Route::middleware(['web', 'auth'])->group(function () {
         ->whereNumber('fileIndex')
         ->name('protected.custom-form-entry-document');
 
+    Route::get('/protected/custom-form-entries/{entry}/document-files/{fileIndex}/preview', [ProtectedFileController::class, 'customFormEntryDocumentPreview'])
+        ->whereNumber('fileIndex')
+        ->name('protected.custom-form-entry-document-preview');
+
     Route::get('/protected/custom-form-entries/{entry}/download-files', [ProtectedFileController::class, 'customFormEntryFilesZip'])
         ->name('protected.custom-form-entry-files-zip');
 

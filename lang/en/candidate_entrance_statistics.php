@@ -34,6 +34,9 @@ return [
         'previous' => 'Previous',
         'next' => 'Next',
         'unavailable' => 'Preview is not available for this file type. Download the file to view it.',
+        'loading' => 'Loading Word preview…',
+        'error' => 'Unable to preview this Word document. Try again or download the original file.',
+        'retry' => 'Try again',
     ],
 
     'details_title' => 'Application Details',

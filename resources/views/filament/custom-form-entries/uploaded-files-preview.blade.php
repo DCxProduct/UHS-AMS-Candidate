@@ -62,7 +62,7 @@
                 </div>
 
                 <div class="overflow-auto bg-gray-50 dark:bg-gray-950" style="height: 55vh; min-height: 16rem;">
-                    <template x-if="selected.preview_type === 'pdf'">
+                    <template x-if="selected.preview_type === 'pdf' || selected.preview_type === 'word'">
                         <iframe
                             x-bind:src="selected.preview_url"
                             x-bind:title="selected.name"
