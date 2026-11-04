@@ -1,5 +1,5 @@
 @php
-    $progress = $getState();
+    $progress = $progress ?? $getState();
     $completedLabel = __('candidate_entrance_statistics.workflow_completed_stages', [
         'completed' => \App\Support\LocalizedNumber::digits($progress['completed']),
         'total' => \App\Support\LocalizedNumber::digits($progress['total']),

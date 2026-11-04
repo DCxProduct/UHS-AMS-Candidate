@@ -732,10 +732,10 @@ class CustomFormEntriesTable
         return trim((string) ($record->review_note ?? ''));
     }
 
-    protected static function workflowProgressViewData($record): array
+    protected static function workflowProgressViewData($record, ?array $stageData = null): array
     {
         $status = self::entryStatus($record);
-        $stages = collect(self::applicationStageViewData($record)['stages'])
+        $stages = collect(($stageData ?? self::applicationStageViewData($record))['stages'])
             ->reject(fn (array $stage): bool => $stage['type'] === WorkflowStageType::Rejected->value)
             ->map(function (array $stage) use ($status): array {
                 if (filled($stage['configured_name'])) {
@@ -1186,10 +1186,14 @@ class CustomFormEntriesTable
                 ->modalWidth('2xl')
                 ->modalSubmitAction(false)
                 ->modalCancelActionLabel(__('app.close'))
-                ->modalContent(fn ($record): \Illuminate\Contracts\View\View => view(
-                    'filament.custom-form-entry.application-stage',
-                    self::applicationStageViewData($record),
-                ))
+                ->modalContent(function ($record): \Illuminate\Contracts\View\View {
+                    $stageData = self::applicationStageViewData($record);
+
+                    return view('filament.custom-form-entry.application-stage', [
+                        ...$stageData,
+                        'progress' => self::workflowProgressViewData($record, $stageData),
+                    ]);
+                })
                 ->visible(fn ($record): bool =>
                     ! self::currentPanelIsAdmin()
                     && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'view_application_stage')
