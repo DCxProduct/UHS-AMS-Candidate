@@ -194,6 +194,7 @@ class DocumentTemplateForm
                             ->fileAttachmentsDisk('public')
                             ->fileAttachmentsDirectory('document-templates')
                             ->profile('full')
+                            ->toolbarSticky(false)
                             ->key(fn (Get $get) => 'tinymce-'.md5(
                                     json_encode($get('extra_data_sources')) .
                                     $get('model_class') .
@@ -285,6 +286,8 @@ class DocumentTemplateForm
                                     'content_style' => $contentStyle,
                                     'plugins' => 'custom_shapes accordion autoresize codesample directionality advlist autolink link image lists charmap anchor pagebreak searchreplace wordcount visualblocks visualchars code fullscreen insertdatetime media table emoticons help template',
                                     'toolbar' => 'undo redo removeformat | fontfamily fontsize fontsizeinput font_size_formats styles | bold italic underline | rtl ltr | alignjustify alignright aligncenter alignleft | numlist bullist outdent indent accordion | forecolor backcolor | blockquote table toc hr | image link anchor media codesample emoticons document_templates_btn insert_variable insert_repeating_table insert_qrcode insert_barcode | visualblocks print wordcount fullscreen help',
+                                    'plugins' => 'custom_shapes accordion autoresize codesample directionality advlist autolink link image lists charmap anchor pagebreak searchreplace wordcount visualblocks visualchars code fullscreen insertdatetime media table emoticons help',
+                                    'toolbar' => 'undo redo removeformat | fontfamily fontsize fontsizeinput font_size_formats styles | bold italic underline | rtl ltr | alignjustify alignright aligncenter alignleft | numlist bullist outdent indent accordion | forecolor backcolor | blockquote table toc hr | image link anchor media codesample emoticons document_templates_btn insert_variable insert_qrcode insert_barcode | visualblocks print wordcount fullscreen help',
                                     'templates' => config('filament-document-builder.templates', self::defaultTemplates()),
                                     'text_patterns' => [
                                         ['start' => '#logo', 'replacement' => '<div style="display: inline-block; width: 80px; height: 80px; border: 1px solid #000; border-radius: 50%; text-align: center; line-height: 80px;">LOGO</div>'],

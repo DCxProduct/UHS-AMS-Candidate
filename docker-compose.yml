@@ -1,0 +1,139 @@
+name: uhs-candidate
+
+services:
+  # =========================================================
+  # Laravel Application
+  # =========================================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      secrets:
+        - composer_auth
+    image: uhs-candidate:latest
+    container_name: candidate-app
+    restart: unless-stopped
+
+    environment:
+      RUN_LARAVEL_INIT: "true"
+      RUN_DB_SEED: "false"
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: "5432"
+
+    env_file:
+      - .env
+
+    ports:
+      - "7001:80"
+
+    volumes:
+      # Mount Laravel source code from host
+      - .:/var/www/html
+      - candidate_vendor:/var/www/html/vendor
+      - candidate_node_modules:/var/www/html/node_modules
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    networks:
+      - candidate_network
+
+  # =========================================================
+  # Laravel Queue Worker
+  # =========================================================
+  worker:
+    image: uhs-candidate:latest
+    container_name: candidate-worker
+    restart: unless-stopped
+    environment:
+      RUN_LARAVEL_INIT: "false"
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: "5432"
+
+    env_file:
+      - .env
+
+    volumes:
+      # Same Laravel source code
+      - .:/var/www/html
+      - candidate_vendor:/var/www/html/vendor
+      - candidate_node_modules:/var/www/html/node_modules
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      app:
+        condition: service_started
+
+    command:
+      - php
+      - artisan
+      - queue:work
+      - --queue=default
+      - --sleep=1
+      - --tries=5
+      - --timeout=120
+      - --max-time=3600
+      - --memory=256
+
+    networks:
+      - candidate_network
+
+  # =========================================================
+  # PostgreSQL Database
+  # =========================================================
+  postgres:
+    image: postgres:18
+    container_name: candidate-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:?DB_USERNAME is required}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      POSTGRES_DB: ${DB_DATABASE:?DB_DATABASE is required}
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql
+      # Automatically execute SQL scripts on first initialization
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+    networks:
+      - candidate_network
+
+# =========================================================
+# Build Secrets
+# =========================================================
+secrets:
+  composer_auth:
+    file: ./composer-auth.json
+
+# =========================================================
+# Persistent Volumes
+# =========================================================
+volumes:
+  candidate_vendor:
+  candidate_node_modules:
+  postgres_data:
+
+# =========================================================
+# Docker Networks
+# ========================================================= 
+networks:
+  candidate_network:
+    driver: bridge
+

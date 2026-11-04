@@ -1,0 +1,8 @@
+{
+    "http-basic": {
+        "packages.filamentphp.com": {
+            "username": "learningdcx@gmail.com",
+            "password": "5d986440-0984-4894-a3de-b9169f77a58b"
+        }
+    }
+}
