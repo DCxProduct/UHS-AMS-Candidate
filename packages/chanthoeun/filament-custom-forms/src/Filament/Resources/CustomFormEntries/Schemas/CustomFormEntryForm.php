@@ -9,6 +9,7 @@ use App\Support\CustomFormUploadTypes;
 use App\Support\DatePickerKeyboardInput;
 use App\Support\UserTypeOptions;
 use Chanthoeun\FilamentCustomForms\CustomFormPlugin;
+use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Actions\Action;
@@ -418,8 +419,8 @@ class CustomFormEntryForm
         if ($type === 'file_upload') {
             $component
                 ->extraAttributes(['class' => 'uhs-document-file-upload'], merge: true)
-                ->openable()
-                ->downloadable()
+                ->openable(fn (): bool => CustomFormEntryResource::currentUserCanManageForms())
+                ->downloadable(fn (): bool => CustomFormEntryResource::currentUserCanManageForms())
                                 ->deletable(fn (string $operation): bool => $operation !== 'view')
                                 ->reorderable(fn (string $operation): bool => $operation !== 'view')
                                 ->getUploadedFileUsing(function (

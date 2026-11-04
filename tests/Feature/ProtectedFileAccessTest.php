@@ -5,10 +5,10 @@ namespace Tests\Feature;
 use App\Models\Payment;
 use App\Models\User;
 use App\Support\CustomFormEntryFiles;
+use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Tables\CustomFormEntriesTable;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormField;
-use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Tables\CustomFormEntriesTable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -45,7 +45,6 @@ class ProtectedFileAccessTest extends TestCase
             ->assertForbidden();
     }
 
-
     public function test_anonymous_payment_slip_access_redirects_to_login(): void
     {
         Storage::fake('private');
@@ -58,7 +57,7 @@ class ProtectedFileAccessTest extends TestCase
             ->assertRedirect('/login');
     }
 
-    public function test_candidate_can_download_each_document_upload_without_images(): void
+    public function test_candidate_can_preview_and_download_document_and_image_uploads(): void
     {
         Storage::fake('private');
         Storage::fake('public');
@@ -106,7 +105,7 @@ class ProtectedFileAccessTest extends TestCase
         $uploadedFilesColumn = collect($columns)->first(
             fn ($column): bool => $column->getName() === 'uploaded_files'
         );
-        $this->assertNull($uploadedFilesColumn);
+        $this->assertNotNull($uploadedFilesColumn);
 
         Storage::disk('private')->put('custom-form-uploads/application.docx', 'word-data');
         Storage::disk('private')->put('custom-form-uploads/notes.pdf', 'pdf-data');
@@ -141,7 +140,7 @@ class ProtectedFileAccessTest extends TestCase
 
         $firstResponse
             ->assertOk()
-            ->assertHeader('Content-Disposition', 'attachment; filename=application.docx');
+            ->assertHeader('Content-Disposition', 'attachment; filename=file.docx');
         $this->assertSame('word-data', $firstResponse->streamedContent());
 
         $inlineResponse = $this->actingAs($candidate)
@@ -153,7 +152,7 @@ class ProtectedFileAccessTest extends TestCase
 
         $inlineResponse
             ->assertOk()
-            ->assertHeader('Content-Disposition', 'inline; filename="application.docx"');
+            ->assertHeader('Content-Disposition', 'inline; filename=file.docx');
         $this->assertSame('word-data', $inlineResponse->streamedContent());
 
         $secondResponse = $this->actingAs($candidate)
@@ -164,8 +163,31 @@ class ProtectedFileAccessTest extends TestCase
 
         $secondResponse
             ->assertOk()
-            ->assertHeader('Content-Disposition', 'attachment; filename=notes.pdf');
+            ->assertHeader('Content-Disposition', 'attachment; filename=file.pdf');
         $this->assertSame('pdf-data', $secondResponse->streamedContent());
+
+        foreach ([false, true] as $inline) {
+            $imageResponse = $this->actingAs($candidate)
+                ->get(route('protected.custom-form-entry-document', [
+                    'entry' => $entry,
+                    'fileIndex' => 2,
+                    'inline' => $inline ? 1 : 0,
+                ]));
+            $imageResponse
+                ->assertOk()
+                ->assertHeader('Content-Disposition', ($inline ? 'inline' : 'attachment').'; filename=photo.png');
+            $this->assertSame('image-data', $imageResponse->streamedContent());
+        }
+
+        $otherDocumentResponse = $this->actingAs($candidate)
+            ->get(route('protected.custom-form-entry-document', [
+                'entry' => $entry,
+                'fileIndex' => 3,
+            ]));
+        $otherDocumentResponse
+            ->assertOk()
+            ->assertHeader('Content-Disposition', 'attachment; filename=File2.docx');
+        $this->assertSame('other-word-data', $otherDocumentResponse->streamedContent());
 
         $zipResponse = $this->actingAs($candidate)
             ->get(route('protected.custom-form-entry-files-zip', ['entry' => $entry]));
@@ -175,20 +197,20 @@ class ProtectedFileAccessTest extends TestCase
             (string) $zipResponse->headers->get('Content-Disposition'),
         );
 
-        $archive = new \ZipArchive();
+        $archive = new \ZipArchive;
         $archivePath = $zipResponse->getFile()->getPathname();
         $this->assertTrue($archive->open($archivePath) === true);
         $this->assertSame('word-data', $archive->getFromName('file.docx'));
         $this->assertSame('pdf-data', $archive->getFromName('file.pdf'));
         $this->assertSame('other-word-data', $archive->getFromName('File2.docx'));
-        $this->assertFalse($archive->locateName('photo.png') !== false);
+        $this->assertSame('image-data', $archive->getFromName('photo.png'));
         $archive->close();
         @unlink($archivePath);
 
         $this->actingAs($candidate)
             ->get(route('protected.custom-form-entry-document', [
                 'entry' => $entry,
-                'fileIndex' => 3,
+                'fileIndex' => 4,
             ]))
             ->assertNotFound();
     }
@@ -229,6 +251,101 @@ class ProtectedFileAccessTest extends TestCase
                 'fileIndex' => 0,
             ]))
             ->assertForbidden();
+    }
+
+    public function test_download_and_inline_filenames_use_the_localized_field_label_and_preserve_file_contents(): void
+    {
+        Storage::fake('private');
+        $candidate = $this->createCandidate('candidate-named-document');
+        $form = CustomForm::query()->create([
+            'name' => 'Named Documents',
+            'slug' => 'named-documents',
+            'schema' => [],
+            'is_active' => true,
+        ]);
+        $form->fields()->create([
+            'name' => 'supporting_document',
+            'label' => json_encode(['en' => 'Supporting document', 'km' => 'លិខិតបញ្ជាក់']),
+            'type' => 'file_upload',
+        ]);
+        $path = 'custom-form-uploads/01K9RANDOMUPLOAD.docx';
+        $contents = "original-document\x00\x01\xff";
+        Storage::disk('private')->put($path, $contents);
+        $entry = CustomFormEntry::query()->create([
+            'custom_form_id' => $form->getKey(),
+            'created_by' => $candidate->getKey(),
+            'data' => ['supporting_document' => $path],
+        ]);
+        $this->actingAs($candidate)->withSession(['locale' => 'km']);
+        app()->setLocale('km');
+        $this->assertSame('លិខិតបញ្ជាក់.docx', app(CustomFormEntryFiles::class)->previewFiles($entry)[0]['download_name']);
+
+        foreach ([false, true] as $inline) {
+            $response = $this->get(route('protected.custom-form-entry-document', [
+                'entry' => $entry,
+                'fileIndex' => 0,
+                'inline' => $inline ? 1 : 0,
+            ]))->assertOk();
+            $disposition = (string) $response->headers->get('Content-Disposition');
+
+            $this->assertStringStartsWith($inline ? 'inline;' : 'attachment;', $disposition);
+            $this->assertStringContainsString("filename*=utf-8''".rawurlencode('លិខិតបញ្ជាក់.docx'), $disposition);
+            $this->assertStringNotContainsString('01K9RANDOMUPLOAD', $disposition);
+            $this->assertSame($contents, $response->streamedContent());
+        }
+
+        app()->setLocale('en');
+        $response = $this->withSession(['locale' => 'en'])->get(route('protected.custom-form-entry-document', [
+            'entry' => $entry,
+            'fileIndex' => 0,
+        ]))->assertOk();
+        $this->assertStringContainsString('filename="Supporting document.docx"', (string) $response->headers->get('Content-Disposition'));
+        $this->assertSame($contents, $response->streamedContent());
+    }
+
+    public function test_download_filename_sanitizes_field_labels_and_keeps_only_one_original_extension(): void
+    {
+        Storage::fake('private');
+        $candidate = $this->createCandidate('candidate-safe-filename');
+        $form = CustomForm::query()->create([
+            'name' => 'Safe Filenames',
+            'slug' => 'safe-filenames',
+            'schema' => [],
+            'is_active' => true,
+        ]);
+        $form->fields()->create([
+            'name' => 'document',
+            'label' => "../លិខិត\\បញ្ជាក់:<ឯកសារ>|*?\"\r\n.docx",
+            'type' => 'file_upload',
+        ]);
+        $path = 'custom-form-uploads/01K9SAFERANDOM.docx';
+        Storage::disk('private')->put($path, 'unchanged-document');
+        $entry = CustomFormEntry::query()->create([
+            'custom_form_id' => $form->getKey(),
+            'created_by' => $candidate->getKey(),
+            'data' => ['document' => $path],
+        ]);
+        app()->setLocale('km');
+
+        $response = $this->actingAs($candidate)->get(route('protected.custom-form-entry-document', [
+            'entry' => $entry,
+            'fileIndex' => 0,
+        ]))->assertOk();
+        $disposition = (string) $response->headers->get('Content-Disposition');
+        $this->assertSame(1, preg_match("/filename\\*=utf-8''([^;]+)/", $disposition, $matches));
+        $filename = rawurldecode($matches[1]);
+
+        $this->assertStringContainsString('លិខិត', $filename);
+        $this->assertDoesNotMatchRegularExpression('/[\\x00-\\x1F\\x7F<>:"\\/\\\\|?*]/u', $filename);
+        $this->assertStringEndsWith('.docx', $filename);
+        $this->assertSame(1, substr_count(strtolower($filename), '.docx'));
+        $this->assertSame('unchanged-document', $response->streamedContent());
+
+        $this->assertSame('document.pdf', app(CustomFormEntryFiles::class)->downloadFilename([
+            'field_name' => 'document',
+            'field_label' => ' ',
+            'path' => 'custom-form-uploads/01K9RANDOM.pdf',
+        ]));
     }
 
     private function createCandidate(string $username): User

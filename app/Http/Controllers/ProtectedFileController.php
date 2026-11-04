@@ -6,12 +6,13 @@ use App\Models\Payment;
 use App\Models\User;
 use App\Support\CustomFormEntryFiles;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
-use Illuminate\Http\Response;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\HeaderUtils;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ProtectedFileController extends Controller
@@ -56,9 +57,27 @@ class ProtectedFileController extends Controller
 
         return $this->fileResponse(
             $file['path'],
-            app(CustomFormEntryFiles::class)->filename($file['path']),
+            app(CustomFormEntryFiles::class)->downloadFilename($file),
             inline: $request->boolean('inline'),
         );
+    }
+
+    public function customFormEntryDocumentPreview(CustomFormEntry $entry, int $fileIndex): Response
+    {
+        $this->authorizeEntryFileAccess($entry);
+
+        $fileService = app(CustomFormEntryFiles::class);
+        $file = $fileService->file($entry, $fileIndex);
+
+        abort_if($file === null || strtolower(pathinfo($file['path'], PATHINFO_EXTENSION)) !== 'docx', 404);
+
+        $parameters = ['entry' => $entry, 'fileIndex' => $fileIndex];
+
+        return response()->view('protected-files.word-preview', [
+            'filename' => $fileService->downloadFilename($file),
+            'documentUrl' => route('protected.custom-form-entry-document', [...$parameters, 'inline' => 1]),
+            'downloadUrl' => route('protected.custom-form-entry-document', $parameters),
+        ])->header('Cache-Control', 'private, no-store');
     }
 
     public function customFormEntryFilesZip(CustomFormEntry $entry): BinaryFileResponse
@@ -70,7 +89,7 @@ class ProtectedFileController extends Controller
         abort_if($files === [], 404);
 
         $zipPath = storage_path('app/review-uploaded-files-'.$entry->getKey().'-'.Str::uuid().'.zip');
-        $zip = new \ZipArchive();
+        $zip = new \ZipArchive;
         abort_unless($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true, 500);
 
         $usedNames = [];
@@ -178,6 +197,13 @@ class ProtectedFileController extends Controller
             $filename .= '.'.strtolower($extension);
         }
 
+        $fallbackFilename = str_replace(['%', '/', '\\'], '_', Str::ascii($filename));
+        $fallbackFilename = preg_replace('/[^\x20-\x7E]/', '_', $fallbackFilename) ?: 'document';
+
+        if (trim(pathinfo($fallbackFilename, PATHINFO_FILENAME), ' ._-') === '') {
+            $fallbackFilename = 'document'.($extension !== '' ? '.'.strtolower($extension) : '');
+        }
+
         $stream = function () use ($disk, $normalizedPath): void {
             $stream = $disk->readStream($normalizedPath);
 
@@ -191,13 +217,17 @@ class ProtectedFileController extends Controller
 
         $headers = [
             'Content-Type' => $mime,
-            'Content-Disposition' => ($inline ? 'inline' : 'attachment').'; filename="'.$filename.'"',
+            'Content-Disposition' => HeaderUtils::makeDisposition(
+                $inline ? 'inline' : 'attachment',
+                $filename,
+                $fallbackFilename,
+            ),
             'X-Content-Type-Options' => 'nosniff',
         ];
 
         return $inline
             ? response()->stream($stream, 200, $headers)
-            : response()->streamDownload($stream, $filename, $headers);
+            : response()->streamDownload($stream, null, $headers);
     }
 
     protected function normalizePath(string $path): ?string

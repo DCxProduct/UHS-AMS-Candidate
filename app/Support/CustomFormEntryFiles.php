@@ -11,19 +11,24 @@ class CustomFormEntryFiles
 {
     public function fieldNames(CustomFormEntry $entry): array
     {
+        return array_map('strval', array_keys($this->fieldLabels($entry)));
+    }
+
+    protected function fieldLabels(CustomFormEntry $entry): array
+    {
         return CustomFormField::query()
             ->where('custom_form_id', $entry->custom_form_id)
-            ->whereIn('type', ['file', 'file_upload', 'fileupload'])
-            ->pluck('name')
-            ->filter()
-            ->map(fn ($name): string => (string) $name)
-            ->values()
+            ->whereIn('type', ['file', 'file_upload', 'fileupload', 'image', 'image_upload'])
+            ->get(['name', 'label'])
+            ->filter(fn (CustomFormField $field): bool => filled($field->name))
+            ->mapWithKeys(fn (CustomFormField $field): array => [(string) $field->name => $field->label])
             ->all();
     }
 
     public function files(CustomFormEntry $entry): array
     {
-        $fieldNames = $this->fieldNames($entry);
+        $fieldLabels = $this->fieldLabels($entry);
+        $fieldNames = array_map('strval', array_keys($fieldLabels));
 
         if ($fieldNames === []) {
             return [];
@@ -44,7 +49,11 @@ class CustomFormEntryFiles
             }
 
             $seenPaths[$resolved['path']] = true;
-            $files[] = ['field_name' => $file['field_name'], ...$resolved];
+            $files[] = [
+                'field_name' => $file['field_name'],
+                'field_label' => $fieldLabels[$file['field_name']] ?? null,
+                ...$resolved,
+            ];
         }
 
         return $files;
@@ -53,6 +62,70 @@ class CustomFormEntryFiles
     public function file(CustomFormEntry $entry, int $index): ?array
     {
         return $this->files($entry)[$index] ?? null;
+    }
+
+    public function previewFiles(CustomFormEntry $entry): array
+    {
+        $files = [];
+
+        foreach ($this->files($entry) as $index => $file) {
+            $extension = strtolower(pathinfo($file['path'], PATHINFO_EXTENSION));
+            $previewType = match ($extension) {
+                'pdf' => 'pdf',
+                'docx' => 'word',
+                'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'avif' => 'image',
+                default => null,
+            };
+            $parameters = ['entry' => $entry, 'fileIndex' => $index];
+
+            $files[] = [
+                'label' => $this->fieldLabel($file),
+                'name' => $this->downloadFilename($file),
+                'download_name' => $this->downloadFilename($file),
+                'preview_type' => $previewType,
+                'preview_url' => match ($previewType) {
+                    'word' => route('protected.custom-form-entry-document-preview', $parameters),
+                    null => null,
+                    default => route('protected.custom-form-entry-document', [...$parameters, 'inline' => 1]),
+                },
+                'download_url' => route('protected.custom-form-entry-document', $parameters),
+            ];
+        }
+
+        return $files;
+    }
+
+    public function downloadFilename(array $file): string
+    {
+        $name = preg_replace('/[\x00-\x1F\x7F<>:"\/\\\\|?*]/u', '_', $this->fieldLabel($file)) ?? '';
+        $name = trim($name, " .\t\n\r\0\x0B");
+        $name = $name !== '' ? $name : 'document';
+        $extension = strtolower(pathinfo($file['path'], PATHINFO_EXTENSION));
+
+        if ($extension !== '' && ! Str::endsWith(strtolower($name), '.'.$extension)) {
+            $name .= '.'.$extension;
+        }
+
+        return $name;
+    }
+
+    protected function fieldLabel(array $file): string
+    {
+        $label = $file['field_label'] ?? null;
+
+        if (is_string($label) && str_starts_with(trim($label), '{')) {
+            $label = json_decode($label, true) ?? $label;
+        }
+
+        if (is_array($label)) {
+            $label = $label[app()->getLocale()]
+                ?? $label['km']
+                ?? $label['kh']
+                ?? $label['en']
+                ?? collect($label)->first();
+        }
+
+        return trim((string) $label) ?: $file['field_name'];
     }
 
     public function protectedUrl(CustomFormEntry $entry, string $path, bool $inline = false): ?string

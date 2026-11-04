@@ -7,6 +7,8 @@
 @source '../../../../app/Filament//*';
 @source '../../../../resources/views/filament//*';
 @source '../../../../resources/views/filament/custom-form-entry/application-stage.blade.php';
+@source '../../../../resources/views/filament/custom-form-entry/workflow-progress.blade.php';
+@source '../../../../resources/views/filament/custom-form-entries/uploaded-files-preview.blade.php';
 @source '../../../../resources/views/components//*';
 @source '../../../../resources/views/livewire//*';
 @source '../../../../app/Livewire//*';

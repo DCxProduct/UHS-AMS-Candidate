@@ -1,4 +1,15 @@
 <div class="space-y-3">
+    @if (($progress['total'] ?? 0) > 0)
+        <section class="min-w-0 overflow-hidden rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900">
+            <h3 class="mb-1 text-sm font-semibold text-gray-700 dark:text-gray-200">
+                {{ __('candidate_entrance_statistics.workflow_progress') }}
+            </h3>
+            <div class="overflow-x-auto">
+                @include('filament.custom-form-entry.workflow-progress', ['progress' => $progress])
+            </div>
+        </section>
+    @endif
+
     <p class="text-sm text-gray-500 dark:text-gray-400">
         {{ __('candidate_entrance_statistics.stage_count', ['count' => count($stages)]) }}
     </p>
