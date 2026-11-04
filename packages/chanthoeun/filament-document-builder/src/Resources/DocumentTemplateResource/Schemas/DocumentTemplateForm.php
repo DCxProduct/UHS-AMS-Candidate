@@ -3,6 +3,8 @@
 namespace Chanthoeun\FilamentDocumentBuilder\Resources\DocumentTemplateResource\Schemas;
 
 use AmidEsfahani\FilamentTinyEditor\TinyEditor;
+use Chanthoeun\FilamentCustomForms\Models\CustomForm;
+use Chanthoeun\FilamentCustomForms\Models\CustomFormField;
 use Filament\Forms;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Utilities\Get;
@@ -200,6 +202,7 @@ class DocumentTemplateForm
                                 ))
                             ->setCustomConfigs(function (Get $get) {
                                 $vars = [];
+                                $repeaters = [];
                                 $modelClass = $get('model_class');
 
                                 if ($modelClass && class_exists($modelClass)) {
@@ -215,36 +218,9 @@ class DocumentTemplateForm
                                         $customForm = \Chanthoeun\FilamentCustomForms\Models\CustomForm::find($customFormId);
 
                                         if ($customForm) {
-                                            $customFields = [];
-
-                                            $addFieldsFromForm = function ($form) use (&$customFields): void {
-                                                foreach ($form->fields()->orderBy('sort')->get() as $field) {
-                                                    if (
-                                                        ! in_array($field->type, ['section', 'grid', 'fieldset', 'wizard', 'repeater', 'step'], true)
-                                                        && ! empty($field->name)
-                                                    ) {
-                                                        $customFields[] = 'data.' . $field->name;
-                                                    }
-                                                }
-                                            };
-
-                                            // parent fields
-                                            $addFieldsFromForm($customForm);
-
-                                            // child sub item fields: Associate, Bachelor, Master, PhD, Exam...
-                                            $childForms = \Chanthoeun\FilamentCustomForms\Models\CustomForm::query()
-                                                ->where('custom_form_id', $customForm->id)
-                                                ->where('menu_placement', 'sub_item')
-                                                ->where('is_active', true)
-                                                ->get();
-
-                                            foreach ($childForms as $childForm) {
-                                                $addFieldsFromForm($childForm);
-                                            }
-
-                                            $customFields = array_values(array_unique($customFields));
-
-                                            $vars = array_merge($vars, $customFields);
+                                            $metadata = self::documentFieldMetadata($customForm);
+                                            $vars = array_merge($vars, $metadata['variables']);
+                                            $repeaters = $metadata['repeaters'];
                                         }
                                     }
                                 }
@@ -299,11 +275,16 @@ class DocumentTemplateForm
 
                                 return [
                                     'document_variables' => $vars,
+                                    'document_repeaters' => $repeaters,
+                                    'document_repeater_labels' => [
+                                        'button' => __('filament-document-builder::document-builder.labels.repeating_table'),
+                                        'empty' => __('filament-document-builder::document-builder.labels.no_repeating_fields'),
+                                    ],
                                     'menubar' => 'file edit view insert format tools table help',
                                     'font_family_formats' => 'Arial=arial,helvetica,sans-serif; Calibri=calibri,sans-serif; Times New Roman="times new roman",times,serif; Khmer Battambang=Battambang,sans-serif; Khmer Moul Light="Khmer OS Muol Light",Moul,cursive; Khmer Siemreap=Siemreap,sans-serif;',
                                     'content_style' => $contentStyle,
                                     'plugins' => 'custom_shapes accordion autoresize codesample directionality advlist autolink link image lists charmap anchor pagebreak searchreplace wordcount visualblocks visualchars code fullscreen insertdatetime media table emoticons help template',
-                                    'toolbar' => 'undo redo removeformat | fontfamily fontsize fontsizeinput font_size_formats styles | bold italic underline | rtl ltr | alignjustify alignright aligncenter alignleft | numlist bullist outdent indent accordion | forecolor backcolor | blockquote table toc hr | image link anchor media codesample emoticons document_templates_btn insert_variable insert_qrcode insert_barcode | visualblocks print wordcount fullscreen help',
+                                    'toolbar' => 'undo redo removeformat | fontfamily fontsize fontsizeinput font_size_formats styles | bold italic underline | rtl ltr | alignjustify alignright aligncenter alignleft | numlist bullist outdent indent accordion | forecolor backcolor | blockquote table toc hr | image link anchor media codesample emoticons document_templates_btn insert_variable insert_repeating_table insert_qrcode insert_barcode | visualblocks print wordcount fullscreen help',
                                     'templates' => config('filament-document-builder.templates', self::defaultTemplates()),
                                     'text_patterns' => [
                                         ['start' => '#logo', 'replacement' => '<div style="display: inline-block; width: 80px; height: 80px; border: 1px solid #000; border-radius: 50%; text-align: center; line-height: 80px;">LOGO</div>'],
@@ -320,6 +301,117 @@ class DocumentTemplateForm
                 ])->columnSpanFull()->skippable(),
             ])
             ->columns(1);
+    }
+
+    /** @return array{variables: array<string>, repeaters: array<array{path: string, label: string, alias: string, fields: array<array{name: string, label: string}>}>} */
+    public static function documentFieldMetadata(CustomForm $form): array
+    {
+        $forms = collect([$form])->merge(CustomForm::query()
+            ->where('custom_form_id', $form->getKey())
+            ->where('menu_placement', 'sub_item')
+            ->where('is_active', true)
+            ->orderBy('id')
+            ->get());
+        $variables = [];
+        $repeaters = [];
+        $layoutTypes = ['section', 'grid', 'fieldset', 'wizard', 'step', 'container', 'group'];
+
+        foreach ($forms as $customForm) {
+            $fields = $customForm->fields()->orderBy('sort')->orderBy('id')->get();
+            $fieldsById = $fields->keyBy('id');
+
+            $repeaterParent = static function (CustomFormField $field) use ($fieldsById): ?CustomFormField {
+                $parentId = $field->parent_id;
+                $visited = [];
+
+                while ($parentId && ! isset($visited[$parentId])) {
+                    $visited[$parentId] = true;
+                    $parent = $fieldsById->get($parentId);
+
+                    if (! $parent) {
+                        break;
+                    }
+
+                    if ($parent->type === 'repeater') {
+                        return $parent;
+                    }
+
+                    $parentId = $parent->parent_id;
+                }
+
+                return null;
+            };
+
+            foreach ($fields as $field) {
+                $name = trim((string) $field->name);
+                $type = (string) $field->type;
+                $parent = $repeaterParent($field);
+
+                if ($name === '' || in_array($type, $layoutTypes, true)) {
+                    continue;
+                }
+
+                if ($type !== 'repeater' && ! $parent) {
+                    $variables['data.'.$name] = 'data.'.$name;
+
+                    continue;
+                }
+
+                if ($type === 'repeater') {
+                    if ($parent || ! preg_match('/^[a-zA-Z0-9_]+(?:\.[a-zA-Z0-9_]+)*$/', $name)) {
+                        continue;
+                    }
+
+                    $path = 'data.'.$name;
+                    $repeaters[$path] ??= [
+                        'path' => $path,
+                        'label' => self::localeText($field->label) ?: $name,
+                        'alias' => 'item',
+                        'fields' => [],
+                    ];
+
+                    continue;
+                }
+
+                $options = is_array($field->options) ? $field->options : [];
+
+                if (
+                    ! $parent
+                    || $repeaterParent($parent)
+                    || ! preg_match('/^[a-zA-Z0-9_]+(?:\.[a-zA-Z0-9_]+)*$/', trim((string) $parent->name))
+                    || in_array($type, ['info', 'checkbox_list', 'multi_select'], true)
+                    || ! empty($options['multiple'])
+                    || ! preg_match('/^[a-zA-Z0-9_]+(?:\.[a-zA-Z0-9_]+)*$/', $name)
+                ) {
+                    continue;
+                }
+
+                $path = 'data.'.trim((string) $parent->name);
+
+                if (! isset($repeaters[$path])) {
+                    $repeaters[$path] = [
+                        'path' => $path,
+                        'label' => self::localeText($parent->label) ?: (string) $parent->name,
+                        'alias' => 'item',
+                        'fields' => [],
+                    ];
+                }
+
+                $repeaters[$path]['fields'][$name] = [
+                    'name' => $name,
+                    'label' => self::localeText($field->label) ?: $name,
+                ];
+            }
+        }
+
+        $repeaters = array_values(array_filter($repeaters, fn (array $repeater): bool => $repeater['fields'] !== []));
+
+        foreach ($repeaters as &$repeater) {
+            $repeater['fields'] = array_values($repeater['fields']);
+        }
+        unset($repeater);
+
+        return ['variables' => array_values($variables), 'repeaters' => $repeaters];
     }
 
     private static function englishText(mixed $value): string
