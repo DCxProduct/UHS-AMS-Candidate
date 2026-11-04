@@ -867,11 +867,7 @@ class CustomFormEntriesTable
             return null;
         }
 
-        try {
-            return \Carbon\Carbon::parse($value)->format('Y-m-d H:i');
-        } catch (\Throwable) {
-            return (string) $value;
-        }
+        return LocalizedDate::workflowDateTime($value);
     }
 
     protected static function isProfileForm(string $formId): bool

@@ -108,6 +108,28 @@ class LocalizedDate
             : $formatted;
     }
 
+    public static function workflowDateTime(mixed $value): string
+    {
+        if (blank($value)) {
+            return '-';
+        }
+
+        $date = self::parse($value);
+
+        if (! $date) {
+            return (string) $value;
+        }
+
+        if (app()->getLocale() === 'km') {
+            return self::toKhmerDigits(
+                $date->format('d').'-'.self::khmerMonth($date->month).'-'.$date->format('Y')
+                .' ម៉ោង '.$date->format('g:i').' '.($date->hour < 12 ? 'ព្រឹក' : 'ល្ងាច'),
+            );
+        }
+
+        return $date->format('d-F-Y').' at '.$date->format('g:i A');
+    }
+
     public static function auditDateTime(mixed $value): string
     {
         if (blank($value)) {

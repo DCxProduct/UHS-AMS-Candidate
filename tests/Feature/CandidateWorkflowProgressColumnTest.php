@@ -34,6 +34,7 @@ class CandidateWorkflowProgressColumnTest extends TestCase
     {
         parent::setUp();
 
+        config(['app.timezone' => 'Asia/Phnom_Penh']);
         app()->setLocale('en');
         Http::fake();
         Mail::fake();
@@ -104,6 +105,11 @@ class CandidateWorkflowProgressColumnTest extends TestCase
         $this->assertSame($completed * 20, $progress['percent']);
         $this->assertSame($status, $progress['status']);
         $this->assertSame($states, array_column($progress['stages'], 'state'));
+        $html = $column->render()->render();
+        $this->assertRenderedStageIcons($html, $states);
+        if ($completed > 0) {
+            $this->assertStringContainsString('01-November-2026 at 4:00 PM', $html);
+        }
         $this->assertSame(array_column(array_column($this->workflow->stages, 'data'), 'stage_name'), array_column($progress['stages'], 'name'));
         if ($currentIndex !== null) {
             $this->assertSame($progress['stages'][$currentIndex]['name'], $progress['label']);
@@ -118,6 +124,7 @@ class CandidateWorkflowProgressColumnTest extends TestCase
         $this->assertSame(0, $progress['completed']);
         $this->assertSame(0, $progress['percent']);
         $this->assertSame(array_fill(0, 5, 'pending'), array_column($progress['stages'], 'state'));
+        $this->assertRenderedStageIcons($this->column($entry)->render()->render(), array_fill(0, 5, 'pending'));
     }
 
     public static function stoppedStatuses(): array
@@ -135,6 +142,7 @@ class CandidateWorkflowProgressColumnTest extends TestCase
         $this->assertSame(20, $progress['percent']);
         $this->assertSame($status, $progress['status']);
         $this->assertSame(['completed', 'pending', 'pending', 'pending', 'pending'], array_column($progress['stages'], 'state'));
+        $this->assertRenderedStageIcons($this->column($entry)->render()->render(), ['completed', 'pending', 'pending', 'pending', 'pending']);
         $this->assertNotSame('Review documents', $progress['label']);
         $this->assertNotSame('', $progress['label']);
     }
@@ -189,9 +197,52 @@ class CandidateWorkflowProgressColumnTest extends TestCase
         Mail::assertNothingSent();
     }
 
+    public static function workflowTimestampLocales(): array
+    {
+        return [
+            'English' => ['en', '04-November-2026 at 3:03 PM'],
+            'Khmer' => ['km', '០៤-វិច្ឆិកា-២០២៦ ម៉ោង ៣:០៣ ល្ងាច'],
+        ];
+    }
+
+    #[DataProvider('workflowTimestampLocales')]
+    public function test_completed_timestamps_follow_current_language_and_local_timezone_without_changing_saved_workflow(string $locale, string $expected): void
+    {
+        app()->setLocale($locale);
+        $entry = $this->entry(1, 1, false, 'pending', completedTimestamp: '2026-11-04T08:03:00+00:00');
+        $before = $entry->fresh()->getRawOriginal();
+        $progress = $this->progress($entry);
+        $html = $this->column($entry)->render()->render();
+
+        $this->assertSame($expected, $progress['stages'][0]['completed_at']);
+        $this->assertStringContainsString($expected, $html);
+        $this->assertSame($before, $entry->fresh()->getRawOriginal());
+        $this->assertSame('2026-11-04T08:03:00+00:00', data_get($entry->fresh()->data, 'workflow_progress.completed_at.0'));
+    }
+
     private function columns(): array
     {
         return (new ReflectionMethod(CustomFormEntriesTable::class, 'getColumns'))->invoke(null, (string) $this->form->getKey());
+    }
+
+    private function assertRenderedStageIcons(string $html, array $states): void
+    {
+        $document = new \DOMDocument;
+        $previousErrors = libxml_use_internal_errors(true);
+        try {
+            $document->loadHTML('<?xml encoding="UTF-8">'.$html);
+        } finally {
+            libxml_clear_errors();
+            libxml_use_internal_errors($previousErrors);
+        }
+        $xpath = new \DOMXPath($document);
+        foreach (['completed', 'current', 'pending'] as $state) {
+            $expectedCount = count(array_filter($states, fn (string $value): bool => $value === $state));
+            $this->assertSame($expectedCount, $xpath->query('//*[@data-workflow-'.$state.']')->length);
+        }
+        if ($states[0] === 'completed') {
+            $this->assertSame(1, $xpath->query('(//*[@data-workflow-stage])[1]//*[@data-workflow-completed]')->length);
+        }
     }
 
     private function progress(CustomFormEntry $entry): array
@@ -208,11 +259,11 @@ class CandidateWorkflowProgressColumnTest extends TestCase
         return $column->table(Table::make($livewire))->record($entry);
     }
 
-    private function entry(int $completed, ?int $currentIndex, bool $finished, string $status, int $version = 2, bool $hasWorkflow = true): CustomFormEntry
+    private function entry(int $completed, ?int $currentIndex, bool $finished, string $status, int $version = 2, bool $hasWorkflow = true, string $completedTimestamp = '2026-11-01T09:00:00+00:00'): CustomFormEntry
     {
         $completedAt = [];
         foreach (array_slice(array_keys($this->workflow->stages), 0, $completed) as $index) {
-            $completedAt[$index] = '2026-11-01T09:00:00+00:00';
+            $completedAt[$index] = $completedTimestamp;
         }
         $data = ['registration_status' => $status, 'candidate_status' => $completed >= 4 ? 'passed' : 'pending'];
         if ($version >= 2) {

@@ -19,6 +19,8 @@ return [
         'first_record' => 'First Record',
         'latest_record' => 'Latest Record',
         'document_designer' => 'Document Designer',
+        'repeating_table' => 'Repeating Table',
+        'no_repeating_fields' => 'No repeating fields available',
         'preview_pdf' => 'Preview PDF',
         'no_model_selected_title' => 'No Database Model Selected',
         'no_model_selected_body' => 'You must select a Database Model in the Template Details and click Save before you can preview the PDF.',

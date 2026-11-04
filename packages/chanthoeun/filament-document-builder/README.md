@@ -132,22 +132,30 @@ Adjacent barcode tags with the same type, width, and height are also combined au
 ### 2. Looping over Data (Table Repeaters)
 If you need to iterate over an array or Eloquent relationship (like line items on an invoice), you can use the built-in `{{#foreach}}` syntax directly in your template.
 
-Switch your TinyMCE editor to **Source Code (`<>`)** view and wrap your repeating elements like this:
+For custom forms, choose **Repeating Table** in the Document Designer toolbar, then select a repeater such as Education or Work History. The editor inserts its column labels and a row that repeats for each saved item. Ordinary fields remain available under **Insert Variable**.
+
+To customize a repeating table in **Source Code (`<>`)** view, wrap its rows like this. HTML comments keep the loop markers inside the table when the visual editor saves it:
 ```html
 <tbody>
-    {{#foreach items as item}}
+    <!-- {{#foreach items as item}} -->
     <tr>
         <td>{{ item.description }}</td>
         <td>{{ item.qty }}</td>
         <td>{{ item.price }}</td>
         <td>{{ item.total }}</td>
     </tr>
-    {{/foreach}}
+    <!-- {{/foreach}} -->
 </tbody>
 ```
 - The engine will automatically loop through the `items` array or relationship.
 - You can access properties of each item using the prefix you define (e.g., `item.`).
+- Custom-form repeaters use paths such as `data.educations` or `data.cv_work_history`. Both plain rows and Filament rows wrapped in `data` support `item.field`; existing `item.data.field` placeholders also continue to work for wrapped rows.
+- Existing loop markers without HTML comments remain supported, including nested loops.
 - **Bonus:** Inside the loop, you still have full access to global variables from the parent record!
+
+Application downloads can use the entry owner's latest saved Profile for a declared repeater that is entirely missing from the application. Existing application rows, explicit empty lists, and null values remain authoritative; rendering never saves changes to the application.
+
+The application migration `2026_11_04_000001_bind_application_document_template_data.php` upgrades recognized legacy sibling sections and blank education/work tables when running `php artisan migrate --force`. It matches the form schema rather than template IDs, backs up the original content, and preserves custom tables and existing loop bindings. Rollback restores only templates that have not been edited since the migration.
 
 #### Handling Calculations (e.g., Invoices)
 The document rendering engine intentionally avoids executing arbitrary PHP code within the template for security and performance reasons. Therefore, you cannot perform inline math like `{{ item.qty * item.price }}` inside the TinyMCE editor.

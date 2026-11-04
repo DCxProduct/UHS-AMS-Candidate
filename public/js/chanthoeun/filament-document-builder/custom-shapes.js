@@ -61,6 +61,66 @@ function registerCustomShapes() {
                 }
             });
 
+            editor.ui.registry.addMenuButton('insert_repeating_table', {
+                text: editor.getParam('document_repeater_labels', {}).button || 'Repeating Table',
+                icon: 'table',
+                fetch: function (callback) {
+                    var repeaters = editor.getParam('document_repeaters', []);
+                    var labels = editor.getParam('document_repeater_labels', {});
+                    var validPath = /^[a-zA-Z0-9_]+(?:\.[a-zA-Z0-9_]+)*$/;
+                    var encode = function (value) {
+                        return String(value).replace(/[&<>"']/g, function (character) {
+                            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character];
+                        });
+                    };
+                    var items = [];
+
+                    repeaters.forEach(function (repeater) {
+                        if (typeof repeater.path !== 'string' || ! validPath.test(repeater.path) || ! Array.isArray(repeater.fields)) {
+                            return;
+                        }
+
+                        var fields = repeater.fields.filter(function (field) {
+                            return typeof field.name === 'string' && validPath.test(field.name);
+                        });
+                        if (fields.length === 0) {
+                            return;
+                        }
+
+                        items.push({
+                            type: 'menuitem',
+                            text: repeater.label || repeater.path,
+                            onAction: function () {
+                                var alias = typeof repeater.alias === 'string' && /^[a-zA-Z0-9_]+$/.test(repeater.alias) ? repeater.alias : 'item';
+                                var cellStyle = 'border: 1px solid #d1d5db; padding: 6px; text-align: left; vertical-align: top;';
+                                var headers = fields.map(function (field) {
+                                    return '<th style="' + cellStyle + ' font-weight: bold;">' + encode(field.label || field.name) + '</th>';
+                                }).join('');
+                                var cells = fields.map(function (field) {
+                                    return '<td style="' + cellStyle + '">{{ ' + alias + '.' + field.name + ' }}</td>';
+                                }).join('');
+
+                                editor.insertContent('<table style="width: 100%; border-collapse: collapse;">'
+                                    + '<thead><tr>' + headers + '</tr></thead><tbody>'
+                                    + '<!-- {{#foreach ' + repeater.path + ' as ' + alias + '}} -->'
+                                    + '<tr>' + cells + '</tr><!-- {{/foreach}} -->'
+                                    + '</tbody></table><p><br></p>');
+                            }
+                        });
+                    });
+
+                    if (items.length === 0) {
+                        items.push({
+                            type: 'menuitem',
+                            text: labels.empty || 'No repeating fields available',
+                            disabled: true,
+                            onAction: function () {}
+                        });
+                    }
+                    callback(items);
+                }
+            });
+
             editor.ui.registry.addMenuButton('document_templates_btn', {
                 text: 'Templates',
                 fetch: function (callback) {

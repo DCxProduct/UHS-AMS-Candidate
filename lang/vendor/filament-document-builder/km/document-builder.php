@@ -19,6 +19,8 @@ return [
         'first_record' => 'ទិន្នន័យដំបូង',
         'latest_record' => 'ទិន្នន័យចុងក្រោយ',
         'document_designer' => 'អ្នករចនាឯកសារ',
+        'repeating_table' => 'តារាងទិន្នន័យផ្ទួន',
+        'no_repeating_fields' => 'មិនមានវាលទិន្នន័យផ្ទួន',
         'preview_pdf' => 'មើលជា PDF',
         'no_model_selected_title' => 'មិនមានទិន្នន័យ (Database Model) ត្រូវបានជ្រើសរើសទេ',
         'no_model_selected_body' => 'អ្នកត្រូវតែជ្រើសរើសទិន្នន័យនៅក្នុងព័ត៌មានលម្អិតនៃទម្រង់ ហើយចុចរក្សាទុកមុនពេលអ្នកអាចមើល PDF ជាមុន។',

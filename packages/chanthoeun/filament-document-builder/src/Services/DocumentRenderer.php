@@ -5,6 +5,8 @@ namespace Chanthoeun\FilamentDocumentBuilder\Services;
 use App\Support\CandidateNumber;
 use App\Support\FormEntryData;
 use App\Support\LocalizedDate;
+use Chanthoeun\FilamentCustomForms\Models\CustomForm;
+use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
@@ -62,7 +64,7 @@ class DocumentRenderer
     }
 
     /**
-     * Replaces loop blocks like {{#foreach items as item}} ... {{/foreach}}
+     * Expand balanced loop blocks, including comment-wrapped markers used in HTML tables.
      */
     protected function replaceLoops(?string $content, array|object $data): ?string
     {
@@ -70,48 +72,69 @@ class DocumentRenderer
             return $content;
         }
 
-        // Use precise regex to prevent catastrophic backtracking and avoid swallowing preceding tags
-        return preg_replace_callback(
-            '/{{\s*#foreach\s+([a-zA-Z0-9_\.]+)\s+as\s+([a-zA-Z0-9_]+)\s*}}(.*?){{\s*\/foreach\s*}}/is',
-            function ($matches) use ($data) {
-                $arrayPath = trim(strip_tags($matches[1]));
-                $arrayPath = html_entity_decode(str_replace('&nbsp;', '', $arrayPath));
+        $markerPattern = '{{\s*(?:#foreach\s+[a-zA-Z0-9_\.]+\s+as\s+[a-zA-Z0-9_]+|\/foreach)\s*}}';
+        $content = preg_replace('/<!--\s*('.$markerPattern.')\s*-->/i', '$1', $content) ?? $content;
 
-                $itemName = trim(strip_tags($matches[2]));
-                $itemName = html_entity_decode(str_replace('&nbsp;', '', $itemName));
-
-                $blockContent = $matches[3];
-
-                $items = data_get($data, $arrayPath);
-
-                // Fallback for parent scopes
-                $currentContext = $data;
-                while ($items === null && is_array($currentContext) && array_key_exists('_parent', $currentContext)) {
-                    $currentContext = $currentContext['_parent'];
-                    $items = data_get($currentContext, $arrayPath);
-                }
-
-                if (! is_iterable($items)) {
-                    return '';
-                }
-
-                $result = '';
-
-                foreach ($items as $item) {
-                    $loopData = [
-                        '_parent' => $data,
-                        $itemName => $item,
-                    ];
-
-                    $blockContent = $this->replaceQrCodes($blockContent, $loopData);
-                    $blockContent = $this->replaceBarcodes($blockContent, $loopData);
-                    $result .= $this->replaceVariables($blockContent, $loopData);
-                }
-
-                return $result;
-            },
-            $content
+        preg_match_all(
+            '/{{\s*(?:#foreach\s+([a-zA-Z0-9_\.]+)\s+as\s+([a-zA-Z0-9_]+)|(\/foreach))\s*}}/i',
+            $content,
+            $markers,
+            PREG_SET_ORDER | PREG_OFFSET_CAPTURE | PREG_UNMATCHED_AS_NULL,
         );
+
+        $openMarkers = [];
+        $closingMarkers = [];
+
+        foreach ($markers as $index => $marker) {
+            if ($marker[1][0] !== null) {
+                $openMarkers[] = $index;
+            } elseif ($openMarkers !== []) {
+                $closingMarkers[array_pop($openMarkers)] = $index;
+            }
+        }
+
+        $result = '';
+        $offset = 0;
+
+        for ($index = 0, $count = count($markers); $index < $count; $index++) {
+            $opening = $markers[$index];
+
+            if ($opening[1][0] === null) {
+                continue;
+            }
+
+            // Leave incomplete blocks unchanged rather than consuming another block's closing marker.
+            if (! isset($closingMarkers[$index])) {
+                break;
+            }
+
+            $closingIndex = $closingMarkers[$index];
+            $closing = $markers[$closingIndex];
+            $blockStart = $opening[0][1] + strlen($opening[0][0]);
+            $blockContent = substr($content, $blockStart, $closing[0][1] - $blockStart);
+            $items = $this->resolveTemplateValue($data, $opening[1][0]);
+            $result .= substr($content, $offset, $opening[0][1] - $offset);
+
+            if (is_iterable($items)) {
+                foreach ($items as $item) {
+                    // Resource-form rows wrap fields in data; keep explicit outer fields authoritative.
+                    if (is_array($item) && is_array($item['data'] ?? null)) {
+                        $item += $item['data'];
+                    }
+
+                    $loopData = ['_parent' => $data, $opening[2][0] => $item];
+                    $rowContent = $this->replaceLoops($blockContent, $loopData);
+                    $rowContent = $this->replaceQrCodes($rowContent, $loopData);
+                    $rowContent = $this->replaceBarcodes($rowContent, $loopData);
+                    $result .= $this->replaceVariables($rowContent, $loopData);
+                }
+            }
+
+            $offset = $closing[0][1] + strlen($closing[0][0]);
+            $index = $closingIndex;
+        }
+
+        return $result.substr($content, $offset);
     }
 
     /**
@@ -392,7 +415,11 @@ class DocumentRenderer
         }
 
         if (in_array($fieldKey, FormEntryData::majorKeys(), true)) {
-            return FormEntryData::majorKhmerOptionLabel((string) $value);
+            $majorLabel = FormEntryData::majorKhmerOptionLabel((string) $value);
+
+            return $majorLabel !== (string) $value
+                ? $majorLabel
+                : ($this->choiceLabelForKey($key, (string) $value, $data) ?? $majorLabel);
         }
 
         $geoLocationLabel = $this->geoLocationLabelForKey($key, (string) $value, $data);
@@ -829,11 +856,188 @@ class DocumentRenderer
         return (string) $value;
     }
 
+    protected function withMissingProfileRepeaters(string $content, array|object $data): array|object
+    {
+        if (
+            ! $data instanceof CustomFormEntry
+            || ! Schema::hasTable('custom_forms')
+            || ! Schema::hasTable('custom_form_fields')
+            || ! Schema::hasTable('custom_form_entries')
+        ) {
+            return $data;
+        }
+
+        $entryData = is_array($data->data) ? $data->data : [];
+        preg_match_all('/{{\s*#foreach\s+([a-zA-Z0-9_.]+)\s+as\s+[a-zA-Z0-9_]+\s*}}/i', $content, $matches);
+        $missingKeys = [];
+
+        foreach ($matches[1] as $path) {
+            $key = str_starts_with($path, 'data.') ? substr($path, 5) : $path;
+
+            if ($key !== '' && ! str_contains($key, '.') && ! array_key_exists($key, $entryData)) {
+                $missingKeys[$key] = true;
+            }
+        }
+
+        if ($missingKeys === []) {
+            return $data;
+        }
+
+        $profileFormId = CustomForm::query()->where('slug', 'profile')->value('id');
+        $formId = (int) $data->custom_form_id;
+
+        if (! $profileFormId || $formId <= 0 || $formId === (int) $profileFormId) {
+            return $data;
+        }
+
+        $columns = Schema::getColumnListing('custom_form_entries');
+        $ownerColumns = array_values(array_intersect(['created_by', 'user_id', 'created_by_id'], $columns));
+        $attributes = $data->getAttributes();
+        $ownerId = null;
+
+        foreach ($ownerColumns as $column) {
+            if (isset($attributes[$column]) && is_numeric($attributes[$column]) && (int) $attributes[$column] > 0) {
+                $ownerId = (int) $attributes[$column];
+                break;
+            }
+        }
+
+        if ($ownerId === null) {
+            return $data;
+        }
+
+        $formIds = [$formId];
+
+        if (Schema::hasColumn('custom_forms', 'custom_form_id')) {
+            $children = CustomForm::query()->where('custom_form_id', $formId)->where('is_active', true);
+
+            if (Schema::hasColumn('custom_forms', 'menu_placement')) {
+                $children->where('menu_placement', 'sub_item');
+            }
+
+            $selection = strtolower(trim((string) ($entryData['form_selection'] ?? '')));
+
+            if ($selection !== '' && Schema::hasColumn('custom_forms', 'sub_item_type')) {
+                $children->whereRaw('LOWER(sub_item_type) = ?', [$selection]);
+            }
+
+            $formIds = array_merge($formIds, $children->pluck('id')->all());
+        }
+
+        $targets = array_filter($this->topLevelRepeaterFields($formIds), fn (object $field): bool => isset($missingKeys[$field->name]));
+        $profileFields = collect($this->topLevelRepeaterFields([(int) $profileFormId]))->keyBy('name');
+        $mappings = [];
+
+        foreach ($targets as $target) {
+            $options = $this->normalizeOptions($target->options ?? []);
+            $profileKey = (string) $target->name;
+
+            foreach (['profile_keyword', 'profile_field', 'profile_data_key'] as $option) {
+                if (is_string($options[$option] ?? null) && trim($options[$option]) !== '') {
+                    $profileKey = trim($options[$option]);
+                    break;
+                }
+            }
+
+            if ($profileFields->has($profileKey)) {
+                $mappings[(string) $target->name] = $profileKey;
+            }
+        }
+
+        if ($mappings === []) {
+            return $data;
+        }
+
+        $query = CustomFormEntry::query()
+            ->where('custom_form_id', $profileFormId)
+            ->where(function ($query) use ($ownerColumns, $ownerId): void {
+                foreach ($ownerColumns as $index => $column) {
+                    $query->orWhere(function ($query) use ($ownerColumns, $index, $column, $ownerId): void {
+                        foreach (array_slice($ownerColumns, 0, $index) as $preferredColumn) {
+                            $query->where(function ($query) use ($preferredColumn): void {
+                                $query->whereNull($preferredColumn)->orWhere($preferredColumn, 0);
+                            });
+                        }
+
+                        $query->where($column, $ownerId);
+                    });
+                }
+            });
+
+        foreach (array_intersect(['review_status', 'status'], $columns) as $column) {
+            $query->where(function ($query) use ($column): void {
+                $query->whereNull($column)->orWhere($column, '!=', 'draft');
+            });
+        }
+
+        $profile = $query->where(function ($query): void {
+            $query->whereNull('data->registration_status')->orWhere('data->registration_status', '!=', 'draft');
+        })->latest('id')->first();
+        $profileData = is_array($profile?->data) ? $profile->data : [];
+        $fallbacks = [];
+
+        foreach ($mappings as $targetKey => $profileKey) {
+            if (array_key_exists($profileKey, $profileData) && is_array($profileData[$profileKey])) {
+                $fallbacks[$targetKey] = $profileData[$profileKey];
+            }
+        }
+
+        if ($fallbacks === []) {
+            return $data;
+        }
+
+        // Render-only enrichment: never mark or save the caller's entry as changed.
+        $renderEntry = clone $data;
+        $renderEntry->setAttribute('data', $entryData + $fallbacks);
+
+        return $renderEntry;
+    }
+
+    /** @return array<object> */
+    protected function topLevelRepeaterFields(array $formIds): array
+    {
+        $fields = DB::table('custom_form_fields')
+            ->whereIn('custom_form_id', $formIds)
+            ->get(['id', 'parent_id', 'name', 'type', 'options'])
+            ->keyBy('id');
+
+        return $fields->filter(function (object $field) use ($fields): bool {
+            if ($field->type !== 'repeater' || trim((string) $field->name) === '') {
+                return false;
+            }
+
+            $parentId = $field->parent_id;
+            $visited = [];
+
+            while ($parentId) {
+                if (isset($visited[$parentId])) {
+                    return false;
+                }
+
+                $visited[$parentId] = true;
+                $parent = $fields->get($parentId);
+
+                if (! $parent) {
+                    break;
+                }
+
+                if ($parent->type === 'repeater') {
+                    return false;
+                }
+
+                $parentId = $parent->parent_id;
+            }
+
+            return true;
+        })->values()->all();
+    }
+
     protected function processHtmlContent(DocumentTemplate $template, array|object $data = []): string
     {
         $htmlContent = $template->content ?? '';
         $this->renderLocale = $this->detectRenderLocale($htmlContent);
         $recordData = $data;
+        $data = $this->withMissingProfileRepeaters($htmlContent, $data);
 
         // Eager load relations to prevent N+1 performance bottlenecks
         $this->preloadRelations($htmlContent, $data);
