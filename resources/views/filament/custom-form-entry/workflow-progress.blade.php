@@ -1,12 +1,16 @@
 @php
     $progress = $progress ?? $getState();
+    $minimumWidth = $progress['total'] > 0 ? max(280, $progress['total'] * 112) : 120;
     $completedLabel = __('candidate_entrance_statistics.workflow_completed_stages', [
         'completed' => \App\Support\LocalizedNumber::digits($progress['completed']),
         'total' => \App\Support\LocalizedNumber::digits($progress['total']),
     ]);
 @endphp
 
-<div class="relative px-3 py-2 whitespace-normal" style="width: {{ $progress['total'] > 0 ? max(320, $progress['total'] * 112) : 120 }}px;">
+<div
+    class="relative px-2 py-1.5 whitespace-normal"
+    style="width: {{ $minimumWidth }}px;"
+>
     @if ($progress['total'] === 0)
         <span class="text-sm text-gray-400" title="{{ __('candidate_entrance_statistics.no_application_stages') }}">
             <span aria-hidden="true">—</span>
@@ -14,7 +18,7 @@
         </span>
     @else
         <div
-            class="flex pt-3"
+            class="flex"
             role="progressbar"
             aria-label="{{ __('candidate_entrance_statistics.workflow_progress') }}"
             aria-valuemin="0"
@@ -30,26 +34,38 @@
                     aria-hidden="true"
                 >
                     @unless ($loop->first)
-                        <span class="absolute top-1 right-1/2 h-px w-full bg-gray-200 dark:bg-gray-600"></span>
+                        <span class="absolute top-[11px] right-1/2 h-0.5 w-full bg-gray-200 dark:bg-gray-700"></span>
                     @endunless
-                    <span class="relative z-10 flex size-2 items-center justify-center">
-                        @if ($stage['state'] === 'current')
-                            <span
-                                class="absolute -top-2.5 left-1/2 h-0 w-0 -translate-x-1/2 border-x-4 border-t-[5px] border-x-transparent border-t-amber-500"
-                                data-workflow-current
-                            ></span>
+                    <span @class([
+                        'relative z-10 flex size-6 shrink-0 items-center justify-center rounded-full border-2',
+                        'border-green-600 bg-green-600 text-white' => $stage['state'] === 'completed',
+                        'border-green-600 bg-white text-green-600 dark:border-green-400 dark:bg-gray-900 dark:text-green-400' => $stage['state'] === 'current',
+                        'border-gray-300 bg-gray-300 text-white dark:border-gray-600 dark:bg-gray-600' => $stage['state'] === 'pending',
+                    ])>
+                        @if ($stage['state'] === 'completed')
+                            <svg class="size-3" data-workflow-completed viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="m5 12 4 4L19 6" />
+                            </svg>
+                        @elseif ($stage['state'] === 'current')
+                            <svg class="size-3" data-workflow-current viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="9" />
+                                <path d="M12 7v5l3 2" />
+                            </svg>
+                        @else
+                            <svg class="size-3" data-workflow-pending viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round">
+                                <path d="M7 12h10" />
+                            </svg>
                         @endif
-                        <span @class([
-                            'block size-2 rounded-full border',
-                            'border-amber-500 bg-amber-400' => in_array($stage['state'], ['completed', 'current'], true),
-                            'border-gray-300 bg-gray-300 dark:border-gray-600 dark:bg-gray-600' => $stage['state'] === 'pending',
-                        ])></span>
                     </span>
                     <span @class([
-                        'mt-1.5 min-h-10 w-full px-1 text-center text-[11px] leading-5 whitespace-normal break-words',
-                        'font-semibold text-amber-700 dark:text-amber-400' => $stage['state'] === 'current',
-                        'text-gray-500 dark:text-gray-400' => $stage['state'] !== 'current',
+                        'mt-1.5 min-h-5 w-full px-1 text-center text-[11px] leading-5 whitespace-normal break-words',
+                        'font-semibold text-green-700 dark:text-green-400' => $stage['state'] === 'current',
+                        'font-medium text-gray-700 dark:text-gray-200' => $stage['state'] === 'completed',
+                        'text-gray-500 dark:text-gray-400' => $stage['state'] === 'pending',
                     ]) data-workflow-caption>{{ $stage['name'] }}</span>
+                    @if ($stage['state'] === 'completed' && filled($stage['completed_at'] ?? null))
+                        <span class="mt-0.5 w-full px-1 text-center text-[10px] leading-4 break-words text-gray-500 dark:text-gray-400" data-workflow-completed-at>{{ $stage['completed_at'] }}</span>
+                    @endif
                 </div>
             @endforeach
         </div>
