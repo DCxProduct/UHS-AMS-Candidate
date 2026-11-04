@@ -30,6 +30,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ViewColumn;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
@@ -69,6 +70,7 @@ class CustomFormEntriesTable
         $path = storage_path('app/' . uniqid('form-submission-list-', true) . '.xlsx');
 
         $columnKeys ??= collect(self::getColumns($formId))
+            ->filter(fn ($column): bool => $column instanceof TextColumn)
             ->map(fn (TextColumn $column): string => $column->getName())
             ->values()
             ->all();
@@ -167,6 +169,7 @@ class CustomFormEntriesTable
     protected static function exportColumnsByKey(?string $formId, ?Table $table): array
     {
         return collect(self::getColumns($formId))
+            ->filter(fn ($column): bool => $column instanceof TextColumn)
             ->map(function (TextColumn $column) use ($table): TextColumn {
                 if ($table) {
                     $column->table($table);
@@ -564,6 +567,14 @@ class CustomFormEntriesTable
                 ->toggleable(isToggledHiddenByDefault: false);
         }
 
+        if (! self::currentPanelIsAdmin()) {
+            $columns[] = ViewColumn::make('workflow_progress')
+                ->label(__('candidate_entrance_statistics.workflow_progress'))
+                ->getStateUsing(fn ($record): array => self::workflowProgressViewData($record))
+                ->view('filament.custom-form-entry.workflow-progress')
+                ->toggleable(isToggledHiddenByDefault: false);
+        }
+
         return $columns;
     }
 
@@ -721,6 +732,46 @@ class CustomFormEntriesTable
         return trim((string) ($record->review_note ?? ''));
     }
 
+    protected static function workflowProgressViewData($record): array
+    {
+        $status = self::entryStatus($record);
+        $stages = collect(self::applicationStageViewData($record)['stages'])
+            ->reject(fn (array $stage): bool => $stage['type'] === WorkflowStageType::Rejected->value)
+            ->map(function (array $stage) use ($status): array {
+                if (filled($stage['configured_name'])) {
+                    $stage['name'] = $stage['configured_name'];
+                }
+
+                if ($status === 'draft' || (in_array($status, ['rejected', 'failed'], true) && $stage['state'] === 'current')) {
+                    $stage['state'] = 'pending';
+                    $stage['state_label'] = __('candidate_entrance_statistics.stage_states.pending');
+                }
+
+                return $stage;
+            })
+            ->values();
+        $total = $stages->count();
+        $completed = $stages->where('state', 'completed')->count();
+        $current = $stages->firstWhere('state', 'current');
+        $label = match (true) {
+            $status === 'draft' => __('student_profile.save_as_draft'),
+            $status === 'rejected' => __('candidate_entrance_statistics.statuses.rejected'),
+            $status === 'failed' => __('candidate_entrance_statistics.statuses.final_rejected'),
+            $total > 0 && $completed === $total => __('candidate_entrance_statistics.stage_states.completed'),
+            $current !== null => $current['name'],
+            default => __('candidate_entrance_statistics.stage_states.pending'),
+        };
+
+        return [
+            'stages' => $stages->all(),
+            'completed' => $completed,
+            'total' => $total,
+            'percent' => $total > 0 ? (int) round($completed / $total * 100) : 0,
+            'label' => $label,
+            'status' => $status,
+        ];
+    }
+
     protected static function applicationStageViewData($record): array
     {
         $record->loadMissing(['customForm', 'creator']);
@@ -734,7 +785,7 @@ class CustomFormEntriesTable
 
         $currentType = WorkflowStageMessages::stageTypeFor($record);
         $ordered = WorkflowStageProgression::enabled($record);
-        $notificationTimes = self::workflowStageNotificationTimes($record);
+        $notificationTimes = $ordered ? [] : self::workflowStageNotificationTimes($record);
 
         $stages = collect($workflow->stages ?? [])
             ->map(fn (mixed $stage): array => is_array($stage) && is_array($stage['data'] ?? null)
@@ -763,11 +814,14 @@ class CustomFormEntriesTable
                     && $currentType !== null
                     && ($currentType === $type || ($type === WorkflowStageType::Approval && $currentType === WorkflowStageType::Review));
                 $state = $isCompleted ? 'completed' : ($isCurrent ? 'current' : 'pending');
+                $configuredName = trim(self::transText($stage['stage_name'] ?? null));
 
                 return [
                     'number' => $index + 1,
+                    'type' => $typeValue,
+                    'configured_name' => $configuredName,
                     'name' => WorkflowNotificationStageSummary::localizedName(
-                        self::transText($stage['stage_name'] ?? null),
+                        $configuredName,
                         $type,
                     ),
                     'type_label' => $type?->label() ?? (string) $stage['stage_type'],

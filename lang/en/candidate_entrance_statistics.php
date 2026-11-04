@@ -26,6 +26,8 @@ return [
     'reviewed_at' => 'Reviewed At',
     'submitted_at' => 'Submitted At',
     'uploaded_files' => 'Uploaded Files',
+    'workflow_progress' => 'Workflow Progress',
+    'workflow_completed_stages' => ':completed / :total completed',
     'download_files_count' => 'Download :count',
     'download_all_files' => 'Download all (ZIP)',
     'file_preview' => [

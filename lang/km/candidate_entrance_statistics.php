@@ -26,6 +26,8 @@ return [
     'reviewed_at' => 'បានពិនិត្យនៅ',
     'submitted_at' => 'បានដាក់ស្នើនៅ',
     'uploaded_files' => 'ឯកសារដែលបានបញ្ចូល',
+    'workflow_progress' => 'វឌ្ឍនភាពដំណើរការ',
+    'workflow_completed_stages' => 'បានបញ្ចប់ :completed / :total',
     'download_files_count' => 'ទាញយក :count',
     'download_all_files' => 'ទាញយកទាំងអស់ (ZIP)',
     'file_preview' => [
