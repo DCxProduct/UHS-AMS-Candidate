@@ -40,6 +40,44 @@ class FieldsRelationManager extends RelationManager
 
     private const SOURCE_FIELD_PREFIX = 'field:';
 
+    private static function fieldTypeOptions(): array
+    {
+        return [
+            'Container' => [
+                'step' => 'Step',
+                'section' => __('filament-custom-forms::fcf.builder.blocks.section', [], 'en'),
+                'grid' => __('filament-custom-forms::fcf.builder.blocks.grid', [], 'en'),
+                'fieldset' => __('filament-custom-forms::fcf.builder.blocks.fieldset', [], 'en'),
+                'repeater' => __('filament-custom-forms::fcf.builder.blocks.repeater', [], 'en'),
+                'wizard' => __('filament-custom-forms::fcf.builder.blocks.wizard', [], 'en'),
+            ],
+            'Fields' => [
+                'text_input' => __('filament-custom-forms::fcf.builder.blocks.text_input', [], 'en'),
+                'textarea' => __('filament-custom-forms::fcf.builder.blocks.textarea', [], 'en'),
+                'email' => __('filament-custom-forms::fcf.builder.blocks.email', [], 'en'),
+                'number_input' => __('filament-custom-forms::fcf.builder.blocks.number_input', [], 'en'),
+                'money' => __('filament-custom-forms::fcf.builder.blocks.money', [], 'en'),
+                'date_picker' => __('filament-custom-forms::fcf.builder.blocks.date_picker', [], 'en'),
+                'time_picker' => __('filament-custom-forms::fcf.builder.blocks.time_picker', [], 'en'),
+                'boolean' => __('filament-custom-forms::fcf.builder.blocks.boolean', [], 'en'),
+                'select_dropdown' => 'Select Dropdown',
+                'radio' => 'Radio',
+                'checkbox' => 'Checkbox',
+                'checkbox_list' => 'Checkbox List',
+                'multi_select' => 'Multi Select',
+                'info' => 'Info',
+                'password' => __('filament-custom-forms::fcf.builder.blocks.password', [], 'en'),
+                'phone' => __('filament-custom-forms::fcf.builder.blocks.phone', [], 'en'),
+            ],
+            'Images' => [
+                'image' => __('filament-custom-forms::fcf.builder.blocks.image', [], 'en'),
+            ],
+            'Documents' => [
+                'file_upload' => __('filament-custom-forms::fcf.builder.blocks.file_upload', [], 'en'),
+            ],
+        ];
+    }
+
     public function form(Schema $schema): Schema
     {
         return $schema
@@ -95,41 +133,9 @@ class FieldsRelationManager extends RelationManager
                             ->visible(fn ($get, ?object $record = null): bool => filled($record) || self::isCreatingMode($get)),
 
                         \Filament\Forms\Components\Select::make('type')
-                            ->label(__('filament-custom-forms::fcf.field.type'))
-                            ->options([
-                                'Container' => [
-                                    'step' => 'Step',
-                                    'section' => __('filament-custom-forms::fcf.builder.blocks.section'),
-                                    'grid' => __('filament-custom-forms::fcf.builder.blocks.grid'),
-                                    'fieldset' => __('filament-custom-forms::fcf.builder.blocks.fieldset'),
-                                    'repeater' => __('filament-custom-forms::fcf.builder.blocks.repeater'),
-                                    'wizard' => __('filament-custom-forms::fcf.builder.blocks.wizard'),
-                                ],
-                                'Fields' => [
-                                    'text_input' => __('filament-custom-forms::fcf.builder.blocks.text_input'),
-                                    'textarea' => __('filament-custom-forms::fcf.builder.blocks.textarea'),
-                                    'email' => __('filament-custom-forms::fcf.builder.blocks.email'),
-                                    'number_input' => __('filament-custom-forms::fcf.builder.blocks.number_input'),
-                                    'money' => __('filament-custom-forms::fcf.builder.blocks.money'),
-                                    'date_picker' => __('filament-custom-forms::fcf.builder.blocks.date_picker'),
-                                    'time_picker' => __('filament-custom-forms::fcf.builder.blocks.time_picker'),
-                                    'boolean' => __('filament-custom-forms::fcf.builder.blocks.boolean'),
-                                    'select_dropdown' => 'Select Dropdown',
-                                    'radio' => 'Radio',
-                                    'checkbox' => 'Checkbox',
-                                    'checkbox_list' => 'Checkbox List',
-                                    'multi_select' => 'Multi Select',
-                                    'info' => 'Info',
-                                    'password' => __('filament-custom-forms::fcf.builder.blocks.password'),
-                                    'phone' => __('filament-custom-forms::fcf.builder.blocks.phone'),
-                                ],
-                                'Images' => [
-                                    'image' => __('filament-custom-forms::fcf.builder.blocks.image'),
-                                ],
-                                'Documents' => [
-                                    'file_upload' => __('filament-custom-forms::fcf.builder.blocks.file_upload'),
-                                ],
-                            ])
+                            ->label(__('filament-custom-forms::fcf.field.type', [], 'en'))
+                            ->placeholder(__('filament-forms::components.select.placeholder', [], 'en'))
+                            ->options(self::fieldTypeOptions())
                             ->default('text_input')
                             ->native()
                             ->columnSpan(2)
@@ -575,34 +581,9 @@ class FieldsRelationManager extends RelationManager
                         ) || (string) $record->type === 'info'),
 
                 TextColumn::make('type')
-                    ->label(__('filament-custom-forms::fcf.field.type'))
+                    ->label(__('filament-custom-forms::fcf.field.type', [], 'en'))
                     ->badge()
-                    ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'step' => app()->getLocale() === 'km' ? 'ជំហាន' : 'Step',
-                        'section' => app()->getLocale() === 'km' ? 'ផ្នែក' : 'Section',
-                        'grid' => app()->getLocale() === 'km' ? 'ក្រឡាចត្រង្គ' : 'Grid',
-                        'fieldset' => 'Fieldset',
-                        'repeater' => app()->getLocale() === 'km' ? 'ឧបករណ៍ផ្ទួន' : 'Repeater',
-                        'wizard' => app()->getLocale() === 'km' ? 'អ្នកជំនួយការ' : 'Wizard',
-                        'text_input' => app()->getLocale() === 'km' ? 'ប្រអប់បញ្ចូលអត្ថបទ' : 'Text Input',
-                        'textarea' => app()->getLocale() === 'km' ? 'តំបន់អត្ថបទ' : 'Textarea',
-                        'email' => app()->getLocale() === 'km' ? 'អ៊ីមែល' : 'Email',
-                        'number_input' => app()->getLocale() === 'km' ? 'ប្រអប់បញ្ចូលលេខ' : 'Number Input',
-                        'money' => app()->getLocale() === 'km' ? 'ប្រអប់បញ្ចូលរូបិយប័ណ្ណ' : 'Money',
-                        'date_picker' => app()->getLocale() === 'km' ? 'ការរើសថ្ងៃ' : 'Date Picker',
-                        'time_picker' => app()->getLocale() === 'km' ? 'ការរើសម៉ោង' : 'Time Picker',
-                        'boolean' => app()->getLocale() === 'km' ? 'ប៊ូតុងបិទបើក' : 'Toggle',
-                        'select_dropdown' => app()->getLocale() === 'km' ? 'បញ្ជីរើស (Dropdown)' : 'Select Dropdown',
-                        'radio' => app()->getLocale() === 'km' ? 'ប៊ូតុងរើស (Radio)' : 'Radio',
-                        'checkbox' => app()->getLocale() === 'km' ? 'ប្រអប់ជ្រើសរើស' : 'Checkbox',
-                        'checkbox_list' => app()->getLocale() === 'km' ? 'បញ្ជីប្រអប់ជ្រើសរើស' : 'Checkbox List',
-                        'multi_select' => app()->getLocale() === 'km' ? 'ជ្រើសរើសច្រើន' : 'Multi Select',
-                        'info' => app()->getLocale() === 'km' ? 'ព័ត៌មាន' : 'Info',
-                        'image' => app()->getLocale() === 'km' ? 'រូបភាព' : 'Image',
-                        'password' => app()->getLocale() === 'km' ? 'ពាក្យសម្ងាត់' : 'Password',
-                        'phone' => app()->getLocale() === 'km' ? 'ទូរស័ព្ទ' : 'Phone',
-                        default => $state,
-                    })
+                    ->formatStateUsing(fn (string $state): string => collect(self::fieldTypeOptions())->collapse()->get($state, $state))
                     ->color(fn (string $state): string => match ($state) {
                         'step', 'section', 'grid', 'fieldset', 'repeater', 'wizard' => 'info',
                         default => 'gray',
