@@ -841,7 +841,7 @@ class PaymentTotalsTest extends TestCase
             ]);
 
             $this->travelTo(now()->setDate(2026, 10, 19));
-            $expectedName = rawurlencode('បញ្ជីឈ្មោះបេក្ខជនបង់លុយ 19-10-2026');
+            $expectedName = rawurlencode('បញ្ជីឈ្មោះបេក្ខជនបង់ប្រាក់ 19-10-2026');
 
             $response = PaymentsTable::downloadExcel([$payment->load('user')], null, '2026-10-22');
             $this->assertStringContainsString("filename*=utf-8''".$expectedName.'.xlsx', $response->headers->get('Content-Disposition'));
@@ -855,7 +855,7 @@ class PaymentTotalsTest extends TestCase
             $sheetText = implode('', array_map('html_entity_decode', $textNodes[1]));
             $this->assertStringContainsString('រាជធានីភ្នំពេញ ថ្ងៃទី ២២ ខែ តុលា ឆ្នាំ ២០២៦', $sheetText);
 
-            $this->assertStringContainsString('បញ្ជីឈ្មោះបេក្ខជនបង់លុយ', $sheet);
+            $this->assertStringContainsString('បញ្ជីឈ្មោះបេក្ខជនបង់ប្រាក់', $sheet);
             $this->assertStringContainsString('ល.រ', $sheet);
             $this->assertStringContainsString('ប្រភេទទូទាត់', $sheet);
             $this->assertStringContainsString('សាច់ប្រាក់', $sheet);
@@ -868,7 +868,7 @@ class PaymentTotalsTest extends TestCase
                 ->once()
                 ->withArgs(fn (string $html, array $pdfOptions): bool => $pdfOptions['format'] === 'A4'
                     && $pdfOptions['orientation'] === 'P'
-                    && str_contains($html, 'បញ្ជីឈ្មោះបេក្ខជនបង់លុយ')
+                    && str_contains($html, 'បញ្ជីឈ្មោះបេក្ខជនបង់ប្រាក់')
                     && str_contains($html, '<th style="width: 12mm">ភេទ</th>')
                     && str_contains($html, '<th style="width: 20mm; white-space: nowrap; font-size: 7pt">ថ្ងៃខែឆ្នាំកំណើត</th>')
                     && str_contains($html, '<th style="width: 17mm">ប្រភពបង់ប្រាក់</th>')
