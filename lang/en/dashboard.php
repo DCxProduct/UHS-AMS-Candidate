@@ -5,6 +5,20 @@ return [
     'title' => 'Dashboard',
     'welcome' => 'Welcome, :name',
 
+    'application_levels' => [
+        'switch' => 'Switch education level',
+        'description' => 'Choose the education level you want to apply for.',
+        'history_note' => 'Keep your account, profile and previous applications.',
+        'current' => 'Current education level',
+        'field' => 'New education level',
+        'placeholder' => 'Select your new education level',
+        'required' => 'Please select a new education level.',
+        'confirm' => 'Switch level',
+        'switched' => 'Current candidate type changed to :type.',
+        'availability' => 'Forms still follow their opening dates and access settings.',
+        'missing_account' => 'Your account cannot switch levels yet. Please contact an administrator.',
+    ],
+
     'admin_subheading' => 'Monitor candidate accounts, submissions, and application reviews.',
     'cashier_subheading' => 'Track payment lists, payment records, and cashier work items.',
     'registrar_subheading' => 'Review candidate submissions, exam outcomes, forms, and registration settings.',

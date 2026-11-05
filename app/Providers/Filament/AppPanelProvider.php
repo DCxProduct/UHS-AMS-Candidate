@@ -405,6 +405,10 @@ class AppPanelProvider extends PanelProvider
             return [];
         }
 
+        if ($user instanceof \App\Models\User && DashboardUserAccess::isCandidate($user)) {
+            return \App\Support\CandidateApplicationLevels::formRoleKeys($user);
+        }
+
         $roles = collect(method_exists($user, 'effectiveRoleNames')
             ? $user->effectiveRoleNames()->all()
             : [])
@@ -459,6 +463,10 @@ class AppPanelProvider extends PanelProvider
 
         if (! $this->isStudent()) {
             return $this->currentUserCanAccessStaffDynamicForms();
+        }
+
+        if (\App\Support\CustomFormRoleAccess::canAccessForm(auth()->user(), $formId) === false) {
+            return false;
         }
 
         $form = DB::table('custom_forms')

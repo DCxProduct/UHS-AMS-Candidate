@@ -565,7 +565,10 @@ class CustomFormEntryForm
             return $choices;
         }
 
-        $hasRestrictedRole = $user->effectiveRoleNames()
+        $currentType = $user instanceof \App\Models\User
+            ? \App\Support\CandidateApplicationLevels::currentType($user)
+            : null;
+        $hasRestrictedRole = ($currentType !== null ? collect([$currentType]) : $user->effectiveRoleNames())
             ->map(fn ($role): string => strtolower(trim((string) $role)))
             ->intersect(collect($restrictedRoles)->map(
                 fn ($role): string => strtolower(trim((string) $role))

@@ -7,8 +7,8 @@ use App\Filament\Admin\Resources\CandidateEntranceStatistics\Tables\CandidateEnt
 use App\Filament\Admin\Resources\ExamResults\ExamResultResource;
 use App\Filament\Admin\Resources\ExitExamResults\ExitExamResultResource;
 use App\Models\Major;
-use App\Models\User;
 use App\Support\CandidateNumber;
+use App\Support\CandidateTypeResolver;
 use App\Support\FilamentActionPermissions;
 use App\Support\FormEntryData;
 use App\Support\CaseInsensitiveSearch;
@@ -712,8 +712,9 @@ class ExamResultsTable
             ? ExitExamResultResource::getEloquentQuery()
             : ExamResultResource::getEloquentQuery();
 
-        return self::degreeLevelCreators($query)
-            ->map(fn (User $user): ?string => self::resolveCandidateGroupName($user))
+        return (clone $query)->reorder()->with(['creator.roles', 'customForm'])
+            ->lazyById(250, $query->getModel()->getQualifiedKeyName(), $query->getModel()->getKeyName())
+            ->map(fn (CustomFormEntry $entry): ?string => self::resolveCandidateGroupName($entry))
             ->filter(fn (?string $group): bool => filled($group))
             ->map(fn (string $group): string => trim($group))
             ->unique()
@@ -724,19 +725,13 @@ class ExamResultsTable
 
     protected static function applyDegreeLevelFilter(Builder $query, string $degreeLevel): Builder
     {
-        $creatorIds = self::degreeLevelCreators($query)
-            ->filter(fn (User $user): bool => trim((string) self::resolveCandidateGroupName($user)) === trim($degreeLevel))
-            ->modelKeys();
+        $entryIds = (clone $query)->reorder()->with(['creator.roles', 'customForm'])
+            ->lazyById(250, $query->getModel()->getQualifiedKeyName(), $query->getModel()->getKeyName())
+            ->filter(fn (CustomFormEntry $entry): bool => trim((string) self::resolveCandidateGroupName($entry)) === trim($degreeLevel))
+            ->map(fn (CustomFormEntry $entry): mixed => $entry->getKey())
+            ->all();
 
-        return $query->whereIn('created_by', $creatorIds);
-    }
-
-    protected static function degreeLevelCreators(Builder $query): \Illuminate\Database\Eloquent\Collection
-    {
-        return User::query()
-            ->with('roles')
-            ->whereIn('id', (clone $query)->reorder()->select('custom_form_entries.created_by'))
-            ->get();
+        return $query->whereKey($entryIds);
     }
 
     protected static function dynamicFormTypeOptions(): array
@@ -853,7 +848,7 @@ class ExamResultsTable
 
     protected static function degreeLevelKey($record): string
     {
-        $groupName = self::resolveCandidateGroupName($record->creator);
+        $groupName = self::resolveCandidateGroupName($record);
 
         if (filled($groupName)) {
             return trim((string) $groupName);
@@ -889,38 +884,11 @@ class ExamResultsTable
         return FormEntryData::majorLabel($record->data);
     }
 
-    protected static function resolveCandidateGroupName(?User $user): ?string
+    protected static function resolveCandidateGroupName(CustomFormEntry $entry): ?string
     {
-        $candidateRole = self::resolveCandidateRole($user);
+        $candidateType = CandidateTypeResolver::forEntry($entry);
 
-        if (! filled($candidateRole)) {
-            return null;
-        }
-
-        return UserTypeOptions::findByKey((string) $candidateRole)?->group_name;
-    }
-
-    protected static function resolveCandidateRole(?User $user): ?string
-    {
-        if (! $user) {
-            return null;
-        }
-
-        $roles = $user->effectiveRoleNames();
-
-        $preferredRole = $roles->first(function (string $role): bool {
-            $normalized = strtolower(trim($role));
-
-            return UserTypeOptions::isCandidateManagedRole($normalized)
-                && ! in_array($normalized, ['candidate', 'student'], true);
-        });
-
-        if ($preferredRole) {
-            return $preferredRole;
-        }
-
-        return $roles->first(fn (string $role): bool => UserTypeOptions::isCandidateManagedRole($role))
-            ?? $roles->first();
+        return filled($candidateType) ? UserTypeOptions::findByKey($candidateType)?->group_name : null;
     }
 
     protected static function khmerNamePart($record, string $key): string

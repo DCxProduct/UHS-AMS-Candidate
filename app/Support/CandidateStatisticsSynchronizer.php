@@ -49,7 +49,7 @@ class CandidateStatisticsSynchronizer
             [
                 'form_type' => self::value($data, ['form_type', 'degree_level', 'selected_degree_level', 'form_selection']),
                 'academic_year' => FormEntryData::academicYearValue($data, $creator?->academic_year),
-                'user_type' => CandidateTypeResolver::resolve($creator, $data),
+                'user_type' => CandidateTypeResolver::forEntry($entry),
                 'seat_number' => self::value($data, ['seat_number', 'list_number'], $creator?->seat_number),
                 'first_name_kh' => self::value($data, ['first_name_kh']),
                 'last_name_kh' => self::value($data, ['last_name_kh']),

@@ -557,6 +557,10 @@ class CustomFormEntryResource extends Resource
             return false;
         }
 
+        if (static::currentUserIsStudent() && strtolower((string) ($form->slug ?? '')) === 'profile') {
+            return true;
+        }
+
         $userRoles = static::currentUserFormRoles();
 
         if ($userRoles === []) {
@@ -564,10 +568,6 @@ class CustomFormEntryResource extends Resource
         }
 
         $allowedRoles = static::getFormAllowedRoles($form);
-
-        if (static::currentUserIsStudent() && strtolower((string) ($form->slug ?? '')) === 'profile') {
-            return true;
-        }
 
         return collect($userRoles)
             ->intersect($allowedRoles)
@@ -667,6 +667,10 @@ class CustomFormEntryResource extends Resource
 
         if (! $user) {
             return [];
+        }
+
+        if ($user instanceof \App\Models\User && \App\Support\DashboardUserAccess::isCandidate($user)) {
+            return \App\Support\CandidateApplicationLevels::formRoleKeys($user);
         }
 
         $roles = collect(method_exists($user, 'effectiveRoleNames')

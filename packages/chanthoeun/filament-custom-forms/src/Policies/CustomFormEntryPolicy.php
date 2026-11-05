@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace Chanthoeun\FilamentCustomForms\Policies;
 
-use Illuminate\Foundation\Auth\User as AuthUser;
+use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Illuminate\Auth\Access\HandlesAuthorization;
+use Illuminate\Foundation\Auth\User as AuthUser;
 
 class CustomFormEntryPolicy
 {
     use HandlesAuthorization;
-    
+
     public function viewAny(AuthUser $authUser): bool
     {
         return $authUser->can('ViewAny:CustomFormEntry');
@@ -22,8 +23,12 @@ class CustomFormEntryPolicy
         return $authUser->can('View:CustomFormEntry');
     }
 
-    public function create(AuthUser $authUser): bool
+    public function create(AuthUser $authUser, ?CustomForm $form = null): bool
     {
+        if ($form) {
+            return app(\App\Policies\CustomFormEntryPolicy::class)->create($authUser, $form);
+        }
+
         return $authUser->can('Create:CustomFormEntry');
     }
 
@@ -71,5 +76,4 @@ class CustomFormEntryPolicy
     {
         return $authUser->can('Reorder:CustomFormEntry');
     }
-
 }

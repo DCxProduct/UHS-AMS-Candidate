@@ -3,6 +3,7 @@
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Pages;
 
 use App\Models\CandidateSubmitPopupSetting;
+use App\Support\ClosingDateWorkflow;
 use App\Support\ProfileFormData;
 use App\Support\WorkflowActionFeedback;
 use App\Support\WorkflowSubmissionMessages;
@@ -12,25 +13,34 @@ use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
+use Filament\Schemas\Components\Wizard;
 use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
+use Livewire\Attributes\Url;
 
 class CreateCustomFormEntry extends CreateRecord
 {
     protected static string $resource = CustomFormEntryResource::class;
 
+    #[Locked]
     public ?int $draftEntryId = null;
 
     protected bool $isSavingDraft = false;
 
-    #[\Livewire\Attributes\Url]
+    #[Url]
     public ?string $form_id = null;
 
-    #[\Livewire\Attributes\Url]
+    #[Url]
     public ?string $draft_id = null;
 
-    #[\Livewire\Attributes\Url]
+    #[Url]
     public ?string $form_selection = null;
 
     public ?string $wizard_step = null;
@@ -92,8 +102,7 @@ class CreateCustomFormEntry extends CreateRecord
                     }
 
                     if ($this->draftEntryId) {
-                        $record = CustomFormEntry::query()->findOrFail($this->draftEntryId);
-                        $record->forceFill($data)->save();
+                        $record = $this->saveExistingDraft($data);
                     } else {
                         $record = CustomFormEntry::query()->create($data);
                         $record->forceFill($data)->save();
@@ -179,11 +188,7 @@ class CreateCustomFormEntry extends CreateRecord
                         $data['data']['registration_status'] = 'pending';
                         $data['data']['submitted_at'] = data_get($data, 'data.submitted_at') ?: now()->toDateTimeString();
 
-                        CustomFormEntry::query()
-                            ->where('id', $this->draftEntryId)
-                            ->update($data);
-
-                        $this->record = CustomFormEntry::find($this->draftEntryId);
+                        $this->record = $this->saveExistingDraft($data);
 
                         if ($this->record) {
                             WorkflowSubmissionMessages::notify($this->record);
@@ -212,9 +217,20 @@ class CreateCustomFormEntry extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        if ($this->form_id) {
-            $data['custom_form_id'] = $this->form_id;
+        $form = CustomForm::query()->findOrFail($this->form_id ?? ($data['custom_form_id'] ?? null));
+
+        abort_unless(CustomFormEntryResource::canCurrentUserAccessForm($form), 403);
+        Gate::authorize('create', [CustomFormEntry::class, $form]);
+
+        $user = auth()->user();
+        $isCandidate = $user?->registration_type === 'student'
+            && ! (method_exists($user, 'hasEffectiveStaffRole') && $user->hasEffectiveStaffRole());
+
+        if ($isCandidate) {
+            abort_unless($form->is_active && (ClosingDateWorkflow::checkByCustomFormId($form->getKey())['can_submit'] ?? true), 403);
         }
+
+        $data['custom_form_id'] = $form->getKey();
 
         $status = $this->isSavingDraft ? 'draft' : 'pending';
 
@@ -311,52 +327,13 @@ class CreateCustomFormEntry extends CreateRecord
 
     protected function loadExistingDraft(): void
     {
-        if (! auth()->check()) {
-            return;
-        }
-
-        $currentFormId = $this->form_id ?? request()->query('form_id');
-
-        if (! $currentFormId) {
-            return;
-        }
-
-        $userId = auth()->id();
-
-        $query = CustomFormEntry::query()
-            ->where('custom_form_id', $currentFormId);
+        $query = $this->editableDraftQuery();
 
         if ($this->draft_id) {
             $query->whereKey($this->draft_id);
-        } else {
-            $query->where(function ($query): void {
-                if (Schema::hasColumn('custom_form_entries', 'review_status')) {
-                    $query->orWhere('review_status', 'draft');
-                }
-
-                if (Schema::hasColumn('custom_form_entries', 'status')) {
-                    $query->orWhere('status', 'draft');
-                }
-
-                $query->orWhere('data->registration_status', 'draft');
-            });
         }
 
-        $query->where(function ($query) use ($userId): void {
-            if (Schema::hasColumn('custom_form_entries', 'created_by')) {
-                $query->orWhere('created_by', $userId);
-            }
-
-            if (Schema::hasColumn('custom_form_entries', 'user_id')) {
-                $query->orWhere('user_id', $userId);
-            }
-
-            if (Schema::hasColumn('custom_form_entries', 'created_by_id')) {
-                $query->orWhere('created_by_id', $userId);
-            }
-        });
-
-        $draft = $query->latest()->first();
+        $draft = $query->latest('id')->first();
 
         if (! $draft) {
             return;
@@ -374,7 +351,62 @@ class CreateCustomFormEntry extends CreateRecord
         $this->form->fill($state);
     }
 
-    #[\Livewire\Attributes\On('update-wizard-step')]
+    protected function editableDraftQuery(): Builder
+    {
+        $formId = $this->form_id ?? request()->query('form_id');
+        $userId = auth()->id();
+        $query = CustomFormEntry::query()->where('custom_form_id', $formId);
+        $ownerColumns = array_values(array_filter(['created_by', 'user_id', 'created_by_id'], fn (string $column): bool => Schema::hasColumn('custom_form_entries', $column)));
+
+        if (! $userId || ! $formId || $ownerColumns === []) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        $query->where(function (Builder $query) use ($ownerColumns, $userId): void {
+            foreach ($ownerColumns as $column) {
+                $query->orWhere($column, $userId);
+            }
+        });
+
+        $statusPaths = array_values(array_filter(['review_status', 'status'], fn (string $column): bool => Schema::hasColumn('custom_form_entries', $column)));
+        $statusPaths[] = 'data->registration_status';
+        // A stale draft marker must not reopen an entry whose other status says submitted.
+        foreach ($statusPaths as $path) {
+            $query->where(fn (Builder $query): Builder => $query->whereNull($path)->orWhere($path, '')->orWhere($path, 'draft'));
+        }
+        $query->where(function (Builder $query) use ($statusPaths): void {
+            foreach ($statusPaths as $path) {
+                $query->orWhere($path, 'draft');
+            }
+        });
+
+        if (filled($this->form_selection)) {
+            $query->where('data->form_selection', $this->form_selection);
+        }
+
+        return $query;
+    }
+
+    protected function saveExistingDraft(array $data): CustomFormEntry
+    {
+        return DB::transaction(function () use ($data): CustomFormEntry {
+            $draft = $this->editableDraftQuery()->whereKey($this->draftEntryId)->lockForUpdate()->firstOrFail();
+            $data['custom_form_id'] = $draft->custom_form_id;
+            foreach (['created_by', 'user_id', 'created_by_id'] as $ownerColumn) {
+                if (array_key_exists($ownerColumn, $data)) {
+                    $data[$ownerColumn] = $draft->getAttribute($ownerColumn);
+                }
+            }
+            if (filled($this->form_selection)) {
+                $data['data']['form_selection'] = $this->form_selection;
+            }
+            $draft->forceFill($data)->save();
+
+            return $draft;
+        });
+    }
+
+    #[On('update-wizard-step')]
     public function updateWizardStep(string $step): void
     {
         $this->wizard_step = $step;
@@ -386,7 +418,7 @@ class CreateCustomFormEntry extends CreateRecord
             return false;
         }
 
-        $wizard = $this->form->getComponent(fn ($component) => $component instanceof \Filament\Schemas\Components\Wizard);
+        $wizard = $this->form->getComponent(fn ($component) => $component instanceof Wizard);
 
         if (! $wizard) {
             return false;
@@ -396,7 +428,7 @@ class CreateCustomFormEntry extends CreateRecord
 
         if ($step) {
             foreach ($wizard->getChildSchema()->getComponents() as $index => $stepComponent) {
-                if (\Illuminate\Support\Str::endsWith($step, $stepComponent->getId()) || \Illuminate\Support\Str::endsWith($step, $stepComponent->getKey())) {
+                if (Str::endsWith($step, $stepComponent->getId()) || Str::endsWith($step, $stepComponent->getKey())) {
                     return $index === 0;
                 }
             }
@@ -411,7 +443,7 @@ class CreateCustomFormEntry extends CreateRecord
             return false;
         }
 
-        $wizard = $this->form->getComponent(fn ($component) => $component instanceof \Filament\Schemas\Components\Wizard);
+        $wizard = $this->form->getComponent(fn ($component) => $component instanceof Wizard);
 
         if (! $wizard) {
             return true;
@@ -427,7 +459,7 @@ class CreateCustomFormEntry extends CreateRecord
 
         if ($step) {
             foreach ($steps as $index => $stepComponent) {
-                if (\Illuminate\Support\Str::endsWith($step, $stepComponent->getId()) || \Illuminate\Support\Str::endsWith($step, $stepComponent->getKey())) {
+                if (Str::endsWith($step, $stepComponent->getId()) || Str::endsWith($step, $stepComponent->getKey())) {
                     return $index === count($steps) - 1;
                 }
             }

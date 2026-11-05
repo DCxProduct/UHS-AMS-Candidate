@@ -30,6 +30,7 @@ class CustomFormEntry extends Model
     protected static function booted(): void
     {
         static::saving(function (self $entry): void {
+            \App\Support\CandidateApplicationContext::stamp($entry);
             \App\Support\WorkflowEntrySnapshot::capture($entry);
 
             if ($entry->isDirty('data') && \App\Support\WorkflowStageProgression::enabled($entry)) {

@@ -8,7 +8,6 @@ use App\Support\WorkflowActionFeedback;
 use App\Support\StaticWorkflowMessages;
 use App\Enums\WorkflowStageType;
 use App\Filament\Admin\Resources\CandidateEntranceStatistics\CandidateEntranceStatisticResource;
-use App\Models\User;
 use App\Support\AuditLogger;
 use App\Support\CandidateNumber;
 use App\Support\CandidateTypeResolver;
@@ -103,7 +102,7 @@ class CandidateEntranceStatisticsTable
                 TextColumn::make('user_type')
                     ->label(__('candidate_entrance_statistics.user_type'))
                     ->getStateUsing(fn ($record): string => self::userTypeLabel(
-                        self::resolveCandidateRole($record->creator, $record->data)
+                        CandidateTypeResolver::forEntry($record)
                     ))
                     ->badge()
                     ->color('gray')
@@ -598,8 +597,8 @@ class CandidateEntranceStatisticsTable
             'user_type' => [
                 'label' => __('candidate_entrance_statistics.user_type'),
                 'field_key' => 'user_type',
-                'value' => fn (CustomFormEntry $record): string => self::userTypeLabel(self::resolveCandidateRole($record->creator, $record->data)),
-                'clean' => fn (CustomFormEntry $record): string => (string) self::resolveCandidateRole($record->creator, $record->data),
+                'value' => fn (CustomFormEntry $record): string => self::userTypeLabel(CandidateTypeResolver::forEntry($record)),
+                'clean' => fn (CustomFormEntry $record): string => (string) CandidateTypeResolver::forEntry($record),
             ],
             'seat_number' => [
                 'label' => __('exam_results.seat_number'),
@@ -727,10 +726,10 @@ class CandidateEntranceStatisticsTable
     protected static function dynamicUserTypeOptions(): array
     {
         return CustomFormEntry::query()
-            ->with('creator')
+            ->with(['creator', 'customForm'])
             ->get()
             ->flatMap(function (CustomFormEntry $entry): array {
-                $role = self::resolveCandidateRole($entry->creator, $entry->data);
+                $role = CandidateTypeResolver::forEntry($entry);
 
                 return filled($role) ? [$role] : [];
             })
@@ -744,26 +743,7 @@ class CandidateEntranceStatisticsTable
 
     protected static function applyCandidateTypeFilter(Builder $query, string $candidateType): Builder
     {
-        $candidateType = CandidateTypeResolver::normalize($candidateType) ?? strtolower(trim($candidateType));
-        $creatorIds = User::query()
-            ->get()
-            ->filter(fn (User $user): bool => CandidateTypeResolver::resolve($user) === $candidateType)
-            ->modelKeys();
-
-        return $query->where(function (Builder $query) use ($candidateType, $creatorIds): void {
-            $hasCondition = false;
-
-            if ($creatorIds !== []) {
-                $query->whereIn('created_by', $creatorIds);
-                $hasCondition = true;
-            }
-
-            foreach (['user_type', 'candidate_type', 'student_role'] as $key) {
-                $method = $hasCondition ? 'orWhere' : 'where';
-                $query->{$method}("data->{$key}", $candidateType);
-                $hasCondition = true;
-            }
-        });
+        return CandidateTypeResolver::filterEntries($query, $candidateType);
     }
 
     protected static function dynamicMajorOptions(): array
@@ -945,11 +925,6 @@ class CandidateEntranceStatisticsTable
     protected static function userTypeLabel(?string $state): string
     {
         return CandidateTypeResolver::label($state);
-    }
-
-    protected static function resolveCandidateRole(?User $user, array | object | null $data = null): ?string
-    {
-        return CandidateTypeResolver::resolve($user, $data);
     }
 
     protected static function dynamicReviewStatusOptions(): array
