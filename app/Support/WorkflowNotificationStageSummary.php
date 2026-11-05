@@ -6,6 +6,7 @@ use App\Enums\WorkflowPaymentSource;
 use App\Enums\WorkflowStageType;
 use App\Models\Role;
 use App\Models\WorkflowNotification;
+use App\Models\WorkflowStageType as StageTypeCatalog;
 use App\Services\AmsWorkflowRoles;
 use Illuminate\Support\Str;
 
@@ -67,7 +68,7 @@ final class WorkflowNotificationStageSummary
 
                 $summary = [
                     'name' => self::localizedName($stage['stage_name'] ?? null, $type),
-                    'type_label' => $type?->label() ?? (string) ($stage['stage_type'] ?? ''),
+                    'type_label' => StageTypeCatalog::labelForStage($stage, false),
                     'responsible_label' => $responsibleLabel,
                     'status_message' => $stage['status_message'] ?? null,
                     'notification_message' => $stage['notification_message'] ?? null,

@@ -25,6 +25,7 @@ use App\Models\User;
 use App\Models\UserType;
 use App\Observers\AuditLogObserver;
 use App\Observers\CustomFormEntryStatisticsObserver;
+use App\Support\AdminRolePermissions;
 use App\Support\FilamentActionPermissions;
 use App\Support\NotificationLanguage;
 use App\Support\WorkflowStageMessages;
@@ -63,6 +64,7 @@ class AppServiceProvider extends ServiceProvider
             $column->forceSearchCaseInsensitive();
         });
 
+        AdminRolePermissions::register();
         FilamentActionPermissions::sync();
 
         $this->registerAuditLogging();

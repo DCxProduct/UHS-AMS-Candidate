@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace BezhanSalleh\FilamentShield\Resources\Roles\Pages;
 
+use App\Support\AdminRolePermissions;
 use App\Support\AuditLogger;
+use BezhanSalleh\FilamentShield\Facades\FilamentShield;
 use BezhanSalleh\FilamentShield\Resources\Roles\RoleResource;
 use BezhanSalleh\FilamentShield\Support\Utils;
 use Filament\Resources\Pages\CreateRecord;
@@ -36,15 +38,20 @@ class CreateRole extends CreateRecord
 
     protected function afterCreate(): void
     {
-        $permissionModels = collect();
-        $this->permissions->each(function (string $permission) use ($permissionModels): void {
-            $permissionModels->push(Utils::getPermissionModel()::firstOrCreate([
-                'name' => $permission,
-                'guard_name' => $this->data['guard_name'],
-            ]));
-        });
+        if (AdminRolePermissions::isAdmin($this->record)) {
+            AdminRolePermissions::sync($this->record, FilamentShield::getEntitiesPermissions() ?? []);
+            $permissionModels = $this->record->permissions()->get();
+        } else {
+            $permissionModels = collect();
+            $this->permissions->each(function (string $permission) use ($permissionModels): void {
+                $permissionModels->push(Utils::getPermissionModel()::firstOrCreate([
+                    'name' => $permission,
+                    'guard_name' => $this->data['guard_name'],
+                ]));
+            });
 
-        $this->record->syncPermissions($permissionModels);
+            $this->record->syncPermissions($permissionModels);
+        }
 
         AuditLogger::log(
             action: 'created',

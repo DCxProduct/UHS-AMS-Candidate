@@ -20,13 +20,32 @@ final class WorkflowEntrySnapshot
         $ordered = $types->isNotEmpty()
             && $types->every(fn (mixed $type): bool => is_string($type) && WorkflowStageType::tryFrom($type) !== null && $type !== WorkflowStageType::Rejected->value)
             && $types->unique()->count() === $types->count();
+        $stages = array_map(function (mixed $stage): mixed {
+            if (! is_array($stage)) {
+                return $stage;
+            }
+
+            $wrapped = is_array($stage['data'] ?? null);
+            $data = $wrapped ? $stage['data'] : $stage;
+            if (filled($data['stage_type_id'] ?? null)) {
+                $data['stage_type_labels'] = \App\Models\WorkflowStageType::labelsForStage($data);
+            }
+
+            if ($wrapped) {
+                $stage['data'] = $data;
+
+                return $stage;
+            }
+
+            return $data;
+        }, $workflow?->stages ?? []);
 
         return [
             'schema_version' => $ordered ? 2 : 1,
             'captured_at' => now()->toIso8601String(),
             'workflow_id' => $workflow?->getKey(),
             'name' => $workflow?->name,
-            'stages' => $workflow?->stages ?? [],
+            'stages' => $stages,
             'has_workflow' => $workflow !== null,
             'requires_payment' => $workflow?->hasStageType(WorkflowStageType::Payment) ?? false,
         ];
