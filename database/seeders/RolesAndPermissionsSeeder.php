@@ -4,7 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Role;
 use App\Models\User;
-use BezhanSalleh\FilamentShield\Facades\FilamentShield;
+use App\Support\AdminRolePermissions;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Hash;
@@ -105,12 +105,7 @@ class RolesAndPermissionsSeeder extends Seeder
         $registrarOfficer = $systemAdminRoles['registrar_officer'];
         $candidate = $userRoles['candidate'];
 
-        $adminPermissions = Permission::query()
-            ->where('guard_name', 'web')
-            ->whereIn('name', FilamentShield::getEntitiesPermissions())
-            ->get();
-
-        $admin->syncPermissions($adminPermissions);
+        AdminRolePermissions::sync($admin);
         $deleteRole->syncPermissions(
             Permission::query()
                 ->where('guard_name', 'web')
@@ -296,6 +291,10 @@ class RolesAndPermissionsSeeder extends Seeder
             Permission::query()
                 ->where('guard_name', 'web')
                 ->whereIn('name', [
+                    'ViewAny:WorkflowStageType',
+                    'Create:WorkflowStageType',
+                    'Update:WorkflowStageType',
+                    'Delete:WorkflowStageType',
                     'ViewAny:CustomFormEntry',
                     'Create:CustomFormEntry',
                     'Update:CustomFormEntry',

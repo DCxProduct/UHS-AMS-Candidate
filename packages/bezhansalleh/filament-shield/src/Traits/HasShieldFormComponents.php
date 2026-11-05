@@ -8,8 +8,10 @@ use BezhanSalleh\FilamentShield\Facades\FilamentShield;
 use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use BezhanSalleh\FilamentShield\Support\Utils;
 use Filament\Actions\Action;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Toggle;
+use Filament\Navigation\NavigationGroup;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -19,6 +21,7 @@ use Filament\Schemas\Components\Utilities\Set;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\HtmlString;
 use Livewire\Component as Livewire;
+use UnitEnum;
 
 trait HasShieldFormComponents
 {
@@ -38,11 +41,7 @@ trait HasShieldFormComponents
     public static function getResourceEntitiesSchema(): ?array
     {
         return collect(FilamentShield::getResources())
-            ->sortBy(fn (array $entity): string => sprintf(
-                '%04d-%s',
-                static::getResourceEntitySort($entity),
-                strtolower((string) ($entity['model'] ?? $entity['resourceFqcn'] ?? ''))
-            ))
+            ->sortBy(fn (array $entity): array => static::getResourceEntitySort($entity))
             ->map(function (array $entity): Section {
                 $sectionLabel = strval(
                     static::shield()->hasLocalizedPermissionLabels()
@@ -69,53 +68,29 @@ trait HasShieldFormComponents
         return [];
     }
 
-    protected static function getResourceEntitySort(array $entity): int
+    protected static function getResourceEntitySort(array $entity): array
     {
-        $order = [
-            'CustomFormEntry' => 1,
-            'PaymentStatusList' => 2,
-            'Payment' => 3,
-            'CandidateEntranceStatistic' => 4,
-            'ReviewApplication' => 4,
-            'CandidateExitStatistic' => 5,
-            'ExamResult' => 5,
-            'ExitExamResult' => 6,
-            'CustomForm' => 7,
-            'DocumentTemplate' => 8,
-            'WorkflowNotification' => 9,
-            'EmailTemplate' => 10,
-            'SmsTemplate' => 11,
-            'GeoLocation' => 13,
-            'ClosingDate' => 14,
-            'Major' => 15,
-            'DegreeLevel' => 16,
-            'PaymentType' => 17,
-            'ExchangeRate' => 18,
-            'MefInvoiceCode' => 19,
-            'CandidateSubmitPopupSetting' => 20,
-            'MessagingSetting' => 21,
-            'UserType' => 22,
-            'CandidateType' => 22,
-            'CandidateList' => 23,
-            'SystemUser' => 24,
-            'RoleType' => 25,
-            'Role' => 26,
-            'AuditLog' => 27,
-        ];
+        $resource = $entity['resourceFqcn'];
+        $group = $resource::getNavigationGroup();
+        $groupName = $group instanceof UnitEnum ? $group->name : $group;
+        $groups = Filament::getCurrentOrDefaultPanel()->getNavigationGroups();
+        $groupSort = blank($groupName) ? -1 : count($groups);
 
-        $resourceOrder = [
-            'CandidateTypeResource' => 22,
-            'RoleResource' => 26,
-        ];
+        foreach ($groups as $index => $registeredGroup) {
+            $label = $registeredGroup instanceof NavigationGroup ? $registeredGroup->getLabel() : $registeredGroup;
+            if ($index === $groupName || $label === $groupName) {
+                $groupSort = array_search($index, array_keys($groups), true);
 
-        $resourceBaseName = class_basename((string) ($entity['resourceFqcn'] ?? ''));
-        $modelBaseName = class_basename((string) ($entity['modelFqcn'] ?? $entity['model'] ?? ''));
-        $model = (string) ($entity['model'] ?? '');
+                break;
+            }
+        }
 
-        return $resourceOrder[$resourceBaseName]
-            ?? $order[$modelBaseName]
-            ?? $order[$model]
-            ?? 1000;
+        if ($group instanceof UnitEnum) {
+            $groupSort = array_search($group, $group::cases(), true);
+        }
+
+        // Use navigation metadata rather than visible items so every permission stays available.
+        return [$groupSort, $resource::getNavigationSort() ?? -1, $resource];
     }
 
     public static function getResourceTabBadgeCount(): ?int

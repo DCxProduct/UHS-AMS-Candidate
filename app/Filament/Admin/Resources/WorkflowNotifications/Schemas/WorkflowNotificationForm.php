@@ -4,30 +4,38 @@ namespace App\Filament\Admin\Resources\WorkflowNotifications\Schemas;
 
 use App\Enums\WorkflowPaymentSource;
 use App\Enums\WorkflowStageType;
+use App\Filament\Admin\Resources\WorkflowStageTypes\WorkflowStageTypeResource;
 use App\Models\EmailTemplate;
-use App\Services\AmsWorkflowRoles;
 use App\Models\SmsTemplate;
 use App\Models\WorkflowNotification;
+use App\Models\WorkflowStageType as StageTypeCatalog;
+use App\Services\AmsWorkflowRoles;
 use App\Support\WorkflowNotificationStageSummary;
 use App\Support\WorkflowStaffRecipients;
 use App\Support\WorkflowStageMessages;
+use App\Support\WorkflowStageTypeSettings;
 use Closure;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Builder;
 use Filament\Forms\Components\Builder\Block;
 use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Alignment;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Lang;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
@@ -120,13 +128,15 @@ class WorkflowNotificationForm
                     return;
                 }
 
-                if (isset($seen[$type])) {
+                $behavior = $stageType === WorkflowStageType::Approval ? WorkflowStageType::Review->value : $type;
+
+                if (isset($seen[$behavior])) {
                     $fail(__('workflow_notifications.validation.duplicate_stage_type', ['stage' => $stageType->label()]));
 
                     return;
                 }
 
-                $seen[$type] = true;
+                $seen[$behavior] = true;
             }
         };
     }
@@ -139,9 +149,68 @@ class WorkflowNotificationForm
             }
 
             $data = is_array($stage['data'] ?? null) ? $stage['data'] : $stage;
+            $canonical = is_string($data['stage_type'] ?? null) ? $data['stage_type'] : '';
+            $selection = $data['stage_type_id'] ?? null;
 
-            return is_string($data['stage_type'] ?? null) ? $data['stage_type'] : '';
+            if (filled($selection)) {
+                $definition = StageTypeCatalog::selected($selection);
+
+                if ($definition !== null) {
+                    return $definition->behavior;
+                }
+
+                if ($selection !== 'legacy:'.$canonical || ! in_array($canonical, ['approval', 'rejected'], true)) {
+                    return '';
+                }
+            }
+
+            return $canonical;
         }, $stages));
+    }
+
+    private static function catalogIdForSave(mixed $selection, ?WorkflowNotification $record): ?int
+    {
+        $definition = StageTypeCatalog::selected($selection);
+
+        if ($definition?->is_system && $record?->exists) {
+            foreach ((array) $record->getOriginal('stages') as $stage) {
+                $data = is_array($stage['data'] ?? null) ? $stage['data'] : $stage;
+
+                // A hydrated built-in selection should not add catalog metadata to a legacy stage.
+                if (is_array($data) && blank($data['stage_type_id'] ?? null)
+                    && ($data['stage_type'] ?? null) === $definition->behavior) {
+                    return null;
+                }
+            }
+        }
+
+        return $definition?->getKey();
+    }
+
+    private static function updateStageType(?string $state, ?string $old, Get $get, Set $set, ?string $defaultName = null): void
+    {
+        $type = WorkflowStageType::tryFrom((string) $state);
+
+        if ($type !== null && blank($get('stage_name')) && ($defaultName !== null || blank($old))) {
+            $set('stage_name', $defaultName ?? $type->label());
+        }
+
+        // Choosing another label for the same action must keep its existing settings.
+        if ($state === $old) {
+            return;
+        }
+
+        $set('responsible_role', []);
+
+        if ($type === WorkflowStageType::Payment && blank($get('payment_source'))) {
+            $set('payment_source', WorkflowPaymentSource::System->value);
+        }
+
+        if ($type === WorkflowStageType::FormSubmission) {
+            $set('status_message', null);
+            $set('notification_message', null);
+            $set('review_actions', null);
+        }
     }
 
     private static function stageBlock(): Block
@@ -228,29 +297,71 @@ class WorkflowNotificationForm
                     ->maxLength(255)
                     ->live(onBlur: true),
 
+                Select::make('stage_type_id')
+                    ->label(__('workflow_notifications.fields.stage_type'))
+                    ->options(fn (Get $get): array => StageTypeCatalog::selectOptions($get('stage_type_id'), $get('stage_type')))
+                    ->afterStateHydrated(function (Select $component, mixed $state, Get $get): void {
+                        if (blank($state)) {
+                            $component->state(StageTypeCatalog::selectionForBehavior($get('stage_type')));
+                        }
+                    })
+                    ->dehydrateStateUsing(fn (mixed $state, ?WorkflowNotification $record): ?int => self::catalogIdForSave($state, $record))
+                    ->required()
+                    ->live()
+                    ->afterStateUpdated(function (mixed $state, Get $get, Set $set): void {
+                        $definition = StageTypeCatalog::selected($state);
+                        $behavior = $definition?->behavior;
+
+                        if ($definition === null || $behavior === null) {
+                            return;
+                        }
+
+                        $old = $get('stage_type');
+                        $set('stage_type', $behavior);
+                        self::updateStageType($behavior, $old, $get, $set, $definition->label());
+
+                        if ($old !== $behavior) {
+                            $set('enabled_actions', $definition->enabled_actions);
+                        }
+
+                        $defaults = $definition->stageDefaults($get('payment_source'));
+                        $current = array_map(fn (string $key): mixed => $get($key), array_diff(array_keys($defaults), ['enabled_actions']));
+
+                        if ($old !== $behavior && ! StageTypeCatalog::hasReviewActionSettings($current)) {
+                            self::applyStageTypeDefaults($definition, $get, $set);
+                        }
+                    })
+                    ->suffixAction(
+                        Action::make('manageStageTypes')
+                            ->label(__('workflow_stage_types.navigation_label'))
+                            ->icon('heroicon-o-cog-6-tooth')
+                            ->url(fn (): string => WorkflowStageTypeResource::getUrl('index'))
+                            ->openUrlInNewTab()
+                            ->visible(fn (): bool => WorkflowStageTypeResource::canViewAny()),
+                    )
+                    ->native(false),
+
+                Hidden::make('enabled_actions')
+                    ->dehydrated(fn (mixed $state, Get $get, ?WorkflowNotification $record): bool => $state !== null
+                        || (! $record?->exists && StageTypeCatalog::selected($get('stage_type_id'))?->enabled_actions !== null)),
+
                 Select::make('stage_type')
                     ->label(__('workflow_notifications.fields.stage_type'))
                     ->options(fn (): array => WorkflowStageType::options())
                     ->required()
+                    ->hidden()
+                    ->dehydratedWhenHidden()
                     ->live()
                     ->afterStateUpdated(function (?string $state, ?string $old, Get $get, Set $set): void {
-                        $type = WorkflowStageType::tryFrom((string) $state);
-
-                        if ($type !== null && blank($old) && blank($get('stage_name'))) {
-                            $set('stage_name', $type->label());
+                        if (StageTypeCatalog::selected($get('stage_type_id'))?->behavior !== $state) {
+                            $set('stage_type_id', StageTypeCatalog::selectionForBehavior($state));
                         }
 
-                        $set('responsible_role', []);
-
-                        if ($type === WorkflowStageType::Payment && blank($get('payment_source'))) {
-                            $set('payment_source', WorkflowPaymentSource::System->value);
+                        if ($state !== $old) {
+                            $set('enabled_actions', StageTypeCatalog::selected($get('stage_type_id'))?->enabled_actions);
                         }
 
-                        if ($type === WorkflowStageType::FormSubmission) {
-                            $set('status_message', null);
-                            $set('notification_message', null);
-                            $set('review_actions', null);
-                        }
+                        self::updateStageType($state, $old, $get, $set);
                     })
                     ->native(false),
 
@@ -433,14 +544,86 @@ class WorkflowNotificationForm
                     ->compact()
                     ->columns(1)
                     ->schema([
-                        self::reviewActionGroup('accept'),
-                        self::reviewActionGroup('send_back'),
-                        self::reviewActionGroup('reject'),
+                        self::reviewActionTabs(),
+                    ])
+                    ->footerActions([
+                        Action::make('applyStageTypeReviewSettings')
+                            ->label(__('workflow_stage_types.actions.apply_review_settings'))
+                            ->tooltip(__('workflow_stage_types.helpers.apply_review_settings'))
+                            ->icon('heroicon-o-arrow-path')
+                            ->color('gray')
+                            ->visible(function (Get $get): bool {
+                                $definition = StageTypeCatalog::selected($get('stage_type_id'));
+
+                                return $definition?->behavior === WorkflowStageType::Review->value
+                                    && $definition->stageDefaults() !== [];
+                            })
+                            ->action(function (Get $get, Set $set): void {
+                                $definition = StageTypeCatalog::selected($get('stage_type_id'));
+
+                                if ($definition?->behavior === WorkflowStageType::Review->value) {
+                                    self::applyStageTypeDefaults($definition, $get, $set);
+                                }
+                            }),
                     ])
                     ->visible($isReviewStage)
                     ->columnSpanFull(),
+
+                Actions::make([
+                    Action::make('applyStageTypeSettings')
+                        ->label(__('workflow_stage_types.actions.apply_settings'))
+                        ->tooltip(__('workflow_stage_types.helpers.apply_settings'))
+                        ->icon('heroicon-o-arrow-path')
+                        ->color('gray')
+                        ->visible(function (Get $get): bool {
+                            $definition = StageTypeCatalog::selected($get('stage_type_id'));
+
+                            return $definition !== null
+                                && $definition->behavior !== WorkflowStageType::Review->value
+                                && $definition->stageDefaults($get('payment_source')) !== [];
+                        })
+                        ->action(function (Get $get, Set $set): void {
+                            $definition = StageTypeCatalog::selected($get('stage_type_id'));
+
+                            if ($definition !== null && $definition->behavior !== WorkflowStageType::Review->value) {
+                                self::applyStageTypeDefaults($definition, $get, $set);
+                            }
+                        }),
+                ])->columnSpanFull(),
             ]),
         ];
+    }
+
+    private static function applyStageTypeDefaults(StageTypeCatalog $definition, Get $get, Set $set): void
+    {
+        $defaults = $definition->stageDefaults($get('payment_source'));
+
+        $set('enabled_actions', $definition->enabled_actions);
+
+        foreach (array_keys(WorkflowStageTypeSettings::actions((string) $definition->behavior)) as $action) {
+            foreach (WorkflowStageTypeSettings::fields((string) $definition->behavior, $action) as $field) {
+                if (Arr::has($defaults, $field['path'])) {
+                    $set($field['path'], Arr::get($defaults, $field['path']));
+                }
+            }
+        }
+    }
+
+    private static function reviewActionTabs(): Tabs
+    {
+        return Tabs::make(__('workflow_notifications.sections.review_outcomes'))
+            ->key(fn (Get $get): string => 'review-action-tabs-'.implode('-', array_keys(WorkflowStageTypeSettings::selectedActions('review', $get('enabled_actions')))))
+            ->tabs(function (Get $get): array {
+                $tabs = [];
+                foreach (WorkflowStageTypeSettings::selectedActions('review', $get('enabled_actions')) as $key => $action) {
+                    $tabs[] = Tab::make($action['label'])
+                        ->key('review-action-tab-'.$key)
+                        ->icon($action['icon'])
+                        ->schema([self::reviewActionGroup($key)]);
+                }
+
+                return $tabs;
+            });
     }
 
     private static function reviewActionGroup(string $action): Group
@@ -559,6 +742,7 @@ class WorkflowNotificationForm
     {
         return [
             'stage_name' => null,
+            'stage_type_id' => null,
             'stage_type' => null,
             'responsible_role' => [],
             'status_message' => null,

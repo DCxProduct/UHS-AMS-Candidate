@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\Role;
-use BezhanSalleh\FilamentShield\Facades\FilamentShield;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
@@ -179,6 +178,10 @@ class RolesAndPermissionsSeederTest extends TestCase
             'Update:CandidateSubmitPopupSetting',
         ];
         $crudPermissions = [
+            'ViewAny:WorkflowStageType',
+            'Create:WorkflowStageType',
+            'Update:WorkflowStageType',
+            'Delete:WorkflowStageType',
             'ViewAny:CustomFormEntry',
             'Create:CustomFormEntry',
             'Update:CustomFormEntry',
@@ -528,7 +531,6 @@ class RolesAndPermissionsSeederTest extends TestCase
             ->firstOrFail();
         $expectedAdminPermissions = Permission::query()
             ->where('guard_name', 'web')
-            ->whereIn('name', FilamentShield::getEntitiesPermissions())
             ->pluck('name')
             ->sort()
             ->values()

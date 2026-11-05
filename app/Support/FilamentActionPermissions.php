@@ -16,6 +16,7 @@ use App\Filament\Admin\Resources\MefInvoiceCodes\MefInvoiceCodeResource;
 use App\Filament\Admin\Resources\MessagingSettings\MessagingSettingResource;
 use App\Filament\Admin\Resources\Payments\PaymentResource;
 use App\Filament\Admin\Resources\SystemUsers\SystemUserResource;
+use App\Filament\Admin\Resources\WorkflowStageTypes\WorkflowStageTypeResource;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomForms\CustomFormResource;
 use Chanthoeun\FilamentDocumentBuilder\Resources\DocumentTemplateResource;
@@ -30,6 +31,12 @@ class FilamentActionPermissions
     public static function resourceActions(): array
     {
         return [
+            WorkflowStageTypeResource::class => [
+                'view_any',
+                'create',
+                'update',
+                'delete',
+            ],
             ClosingDateResource::class => [
                 'clear_data',
             ],

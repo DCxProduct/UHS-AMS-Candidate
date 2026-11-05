@@ -4,10 +4,16 @@ namespace App\Models;
 
 use App\Enums\WorkflowPaymentSource;
 use App\Enums\WorkflowStageType;
+use App\Support\WorkflowEntrySnapshot;
+use App\Support\WorkflowStageTypeSettings;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
+use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 /**
  * A reusable workflow template: an ordered list of stages assigned to forms.
@@ -29,7 +35,26 @@ class WorkflowNotification extends Model
     protected static function booted(): void
     {
         static::saving(function (self $workflow): void {
-            $workflow->stages = self::normalizeStages($workflow->stages);
+            $stages = self::normalizeStages($workflow->stages, applyTypeDefaults: ! $workflow->exists);
+            $types = self::stageTypes($stages);
+
+            if (self::hasCatalogSelection($stages) && $types !== self::stageTypes((array) $workflow->getOriginal('stages'))) {
+                $seen = [];
+                foreach ($types as $type) {
+                    $behavior = WorkflowStageType::tryFrom($type);
+                    $key = $behavior === WorkflowStageType::Approval ? WorkflowStageType::Review->value : $type;
+                    if ($behavior === null || isset($seen[$key])) {
+                        throw ValidationException::withMessages([
+                            'stages' => $behavior === null
+                                ? __('workflow_notifications.validation.invalid_stage_type')
+                                : __('workflow_notifications.validation.duplicate_stage_type', ['stage' => $behavior->label()]),
+                        ]);
+                    }
+                    $seen[$key] = true;
+                }
+            }
+
+            $workflow->stages = $stages;
         });
     }
 
@@ -37,16 +62,32 @@ class WorkflowNotification extends Model
      * Keep stage statuses, delivered notifications, and immediate action alerts
      * independent while normalizing the builder wrapper.
      */
-    public static function normalizeStages(?array $stages): array
+    public static function normalizeStages(?array $stages, bool $applyTypeDefaults = true): array
     {
         return collect($stages ?? [])
-            ->map(function (mixed $stage): mixed {
+            ->map(function (mixed $stage) use ($applyTypeDefaults): mixed {
                 if (! is_array($stage)) {
                     return $stage;
                 }
 
                 $hasDataWrapper = is_array($stage['data'] ?? null);
                 $data = $hasDataWrapper ? $stage['data'] : $stage;
+
+                if (array_key_exists('stage_type_id', $data)) {
+                    $data = \App\Models\WorkflowStageType::bindStage($data, $applyTypeDefaults);
+                }
+
+                if (array_key_exists('enabled_actions', $data)) {
+                    $behavior = ($data['stage_type'] ?? null) === WorkflowStageType::Approval->value
+                        ? WorkflowStageType::Review->value : (string) ($data['stage_type'] ?? '');
+                    Validator::make($data, [
+                        'enabled_actions' => ['nullable', 'array', 'min:1'],
+                        'enabled_actions.*' => ['required', 'string', 'distinct:strict', Rule::in(array_keys(WorkflowStageTypeSettings::actions($behavior)))],
+                    ])->validate();
+                    if ($data['enabled_actions'] !== null) {
+                        $data['enabled_actions'] = array_keys(WorkflowStageTypeSettings::selectedActions($behavior, $data['enabled_actions']));
+                    }
+                }
 
                 if (array_key_exists('alert_message', $data)) {
                     $data['alert_message'] = self::normalizeAlertMessage($data['alert_message']);
@@ -91,6 +132,27 @@ class WorkflowNotification extends Model
                 return $data;
             })
             ->all();
+    }
+
+    private static function stageTypes(array $stages): array
+    {
+        return array_values(array_map(function (mixed $stage): string {
+            $data = is_array($stage) && is_array($stage['data'] ?? null) ? $stage['data'] : $stage;
+
+            return is_array($data) ? (string) ($data['stage_type'] ?? '') : '';
+        }, $stages));
+    }
+
+    private static function hasCatalogSelection(array $stages): bool
+    {
+        foreach ($stages as $stage) {
+            $data = is_array($stage) && is_array($stage['data'] ?? null) ? $stage['data'] : $stage;
+            if (is_array($data) && filled($data['stage_type_id'] ?? null)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static function normalizeAlertMessage(mixed $value): ?string
@@ -196,9 +258,9 @@ class WorkflowNotification extends Model
     }
 
     /** Resolve an application's original configuration instead of the editable template. */
-    public static function forEntry(\Chanthoeun\FilamentCustomForms\Models\CustomFormEntry $entry): ?self
+    public static function forEntry(CustomFormEntry $entry): ?self
     {
-        return \App\Support\WorkflowEntrySnapshot::workflowFor($entry);
+        return WorkflowEntrySnapshot::workflowFor($entry);
     }
 
     /** Read the configured source without changing payment processing or status. */

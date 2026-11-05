@@ -824,7 +824,7 @@ class CustomFormEntriesTable
                         $configuredName,
                         $type,
                     ),
-                    'type_label' => $type?->label() ?? (string) $stage['stage_type'],
+                    'type_label' => \App\Models\WorkflowStageType::labelForStage($stage, true),
                     'state' => $state,
                     'state_label' => __('candidate_entrance_statistics.stage_states.'.$state),
                     'status_message' => self::transText($stage['status_message'] ?? null),
