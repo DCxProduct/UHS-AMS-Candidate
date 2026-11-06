@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Enums\WorkflowPaymentSource;
 use App\Enums\WorkflowStageType;
+use App\Support\PassedResultMenuOptions;
+use App\Support\StatisticsMenuOptions;
 use App\Support\WorkflowEntrySnapshot;
 use App\Support\WorkflowStageTypeSettings;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
@@ -101,6 +103,28 @@ class WorkflowNotification extends Model
                 if (($data['stage_type'] ?? null) === WorkflowStageType::Payment->value
                     && array_key_exists('payment_source', $data)) {
                     $data['payment_source'] = WorkflowPaymentSource::resolve($data['payment_source'])->value;
+                }
+
+                if (array_key_exists('statistics_menu', $data)) {
+                    if (($data['stage_type'] ?? null) !== WorkflowStageType::AwaitingResults->value
+                        || blank($data['statistics_menu'])) {
+                        unset($data['statistics_menu']);
+                    } else {
+                        Validator::make($data, [
+                            'statistics_menu' => ['string', Rule::in(array_keys(StatisticsMenuOptions::options()))],
+                        ])->validate();
+                    }
+                }
+
+                if (array_key_exists('passed_result_menu', $data)) {
+                    if (($data['stage_type'] ?? null) !== WorkflowStageType::Completed->value
+                        || blank($data['passed_result_menu'])) {
+                        unset($data['passed_result_menu']);
+                    } else {
+                        Validator::make($data, [
+                            'passed_result_menu' => ['string', Rule::in(array_keys(PassedResultMenuOptions::options()))],
+                        ])->validate();
+                    }
                 }
 
                 foreach (['submission_messages', 'audience_messages'] as $key) {

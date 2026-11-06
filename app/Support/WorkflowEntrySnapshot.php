@@ -39,6 +39,8 @@ final class WorkflowEntrySnapshot
 
             return $data;
         }, $workflow?->stages ?? []);
+        $statisticsMenu = WorkflowStatisticsRouting::forStages($stages);
+        $passedResultMenu = WorkflowPassedResultRouting::forStages($stages);
 
         return [
             'schema_version' => $ordered ? 2 : 1,
@@ -48,6 +50,8 @@ final class WorkflowEntrySnapshot
             'stages' => $stages,
             'has_workflow' => $workflow !== null,
             'requires_payment' => $workflow?->hasStageType(WorkflowStageType::Payment) ?? false,
+            ...($statisticsMenu === null ? [] : ['statistics_menu' => $statisticsMenu]),
+            ...($passedResultMenu === null ? [] : ['passed_result_menu' => $passedResultMenu]),
         ];
     }
 

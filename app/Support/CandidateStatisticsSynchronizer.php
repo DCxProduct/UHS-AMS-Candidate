@@ -78,14 +78,7 @@ class CandidateStatisticsSynchronizer
 
     public static function statisticsMenuFor(CustomFormEntry $entry): string
     {
-        $entry->loadMissing('customForm');
-        $form = $entry->customForm;
-
-        if (! $form) {
-            return StatisticsMenuOptions::default();
-        }
-
-        return StatisticsMenuOptions::normalize($form->statistics_menu);
+        return WorkflowStatisticsRouting::forEntry($entry);
     }
 
     protected static function value(array $data, array $keys, mixed $fallback = null): mixed

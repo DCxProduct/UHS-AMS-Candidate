@@ -10,6 +10,8 @@ use App\Models\SmsTemplate;
 use App\Models\WorkflowNotification;
 use App\Models\WorkflowStageType as StageTypeCatalog;
 use App\Services\AmsWorkflowRoles;
+use App\Support\PassedResultMenuOptions;
+use App\Support\StatisticsMenuOptions;
 use App\Support\WorkflowNotificationStageSummary;
 use App\Support\WorkflowStaffRecipients;
 use App\Support\WorkflowStageMessages;
@@ -201,6 +203,14 @@ class WorkflowNotificationForm
 
         $set('responsible_role', []);
 
+        if ($type !== WorkflowStageType::AwaitingResults) {
+            $set('statistics_menu', null);
+        }
+
+        if ($type !== WorkflowStageType::Completed) {
+            $set('passed_result_menu', null);
+        }
+
         if ($type === WorkflowStageType::Payment && blank($get('payment_source'))) {
             $set('payment_source', WorkflowPaymentSource::System->value);
         }
@@ -377,6 +387,28 @@ class WorkflowNotificationForm
                     })
                     ->required($isPaymentStage)
                     ->visible($isPaymentStage)
+                    ->native(false)
+                    ->columnSpanFull(),
+
+                Select::make('statistics_menu')
+                    ->label(__('workflow_notifications.fields.statistics_menu'))
+                    ->placeholder(__('workflow_notifications.placeholders.statistics_menu'))
+                    ->helperText(__('workflow_notifications.helpers.statistics_menu'))
+                    ->options(fn (): array => StatisticsMenuOptions::options())
+                    ->required($isAwaitingResultsStage)
+                    ->in(fn (): array => array_keys(StatisticsMenuOptions::options()))
+                    ->visible($isAwaitingResultsStage)
+                    ->native(false)
+                    ->columnSpanFull(),
+
+                Select::make('passed_result_menu')
+                    ->label(__('workflow_notifications.fields.passed_result_menu'))
+                    ->placeholder(__('workflow_notifications.placeholders.passed_result_menu'))
+                    ->helperText(__('workflow_notifications.helpers.passed_result_menu'))
+                    ->options(fn (): array => PassedResultMenuOptions::options())
+                    ->required($isCompletedStage)
+                    ->in(fn (): array => array_keys(PassedResultMenuOptions::options()))
+                    ->visible($isCompletedStage)
                     ->native(false)
                     ->columnSpanFull(),
 

@@ -8,6 +8,8 @@ use App\Filament\Concerns\AdminOnly;
 use App\Models\CandidateExitStatistic;
 use App\Support\MenuRecordVisibility;
 use App\Support\StatisticsPaymentEligibility;
+use App\Support\StatisticsMenuOptions;
+use App\Support\WorkflowStatisticsRouting;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -64,7 +66,10 @@ class CandidateExitStatisticResource extends Resource
     {
         return parent::getEloquentQuery()
             ->with('customFormEntry.customForm')
-            ->whereHas('customFormEntry', fn (Builder $query): Builder => StatisticsPaymentEligibility::apply($query))
+            ->whereHas('customFormEntry', fn (Builder $query): Builder => WorkflowStatisticsRouting::apply(
+                StatisticsPaymentEligibility::apply($query),
+                StatisticsMenuOptions::EXIT_EXAM_STATISTICS,
+            ))
             ->tap(fn (Builder $query): Builder => MenuRecordVisibility::visible($query, 'hidden_from_statistics'));
     }
 

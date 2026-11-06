@@ -154,13 +154,27 @@ final class WorkflowStageTypeSettings
         };
         $placeholder = 'placeholders.stage_audiences.'.$behavior.'.';
 
-        return [
+        $fields = [
             self::field('status_message', $statusLabel, $placeholder.'status_message'),
             self::field('alert_message', 'fields.alert_message', 'placeholders.alert_message'),
             self::field('notification_message', 'fields.notification_message', $placeholder.'notification_message', 'textarea', 'candidate', 1000),
             self::field('audience_messages.staff_notification_message', 'fields.staff_notification_message', $placeholder.'staff_notification_message', 'textarea', 'staff', 1000),
             self::field('audience_messages.staff_recipient_roles', 'fields.staff_recipient_roles', 'placeholders.staff_recipient_roles', 'roles', 'staff'),
         ];
+
+        if ($behavior === 'awaiting_results') {
+            $fields[] = [
+                ...self::field('statistics_menu', 'fields.statistics_menu', 'placeholders.statistics_menu', 'select'),
+                'options' => StatisticsMenuOptions::options(),
+            ];
+        } elseif ($behavior === 'completed') {
+            $fields[] = [
+                ...self::field('passed_result_menu', 'fields.passed_result_menu', 'placeholders.passed_result_menu', 'select'),
+                'options' => PassedResultMenuOptions::options(),
+            ];
+        }
+
+        return $fields;
     }
 
     public static function rules(string $behavior, string $prefix = 'stage_settings'): array
@@ -195,6 +209,9 @@ final class WorkflowStageTypeSettings
                 $rules[$path.'.*'] = ['string', Rule::in($allowedRoles)];
             } else {
                 $rules[$path] = ['nullable', 'string', 'max:'.$field['max']];
+                if ($field['type'] === 'select') {
+                    $rules[$path][] = Rule::in(array_keys($field['options']));
+                }
             }
         }
 
