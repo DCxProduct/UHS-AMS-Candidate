@@ -64,7 +64,6 @@ return [
 
         'statuses' => [
             'pending' => 'Pending',
-            'received' => 'Received',
             'accepted' => 'Checked',
             'paid' => 'Paid',
             'rejected' => 'Incomplete',

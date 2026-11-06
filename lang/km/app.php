@@ -420,7 +420,6 @@ return [
     'name' => 'ឈ្មោះ',
     'created_at' => 'បានបង្កើតនៅ',
     'updated_at' => 'បានធ្វើបច្ចុប្បន្នភាពនៅ',
-    'original_application_received' => 'បានទទួលពាក្យច្បាប់ដើម',
     'data' => 'ទិន្នន័យ',
     'export_data' => 'នាំចេញទិន្នន័យ',
     'clear_data' => 'សម្អាតទិន្នន័យ',
