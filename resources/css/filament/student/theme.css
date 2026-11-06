@@ -14,6 +14,86 @@
 @source '../../../../resources/views/livewire//*';
 @source '../../../../app/Livewire//*';
 
+/* Education-level dialog: scoped so other form modals keep their layout. */
+.uhs-level-switch-modal {
+    --uhs-level-surface: #f8fafc;
+    --uhs-level-border: #e2e8f0;
+    --uhs-level-text: #0f172a;
+    --uhs-level-muted: #64748b;
+    --uhs-level-icon: #475569;
+}
+
+.uhs-level-switch-modal .fi-modal-heading {
+    line-height: 1.75;
+}
+
+.uhs-level-switch-modal .fi-modal-description {
+    line-height: 1.8;
+}
+
+.uhs-level-switch-modal .fi-modal-content {
+    padding-block: 1.25rem !important;
+}
+
+.uhs-level-switch-current {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1rem;
+    border: 1px solid var(--uhs-level-border);
+    border-radius: 0.625rem;
+    background: var(--uhs-level-surface);
+}
+
+.uhs-level-switch-current__icon {
+    flex: 0 0 auto;
+    width: 1.25rem;
+    height: 1.25rem;
+    margin-top: 0.125rem;
+    color: var(--uhs-level-icon);
+}
+
+.uhs-level-switch-current__content {
+    min-width: 0;
+}
+
+.uhs-level-switch-current__label {
+    margin: 0;
+    color: var(--uhs-level-muted);
+    font-size: 0.75rem;
+    line-height: 1.75;
+}
+
+.uhs-level-switch-current__value {
+    margin: 0.375rem 0 0;
+    color: var(--uhs-level-text);
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.85;
+    overflow-wrap: anywhere;
+}
+
+.uhs-level-switch-modal .fi-modal-footer {
+    padding-block: 1rem !important;
+    border-top: 1px solid var(--uhs-level-border);
+}
+
+.uhs-level-switch-modal .fi-modal-footer-actions {
+    gap: 0.625rem !important;
+}
+
+.uhs-level-switch-modal .fi-modal-footer-actions .fi-btn {
+    min-height: 2.5rem;
+}
+
+.dark .uhs-level-switch-modal {
+    --uhs-level-surface: #111827;
+    --uhs-level-border: #374151;
+    --uhs-level-text: #f1f5f9;
+    --uhs-level-muted: #9ca3af;
+    --uhs-level-icon: #cbd5e1;
+}
+
 :root {
     --font-sans: 'Battambang', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }

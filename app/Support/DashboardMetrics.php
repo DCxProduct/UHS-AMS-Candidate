@@ -637,6 +637,11 @@ class DashboardMetrics
         $query = DB::table('custom_forms')
             ->whereNotNull('name');
 
+        $allowedFormIds = CustomFormRoleAccess::allowedFormIds(User::query()->find($userId));
+        if ($allowedFormIds !== null) {
+            $query->whereIn('id', $allowedFormIds);
+        }
+
         if (Schema::hasColumn('custom_forms', 'is_active')) {
             $query->where('is_active', true);
         } elseif (Schema::hasColumn('custom_forms', 'active')) {
@@ -844,6 +849,10 @@ class DashboardMetrics
 
         if (! $user) {
             return ['student', 'candidate'];
+        }
+
+        if (DashboardUserAccess::isCandidate($user)) {
+            return CandidateApplicationLevels::formRoleKeys($user);
         }
 
         return $user->effectiveRoleNames()

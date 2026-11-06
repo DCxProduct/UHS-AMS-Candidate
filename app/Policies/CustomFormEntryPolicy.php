@@ -7,6 +7,7 @@ namespace App\Policies;
 use App\Models\SystemUser;
 use App\Support\CustomFormRoleAccess;
 use App\Support\UserTypeOptions;
+use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormAuthorization;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Illuminate\Auth\Access\HandlesAuthorization;
@@ -16,9 +17,9 @@ class CustomFormEntryPolicy
 {
     use HandlesAuthorization;
 
-    protected function check(AuthUser $authUser, string $permission, ?CustomFormEntry $entry = null): bool
+    protected function check(AuthUser $authUser, string $permission, ?CustomFormEntry $entry = null, ?int $formId = null): bool
     {
-        $formId = $entry?->custom_form_id
+        $formId ??= $entry?->custom_form_id
             ?? request()->input('tableFilters.custom_form_id.value')
             ?? data_get(request()->query('tableFilters'), 'custom_form_id.value')
             ?? request()->query('form_id')
@@ -28,7 +29,7 @@ class CustomFormEntryPolicy
             return false;
         }
 
-        $customCheck = CustomFormAuthorization::checkPermission($authUser, $permission, null, $entry);
+        $customCheck = CustomFormAuthorization::checkPermission($authUser, $permission, $formId ? (int) $formId : null, $entry);
 
         if ($customCheck !== null) {
             return $customCheck;
@@ -102,9 +103,9 @@ class CustomFormEntryPolicy
         return $this->check($authUser, 'view', $customFormEntry);
     }
 
-    public function create(AuthUser $authUser): bool
+    public function create(AuthUser $authUser, ?CustomForm $form = null): bool
     {
-        return $this->check($authUser, 'create');
+        return $this->check($authUser, 'create', formId: $form?->getKey());
     }
 
     public function update(AuthUser $authUser, CustomFormEntry $customFormEntry): bool

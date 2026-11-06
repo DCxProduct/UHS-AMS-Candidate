@@ -5,6 +5,7 @@ namespace App\Filament\Widgets;
 use App\Support\DashboardMetrics;
 use App\Support\CandidateDisplayName;
 use App\Support\DashboardUserAccess;
+use App\Support\CandidateApplicationLevels;
 use App\Support\UserTypeOptions;
 use Filament\Widgets\Widget;
 
@@ -54,13 +55,11 @@ class CandidateMenuOverview extends Widget
     {
         $user = auth()->user();
 
-        if (! $user || ! method_exists($user, 'effectiveRoleNames')) {
+        if (! $user) {
             return UserTypeOptions::formatLabel('candidate');
         }
 
-        $role = $user->effectiveRoleNames()
-            ->map(fn (string $role): string => strtolower(trim($role)))
-            ->first(fn (string $role): bool => UserTypeOptions::isCandidateManagedRole($role) && ! in_array($role, ['candidate', 'student'], true));
+        $role = CandidateApplicationLevels::currentType($user);
 
         return $role
             ? UserTypeOptions::formatLabel($role)

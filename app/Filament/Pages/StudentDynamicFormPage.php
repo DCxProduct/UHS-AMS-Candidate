@@ -3,9 +3,9 @@
 namespace App\Filament\Pages;
 
 use App\Filament\Concerns\StudentOnly;
-use App\Filament\Student\Resources\CustomFormEntries\CustomFormEntryResource;
 use App\Models\CandidateSubmitPopupSetting;
 use App\Support\AuditLogger;
+use App\Support\CandidateApplicationContext;
 use App\Support\ClosingDateWorkflow;
 use App\Support\NotificationLanguage;
 use App\Support\ProfileFormData;
@@ -14,6 +14,7 @@ use App\Support\WorkflowActionFeedback;
 use App\Support\WorkflowEntrySnapshot;
 use App\Support\WorkflowStageProgression;
 use App\Support\WorkflowSubmissionMessages;
+use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -24,6 +25,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Enums\Width;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Schema as DatabaseSchema;
 use Illuminate\Support\Str;
 
@@ -68,6 +70,7 @@ class StudentDynamicFormPage extends Page implements HasForms
     public function mount(string $slug): void
     {
         $this->customForm = $this->findActiveForm($slug);
+        $this->authorizeApplicationForm();
 
         $workflow = ClosingDateWorkflow::checkByCustomFormId((int) $this->customForm->id);
 
@@ -254,7 +257,9 @@ class StudentDynamicFormPage extends Page implements HasForms
 
     protected function storeEntry(array $state): bool
     {
+        $this->authorizeApplicationForm();
         $this->submittedEntry = null;
+        $state = CandidateApplicationContext::dataForForm($this->customForm, Auth::user(), $state);
 
         if (! DatabaseSchema::hasTable('custom_form_entries')) {
             Notification::make()
@@ -323,6 +328,18 @@ class StudentDynamicFormPage extends Page implements HasForms
         }
 
         return true;
+    }
+
+    private function authorizeApplicationForm(): void
+    {
+        $this->customForm->refresh();
+        abort_unless(CustomFormEntryResource::canCurrentUserAccessForm($this->customForm), 403);
+
+        if (array_key_exists('is_active', $this->customForm->getAttributes())) {
+            abort_unless($this->customForm->is_active, 403);
+        }
+
+        Gate::authorize('create', [CustomFormEntry::class, $this->customForm]);
     }
 
     protected function submissionFeedbackTitle(): ?string

@@ -4,6 +4,7 @@ namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Pa
 
 use App\Models\CandidateSubmitPopupSetting;
 use App\Models\User;
+use App\Support\DashboardUserAccess;
 use App\Support\NotificationLanguage;
 use App\Support\ProfileFormData;
 use App\Support\WorkflowActionFeedback;
@@ -17,6 +18,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Schemas\Components\Wizard;
 use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -175,6 +177,31 @@ class EditCustomFormEntry extends EditRecord
     {
         if ($this->isLockedForEditing()) {
             $this->halt();
+        }
+
+        $user = auth()->user();
+        if ($user instanceof User && DashboardUserAccess::isCandidate($user)) {
+            $record = CustomFormEntryResource::getEloquentQuery()
+                ->with('customForm')
+                ->findOrFail($this->record->getKey());
+
+            abort_unless($record->customForm && CustomFormEntryResource::canCurrentUserAccessForm($record->customForm), 403);
+            Gate::authorize('update', $record);
+
+            $this->record = $record;
+            if ($this->isLockedForEditing()) {
+                $this->halt();
+            }
+            $data['custom_form_id'] = $record->custom_form_id;
+            foreach (['created_by', 'user_id', 'created_by_id', 'system_user_id'] as $ownerColumn) {
+                if (array_key_exists($ownerColumn, $data)) {
+                    if (array_key_exists($ownerColumn, $record->getAttributes())) {
+                        $data[$ownerColumn] = $record->getAttribute($ownerColumn);
+                    } else {
+                        unset($data[$ownerColumn]);
+                    }
+                }
+            }
         }
 
         $oldStatus = $this->entryStatus();
