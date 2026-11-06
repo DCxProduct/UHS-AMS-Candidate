@@ -42,7 +42,6 @@ return [
     ],
     'helpers' => [
         'apply_review_settings' => 'Copies this type’s review settings into this workflow. Save the workflow to keep them.',
-        'apply_settings' => 'Copies this type’s settings into this workflow stage. Save the workflow to keep them.',
     ],
     'config_actions' => [
         'submitted' => 'Submitted',
@@ -70,7 +69,6 @@ return [
     ],
     'actions' => [
         'apply_review_settings' => 'Apply review settings',
-        'apply_settings' => 'Apply stage settings',
         'manage' => 'Manage stage types',
     ],
 ];

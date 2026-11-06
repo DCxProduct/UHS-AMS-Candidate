@@ -12,7 +12,6 @@ use App\Support\WorkflowStageTypeSettings;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Actions\Action;
-use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -203,36 +202,35 @@ class WorkflowStageTypeSettingsTest extends TestCase
             ->assertSet($path.'.payment_statuses.unpaid_status_message', 'First payment label unpaid');
     }
 
-    public function test_explicit_non_review_apply_changes_only_form_settings_until_save(): void
+    public function test_non_review_apply_button_is_absent_and_manual_settings_survive_opening_and_saving(): void
     {
         $type = $this->type('payment', 'Catalog payment');
         $stage = $this->stage($type);
         $stage['data'] = [...$stage['data'], ...$this->settings('payment', 'Workflow payment'), 'payment_source' => 'system'];
-        $workflow = WorkflowNotification::query()->create(['name' => 'Apply payment defaults', 'stages' => [$stage]]);
+        $workflow = WorkflowNotification::query()->create(['name' => 'Keep manual payment settings', 'stages' => [$stage]]);
         $before = $workflow->getRawOriginal('stages');
         $component = Livewire::test(EditWorkflowNotification::class, ['record' => $workflow->getRouteKey()]);
         $key = array_key_first($component->get('data.stages'));
         $path = 'data.stages.'.$key.'.data';
         $action = collect($component->instance()->form->getFlatComponents())->first(fn ($component): bool => $component instanceof Action && $component->getName() === 'applyStageTypeSettings');
-        $this->assertNotNull($action);
-        $containerKey = (string) str($action->getSchemaContainer()->getKey())->after('form.');
-        $component->callAction(TestAction::make('applyStageTypeSettings')->schemaComponent($containerKey, schema: 'form'))
-            ->assertSet($path.'.status_message', 'Catalog payment status')
-            ->assertSet($path.'.payment_statuses.unpaid_status_message', 'Catalog payment unpaid')
+        $this->assertNull($action);
+        $component->assertSet($path.'.status_message', 'Workflow payment status')
+            ->assertSet($path.'.payment_statuses.unpaid_status_message', 'Workflow payment unpaid')
             ->assertSet($path.'.stage_name', 'Keep workflow name')
             ->assertSet($path.'.responsible_role', ['registrar_officer'])
             ->assertSet($path.'.payment_source', 'system');
         $this->assertSame($before, $workflow->fresh()->getRawOriginal('stages'));
         $component->call('save')->assertHasNoFormErrors();
         $saved = $workflow->fresh()->stages[0]['data'];
-        foreach ($type->stageDefaults() as $field => $value) {
+        foreach ($this->settings('payment', 'Workflow payment') as $field => $value) {
             $this->assertSame($value, $saved[$field]);
         }
         $this->assertSame('Keep workflow name', $saved['stage_name']);
         $this->assertSame(['registrar_officer'], $saved['responsible_role']);
+        $this->assertSame('system', $saved['payment_source']);
     }
 
-    public function test_ams_payment_defaults_never_import_local_recipients_and_explicit_apply_preserves_ams_roles(): void
+    public function test_ams_payment_defaults_never_import_local_recipients_and_edits_preserve_ams_roles_and_messages(): void
     {
         $type = $this->type('payment', 'AMS catalog payment');
         $defaults = $type->stageDefaults('ams');
@@ -244,7 +242,8 @@ class WorkflowStageTypeSettingsTest extends TestCase
         $this->assertArrayNotHasKey('staff_recipient_roles', $withoutExplicitRoles->stages[0]['data']['audience_messages']);
 
         $stage['data']['audience_messages'] = ['staff_recipient_roles' => ['ams_cashier'], 'staff_notification_message' => 'Keep workflow AMS text'];
-        $workflow = WorkflowNotification::query()->create(['name' => 'Apply AMS defaults', 'stages' => [$stage]]);
+        $workflow = WorkflowNotification::query()->create(['name' => 'Keep AMS settings', 'stages' => [$stage]]);
+        $before = $workflow->getRawOriginal('stages');
         $this->assertSame(['ams_cashier'], data_get($workflow->stages, '0.data.audience_messages.staff_recipient_roles'));
         Http::assertNothingSent();
 
@@ -254,16 +253,16 @@ class WorkflowStageTypeSettingsTest extends TestCase
         $key = array_key_first($component->get('data.stages'));
         $path = 'data.stages.'.$key.'.data';
         $action = collect($component->instance()->form->getFlatComponents())->first(fn ($component): bool => $component instanceof Action && $component->getName() === 'applyStageTypeSettings');
-        $this->assertNotNull($action);
-        $containerKey = (string) str($action->getSchemaContainer()->getKey())->after('form.');
-        $component->callAction(TestAction::make('applyStageTypeSettings')->schemaComponent($containerKey, schema: 'form'))
-            ->assertSet($path.'.audience_messages.staff_notification_message', 'AMS catalog payment staff notification')
+        $this->assertNull($action);
+        $component->assertSet($path.'.audience_messages.staff_notification_message', 'Keep workflow AMS text')
             ->assertSet($path.'.audience_messages.staff_recipient_roles', ['ams_cashier'])
             ->assertSet($path.'.responsible_role', ['ams_cashier'])
-            ->assertSet($path.'.payment_source', 'ams')
-            ->call('save')->assertHasNoFormErrors();
+            ->assertSet($path.'.payment_source', 'ams');
+        $this->assertSame($before, $workflow->fresh()->getRawOriginal('stages'));
+        $component->call('save')->assertHasNoFormErrors();
         $this->assertSame(['ams_cashier'], data_get($workflow->fresh()->stages, '0.data.audience_messages.staff_recipient_roles'));
         $this->assertSame(['ams_cashier'], data_get($workflow->fresh()->stages, '0.data.responsible_role'));
+        $this->assertSame('Keep workflow AMS text', data_get($workflow->fresh()->stages, '0.data.audience_messages.staff_notification_message'));
     }
 
     private function type(string $behavior, string $label): WorkflowStageType

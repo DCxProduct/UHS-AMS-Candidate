@@ -24,7 +24,6 @@ use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
@@ -568,28 +567,6 @@ class WorkflowNotificationForm
                     ])
                     ->visible($isReviewStage)
                     ->columnSpanFull(),
-
-                Actions::make([
-                    Action::make('applyStageTypeSettings')
-                        ->label(__('workflow_stage_types.actions.apply_settings'))
-                        ->tooltip(__('workflow_stage_types.helpers.apply_settings'))
-                        ->icon('heroicon-o-arrow-path')
-                        ->color('gray')
-                        ->visible(function (Get $get): bool {
-                            $definition = StageTypeCatalog::selected($get('stage_type_id'));
-
-                            return $definition !== null
-                                && $definition->behavior !== WorkflowStageType::Review->value
-                                && $definition->stageDefaults($get('payment_source')) !== [];
-                        })
-                        ->action(function (Get $get, Set $set): void {
-                            $definition = StageTypeCatalog::selected($get('stage_type_id'));
-
-                            if ($definition !== null && $definition->behavior !== WorkflowStageType::Review->value) {
-                                self::applyStageTypeDefaults($definition, $get, $set);
-                            }
-                        }),
-                ])->columnSpanFull(),
             ]),
         ];
     }
