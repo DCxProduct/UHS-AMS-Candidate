@@ -130,6 +130,9 @@ final class WorkflowStageTypeSettings
                 self::field('submission_messages.candidate_notification_message', 'fields.notification_message', 'placeholders.submission_candidate_notification', 'textarea', 'candidate', 1000),
                 self::field('submission_messages.staff_notification_message', 'fields.staff_notification_message', 'placeholders.submission_staff_notification', 'textarea', 'staff', 1000),
                 self::field('submission_messages.staff_recipient_roles', 'fields.staff_recipient_roles', 'placeholders.staff_recipient_roles', 'roles', 'staff'),
+                self::field('submission_messages.resubmission_staff.title', 'fields.resubmission_staff_title', 'placeholders.resubmission_staff_title', 'text', 'staff'),
+                self::field('submission_messages.resubmission_staff.message', 'fields.resubmission_staff_message', 'placeholders.resubmission_staff_message', 'textarea', 'staff', 1000),
+                self::field('submission_messages.resubmission_staff.staff_recipient_roles', 'fields.resubmission_staff_recipient_roles', 'placeholders.staff_recipient_roles', 'roles', 'staff'),
             ];
         }
 

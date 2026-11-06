@@ -115,7 +115,7 @@ class WorkflowSubmissionStageFormTest extends TestCase
         $fields = $component->instance()->form->getFlatFields();
         $visibleSubmissionFields = collect($fields)
             ->map(fn ($field): string => $field->getStatePath())
-            ->filter(fn (string $path): bool => str_contains($path, '.submission_messages.'))
+            ->filter(fn (string $path): bool => str_contains($path, '.submission_messages.') && ! str_contains($path, '.resubmission_staff.'))
             ->map(fn (string $path): string => substr($path, strrpos($path, '.') + 1))
             ->values()->all();
 
@@ -125,6 +125,10 @@ class WorkflowSubmissionStageFormTest extends TestCase
             'staff_notification_message',
             'staff_recipient_roles',
         ], $visibleSubmissionFields);
+        $resubmissionFields = collect($fields)->map(fn ($field): string => $field->getStatePath())
+            ->filter(fn (string $path): bool => str_contains($path, '.submission_messages.resubmission_staff.'))
+            ->map(fn (string $path): string => substr($path, strrpos($path, '.') + 1))->values()->all();
+        $this->assertEqualsCanonicalizing(['title', 'message', 'staff_recipient_roles'], $resubmissionFields);
         $this->assertFalse(collect($fields)->contains(fn ($field): bool => str_ends_with($field->getStatePath(), '.responsible_role')));
         $component->assertSee($locale === 'km' ? 'សម្រាប់បេក្ខជន' : 'For Candidates')
             ->assertSee($locale === 'km' ? 'សម្រាប់អ្នកប្រើប្រាស់ប្រព័ន្ធ' : 'For System Users');
@@ -149,7 +153,7 @@ class WorkflowSubmissionStageFormTest extends TestCase
         $this->assertSame(__('workflow_notifications.fields.shared_status_message'), $statusFields->first()->getLabel());
 
         foreach ($fields as $field) {
-            if (str_contains($field->getStatePath(), '.submission_messages.') && method_exists($field, 'getPlaceholder')) {
+            if (str_contains($field->getStatePath(), '.submission_messages.') && ! str_contains($field->getStatePath(), '.resubmission_staff.') && method_exists($field, 'getPlaceholder')) {
                 if (str_ends_with($field->getStatePath(), '.staff_notification_message')) {
                     $this->assertStringContainsString(':form', (string) $field->getPlaceholder());
                     $this->assertStringContainsString(':candidate', (string) $field->getPlaceholder());

@@ -22,6 +22,8 @@ return [
         'for_system_users' => 'For System Users',
         'for_ams_users' => 'For AMS System Users',
         'review_outcomes' => 'Review Actions',
+        'resubmission_staff' => 'When a Candidate Resubmits',
+        'resubmission_staff_description' => 'System bell notification for system users only, after a candidate corrects and resubmits an application sent back for changes.',
     ],
 
     'channels' => [
@@ -54,6 +56,9 @@ return [
         'staff_notification_message' => 'System User Notification Message (Optional)',
         'staff_recipient_ids' => 'Send Notification To',
         'staff_recipient_roles' => 'Send Notification To',
+        'resubmission_staff_title' => 'Notification (Optional)',
+        'resubmission_staff_message' => 'Resubmission Notification Message (Optional)',
+        'resubmission_staff_recipient_roles' => 'Send Notification To (Optional)',
     ],
 
     'payment_sources' => [
@@ -74,6 +79,8 @@ return [
         'submission_status' => 'Example: Application submitted and awaiting review',
         'submission_candidate_notification' => 'Example: Your application has been submitted successfully.',
         'submission_staff_notification' => 'Example: :candidate submitted :form.',
+        'resubmission_staff_title' => 'Example: Application resubmitted',
+        'resubmission_staff_message' => 'Example: :candidate corrected and resubmitted :form. Please review it again.',
         'staff_recipient_ids' => 'Select system users',
         'staff_recipient_roles' => 'Select roles',
         'unpaid_status_message' => 'Example: Unpaid',

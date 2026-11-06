@@ -470,6 +470,40 @@ class WorkflowNotificationForm
                     ->visible($isSubmissionStage)
                     ->columnSpanFull(),
 
+                Section::make(__('workflow_notifications.sections.resubmission_staff'))
+                    ->key('resubmission-staff')
+                    ->description(__('workflow_notifications.sections.resubmission_staff_description'))
+                    ->compact()
+                    ->collapsible()
+                    ->collapsed(false)
+                    ->schema([
+                        TextInput::make('submission_messages.resubmission_staff.title')
+                            ->label(__('workflow_notifications.fields.resubmission_staff_title'))
+                            ->placeholder(__('workflow_notifications.placeholders.resubmission_staff_title'))
+                            ->maxLength(255),
+
+                        Textarea::make('submission_messages.resubmission_staff.message')
+                            ->label(__('workflow_notifications.fields.resubmission_staff_message'))
+                            ->placeholder(__('workflow_notifications.placeholders.resubmission_staff_message'))
+                            ->helperText(__('workflow_notifications.helpers.staff_message_placeholders'))
+                            ->rows(2)
+                            ->autosize()
+                            ->maxLength(1000),
+
+                        Select::make('submission_messages.resubmission_staff.staff_recipient_roles')
+                            ->label(__('workflow_notifications.fields.resubmission_staff_recipient_roles'))
+                            ->placeholder(__('workflow_notifications.placeholders.staff_recipient_roles'))
+                            ->options(fn (): array => WorkflowStaffRecipients::roleOptions())
+                            ->multiple()
+                            ->searchable()
+                            ->preload()
+                            ->in(fn (): array => array_keys(WorkflowStaffRecipients::roleOptions()))
+                            ->default([])
+                            ->native(false),
+                    ])
+                    ->visible($isSubmissionStage)
+                    ->columnSpanFull(),
+
                 Grid::make(1)
                     ->columns(fn (Get $get): array => ['default' => 1, 'lg' => $usesStageAudienceLayout($get) ? 2 : 1])
                     ->schema([

@@ -22,6 +22,8 @@ return [
         'for_system_users' => 'សម្រាប់អ្នកប្រើប្រាស់ប្រព័ន្ធ',
         'for_ams_users' => 'សម្រាប់អ្នកប្រើប្រាស់ប្រព័ន្ធ AMS',
         'review_outcomes' => 'សកម្មភាពពិនិត្យពាក្យស្នើសុំ',
+        'resubmission_staff' => 'ពេលបេក្ខជនដាក់ស្នើឡើងវិញ',
+        'resubmission_staff_description' => 'ផ្ញើសារកណ្ដឹងទៅអ្នកប្រើប្រាស់ប្រព័ន្ធប៉ុណ្ណោះ នៅពេលបេក្ខជនកែតម្រូវ និងដាក់ស្នើពាក្យឡើងវិញ ក្រោយការបញ្ជូនត្រឡប់។',
     ],
 
     'channels' => [
@@ -54,6 +56,9 @@ return [
         'staff_notification_message' => 'សារជូនដំណឹងសម្រាប់អ្នកប្រើប្រាស់ប្រព័ន្ធ (ជាជម្រើស)',
         'staff_recipient_ids' => 'ផ្ញើការជូនដំណឹងទៅ',
         'staff_recipient_roles' => 'ផ្ញើការជូនដំណឹងទៅ',
+        'resubmission_staff_title' => 'ការជូនដំណឹង (ជាជម្រើស)',
+        'resubmission_staff_message' => 'សារជូនដំណឹងពេលដាក់ស្នើឡើងវិញ (ជាជម្រើស)',
+        'resubmission_staff_recipient_roles' => 'ផ្ញើការជូនដំណឹងទៅ (ជាជម្រើស)',
     ],
 
     'payment_sources' => [
@@ -74,6 +79,8 @@ return [
         'submission_status' => 'ឧទាហរណ៍៖ បានដាក់ពាក្យស្នើសុំ និងកំពុងរង់ចាំការពិនិត្យ',
         'submission_candidate_notification' => 'ឧទាហរណ៍៖ ពាក្យស្នើសុំរបស់អ្នកត្រូវបានដាក់ស្នើដោយជោគជ័យ។',
         'submission_staff_notification' => 'ឧទាហរណ៍៖ :candidate បានដាក់ពាក្យ :form។',
+        'resubmission_staff_title' => 'ឧទាហរណ៍៖ បានដាក់ស្នើពាក្យឡើងវិញ',
+        'resubmission_staff_message' => 'ឧទាហរណ៍៖ :candidate បានកែតម្រូវ និងដាក់ស្នើ :form ឡើងវិញ។ សូមពិនិត្យម្ដងទៀត។',
         'staff_recipient_ids' => 'ជ្រើសរើសអ្នកប្រើប្រាស់ប្រព័ន្ធ',
         'staff_recipient_roles' => 'ជ្រើសរើសតួនាទី',
         'unpaid_status_message' => 'ឧទាហរណ៍៖ មិនទាន់បង់ប្រាក់',

@@ -183,7 +183,14 @@ class WorkflowStageTypeSettingsTest extends TestCase
             $path = 'data.stages.'.$key.'.data';
             $component->set($path.'.stage_type_id', $type->getKey())->assertSet($path.'.stage_type', $behavior);
             foreach ($type->stageDefaults() as $field => $value) {
-                $component->assertSet($path.'.'.$field, $value);
+                if ($field === 'submission_messages') {
+                    foreach ($value as $leaf => $leafValue) {
+                        $component->assertSet($path.'.submission_messages.'.$leaf, $leafValue);
+                    }
+                    $this->assertEmpty(array_filter((array) $component->get($path.'.submission_messages.resubmission_staff')));
+                } else {
+                    $component->assertSet($path.'.'.$field, $value);
+                }
             }
         }
         $first = $this->type('payment', 'First payment label');

@@ -109,6 +109,20 @@ class WorkflowNotification extends Model
                     }
                 }
 
+                if (isset($data['submission_messages']['resubmission_staff'])) {
+                    $settings = $data['submission_messages']['resubmission_staff'];
+                    Validator::make(
+                        ['submission_messages' => ['resubmission_staff' => $settings]],
+                        WorkflowStageTypeSettings::rules('form_submission', ''),
+                    )->validate();
+                    if (filled($settings['title'] ?? null) || filled($settings['message'] ?? null)
+                        || filled($settings['staff_recipient_roles'] ?? null)) {
+                        $data['submission_messages']['resubmission_staff'] = self::normalizeStaffRecipients($settings);
+                    } else {
+                        unset($data['submission_messages']['resubmission_staff']);
+                    }
+                }
+
                 foreach (['accept', 'send_back', 'reject'] as $action) {
                     if (is_array($data['review_actions'][$action] ?? null)) {
                         $data['review_actions'][$action] = self::normalizeStaffRecipients($data['review_actions'][$action]);
