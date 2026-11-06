@@ -20,6 +20,7 @@ use App\Support\UserTypeOptions;
 use App\Support\WorkflowStageMessages;
 use App\Support\WorkflowStageProgression;
 use App\Support\WorkflowProgressQuery;
+use App\Support\WorkflowPassedResultRouting;
 use App\Support\WorkflowActionFeedback;
 use Carbon\Carbon;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
@@ -792,7 +793,8 @@ class ExamResultsTable
     ): Builder {
         $resultMenu = PassedResultMenuOptions::normalize($resultMenu);
 
-        $query->where('data->candidate_status', 'passed')
+        WorkflowPassedResultRouting::apply($query, $resultMenu)
+            ->where('data->candidate_status', 'passed')
             ->where(function (Builder $query): void {
                 $query->where(fn (Builder $legacy): Builder => WorkflowProgressQuery::legacy($legacy))
                     ->orWhere(function (Builder $ordered): void {
@@ -803,10 +805,9 @@ class ExamResultsTable
                             });
                     });
             })
-            ->whereHas('customForm', function (Builder $query) use ($resultMenu): void {
+            ->whereHas('customForm', function (Builder $query): void {
                 $query->where('is_active', true)
-                    ->where('slug', '!=', 'profile')
-                    ->where('passed_result_menu', $resultMenu);
+                    ->where('slug', '!=', 'profile');
             });
 
         if ($hiddenFlag) {

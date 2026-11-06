@@ -8,6 +8,8 @@ use App\Support\PassedResultMenuOptions;
 use App\Support\FilamentActionPermissions;
 use App\Support\LocalizedDate;
 use App\Support\StatisticsMenuOptions;
+use App\Support\WorkflowPassedResultRouting;
+use App\Support\WorkflowStatisticsRouting;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomForms\CustomFormResource;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Filament\Actions\BulkActionGroup;
@@ -47,6 +49,7 @@ class CustomFormsTable
 
                 TextColumn::make('statistics_menu')
                     ->label(__('filament-custom-forms::fcf.form.statistics_menu'))
+                    ->getStateUsing(fn (CustomForm $record): string => WorkflowStatisticsRouting::forForm($record))
                     ->hidden()
                     ->badge()
                     ->formatStateUsing(fn (?string $state): string => StatisticsMenuOptions::label($state))
@@ -54,6 +57,7 @@ class CustomFormsTable
 
                 TextColumn::make('passed_result_menu')
                     ->label(__('filament-custom-forms::fcf.form.passed_result_menu'))
+                    ->getStateUsing(fn (CustomForm $record): string => WorkflowPassedResultRouting::forForm($record))
                     ->hidden()
                     ->badge()
                     ->formatStateUsing(fn (?string $state): string => PassedResultMenuOptions::label($state))

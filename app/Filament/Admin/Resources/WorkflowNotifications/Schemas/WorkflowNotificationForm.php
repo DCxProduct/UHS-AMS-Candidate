@@ -10,6 +10,8 @@ use App\Models\SmsTemplate;
 use App\Models\WorkflowNotification;
 use App\Models\WorkflowStageType as StageTypeCatalog;
 use App\Services\AmsWorkflowRoles;
+use App\Support\PassedResultMenuOptions;
+use App\Support\StatisticsMenuOptions;
 use App\Support\WorkflowNotificationStageSummary;
 use App\Support\WorkflowStaffRecipients;
 use App\Support\WorkflowStageMessages;
@@ -24,7 +26,6 @@ use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
@@ -201,6 +202,14 @@ class WorkflowNotificationForm
         }
 
         $set('responsible_role', []);
+
+        if ($type !== WorkflowStageType::AwaitingResults) {
+            $set('statistics_menu', null);
+        }
+
+        if ($type !== WorkflowStageType::Completed) {
+            $set('passed_result_menu', null);
+        }
 
         if ($type === WorkflowStageType::Payment && blank($get('payment_source'))) {
             $set('payment_source', WorkflowPaymentSource::System->value);
@@ -381,6 +390,28 @@ class WorkflowNotificationForm
                     ->native(false)
                     ->columnSpanFull(),
 
+                Select::make('statistics_menu')
+                    ->label(__('workflow_notifications.fields.statistics_menu'))
+                    ->placeholder(__('workflow_notifications.placeholders.statistics_menu'))
+                    ->helperText(__('workflow_notifications.helpers.statistics_menu'))
+                    ->options(fn (): array => StatisticsMenuOptions::options())
+                    ->required($isAwaitingResultsStage)
+                    ->in(fn (): array => array_keys(StatisticsMenuOptions::options()))
+                    ->visible($isAwaitingResultsStage)
+                    ->native(false)
+                    ->columnSpanFull(),
+
+                Select::make('passed_result_menu')
+                    ->label(__('workflow_notifications.fields.passed_result_menu'))
+                    ->placeholder(__('workflow_notifications.placeholders.passed_result_menu'))
+                    ->helperText(__('workflow_notifications.helpers.passed_result_menu'))
+                    ->options(fn (): array => PassedResultMenuOptions::options())
+                    ->required($isCompletedStage)
+                    ->in(fn (): array => array_keys(PassedResultMenuOptions::options()))
+                    ->visible($isCompletedStage)
+                    ->native(false)
+                    ->columnSpanFull(),
+
                 TextInput::make('submission_messages.candidate_status_message')
                     ->label(__('workflow_notifications.fields.shared_status_message'))
                     ->placeholder(__('workflow_notifications.placeholders.submission_status'))
@@ -467,6 +498,40 @@ class WorkflowNotificationForm
                                 ->default([])
                                 ->native(false),
                         ])->columnSpan(1),
+                    ])
+                    ->visible($isSubmissionStage)
+                    ->columnSpanFull(),
+
+                Section::make(__('workflow_notifications.sections.resubmission_staff'))
+                    ->key('resubmission-staff')
+                    ->description(__('workflow_notifications.sections.resubmission_staff_description'))
+                    ->compact()
+                    ->collapsible()
+                    ->collapsed(false)
+                    ->schema([
+                        TextInput::make('submission_messages.resubmission_staff.title')
+                            ->label(__('workflow_notifications.fields.resubmission_staff_title'))
+                            ->placeholder(__('workflow_notifications.placeholders.resubmission_staff_title'))
+                            ->maxLength(255),
+
+                        Textarea::make('submission_messages.resubmission_staff.message')
+                            ->label(__('workflow_notifications.fields.resubmission_staff_message'))
+                            ->placeholder(__('workflow_notifications.placeholders.resubmission_staff_message'))
+                            ->helperText(__('workflow_notifications.helpers.staff_message_placeholders'))
+                            ->rows(2)
+                            ->autosize()
+                            ->maxLength(1000),
+
+                        Select::make('submission_messages.resubmission_staff.staff_recipient_roles')
+                            ->label(__('workflow_notifications.fields.resubmission_staff_recipient_roles'))
+                            ->placeholder(__('workflow_notifications.placeholders.staff_recipient_roles'))
+                            ->options(fn (): array => WorkflowStaffRecipients::roleOptions())
+                            ->multiple()
+                            ->searchable()
+                            ->preload()
+                            ->in(fn (): array => array_keys(WorkflowStaffRecipients::roleOptions()))
+                            ->default([])
+                            ->native(false),
                     ])
                     ->visible($isSubmissionStage)
                     ->columnSpanFull(),
@@ -568,28 +633,6 @@ class WorkflowNotificationForm
                     ])
                     ->visible($isReviewStage)
                     ->columnSpanFull(),
-
-                Actions::make([
-                    Action::make('applyStageTypeSettings')
-                        ->label(__('workflow_stage_types.actions.apply_settings'))
-                        ->tooltip(__('workflow_stage_types.helpers.apply_settings'))
-                        ->icon('heroicon-o-arrow-path')
-                        ->color('gray')
-                        ->visible(function (Get $get): bool {
-                            $definition = StageTypeCatalog::selected($get('stage_type_id'));
-
-                            return $definition !== null
-                                && $definition->behavior !== WorkflowStageType::Review->value
-                                && $definition->stageDefaults($get('payment_source')) !== [];
-                        })
-                        ->action(function (Get $get, Set $set): void {
-                            $definition = StageTypeCatalog::selected($get('stage_type_id'));
-
-                            if ($definition !== null && $definition->behavior !== WorkflowStageType::Review->value) {
-                                self::applyStageTypeDefaults($definition, $get, $set);
-                            }
-                        }),
-                ])->columnSpanFull(),
             ]),
         ];
     }

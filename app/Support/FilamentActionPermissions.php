@@ -82,7 +82,6 @@ class FilamentActionPermissions
                 'download_excel',
                 'clear_data',
                 'edit_review_note',
-                'original_application_received',
                 'view_pdf',
                 'accepted',
                 'reject',
@@ -192,6 +191,11 @@ class FilamentActionPermissions
             }
 
             $guardName = config('auth.defaults.guard', 'web');
+
+            // Retire this action's stored grants as well as its generated permission.
+            foreach (Permission::query()->where('name', 'OriginalApplicationReceived:CustomFormEntry')->get() as $permission) {
+                $permission->delete();
+            }
 
             foreach (self::all() as $permission) {
                 Permission::findOrCreate($permission, $guardName);

@@ -613,7 +613,6 @@ class CustomFormEntriesTable
                 }
 
                 return match ($state) {
-                    'received' => __('candidate_entrance_statistics.statuses.received'),
                     'passed', 'accepted', 'approved' => __('candidate_entrance_statistics.statuses.accepted'),
                     'paid' => __('candidate_entrance_statistics.statuses.paid'),
                     'failed' => __('candidate_entrance_statistics.statuses.final_rejected'),
@@ -624,7 +623,6 @@ class CustomFormEntriesTable
             })
             ->color(function ($state): string {
                 return match ($state) {
-                    'received' => 'info',
                     'passed', 'accepted', 'approved' => 'success',
                     'paid' => 'success',
                     'failed', 'rejected' => 'danger',
@@ -636,10 +634,6 @@ class CustomFormEntriesTable
 
     protected static function displayStatus($record): string
     {
-        if ((bool) data_get($record->data, 'original_application_received')) {
-            return 'received';
-        }
-
         $status = self::entryStatus($record);
 
         // Keep the stored status for staff; explicit shared workflow text is
@@ -1050,36 +1044,6 @@ class CustomFormEntriesTable
     protected static function getRecordActions(): array
     {
         $actions = [
-            Action::make('original_application_received')
-                ->label(__('app.original_application_received'))
-                ->icon(fn ($record): string => (bool) data_get($record->data, 'original_application_received')
-                    ? 'heroicon-s-check-circle'
-                    : 'heroicon-o-check-circle')
-                ->iconSize('lg')
-                ->color(fn ($record): string => (bool) data_get($record->data, 'original_application_received')
-                    ? 'success'
-                    : 'gray')
-                ->link()
-                ->action(function ($record): void {
-                    FilamentActionPermissions::abortUnlessCanForResource(
-                        CustomFormEntryResource::class,
-                        'original_application_received',
-                    );
-
-                    $data = is_array($record->data) ? $record->data : [];
-                    $data['original_application_received'] = ! (bool) data_get(
-                        $data,
-                        'original_application_received',
-                    );
-                    $record->data = $data;
-                    $record->save();
-                })
-                ->visible(fn (): bool => self::currentPanelIsAdmin()
-                    && FilamentActionPermissions::canForResource(
-                        CustomFormEntryResource::class,
-                        'original_application_received',
-                    )),
-
             Action::make('edit_review_note')
                 ->label(__('app.message'))
                 ->icon('heroicon-o-chat-bubble-left-ellipsis')

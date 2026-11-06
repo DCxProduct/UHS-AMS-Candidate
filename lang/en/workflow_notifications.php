@@ -22,6 +22,8 @@ return [
         'for_system_users' => 'For System Users',
         'for_ams_users' => 'For AMS System Users',
         'review_outcomes' => 'Review Actions',
+        'resubmission_staff' => 'When a Candidate Resubmits',
+        'resubmission_staff_description' => 'System bell notification for system users only, after a candidate corrects and resubmits an application sent back for changes.',
     ],
 
     'channels' => [
@@ -41,6 +43,8 @@ return [
         'stage_name' => 'Stage Name',
         'stage_type' => 'Stage Type',
         'payment_source' => 'Payment Source',
+        'statistics_menu' => 'Candidate Statistics Menu',
+        'passed_result_menu' => 'Passed Candidates Menu',
         'responsible_role' => 'Responsible Role',
         'status_message' => 'Candidate Status Message (Optional)',
         'shared_status_message' => 'Status Message (Optional)',
@@ -54,6 +58,9 @@ return [
         'staff_notification_message' => 'System User Notification Message (Optional)',
         'staff_recipient_ids' => 'Send Notification To',
         'staff_recipient_roles' => 'Send Notification To',
+        'resubmission_staff_title' => 'Notification (Optional)',
+        'resubmission_staff_message' => 'Resubmission Notification Message (Optional)',
+        'resubmission_staff_recipient_roles' => 'Send Notification To (Optional)',
     ],
 
     'payment_sources' => [
@@ -67,6 +74,8 @@ return [
         'name' => 'Example: Candidate Admission',
         'stage_name' => 'Example: Review application',
         'automatic_role' => 'Automatic',
+        'statistics_menu' => 'Select a candidate statistics menu',
+        'passed_result_menu' => 'Select a passed candidates menu',
         'status_message' => 'Example: Under review',
         'alert_message' => 'Example: Action completed successfully.',
         'pending_alert_message' => 'Example: Result set to pending.',
@@ -74,6 +83,8 @@ return [
         'submission_status' => 'Example: Application submitted and awaiting review',
         'submission_candidate_notification' => 'Example: Your application has been submitted successfully.',
         'submission_staff_notification' => 'Example: :candidate submitted :form.',
+        'resubmission_staff_title' => 'Example: Application resubmitted',
+        'resubmission_staff_message' => 'Example: :candidate corrected and resubmitted :form. Please review it again.',
         'staff_recipient_ids' => 'Select system users',
         'staff_recipient_roles' => 'Select roles',
         'unpaid_status_message' => 'Example: Unpaid',
@@ -138,6 +149,8 @@ return [
         'ams_roles_unavailable' => 'AMS roles could not be loaded. Check the AMS API connection and refresh this page.',
         'staff_message_placeholders' => ':candidate = candidate name; :form = application form name. Example: :candidate submitted :form.',
         'assigned_forms' => 'Forms that follow this workflow. A form can belong to only one template.',
+        'statistics_menu' => 'Select Entrance or Exit Statistics for applications reaching this stage.',
+        'passed_result_menu' => 'Select the Entrance or Exit Passed Candidates menu for passed applications reaching this stage.',
         'passed_result_status_message' => 'Shown in the exam result table after the candidate is marked Passed. Leave blank to use the default Passed label.',
     ],
 

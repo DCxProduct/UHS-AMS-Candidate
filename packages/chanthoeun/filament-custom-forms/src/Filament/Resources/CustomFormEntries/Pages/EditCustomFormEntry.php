@@ -8,6 +8,7 @@ use App\Support\DashboardUserAccess;
 use App\Support\NotificationLanguage;
 use App\Support\ProfileFormData;
 use App\Support\WorkflowActionFeedback;
+use App\Support\WorkflowResubmissionStaffMessages;
 use App\Support\WorkflowStageProgression;
 use App\Support\WorkflowSubmissionMessages;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
@@ -33,6 +34,8 @@ class EditCustomFormEntry extends EditRecord
     protected bool $shouldResetToPendingAfterSave = false;
 
     protected bool $shouldNotifyAdminsAboutResubmission = false;
+
+    protected ?string $resubmissionNotificationEventId = null;
 
     #[Url(as: 'profile_edit', except: false)]
     public bool $isEditingProfile = false;
@@ -211,6 +214,12 @@ class EditCustomFormEntry extends EditRecord
         if ($slug === 'profile' || in_array($oldStatus, ['rejected', 'failed', 'draft'], true)) {
             $this->shouldResetToPendingAfterSave = true;
             $this->shouldNotifyAdminsAboutResubmission = in_array($oldStatus, ['rejected', 'failed'], true);
+
+            if ($this->shouldNotifyAdminsAboutResubmission
+                && $user instanceof User && $user->registration_type === 'student'
+                && (string) $user->getKey() === (string) $this->record->created_by) {
+                $this->resubmissionNotificationEventId ??= (string) Str::uuid();
+            }
 
             if (Schema::hasColumn('custom_form_entries', 'review_status')) {
                 $data['review_status'] = 'pending';
@@ -408,6 +417,10 @@ class EditCustomFormEntry extends EditRecord
     protected function notifyAdminsAboutResubmissionIfNeeded(?CustomFormEntry $entry): void
     {
         if (! $this->shouldNotifyAdminsAboutResubmission || ! $entry) {
+            return;
+        }
+
+        if (WorkflowResubmissionStaffMessages::notifyConfigured($entry, $this->resubmissionNotificationEventId) !== null) {
             return;
         }
 

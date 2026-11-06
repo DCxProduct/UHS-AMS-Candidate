@@ -75,15 +75,19 @@ class CustomFormForm
                             ->label(__('filament-custom-forms::fcf.form.statistics_menu'))
                             ->options(StatisticsMenuOptions::options())
                             ->default(StatisticsMenuOptions::default())
+                            ->visible(fn (Get $get): bool => blank($get('workflow_notification_id')))
+                            ->dehydrated(fn (Get $get): bool => blank($get('workflow_notification_id')))
                             ->native(false)
-                            ->required(),
+                            ->required(fn (Get $get): bool => blank($get('workflow_notification_id'))),
 
                         Forms\Components\Select::make('passed_result_menu')
                             ->label(__('filament-custom-forms::fcf.form.passed_result_menu'))
                             ->options(PassedResultMenuOptions::options())
                             ->default(PassedResultMenuOptions::default())
+                            ->visible(fn (Get $get): bool => blank($get('workflow_notification_id')))
+                            ->dehydrated(fn (Get $get): bool => blank($get('workflow_notification_id')))
                             ->native(false)
-                            ->required(),
+                            ->required(fn (Get $get): bool => blank($get('workflow_notification_id'))),
 
                         // Stored in the workflow_notification_forms link table, not on custom_forms.
                         Forms\Components\Select::make('workflow_notification_id')
@@ -92,6 +96,7 @@ class CustomFormForm
                             ->placeholder(__('workflow_notifications.not_assigned'))
                             ->options(fn (): array => WorkflowNotification::query()->orderBy('name')->pluck('name', 'id')->all())
                             ->searchable()
+                            ->live()
                             ->native(false)
                             ->afterStateHydrated(fn ($component, $record) => $component->state(
                                 $record ? WorkflowNotification::forForm($record->getKey())?->getKey() : null

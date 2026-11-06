@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Enums\WorkflowPaymentSource;
 use App\Enums\WorkflowStageType;
+use App\Support\PassedResultMenuOptions;
+use App\Support\StatisticsMenuOptions;
 use App\Support\WorkflowEntrySnapshot;
 use App\Support\WorkflowStageTypeSettings;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
@@ -103,9 +105,45 @@ class WorkflowNotification extends Model
                     $data['payment_source'] = WorkflowPaymentSource::resolve($data['payment_source'])->value;
                 }
 
+                if (array_key_exists('statistics_menu', $data)) {
+                    if (($data['stage_type'] ?? null) !== WorkflowStageType::AwaitingResults->value
+                        || blank($data['statistics_menu'])) {
+                        unset($data['statistics_menu']);
+                    } else {
+                        Validator::make($data, [
+                            'statistics_menu' => ['string', Rule::in(array_keys(StatisticsMenuOptions::options()))],
+                        ])->validate();
+                    }
+                }
+
+                if (array_key_exists('passed_result_menu', $data)) {
+                    if (($data['stage_type'] ?? null) !== WorkflowStageType::Completed->value
+                        || blank($data['passed_result_menu'])) {
+                        unset($data['passed_result_menu']);
+                    } else {
+                        Validator::make($data, [
+                            'passed_result_menu' => ['string', Rule::in(array_keys(PassedResultMenuOptions::options()))],
+                        ])->validate();
+                    }
+                }
+
                 foreach (['submission_messages', 'audience_messages'] as $key) {
                     if (is_array($data[$key] ?? null)) {
                         $data[$key] = self::normalizeStaffRecipients($data[$key]);
+                    }
+                }
+
+                if (isset($data['submission_messages']['resubmission_staff'])) {
+                    $settings = $data['submission_messages']['resubmission_staff'];
+                    Validator::make(
+                        ['submission_messages' => ['resubmission_staff' => $settings]],
+                        WorkflowStageTypeSettings::rules('form_submission', ''),
+                    )->validate();
+                    if (filled($settings['title'] ?? null) || filled($settings['message'] ?? null)
+                        || filled($settings['staff_recipient_roles'] ?? null)) {
+                        $data['submission_messages']['resubmission_staff'] = self::normalizeStaffRecipients($settings);
+                    } else {
+                        unset($data['submission_messages']['resubmission_staff']);
                     }
                 }
 

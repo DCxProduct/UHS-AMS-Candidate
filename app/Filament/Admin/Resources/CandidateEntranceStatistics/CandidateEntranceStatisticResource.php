@@ -9,6 +9,7 @@ use App\Support\MenuRecordVisibility;
 use App\Support\StatisticsMenuOptions;
 use App\Support\StatisticsPaymentEligibility;
 use App\Support\WorkflowProgressQuery;
+use App\Support\WorkflowStatisticsRouting;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -71,14 +72,14 @@ class CandidateEntranceStatisticResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return StatisticsPaymentEligibility::apply(parent::getEloquentQuery())
+            ->tap(fn (Builder $query): Builder => WorkflowStatisticsRouting::apply($query, StatisticsMenuOptions::ENTRANCE_EXAM_STATISTICS))
             ->with([
                 'creator',
                 'customForm',
             ])
             ->whereHas('customForm', function (Builder $query): void {
                 $query->where('is_active', true)
-                    ->where('slug', '!=', 'profile')
-                    ->where('statistics_menu', StatisticsMenuOptions::ENTRANCE_EXAM_STATISTICS);
+                    ->where('slug', '!=', 'profile');
             })
             ->where(function (Builder $query): void {
                 $query->where(fn (Builder $ordered): Builder => WorkflowProgressQuery::ordered($ordered))

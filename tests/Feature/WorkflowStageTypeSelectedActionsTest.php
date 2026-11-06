@@ -167,35 +167,38 @@ class WorkflowStageTypeSelectedActionsTest extends TestCase
         $this->assertArrayNotHasKey('enabled_actions', $legacy->fresh()->stages[0]['data']);
     }
 
-    public function test_explicit_apply_updates_the_selection_only_in_form_state_until_workflow_save(): void
+    public function test_non_review_edits_keep_their_selection_and_separate_review_apply_still_requires_save(): void
     {
         foreach (['payment' => ['paid', 'unpaid'], 'review' => ['accept', 'reject']] as $behavior => [$catalogAction, $workflowAction]) {
-            $type = $this->type('Selection-only Apply '.$behavior, $behavior, [$catalogAction]);
+            $type = $this->type('Existing selection '.$behavior, $behavior, [$catalogAction]);
             $stage = $this->stage($type);
             $stage['data']['enabled_actions'] = [$workflowAction];
             $stage['data']['status_message'] = 'Keep workflow wording';
-            $workflow = WorkflowNotification::query()->create(['name' => 'Apply selection '.$behavior, 'stages' => [$stage]]);
+            $workflow = WorkflowNotification::query()->create(['name' => 'Keep selection '.$behavior, 'stages' => [$stage]]);
             $before = $workflow->getRawOriginal('stages');
             $component = Livewire::test(EditWorkflowNotification::class, ['record' => $workflow->getRouteKey()]);
             $key = array_key_first($component->get('data.stages'));
             $path = 'data.stages.'.$key.'.data';
-            $name = $behavior === 'review' ? 'applyStageTypeReviewSettings' : 'applyStageTypeSettings';
+            $expectedSelection = [$workflowAction];
             if ($behavior === 'review') {
                 $containerKey = collect(array_keys($component->instance()->form->getFlatComponents()))->first(fn ($key): bool => is_string($key) && str_ends_with($key, 'review-actions'));
+                $this->assertNotNull($containerKey);
+                $component->callAction(TestAction::make('applyStageTypeReviewSettings')->schemaComponent($containerKey, schema: 'form'));
+                $expectedSelection = [$catalogAction];
             } else {
-                $action = collect($component->instance()->form->getFlatComponents())->first(fn ($component): bool => $component instanceof Action && $component->getName() === $name);
-                $this->assertNotNull($action);
-                $containerKey = (string) str($action->getSchemaContainer()->getKey())->after('form.');
+                $action = collect($component->instance()->form->getFlatComponents())->first(fn ($component): bool => $component instanceof Action && $component->getName() === 'applyStageTypeSettings');
+                $this->assertNull($action);
             }
-            $this->assertNotNull($containerKey);
-            $component->callAction(TestAction::make($name)->schemaComponent($containerKey, schema: 'form'))
-                ->assertSet($path.'.enabled_actions', [$catalogAction])
+            $component->assertSet($path.'.enabled_actions', $expectedSelection)
                 ->assertSet($path.'.stage_name', 'Keep workflow stage name')
                 ->assertSet($path.'.responsible_role', ['registrar_officer'])
                 ->assertSet($path.'.status_message', 'Keep workflow wording');
             $this->assertSame($before, $workflow->fresh()->getRawOriginal('stages'));
             $component->call('save')->assertHasNoFormErrors();
-            $this->assertSame([$catalogAction], data_get($workflow->fresh()->stages, '0.data.enabled_actions'));
+            $this->assertSame($expectedSelection, data_get($workflow->fresh()->stages, '0.data.enabled_actions'));
+            if ($behavior !== 'review') {
+                $this->assertSame('Keep workflow wording', data_get($workflow->fresh()->stages, '0.data.status_message'));
+            }
         }
     }
 
