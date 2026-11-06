@@ -277,19 +277,17 @@ class CreateCustomFormEntry extends CreateRecord
 
     public function getHeading(): string|Htmlable
     {
-        if ($this->form_id) {
-            $customForm = CustomForm::find($this->form_id);
+        $formId = $this->form_id ?? data_get($this->data ?? [], 'custom_form_id');
+
+        if ($formId) {
+            $customForm = CustomForm::find($formId);
 
             if ($customForm) {
                 if (CustomForm::isProfileSlug($customForm->slug ?? null)) {
-                    return __('filament-custom-forms::fcf.entry.action.create', [
-                        'name' => __('navigation.forms.profile'),
-                    ]);
+                    return __('navigation.forms.profile');
                 }
 
-                return __('filament-custom-forms::fcf.entry.action.create', [
-                    'name' => $this->transText($customForm->name),
-                ]);
+                return $customForm->display_name ?: __('navigation.forms.untitled');
             }
         }
 
@@ -308,21 +306,6 @@ class CreateCustomFormEntry extends CreateRecord
         return app()->getLocale() === 'km'
             ? 'បង្កើត'
             : 'Create';
-    }
-
-    private function transText(mixed $value): string
-    {
-        $locale = app()->getLocale();
-
-        if (is_string($value) && str_starts_with(trim($value), '{')) {
-            $value = json_decode($value, true);
-        }
-
-        if (is_array($value)) {
-            return $value[$locale] ?? $value['km'] ?? $value['en'] ?? '';
-        }
-
-        return (string) $value;
     }
 
     protected function loadExistingDraft(): void
