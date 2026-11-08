@@ -1256,7 +1256,7 @@ class CustomFormEntriesTable
                     self::currentPanelIsAdmin()
                     && self::canViewReviewPdf($record)
                     && ! self::isProfileForm($record->custom_form_id)
-                    && in_array(self::entryStatus($record), ['pending', 'failed'], true)
+                    && self::eligibleReviewStatus($record, ['pending', 'failed'])
                     && self::hasDocumentTemplate($record)
                 );
 
@@ -1272,7 +1272,7 @@ class CustomFormEntriesTable
                     self::currentPanelIsAdmin()
                     && ! self::isProfileForm($record->custom_form_id)
                     && self::canReview($record, 'accepted')
-                    && in_array(self::entryStatus($record), ['pending', 'failed'], true)
+                    && self::eligibleReviewStatus($record, ['pending', 'failed'])
                     && ! self::hasDocumentTemplate($record)
                 )
                 ->action(function ($record): void {
@@ -1284,7 +1284,9 @@ class CustomFormEntriesTable
                             'review_status' => $record->review_status,
                             'registration_status' => data_get($data, 'registration_status'),
                         ];
-                        $data['candidate_status'] = 'pending';
+                        if (! WorkflowStageProgression::enabled($record)) {
+                            $data['candidate_status'] = 'pending';
+                        }
                         $data['registration_status'] = 'approved';
 
                         $workflow = WorkflowNotification::forEntry($record);
@@ -1336,7 +1338,7 @@ class CustomFormEntriesTable
                     self::currentPanelIsAdmin()
                     && ! self::isProfileForm($record->custom_form_id)
                     && self::canReview($record, 'rejected')
-                    && self::entryStatus($record) === 'pending'
+                    && self::eligibleReviewStatus($record, ['pending'])
                     && ! self::hasDocumentTemplate($record)
                 )
                 ->form([
@@ -1424,7 +1426,7 @@ class CustomFormEntriesTable
                     self::currentPanelIsAdmin()
                     && ! self::isProfileForm($record->custom_form_id)
                     && self::canReview($record, 'reject')
-                    && self::entryStatus($record) === 'pending'
+                    && self::eligibleReviewStatus($record, ['pending'])
                     && ! self::hasDocumentTemplate($record)
                 )
                 ->form([
@@ -1640,7 +1642,7 @@ class CustomFormEntriesTable
                     ->label(__('candidate_entrance_statistics.statuses.accepted'))
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
-                    ->visible(fn (): bool => in_array(self::entryStatus($record), ['pending', 'failed'], true)
+                    ->visible(fn (): bool => self::eligibleReviewStatus($record, ['pending', 'failed'])
                         && self::canReview($record, 'accepted'))
                     ->action(function () use ($record): void {
                         $oldValues = DB::transaction(function () use ($record): array {
@@ -1651,7 +1653,9 @@ class CustomFormEntriesTable
                                 'review_status' => $record->review_status,
                                 'registration_status' => data_get($data, 'registration_status'),
                             ];
-                            $data['candidate_status'] = 'pending';
+                            if (! WorkflowStageProgression::enabled($record)) {
+                                $data['candidate_status'] = 'pending';
+                            }
                             $data['registration_status'] = 'approved';
 
                             $workflow = WorkflowNotification::forEntry($record);
@@ -1708,7 +1712,7 @@ class CustomFormEntriesTable
                             ->rows(4),
                     ])
                     ->modalSubmitActionLabel(__('candidate_entrance_statistics.statuses.send_back'))
-                    ->visible(fn (): bool => self::entryStatus($record) === 'pending'
+                    ->visible(fn (): bool => self::eligibleReviewStatus($record, ['pending'])
                         && self::canReview($record, 'rejected'))
                     ->action(function (array $data) use ($record): void {
                         $oldValues = DB::transaction(function () use ($record, $data): array {
@@ -1772,7 +1776,7 @@ class CustomFormEntriesTable
                             ->rows(4),
                     ])
                     ->modalSubmitActionLabel(__('candidate_entrance_statistics.actions.reject'))
-                    ->visible(fn (): bool => self::entryStatus($record) === 'pending'
+                    ->visible(fn (): bool => self::eligibleReviewStatus($record, ['pending'])
                         && self::canReview($record, 'reject'))
                     ->action(function (array $data) use ($record): void {
                         $oldValues = DB::transaction(function () use ($record, $data): array {
@@ -1851,7 +1855,7 @@ class CustomFormEntriesTable
                 self::currentPanelIsAdmin()
                 && self::canViewReviewPdf($record)
                 && ! self::isProfileForm($record->custom_form_id)
-                && in_array(self::entryStatus($record), ['pending', 'failed'], true)
+                && self::eligibleReviewStatus($record, ['pending', 'failed'])
                 && self::hasDocumentTemplate($record)
             );
     }
@@ -1870,14 +1874,25 @@ class CustomFormEntriesTable
                 || FilamentActionPermissions::canForWorkflowStage(CustomFormEntryResource::class, 'view_pdf', $record, WorkflowStageType::Review));
     }
 
+    protected static function eligibleReviewStatus($record, array $allowedStatuses): bool
+    {
+        return WorkflowStageProgression::enabled($record)
+            ? WorkflowStageProgression::isCurrent($record, WorkflowStageType::Review)
+            : in_array(self::entryStatus($record), $allowedStatuses, true);
+    }
+
     protected static function authorizeFreshReview($record, string $action, array $allowedStatuses): void
     {
+        $mountedStatus = [$record->review_status, data_get($record->data, 'registration_status')];
         $current = \Chanthoeun\FilamentCustomForms\Models\CustomFormEntry::query()
             ->lockForUpdate()->findOrFail($record->getKey());
         $record->setRawAttributes($current->getAttributes(), true)->unsetRelations();
         abort_unless(self::currentPanelIsAdmin(), 403);
         Gate::authorize('view', $record);
-        abort_unless(in_array(self::entryStatus($record), $allowedStatuses, true), 409);
+        if (WorkflowStageProgression::enabled($record)) {
+            abort_unless($mountedStatus === [$record->review_status, data_get($record->data, 'registration_status')], 409);
+        }
+        abort_unless(self::eligibleReviewStatus($record, $allowedStatuses), 409);
         FilamentActionPermissions::abortUnlessCanForWorkflowStage(CustomFormEntryResource::class, $action, $record, WorkflowStageType::Review);
     }
 

@@ -248,7 +248,9 @@ final class WorkflowStageMessages
                     ?? __('candidate_entrance_statistics.statuses.pending')),
             WorkflowStageType::Completed => self::hasSentNotification($entry, WorkflowStageType::Completed)
                 ? ($stage['status_message'] ?? null)
-                : (self::passedResultStatusLabel($entry) ?? __('candidate_entrance_statistics.statuses.passed')),
+                : ((WorkflowStageProgression::readyForFinal($entry) || data_get($entry->data, 'workflow_progress.result_passed', false))
+                    ? (self::passedResultStatusLabel($entry) ?? __('candidate_entrance_statistics.statuses.passed'))
+                    : __('workflow_notifications.status_defaults.notification_pending')),
             default => null,
         };
 

@@ -204,7 +204,6 @@ return [
         'invalid_stage_type' => 'Select a valid stage type for every stage.',
         'name_already_exists' => 'A workflow with this name already exists.',
         'could_not_save' => 'The workflow could not be saved.',
-        'verification_requires_review' => 'Application Received must follow a Review stage in a workflow with unique, supported stage types.',
     ],
 
     'status_defaults' => [
@@ -214,6 +213,7 @@ return [
         'payment' => 'Waiting for payment',
         'awaiting_results' => 'Waiting for results',
         'completed' => 'Completed',
+        'notification_pending' => 'Awaiting candidate notification',
         'rejected' => 'Rejected',
         'approval' => 'Waiting for approval',
     ],

@@ -42,11 +42,6 @@ class WorkflowNotification extends Model
 
             if (in_array(WorkflowStageType::Verification->value, $types, true)) {
                 $canonical = array_map(fn (string $type): string => $type === WorkflowStageType::Approval->value ? WorkflowStageType::Review->value : $type, $types);
-                $reviewIndex = array_search(WorkflowStageType::Review->value, $canonical, true);
-                $verificationIndex = array_search(WorkflowStageType::Verification->value, $canonical, true);
-                if ($reviewIndex === false || $reviewIndex >= $verificationIndex) {
-                    throw ValidationException::withMessages(['stages' => __('workflow_notifications.validation.verification_requires_review')]);
-                }
                 $seen = [];
                 foreach ($canonical as $type) {
                     $behavior = WorkflowStageType::tryFrom($type);

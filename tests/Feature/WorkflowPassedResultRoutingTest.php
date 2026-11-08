@@ -216,14 +216,33 @@ class WorkflowPassedResultRoutingTest extends TestCase
         $entry = $this->readyEntry($form);
         $this->assertRoutes($entry, PassedResultMenuOptions::EXIT_EXAM_RESULTS);
         $original = $entry->fresh()->data;
+        $currentCheckpoint = array_replace_recursive($original, [
+            'candidate_status' => 'pending',
+            'workflow_progress' => ['ready_for_final' => false, 'finished' => false],
+        ]);
+        DB::table('custom_form_entries')->where('id', $entry->id)->update(['data' => json_encode($currentCheckpoint)]);
+        $this->assertRoutes($entry, PassedResultMenuOptions::EXIT_EXAM_RESULTS);
         foreach ([
-            array_replace_recursive($original, ['candidate_status' => 'pending']),
-            array_replace_recursive($original, ['workflow_progress' => ['ready_for_final' => false, 'finished' => false]]),
+            array_replace_recursive($currentCheckpoint, ['workflow_progress' => ['current_type' => WorkflowStageType::Review->value]]),
+            array_replace_recursive($currentCheckpoint, ['workflow_progress' => ['submitted' => false]]),
         ] as $blocked) {
             DB::table('custom_form_entries')->where('id', $entry->id)->update(['data' => json_encode($blocked)]);
             $this->assertRoutes($entry, null);
         }
-        DB::table('custom_form_entries')->where('id', $entry->id)->update(['data' => json_encode($original)]);
+        foreach (['draft', 'rejected', 'failed'] as $status) {
+            foreach (['review_status', 'registration_status', 'candidate_status'] as $field) {
+                DB::table('custom_form_entries')->where('id', $entry->id)->update([
+                    'review_status' => $field === 'review_status' ? $status : $entry->review_status,
+                    'data' => json_encode($field !== 'review_status'
+                        ? array_replace($currentCheckpoint, [$field => $status])
+                        : $currentCheckpoint),
+                ]);
+                $this->assertRoutes($entry, null);
+            }
+        }
+        DB::table('custom_form_entries')->where('id', $entry->id)->update([
+            'review_status' => $entry->review_status, 'data' => json_encode($original),
+        ]);
         $form->update(['is_active' => false]);
         $this->assertRoutes($entry, null);
         $form->update(['is_active' => true, 'slug' => 'profile']);

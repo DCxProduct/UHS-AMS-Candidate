@@ -22,11 +22,10 @@ final class WorkflowCandidateVerifier
         return $entry->exists
             && $entry->customForm?->is_active
             && ! $entry->customForm->isProfileForm()
-            && $this->isChecked($entry)
             && (WorkflowStageMessages::hasConfiguredWorkflow($entry)
-                ? (WorkflowStageProgression::isCurrent($entry, WorkflowStageType::Verification)
-                    && (bool) data_get($entry->data, 'workflow_progress.reviewed', false))
-                : blank(data_get($entry->data, 'application_received_at')));
+                ? (! $this->hasBlockedStatus($entry)
+                    && WorkflowStageProgression::isCurrent($entry, WorkflowStageType::Verification))
+                : ($this->isChecked($entry) && blank(data_get($entry->data, 'application_received_at'))));
     }
 
     /** Registrar receipt confirmation and ID issuance share one application lock and transaction. */
@@ -44,9 +43,12 @@ final class WorkflowCandidateVerifier
                 return $this->receiveStaticApplication($entry, $current);
             }
 
-            abort_unless(WorkflowStageProgression::enabled($current)
+            $current->loadMissing('customForm');
+            abort_unless($current->customForm?->is_active
+                && ! $current->customForm->isProfileForm()
+                && WorkflowStageProgression::enabled($current)
                 && $workflow->hasStageType(WorkflowStageType::Verification)
-                && $this->isChecked($current), 409);
+                && ! $this->hasBlockedStatus($current), 409);
             abort_unless($this->hasResponsibleRole($current), 403);
 
             if (data_get($current->data, 'workflow_progress.verification_completed') === true
@@ -130,6 +132,17 @@ final class WorkflowCandidateVerifier
         ], fn (string $status): bool => $status !== '');
 
         return $statuses !== [] && array_diff($statuses, ['approved', 'accepted', 'passed']) === [];
+    }
+
+    private function hasBlockedStatus(CustomFormEntry $entry): bool
+    {
+        foreach ([$entry->review_status, data_get($entry->data, 'registration_status')] as $status) {
+            if (in_array(strtolower(trim((string) $status)), ['draft', 'rejected', 'failed'], true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function hasResponsibleRole(CustomFormEntry $entry): bool

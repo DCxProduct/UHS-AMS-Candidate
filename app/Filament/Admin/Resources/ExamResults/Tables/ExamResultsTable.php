@@ -213,12 +213,13 @@ class ExamResultsTable
                         self::notificationStageForRecord($record, $resultMenu),
                     ))
                     ->action(function (CustomFormEntry $record, $livewire) use ($resultMenu): void {
+                        $notificationStage = self::notificationStageForRecord($record, $resultMenu);
                         $sent = self::sendPassedNotification($record, $resultMenu);
 
                         if ($sent) {
                             WorkflowActionFeedback::send(
                                 Notification::make()->success(),
-                                WorkflowActionFeedback::title($record->fresh(), 'completed', __('exam_results.notification_sent')),
+                                WorkflowActionFeedback::title($record->fresh(), 'completed', __('exam_results.notification_sent'), notificationStage: $notificationStage),
                             );
                         } else {
                             Notification::make()
@@ -317,11 +318,15 @@ class ExamResultsTable
         });
     }
 
-    protected static function notificationStageForRecord(
+    public static function notificationStageForRecord(
         CustomFormEntry $record,
         string $resultMenu,
     ): WorkflowStageType
     {
+        if (WorkflowStageProgression::isCurrent($record, WorkflowStageType::Completed)) {
+            return WorkflowStageType::Completed;
+        }
+
         return WorkflowStageProgression::enabled($record)
             ? (WorkflowStageProgression::finalStageType($record) ?? WorkflowStageType::Completed)
             : WorkflowStageType::Completed;
@@ -854,14 +859,28 @@ class ExamResultsTable
         $resultMenu = PassedResultMenuOptions::normalize($resultMenu);
 
         WorkflowPassedResultRouting::apply($query, $resultMenu)
-            ->where('data->candidate_status', 'passed')
             ->where(function (Builder $query): void {
-                $query->where(fn (Builder $legacy): Builder => WorkflowProgressQuery::legacy($legacy))
+                $query->where(fn (Builder $legacy): Builder => WorkflowProgressQuery::legacy($legacy)
+                    ->where('data->candidate_status', 'passed'))
                     ->orWhere(function (Builder $ordered): void {
                         WorkflowProgressQuery::ordered($ordered)
-                            ->where(function (Builder $progress): void {
-                                $progress->where('data->workflow_progress->ready_for_final', true)
-                                    ->orWhere('data->workflow_progress->finished', true);
+                            ->where(function (Builder $eligible): void {
+                                $eligible->where(function (Builder $current): void {
+                                    $current->where('data->workflow_progress->current_type', WorkflowStageType::Completed->value)
+                                        ->where('data->workflow_progress->submitted', true)
+                                        ->where('data->workflow_progress->finished', false)
+                                        ->where(fn (Builder $status): Builder => $status->whereNull('review_status')
+                                            ->orWhereNotIn('review_status', ['draft', 'rejected', 'failed']))
+                                        ->where(fn (Builder $status): Builder => $status->whereNull('data->registration_status')
+                                            ->orWhereNotIn('data->registration_status', ['draft', 'rejected', 'failed']))
+                                        ->where(fn (Builder $status): Builder => $status->whereNull('data->candidate_status')
+                                            ->orWhereNotIn('data->candidate_status', ['draft', 'rejected', 'failed']));
+                                })->orWhere(function (Builder $finished): void {
+                                    $finished->where('data->candidate_status', 'passed')
+                                        ->where(fn (Builder $progress): Builder => $progress
+                                            ->where('data->workflow_progress->ready_for_final', true)
+                                            ->orWhere('data->workflow_progress->finished', true));
+                                });
                             });
                     });
             })

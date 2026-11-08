@@ -35,8 +35,8 @@ enum WorkflowStageType: string
     {
         return collect([
             self::FormSubmission,
-            self::Verification,
             self::Review,
+            self::Verification,
             self::Payment,
             self::AwaitingResults,
             self::Completed,
