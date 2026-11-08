@@ -77,6 +77,7 @@ final class WorkflowActionFeedback
                 $event = match ($type) {
                     WorkflowStageType::FormSubmission => 'submission',
                     WorkflowStageType::Review, WorkflowStageType::Approval => 'accept',
+                    WorkflowStageType::Verification => 'verify',
                     WorkflowStageType::Payment => 'payment',
                     WorkflowStageType::AwaitingResults => 'passed',
                     default => 'completed',
@@ -88,6 +89,7 @@ final class WorkflowActionFeedback
             $message = match ($event) {
                 'submission' => $stageFor(WorkflowStageType::FormSubmission)['alert_message'] ?? null,
                 'accept', 'send_back', 'reject' => data_get($review, 'review_actions.'.$event.'.alert_message'),
+                'verify' => $stageFor(WorkflowStageType::Verification)['alert_message'] ?? null,
                 'payment' => $stageFor(WorkflowStageType::Payment)['alert_message'] ?? null,
                 'passed' => ($result !== [] ? ($result['alert_message'] ?? null) : ($stageFor(WorkflowStageType::Completed)['alert_message'] ?? null)),
                 'pending' => data_get($result, 'result_statuses.pending_alert_message'),

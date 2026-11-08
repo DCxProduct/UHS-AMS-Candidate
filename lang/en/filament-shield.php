@@ -1,6 +1,9 @@
 <?php
 
 return [
+    'custom_form_entry_permissions' => [
+        'view_any' => 'View Application List',
+    ],
     'resource_permission_prefixes_labels' => [
         'view_any' => 'Read',
         'view' => 'View Data',
@@ -25,6 +28,7 @@ return [
         'edit_review_note' => 'Message',
         'view_pdf' => 'Check',
         'accepted' => 'Accept',
+        'verify' => 'Application Received',
         'reject' => 'Reject',
         'rejected' => 'Send Back',
         'download_pdf' => 'Download PDF',

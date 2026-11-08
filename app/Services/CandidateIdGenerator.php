@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
+use App\Enums\WorkflowStageType;
 use App\Models\Major;
+use App\Models\WorkflowNotification;
 use App\Support\FormEntryData;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Illuminate\Support\Facades\DB;
@@ -161,6 +163,15 @@ class CandidateIdGenerator
                             'updated_at' => now(),
                         ]);
 
+                        continue;
+                    }
+
+                    // Each sibling's receipt must be confirmed independently before assigning its ID.
+                    $sibling = (new CustomFormEntry)->newFromBuilder((array) $entry);
+                    $workflow = WorkflowNotification::forEntry($sibling);
+                    if (($workflow === null && blank(data_get($sibling->data, 'application_received_at')))
+                        || ($workflow?->hasStageType(WorkflowStageType::Verification)
+                            && data_get($sibling->data, 'workflow_progress.verification_completed') !== true)) {
                         continue;
                     }
 

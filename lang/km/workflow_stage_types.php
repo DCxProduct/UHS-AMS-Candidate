@@ -36,6 +36,7 @@ return [
     'groups' => [
         'form_submission' => 'ការដាក់ស្នើ',
         'review' => 'ការពិនិត្យ',
+        'verification' => 'បានទទួលពាក្យស្នើសុំ',
         'payment' => 'ការបង់ប្រាក់',
         'awaiting_results' => 'លទ្ធផល',
         'completed' => 'ការជូនដំណឹង',
@@ -45,6 +46,7 @@ return [
     ],
     'config_actions' => [
         'submitted' => 'បានដាក់ស្នើ',
+        'verify' => 'បានទទួលពាក្យស្នើសុំ',
         'unpaid' => 'មិនទាន់បង់ប្រាក់',
         'paid' => 'បានបង់ប្រាក់',
         'pending' => 'រង់ចាំលទ្ធផល',
@@ -54,6 +56,7 @@ return [
     'button_actions' => [
         'submitted' => 'ដាក់ស្នើទម្រង់',
         'accept' => 'ពិនិត្យពាក្យស្នើសុំ',
+        'verify' => 'បានទទួលពាក្យស្នើសុំ',
         'send_back' => 'បញ្ជូនត្រឡប់',
         'reject' => 'បដិសេធ',
         'paid' => 'បញ្ជាក់ការបង់ប្រាក់',

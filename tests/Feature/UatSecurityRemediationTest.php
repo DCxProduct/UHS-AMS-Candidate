@@ -102,7 +102,7 @@ class UatSecurityRemediationTest extends TestCase
     #[DataProvider('reviewEndpoints')]
     public function test_authorized_registrar_review_still_works_and_is_audited(string $action): void
     {
-        $manager = $this->user('registrar_manager', permissions: ['View:CustomFormEntry', 'Accepted:CustomFormEntry', 'Rejected:CustomFormEntry']);
+        $manager = $this->user('registrar_manager', permissions: ['ViewAny:CustomFormEntry', 'View:CustomFormEntry', 'Accepted:CustomFormEntry', 'Rejected:CustomFormEntry']);
         $entry = $this->entry();
         $this->actingAs($manager)->post('/admin/custom-form-entries/'.$entry->id.'/'.$action, ['review_note' => 'QA return'])->assertRedirect();
         $expected = $action === 'approve' ? 'approved' : 'rejected';

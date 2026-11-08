@@ -63,6 +63,10 @@ class UatWorkflowRemediationTest extends TestCase
             }
             $profile = CustomForm::firstOrCreate(['slug' => 'profile'], ['name' => 'Profile', 'is_active' => true]);
             CustomFormEntry::create(['custom_form_id' => $profile->id, 'created_by' => $u->id, 'data' => ['registration_status' => 'pending']]);
+        } elseif ($role === 'cashier_manager') {
+            foreach (['ViewAny:PaymentStatusList', 'Pay:PaymentStatusList'] as $permission) {
+                $u->givePermissionTo(Permission::findOrCreate($permission, 'web'));
+            }
         }
 
         return $u;
@@ -299,7 +303,7 @@ class UatWorkflowRemediationTest extends TestCase
     {
         $candidate = $this->user('candidate');
         $reviewer = $this->user('limited_reviewer');
-        foreach (['ViewAny', 'ViewPdf'] as $action) {
+        foreach (['ViewAny', 'View', 'ViewPdf'] as $action) {
             $reviewer->givePermissionTo(Permission::findOrCreate($action.':CustomFormEntry', 'web'));
         }
         $allowedEntry = $this->reviewableEntry($candidate);

@@ -21,16 +21,14 @@ class AdminEntryPdfReviewController extends Controller
 {
     public function show(CustomFormEntry $entry)
     {
-        Gate::authorize('view', $entry);
-        FilamentActionPermissions::abortUnlessCanForResource(CustomFormEntryResource::class, 'view_pdf');
+        $this->authorizePdfView($entry);
 
         return view('admin-entry-pdf-review', compact('entry'));
     }
 
     public function pdf(CustomFormEntry $entry)
     {
-        Gate::authorize('view', $entry);
-        FilamentActionPermissions::abortUnlessCanForResource(CustomFormEntryResource::class, 'view_pdf');
+        $this->authorizePdfView($entry);
 
         $template = $this->findTemplate($entry);
         abort_if(! $template, 404);
@@ -161,14 +159,21 @@ class AdminEntryPdfReviewController extends Controller
 
     protected function authorizeReview(CustomFormEntry $entry, string $action): void
     {
-        abort_unless(auth()->user()?->registration_type === 'admin', 403);
+        abort_unless(CustomFormEntryResource::currentUserCanManageForms(), 403);
         Gate::authorize('view', $entry);
-        FilamentActionPermissions::abortUnlessCanForResource(CustomFormEntryResource::class, $action);
-        abort_unless(WorkflowStageMessages::canCurrentUserHandleStage($entry, WorkflowStageType::Review), 403);
+        FilamentActionPermissions::abortUnlessCanForWorkflowStage(CustomFormEntryResource::class, $action, $entry, WorkflowStageType::Review);
 
         $status = strtolower((string) (data_get($entry->data, 'registration_status') ?: $entry->review_status));
         $allowed = $action === 'accepted' ? ['pending', 'failed'] : ['pending'];
         abort_unless(in_array($status, $allowed, true), 409, 'This application is no longer eligible for review.');
+    }
+
+    protected function authorizePdfView(CustomFormEntry $entry): void
+    {
+        abort_unless(CustomFormEntryResource::currentUserCanManageForms(), 403);
+        Gate::authorize('view', $entry);
+        abort_unless(FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'view_pdf')
+            || FilamentActionPermissions::canForWorkflowStage(CustomFormEntryResource::class, 'view_pdf', $entry, WorkflowStageType::Review), 403);
     }
 
     protected function findTemplate(CustomFormEntry $entry): ?DocumentTemplate

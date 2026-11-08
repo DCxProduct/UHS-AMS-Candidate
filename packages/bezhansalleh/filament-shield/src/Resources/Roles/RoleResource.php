@@ -6,6 +6,7 @@ namespace BezhanSalleh\FilamentShield\Resources\Roles;
 
 use App\Models\RoleType;
 use App\Models\UserType;
+use App\Support\FilamentActionPermissions;
 use App\Support\LocalizedDate;
 use App\Support\UserTypeOptions;
 use BezhanSalleh\FilamentShield\Facades\FilamentShield;
@@ -17,6 +18,7 @@ use BezhanSalleh\FilamentShield\Resources\Roles\Pages\ViewRole;
 use BezhanSalleh\FilamentShield\Support\Utils;
 use BezhanSalleh\FilamentShield\Traits\HasShieldFormComponents;
 use BezhanSalleh\PluginEssentials\Concerns\Resource as Essentials;
+use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -130,6 +132,44 @@ class RoleResource extends Resource
                     ->columnSpanFull(),
                 static::getShieldFormComponents(),
             ]);
+    }
+
+    public static function getResourcePermissionOptions(array $entity): array
+    {
+        $resource = $entity['resourceFqcn'];
+        $options = FilamentShield::getResourcePermissionsWithLabels($resource) ?? [];
+
+        if ($resource !== CustomFormEntryResource::class) {
+            return $options;
+        }
+
+        // Share the action labels so role permissions follow the buttons candidates and staff see.
+        $labels = [
+            'view_any' => 'filament-shield.custom_form_entry_permissions.view_any',
+            'create' => 'filament-custom-forms::fcf.entry.action.create',
+            'update' => 'filament-actions::edit.single.label',
+            'delete' => 'filament-actions::delete.single.label',
+            'view' => 'candidate_entrance_statistics.actions.view_data',
+            'view_application_stage' => 'candidate_entrance_statistics.actions.view_workflow',
+            'download_excel' => 'payments.actions.download_excel',
+            'clear_data' => 'app.clear_data',
+            'edit_review_note' => 'app.message',
+            'view_pdf' => 'candidate_entrance_statistics.view_pdf',
+            'accepted' => 'candidate_entrance_statistics.statuses.accepted',
+            'verify' => 'workflow_notifications.actions.verify',
+            'reject' => 'candidate_entrance_statistics.actions.reject',
+            'rejected' => 'candidate_entrance_statistics.statuses.send_back',
+            'download_pdf' => 'candidate_entrance_statistics.download_pdf',
+        ];
+
+        foreach ($labels as $action => $translation) {
+            $permission = FilamentActionPermissions::permissionForResource($resource, $action);
+            if (array_key_exists($permission, $options)) {
+                $options[$permission] = __($translation);
+            }
+        }
+
+        return $options;
     }
 
     protected static function getResourceEntityAdditionalComponents(array $entity): array

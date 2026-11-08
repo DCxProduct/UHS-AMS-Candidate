@@ -36,6 +36,7 @@ return [
     'groups' => [
         'form_submission' => 'Submission',
         'review' => 'Review',
+        'verification' => 'Application Received',
         'payment' => 'Payment',
         'awaiting_results' => 'Results',
         'completed' => 'Notification',
@@ -45,6 +46,7 @@ return [
     ],
     'config_actions' => [
         'submitted' => 'Submitted',
+        'verify' => 'Application Received',
         'unpaid' => 'Unpaid',
         'paid' => 'Paid',
         'pending' => 'Pending result',
@@ -54,6 +56,7 @@ return [
     'button_actions' => [
         'submitted' => 'Submit form',
         'accept' => 'Check application',
+        'verify' => 'Application Received',
         'send_back' => 'Send back',
         'reject' => 'Reject',
         'paid' => 'Record payment',

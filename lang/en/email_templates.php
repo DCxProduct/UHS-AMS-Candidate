@@ -50,16 +50,18 @@ return [
     ],
 
     'actions_for' => [
-        'accept' => 'Review – Accept',
-        'send_back' => 'Review – Send back',
-        'reject' => 'Review – Reject',
-        'payment' => 'Payment',
-        'awaiting_results' => 'Awaiting Results',
-        'completed' => 'Completed',
+        'form_submission' => 'Submit Form',
+        'verification' => 'Application Received',
+        'accept' => 'Checked',
+        'send_back' => 'Send Back',
+        'reject' => 'Reject',
+        'payment' => 'Record Payment',
+        'awaiting_results' => 'Mark Passed',
+        'completed' => 'Notify Candidate',
     ],
 
     'fields' => [
-        'action' => 'Used for (workflow action)',
+        'action' => 'Send email when',
         'template_name' => 'Template name',
         'logo' => 'Logo',
         'variable_name' => 'Variable name',
@@ -73,12 +75,12 @@ return [
     ],
 
     'placeholders' => [
-        'action' => 'Not used automatically',
+        'action' => 'Choose an action (optional)',
         'template_name' => 'Example: Interview invitation',
     ],
 
     'helpers' => [
-        'action' => 'The workflow uses this template automatically for this action\'s email (unless a stage chooses another template). One template per action.',
+        'action' => 'Enable Email and add a notification message on the stage. A template selected on the stage takes priority.',
         'logo' => 'PNG, JPG or GIF, up to 1 MB. Shown at the top of the email, above the header title.',
     ],
 

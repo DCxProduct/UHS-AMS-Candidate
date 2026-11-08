@@ -18,7 +18,7 @@ final class WorkflowStageAudienceMessages
     public static function notify(CustomFormEntry $entry, WorkflowStageType $stageType, array $stage, bool $replaceExisting = false): int
     {
         try {
-            if (! in_array($stageType, [WorkflowStageType::Payment, WorkflowStageType::AwaitingResults, WorkflowStageType::Completed], true)) {
+            if (! in_array($stageType, [WorkflowStageType::Verification, WorkflowStageType::Payment, WorkflowStageType::AwaitingResults, WorkflowStageType::Completed], true)) {
                 return 0;
             }
 

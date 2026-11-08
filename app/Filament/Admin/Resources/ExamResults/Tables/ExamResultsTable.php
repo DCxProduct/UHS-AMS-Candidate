@@ -33,6 +33,8 @@ use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\HtmlString;
 
 class ExamResultsTable
@@ -204,22 +206,14 @@ class ExamResultsTable
                     ->modalDescription(__('exam_results.notify_student_confirm_description'))
                     ->modalSubmitActionLabel(__('exam_results.send_notification'))
                     ->modalCancelActionLabel(__('app.cancel'))
-                    ->visible(fn (CustomFormEntry $record): bool => FilamentActionPermissions::can(
-                        self::notificationPermissionForResultMenu($resultMenu)
-                    ) && ! CandidateEntranceStatisticsTable::hasStudentReviewResultNotification(
+                    ->visible(fn (CustomFormEntry $record): bool => self::canNotifyRecord($record, $resultMenu)
+                        && ! CandidateEntranceStatisticsTable::hasStudentReviewResultNotification(
                         $record,
                         'passed',
                         self::notificationStageForRecord($record, $resultMenu),
                     ))
                     ->action(function (CustomFormEntry $record, $livewire) use ($resultMenu): void {
-                        FilamentActionPermissions::abortUnlessCan(self::notificationPermissionForResultMenu($resultMenu));
-
-                        $sent = CandidateEntranceStatisticsTable::notifyStudentReviewResult(
-                            record: $record,
-                            status: 'passed',
-                            note: null,
-                            notificationStage: self::notificationStageForRecord($record, $resultMenu),
-                        );
+                        $sent = self::sendPassedNotification($record, $resultMenu);
 
                         if ($sent) {
                             WorkflowActionFeedback::send(
@@ -244,13 +238,83 @@ class ExamResultsTable
             ->defaultSort('id', 'desc');
     }
 
-    protected static function notificationPermissionForResultMenu(string $resultMenu): string
+    protected static function notificationResourceForResultMenu(string $resultMenu): string
     {
-        $resourceClass = $resultMenu === PassedResultMenuOptions::EXIT_EXAM_RESULTS
+        return $resultMenu === PassedResultMenuOptions::EXIT_EXAM_RESULTS
             ? ExitExamResultResource::class
             : ExamResultResource::class;
+    }
 
-        return FilamentActionPermissions::permissionForResource($resourceClass, 'notify_student');
+    public static function canNotifyRecord(
+        CustomFormEntry $record,
+        string $resultMenu = PassedResultMenuOptions::EXAM_RESULTS,
+        string $action = 'notify_student',
+    ): bool {
+        return FilamentActionPermissions::canForWorkflowStage(
+            self::notificationResourceForResultMenu($resultMenu),
+            $action,
+            $record,
+            self::notificationStageForRecord($record, $resultMenu),
+            allowFinishedFinalStage: true,
+        );
+    }
+
+    public static function canSendPassedNotifications(
+        string $resultMenu = PassedResultMenuOptions::EXAM_RESULTS,
+        string $action = 'notify_all_students',
+    ): bool {
+        $resource = self::notificationResourceForResultMenu($resultMenu);
+        if (! FilamentActionPermissions::canAccessWorkflowActions($resource)) {
+            return false;
+        }
+        if (FilamentActionPermissions::canForResource($resource, $action)) {
+            return true;
+        }
+
+        $query = $resource::getEloquentQuery()->reorder()->with('customForm');
+        if (Schema::hasColumn('custom_form_entries', 'workflow_snapshot')) {
+            $query->where(fn (Builder $query): Builder => $query
+                ->where('workflow_snapshot->has_workflow', true)
+                ->orWhereNull('workflow_snapshot'));
+        }
+
+        return $query->lazyById(200)->contains(fn (CustomFormEntry $record): bool => WorkflowStageMessages::hasConfiguredWorkflow($record)
+            && self::canNotifyRecord($record, $resultMenu, $action)
+            && ! self::hasStudentPassedNotification($record, $resultMenu));
+    }
+
+    public static function sendPassedNotification(
+        CustomFormEntry $record,
+        string $resultMenu = PassedResultMenuOptions::EXAM_RESULTS,
+        string $action = 'notify_student',
+        bool $skipUnauthorized = false,
+    ): bool {
+        return DB::transaction(function () use ($record, $resultMenu, $action, $skipUnauthorized): bool {
+            $current = $record->newQuery()->lockForUpdate()->find($record->getKey());
+            if ($current === null) {
+                return false;
+            }
+            if (! self::canNotifyRecord($current, $resultMenu, $action)) {
+                abort_unless($skipUnauthorized, 403);
+
+                return false;
+            }
+
+            $resource = self::notificationResourceForResultMenu($resultMenu);
+            if (! $resource::getEloquentQuery()->whereKey($current->getKey())->exists()) {
+                abort_unless($skipUnauthorized, 409);
+
+                return false;
+            }
+            $record->setRawAttributes($current->getAttributes(), true)->unsetRelations();
+
+            return CandidateEntranceStatisticsTable::notifyStudentReviewResult(
+                record: $record,
+                status: 'passed',
+                note: null,
+                notificationStage: self::notificationStageForRecord($record, $resultMenu),
+            );
+        });
     }
 
     protected static function notificationStageForRecord(
@@ -617,6 +681,7 @@ class ExamResultsTable
     public static function sendPassedNotifications(
         iterable $records,
         string $resultMenu = PassedResultMenuOptions::EXAM_RESULTS,
+        string $action = 'notify_all_students',
     ): int
     {
         $sentCount = 0;
@@ -626,12 +691,7 @@ class ExamResultsTable
                 continue;
             }
 
-            $sent = CandidateEntranceStatisticsTable::notifyStudentReviewResult(
-                record: $record,
-                status: 'passed',
-                note: null,
-                notificationStage: self::notificationStageForRecord($record, $resultMenu),
-            );
+            $sent = self::sendPassedNotification($record, $resultMenu, $action, skipUnauthorized: true);
 
             if ($sent) {
                 $sentCount++;

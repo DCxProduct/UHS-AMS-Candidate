@@ -407,6 +407,7 @@ class WorkflowNotificationResourceTest extends TestCase
 
             $this->assertSame([
                 'form_submission',
+                'verification',
                 'review',
                 'payment',
                 'awaiting_results',
@@ -429,6 +430,7 @@ class WorkflowNotificationResourceTest extends TestCase
         $this->assertFalse(WorkflowStageType::FormSubmission->requiresRole());
         $this->assertTrue(WorkflowStageType::Completed->requiresRole());
         $this->assertTrue(WorkflowStageType::Review->requiresRole());
+        $this->assertTrue(WorkflowStageType::Verification->requiresRole());
         $this->assertTrue(WorkflowStageType::Payment->requiresRole());
         $this->assertTrue(WorkflowStageType::AwaitingResults->requiresRole());
     }
@@ -561,7 +563,7 @@ class WorkflowNotificationResourceTest extends TestCase
         }
     }
 
-    public function test_staff_stage_requires_a_responsible_role(): void
+    public function test_staff_stage_can_save_without_a_responsible_role(): void
     {
         $this->actingAs($this->admin);
 
@@ -572,9 +574,10 @@ class WorkflowNotificationResourceTest extends TestCase
                 'stages' => ['a' => ['type' => 'stage', 'data' => ['stage_name' => 'Review', 'stage_type' => 'review']]],
             ])
             ->call('create')
-            ->assertHasFormErrors();
+            ->assertHasNoFormErrors();
 
-        $this->assertSame(0, WorkflowNotification::query()->count());
+        $this->assertSame(1, WorkflowNotification::query()->count());
+        $this->assertNull(data_get(WorkflowNotification::query()->sole()->stages, '0.data.responsible_role'));
     }
 
     public function test_responsible_role_lists_every_role_except_the_candidate_role_type(): void

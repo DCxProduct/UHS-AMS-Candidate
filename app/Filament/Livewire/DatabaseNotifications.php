@@ -5,11 +5,11 @@ namespace App\Filament\Livewire;
 use Filament\Enums\DatabaseNotificationsPosition;
 use Filament\Actions\Action;
 use Filament\Livewire\DatabaseNotifications as FilamentDatabaseNotifications;
-use App\Support\FilamentActionPermissions;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Tables\CustomFormEntriesTable;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\On;
 
 class DatabaseNotifications extends FilamentDatabaseNotifications
@@ -121,8 +121,10 @@ class DatabaseNotifications extends FilamentDatabaseNotifications
     protected function resolveReviewEntry(string $entryId): CustomFormEntry
     {
         abort_unless(CustomFormEntryResource::currentUserCanManageForms(), 403);
-        FilamentActionPermissions::abortUnlessCanForResource(CustomFormEntryResource::class, 'view_pdf');
+        $entry = CustomFormEntryResource::getEloquentQuery()->findOrFail($entryId);
+        Gate::authorize('view', $entry);
+        abort_unless(CustomFormEntriesTable::canViewReviewPdf($entry), 403);
 
-        return CustomFormEntryResource::getEloquentQuery()->findOrFail($entryId);
+        return $entry;
     }
 }

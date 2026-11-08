@@ -2,10 +2,11 @@
 
 namespace App\Support;
 
+use App\Enums\WorkflowStageType;
 use Illuminate\Support\Arr;
 use Illuminate\Validation\Rule;
 
-/** Maps catalog settings onto existing workflow fields without defining new workflow actions. */
+/** Maps stage catalog buttons and settings onto workflow fields. */
 final class WorkflowStageTypeSettings
 {
     /** Only user-triggered buttons belong in the catalog picker; status keys remain supported for saved workflows. */
@@ -24,7 +25,7 @@ final class WorkflowStageTypeSettings
     public static function allActions(): array
     {
         $actions = [];
-        foreach (['form_submission', 'review', 'payment', 'awaiting_results', 'completed'] as $behavior) {
+        foreach (array_keys(WorkflowStageType::options()) as $behavior) {
             foreach (self::actions($behavior) as $key => $settings) {
                 $actions[$key] = [
                     ...$settings,
@@ -74,6 +75,7 @@ final class WorkflowStageTypeSettings
         $keys = match ($behavior) {
             'form_submission' => ['submitted'],
             'review' => ['accept', 'send_back', 'reject'],
+            'verification' => ['verify'],
             'payment' => ['unpaid', 'paid'],
             'awaiting_results' => ['pending', 'passed'],
             'completed' => ['notify'],
@@ -84,6 +86,7 @@ final class WorkflowStageTypeSettings
             'accept' => 'heroicon-o-check-circle',
             'send_back' => 'heroicon-o-arrow-uturn-left',
             'reject' => 'heroicon-o-x-circle',
+            'verify' => 'heroicon-o-shield-check',
             'unpaid' => 'heroicon-o-clock',
             'paid' => 'heroicon-o-banknotes',
             'pending' => 'heroicon-o-clock',

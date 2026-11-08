@@ -6,6 +6,7 @@ enum WorkflowStageType: string
 {
     case FormSubmission = 'form_submission';
     case Review = 'review';
+    case Verification = 'verification';
     case Payment = 'payment';
     case AwaitingResults = 'awaiting_results';
     case Completed = 'completed';
@@ -32,8 +33,14 @@ enum WorkflowStageType: string
 
     public static function options(): array
     {
-        return collect(self::cases())
-            ->reject(fn (self $type): bool => in_array($type, [self::Approval, self::Rejected], true))
+        return collect([
+            self::FormSubmission,
+            self::Verification,
+            self::Review,
+            self::Payment,
+            self::AwaitingResults,
+            self::Completed,
+        ])
             ->mapWithKeys(fn (self $type): array => [$type->value => $type->label()])
             ->all();
     }

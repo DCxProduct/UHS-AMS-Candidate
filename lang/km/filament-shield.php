@@ -1,6 +1,9 @@
 <?php
 
 return [
+    'custom_form_entry_permissions' => [
+        'view_any' => 'មើលបញ្ជីពាក្យស្នើសុំ',
+    ],
     'resource_permission_prefixes_labels' => [
         'view_any' => 'អាន',
         'view' => 'មើលទិន្នន័យ',
@@ -25,6 +28,7 @@ return [
         'edit_review_note' => 'សារ',
         'view_pdf' => 'ពិនិត្យ',
         'accepted' => 'ទទួលយក',
+        'verify' => 'បានទទួលពាក្យស្នើសុំ',
         'reject' => 'បដិសេធ',
         'rejected' => 'ផ្ញើត្រឡប់',
         'download_pdf' => 'ទាញយក PDF',

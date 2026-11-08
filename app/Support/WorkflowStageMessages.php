@@ -232,6 +232,9 @@ final class WorkflowStageMessages
             WorkflowStageType::Review, WorkflowStageType::Approval => WorkflowStageProgression::finished($entry)
                 ? (self::reviewActionStage($entry, 'accept')['status_message'] ?? __('candidate_entrance_statistics.statuses.accepted'))
                 : (WorkflowSubmissionMessages::statusText($entry) ?? ($stage['status_message'] ?? null) ?? __('candidate_entrance_statistics.statuses.pending')),
+            WorkflowStageType::Verification => WorkflowStageProgression::finished($entry)
+                ? (filled($stage['status_message'] ?? null) ? $stage['status_message'] : __('workflow_notifications.status_defaults.verified'))
+                : __('workflow_notifications.status_defaults.verification'),
             WorkflowStageType::Payment => self::paymentStatusLabel($entry, $paymentStatus = self::orderedStageCompleted($entry, $type) ? 'paid' : 'unpaid')
                 ?? __('payments.options.status_payt.'.$paymentStatus),
             WorkflowStageType::AwaitingResults => data_get($entry->data, 'workflow_progress.result_passed', false)
@@ -304,7 +307,10 @@ final class WorkflowStageMessages
                     'approved', 'accepted' => WorkflowStageProgression::isCurrent($entry, WorkflowStageType::Payment)
                         && self::orderedStageCompleted($entry, WorkflowStageType::Review)
                         && ! self::hasPaid($entry)
-                            ? data_get(self::configuredStage($entry, WorkflowStageType::Review), 'review_actions.accept.status_message')
+                            ? (data_get($entry->data, 'workflow_progress.verification_completed') === true
+                                ? (data_get(self::configuredStage($entry, WorkflowStageType::Verification), 'status_message')
+                                    ?: __('workflow_notifications.status_defaults.verified'))
+                                : data_get(self::configuredStage($entry, WorkflowStageType::Review), 'review_actions.accept.status_message'))
                             : null,
                     default => null,
                 };
@@ -458,6 +464,15 @@ final class WorkflowStageMessages
         $stageType ??= self::stageTypeFor($entry);
 
         if ($stageType === null) {
+            return false;
+        }
+
+        return self::currentUserHasStageRole($entry, $stageType);
+    }
+
+    public static function currentUserHasStageRole(CustomFormEntry $entry, WorkflowStageType $stageType): bool
+    {
+        if (! auth()->check()) {
             return false;
         }
 

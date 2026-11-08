@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Enums\WorkflowStageType;
 use App\Filament\Admin\Resources\AuditLogs\AuditLogResource;
 use App\Filament\Admin\Resources\CandidateEntranceStatistics\CandidateEntranceStatisticResource;
 use App\Filament\Admin\Resources\CandidateExitStatistics\CandidateExitStatisticResource;
@@ -19,6 +20,7 @@ use App\Filament\Admin\Resources\SystemUsers\SystemUserResource;
 use App\Filament\Admin\Resources\WorkflowStageTypes\WorkflowStageTypeResource;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomForms\CustomFormResource;
+use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Chanthoeun\FilamentDocumentBuilder\Resources\DocumentTemplateResource;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -84,6 +86,7 @@ class FilamentActionPermissions
                 'edit_review_note',
                 'view_pdf',
                 'accepted',
+                'verify',
                 'reject',
                 'rejected',
                 'download_pdf',
@@ -179,6 +182,54 @@ class FilamentActionPermissions
     public static function abortUnlessCanForResource(string $resourceClass, string $action): void
     {
         abort_unless(self::canForResource($resourceClass, $action), 403);
+    }
+
+    public static function canAccessWorkflowActions(string $resourceClass): bool
+    {
+        $user = auth()->user();
+        if ($user === null || $user->registration_type === 'student') {
+            return false;
+        }
+
+        return $resourceClass === CustomFormEntryResource::class
+            ? CustomFormEntryResource::currentUserCanManageForms()
+            : $resourceClass::canAccess();
+    }
+
+    public static function canForWorkflowStage(
+        string $resourceClass,
+        string $action,
+        ?CustomFormEntry $entry,
+        WorkflowStageType $stage,
+        bool $allowFinishedFinalStage = false,
+    ): bool {
+        if (! self::canAccessWorkflowActions($resourceClass)) {
+            return false;
+        }
+
+        if ($entry === null || ! WorkflowStageMessages::hasConfiguredWorkflow($entry)) {
+            return self::canForResource($resourceClass, $action);
+        }
+
+        if (WorkflowStageMessages::canCurrentUserHandleStage($entry, $stage)) {
+            return true;
+        }
+
+        // A workflow may end at Payment or Results without a separate notification stage.
+        return $allowFinishedFinalStage
+            && WorkflowStageProgression::finished($entry)
+            && WorkflowStageProgression::finalStageType($entry) === $stage
+            && WorkflowStageMessages::currentUserHasStageRole($entry, $stage);
+    }
+
+    public static function abortUnlessCanForWorkflowStage(
+        string $resourceClass,
+        string $action,
+        ?CustomFormEntry $entry,
+        WorkflowStageType $stage,
+        bool $allowFinishedFinalStage = false,
+    ): void {
+        abort_unless(self::canForWorkflowStage($resourceClass, $action, $entry, $stage, $allowFinishedFinalStage), 403);
     }
 
     public static function sync(): void

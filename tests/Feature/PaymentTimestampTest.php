@@ -146,6 +146,11 @@ class PaymentTimestampTest extends TestCase
             'password' => 'password', 'is_active' => true,
         ]);
         $user->assignRole(Role::findOrCreate($role, 'web'));
+        if ($role === 'cashier_manager') {
+            foreach (['ViewAny:PaymentStatusList', 'Pay:PaymentStatusList'] as $permission) {
+                $user->givePermissionTo(Permission::findOrCreate($permission, 'web'));
+            }
+        }
 
         return $user;
     }

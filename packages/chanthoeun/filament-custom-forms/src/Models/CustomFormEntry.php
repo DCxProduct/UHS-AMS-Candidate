@@ -33,15 +33,23 @@ class CustomFormEntry extends Model
             \App\Support\CandidateApplicationContext::stamp($entry);
             \App\Support\WorkflowEntrySnapshot::capture($entry);
 
-            if ($entry->isDirty('data') && \App\Support\WorkflowStageProgression::enabled($entry)) {
+            if ($entry->isDirty('data')) {
                 $data = is_array($entry->data) ? $entry->data : [];
-                unset($data['workflow_progress']);
+                $protectedKeys = ['application_received_at', 'application_received_by'];
+                if (\App\Support\WorkflowStageProgression::enabled($entry)) {
+                    $protectedKeys[] = 'workflow_progress';
+                }
+                $stored = [];
                 if ($entry->exists) {
                     $stored = \Illuminate\Support\Facades\DB::table($entry->getTable())
                         ->where($entry->getKeyName(), $entry->getKey())->value('data');
                     $stored = is_string($stored) ? json_decode($stored, true, flags: JSON_THROW_ON_ERROR) : $stored;
-                    if (is_array($stored['workflow_progress'] ?? null)) {
-                        $data['workflow_progress'] = $stored['workflow_progress'];
+                }
+                foreach ($protectedKeys as $key) {
+                    unset($data[$key]);
+                    if (is_array($stored) && array_key_exists($key, $stored)
+                        && ($key !== 'workflow_progress' || is_array($stored[$key]))) {
+                        $data[$key] = $stored[$key];
                     }
                 }
                 $entry->data = $data;

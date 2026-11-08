@@ -14,12 +14,23 @@ final class WorkflowEntrySnapshot
     public static function forForm(int|string|null $formId): array
     {
         $workflow = filled($formId) ? WorkflowNotification::forForm($formId) : null;
-        $types = collect($workflow?->stages ?? [])
+        // Unconfigured rows stay in the template; only actionable stages enter an application's workflow.
+        $stages = array_values(array_filter($workflow?->stages ?? [], function (mixed $stage): bool {
+            if (! is_array($stage)) {
+                return true;
+            }
+
+            $data = is_array($stage['data'] ?? null) ? $stage['data'] : $stage;
+            $type = $data['stage_type'] ?? null;
+
+            return $type !== null && (! is_string($type) || trim($type) !== '');
+        }));
+        $types = collect($stages)
             ->map(fn (mixed $stage): mixed => is_array($stage) ? ($stage['data']['stage_type'] ?? $stage['stage_type'] ?? null) : null)
             ->map(fn (mixed $type): mixed => $type === WorkflowStageType::Approval->value ? WorkflowStageType::Review->value : $type);
-        $ordered = $types->isNotEmpty()
-            && $types->every(fn (mixed $type): bool => is_string($type) && WorkflowStageType::tryFrom($type) !== null && $type !== WorkflowStageType::Rejected->value)
-            && $types->unique()->count() === $types->count();
+        $ordered = $workflow !== null && ($types->isEmpty()
+            || ($types->every(fn (mixed $type): bool => is_string($type) && WorkflowStageType::tryFrom($type) !== null && $type !== WorkflowStageType::Rejected->value)
+                && $types->unique()->count() === $types->count()));
         $stages = array_map(function (mixed $stage): mixed {
             if (! is_array($stage)) {
                 return $stage;
@@ -38,7 +49,7 @@ final class WorkflowEntrySnapshot
             }
 
             return $data;
-        }, $workflow?->stages ?? []);
+        }, $stages);
         $statisticsMenu = WorkflowStatisticsRouting::forStages($stages);
         $passedResultMenu = WorkflowPassedResultRouting::forStages($stages);
 
