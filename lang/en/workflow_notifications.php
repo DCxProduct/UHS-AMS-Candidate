@@ -90,6 +90,11 @@ return [
         'unpaid_status_message' => 'Example: Unpaid',
         'waiting_result_status_message' => 'Example: Pending',
         'stage_audiences' => [
+            'verification' => [
+                'status_message' => 'Example: Application Received',
+                'notification_message' => 'Example: Your application has been received and your candidate ID is ready.',
+                'staff_notification_message' => 'Example: The :form application from :candidate has been received.',
+            ],
             'payment' => [
                 'status_message' => 'Example: Paid successfully',
                 'notification_message' => 'Example: Your payment information has been updated.',
@@ -165,6 +170,7 @@ return [
     'stage_types' => [
         'form_submission' => 'Form Submission',
         'review' => 'Review',
+        'verification' => 'Application Received',
         'payment' => 'Payment',
         'awaiting_results' => 'Awaiting Results',
         'completed' => 'Awaiting Successful Candidate Notification',
@@ -175,6 +181,20 @@ return [
     'actions' => [
         'add_stage' => 'Add Stage',
         'close' => 'Close',
+        'verify' => 'Application Received',
+    ],
+
+    'confirmations' => [
+        'verify_title' => 'Confirm application receipt?',
+        'verify_body' => 'Acknowledge receipt of this application, generate its candidate ID, and continue to the next workflow stage.',
+        'static_receipt_body' => 'Confirm receipt of this application. The existing candidate ID will be kept, or a new ID will be generated if none exists.',
+    ],
+
+    'notifications' => [
+        'verification_success' => 'Application Received',
+        'verification_candidate_id' => 'Candidate ID: :id',
+        'verification_missing_major_title' => 'Could not confirm application receipt',
+        'verification_missing_major_body' => 'A valid major with an abbreviation is required to generate the candidate ID.',
     ],
 
     'validation' => [
@@ -184,10 +204,13 @@ return [
         'invalid_stage_type' => 'Select a valid stage type for every stage.',
         'name_already_exists' => 'A workflow with this name already exists.',
         'could_not_save' => 'The workflow could not be saved.',
+        'verification_requires_review' => 'Application Received must follow a Review stage in a workflow with unique, supported stage types.',
     ],
 
     'status_defaults' => [
+        'verified' => 'Application Received',
         'review' => 'Under review',
+        'verification' => 'Awaiting application receipt',
         'payment' => 'Waiting for payment',
         'awaiting_results' => 'Waiting for results',
         'completed' => 'Completed',

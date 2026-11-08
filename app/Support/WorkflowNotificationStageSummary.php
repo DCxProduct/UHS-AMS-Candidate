@@ -87,7 +87,7 @@ final class WorkflowNotificationStageSummary
     {
         $name ??= '';
 
-        if ($type === null || (app()->getLocale() !== 'km' && $type !== WorkflowStageType::Completed)) {
+        if ($type === null || (app()->getLocale() !== 'km' && ! in_array($type, [WorkflowStageType::Completed, WorkflowStageType::Verification], true))) {
             return $name;
         }
 
@@ -100,6 +100,7 @@ final class WorkflowNotificationStageSummary
         $defaults = match ($type) {
             WorkflowStageType::FormSubmission => ['form', 'form submission', 'submission', 'student', 'candidate'],
             WorkflowStageType::Review => ['review', 'application review', 'registrar review', 'ការពិនិត្យ'],
+            WorkflowStageType::Verification => ['verification', 'verify', 'registrar verification', 'ការផ្ទៀងផ្ទាត់ដោយការិយាល័យចុះឈ្មោះ', 'ផ្ទៀងផ្ទាត់'],
             WorkflowStageType::Approval => ['approval', 'approve', 'registrar approval'],
             WorkflowStageType::Payment => ['payment'],
             WorkflowStageType::AwaitingResults => ['awaiting result', 'awaiting results', 'results'],

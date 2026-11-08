@@ -12,6 +12,7 @@ use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class WorkflowStageTypesTable
 {
@@ -19,7 +20,7 @@ class WorkflowStageTypesTable
     {
         return $table
             ->searchPlaceholder(__('workflow_stage_types.search'))
-            ->defaultSort('id')
+            ->defaultSort(fn (Builder $query): Builder => $query->orderForDisplay())
             ->columnManager(false)
             ->columns([
                 TextColumn::make('row_number')

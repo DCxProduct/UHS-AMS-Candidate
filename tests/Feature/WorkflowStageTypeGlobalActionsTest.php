@@ -30,7 +30,7 @@ class WorkflowStageTypeGlobalActionsTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const ACTIONS = ['submitted', 'accept', 'send_back', 'reject', 'paid', 'passed', 'notify'];
+    private const ACTIONS = ['submitted', 'verify', 'accept', 'send_back', 'reject', 'paid', 'passed', 'notify'];
 
     protected function setUp(): void
     {
@@ -46,7 +46,7 @@ class WorkflowStageTypeGlobalActionsTest extends TestCase
         $this->actingAs($admin);
     }
 
-    public function test_blank_create_shows_seven_localized_buttons_without_statuses_or_extra_settings(): void
+    public function test_blank_create_shows_eight_localized_buttons_without_statuses_or_extra_settings(): void
     {
         foreach (['en', 'km'] as $locale) {
             app()->setLocale($locale);
@@ -68,7 +68,7 @@ class WorkflowStageTypeGlobalActionsTest extends TestCase
             }
             $xpath = $this->renderedButtons($component);
             $this->assertSame(2, $xpath->query('//fieldset[@data-stage-type-button-group]')->length);
-            foreach (['candidate' => ['submitted'], 'system' => ['accept', 'send_back', 'reject', 'paid', 'passed', 'notify']] as $group => $expected) {
+            foreach (['candidate' => ['submitted'], 'system' => ['verify', 'accept', 'send_back', 'reject', 'paid', 'passed', 'notify']] as $group => $expected) {
                 $legend = $xpath->query('//fieldset[@data-stage-type-button-group="'.$group.'"]/legend')->item(0);
                 $this->assertNotNull($legend);
                 $this->assertStringContainsString(__('workflow_stage_types.picker_groups.'.$group), $legend->textContent);
@@ -149,7 +149,7 @@ class WorkflowStageTypeGlobalActionsTest extends TestCase
             $this->assertSame(! in_array($value, ['accept', 'send_back', 'reject'], true), $field->isOptionDisabled($value, $label), $value);
         }
         $inputs = $this->renderedButtons($component)->query('//fieldset[@data-stage-type-button-group]//input[@type="checkbox"]');
-        $this->assertSame(7, $inputs->length);
+        $this->assertSame(8, $inputs->length);
         foreach ($inputs as $input) {
             $this->assertSame(! in_array($input->getAttribute('value'), ['accept', 'send_back', 'reject'], true), $input->hasAttribute('disabled'), $input->getAttribute('value'));
             $this->assertSame($input->getAttribute('value') === 'accept', $input->hasAttribute('checked'), $input->getAttribute('value'));

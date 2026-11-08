@@ -2,6 +2,8 @@
 
 namespace App\Models\Concerns;
 
+use App\Enums\WorkflowStageType;
+use App\Models\WorkflowStageType as StageTypeCatalog;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Throwable;
@@ -17,13 +19,43 @@ trait HasTemplateText
     abstract public static function defaults(string $key): array;
 
     /** Workflow actions a template can be used for automatically. */
-    public const ACTIONS = ['accept', 'send_back', 'reject', 'payment', 'awaiting_results', 'completed'];
+    public const ACTIONS = ['form_submission', 'verification', 'accept', 'send_back', 'reject', 'payment', 'awaiting_results', 'completed'];
 
     public static function actionOptions(): array
     {
         return collect(self::ACTIONS)
             ->mapWithKeys(fn (string $action): array => [$action => __(static::LANG_FILE.'.actions_for.'.$action)])
             ->all();
+    }
+
+    public static function actionPickerOptions(): array
+    {
+        $stageLabels = [];
+        if (Schema::hasTable('workflow_stage_types')) {
+            // Action bindings identify a canonical behavior, not a custom catalog row.
+            foreach (StageTypeCatalog::query()
+                ->where('is_system', true)
+                ->whereIn('behavior', array_keys(WorkflowStageType::options()))
+                ->orderBy('id')
+                ->get(['id', 'behavior', 'label_en', 'label_km']) as $type) {
+                $stageLabels[$type->behavior] ??= $type->label();
+            }
+        }
+
+        $actions = static::actionOptions();
+        $groups = [];
+        foreach (WorkflowStageType::options() as $type => $defaultLabel) {
+            $label = filled($stageLabels[$type] ?? null) ? $stageLabels[$type] : $defaultLabel;
+            $keys = $type === WorkflowStageType::Review->value
+                ? ['accept', 'send_back', 'reject']
+                : [$type];
+            $groups[$label] = array_merge(
+                $groups[$label] ?? [],
+                array_intersect_key($actions, array_fill_keys($keys, true)),
+            );
+        }
+
+        return $groups;
     }
 
     /**

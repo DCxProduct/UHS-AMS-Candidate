@@ -273,16 +273,10 @@ class CandidateEntranceStatisticsTable
                     ->modalDescription(__('candidate_entrance_statistics.passed_confirm_description'))
                     ->modalSubmitActionLabel(__('candidate_entrance_statistics.passed_confirm_yes'))
                     ->modalCancelActionLabel(__('candidate_entrance_statistics.passed_confirm_no'))
-                    ->visible(fn (CustomFormEntry $record): bool => FilamentActionPermissions::canForResource(CandidateEntranceStatisticResource::class, 'passed')
-                        && WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::AwaitingResults)
+                    ->visible(fn (CustomFormEntry $record): bool => self::canHandleResultAction($record, 'passed')
                         && strtolower((string) data_get($record->data, 'candidate_status', 'pending')) === 'pending')
                     ->action(function (CustomFormEntry $record): void {
-                        FilamentActionPermissions::abortUnlessCanForResource(CandidateEntranceStatisticResource::class, 'passed');
-                        if (WorkflowStageProgression::enabled($record)) {
-                            abort_unless(WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::AwaitingResults), 403);
-                        }
-
-                        self::markPassed($record);
+                        abort_unless(self::changeResult($record, 'passed', passed: true), 409);
                         WorkflowStageMessages::notifyResultStage($record);
 
                         WorkflowActionFeedback::send(
@@ -302,14 +296,11 @@ class CandidateEntranceStatisticsTable
                     ->modalDescription(__('candidate_entrance_statistics.pending_modal.description'))
                     ->modalSubmitActionLabel(__('candidate_entrance_statistics.pending_modal.submit'))
                     ->modalCancelActionLabel(__('candidate_entrance_statistics.pending_modal.cancel'))
-                    ->visible(fn (CustomFormEntry $record): bool => FilamentActionPermissions::canForResource(CandidateEntranceStatisticResource::class, 'edit_result')
-                        && WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::AwaitingResults)
+                    ->visible(fn (CustomFormEntry $record): bool => self::canHandleResultAction($record, 'edit_result')
                         && ! self::hasStudentPassedNotification($record)
                         && strtolower((string) data_get($record->data, 'candidate_status', 'pending')) === 'passed')
                     ->action(function (CustomFormEntry $record): void {
-                        FilamentActionPermissions::abortUnlessCanForResource(CandidateEntranceStatisticResource::class, 'edit_result');
-
-                        self::markCandidatePending($record);
+                        abort_unless(self::changeResult($record, 'edit_result', passed: false), 409);
 
                         WorkflowActionFeedback::send(
                             Notification::make()->success(),
@@ -323,7 +314,7 @@ class CandidateEntranceStatisticsTable
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->button()
-                    ->visible(fn (): bool => FilamentActionPermissions::canForResource(CandidateEntranceStatisticResource::class, 'bulk_passed'))
+                    ->visible(fn (): bool => self::hasAuthorizedResultAction('bulk_passed'))
                     ->requiresConfirmation()
                     ->modalHeading(__('candidate_entrance_statistics.passed_confirm_title'))
                     ->modalDescription(__('candidate_entrance_statistics.passed_confirm_description'))
@@ -331,21 +322,15 @@ class CandidateEntranceStatisticsTable
                     ->modalCancelActionLabel(__('candidate_entrance_statistics.passed_confirm_no'))
                     ->deselectRecordsAfterCompletion()
                     ->action(function (Collection $records): void {
-                        FilamentActionPermissions::abortUnlessCanForResource(CandidateEntranceStatisticResource::class, 'bulk_passed');
+                        abort_unless(FilamentActionPermissions::canAccessWorkflowActions(CandidateEntranceStatisticResource::class), 403);
 
                         $passedCount = 0;
                         $affectedEntries = [];
 
                         $records->each(function (CustomFormEntry $record) use (&$passedCount, &$affectedEntries): void {
-                            if (strtolower((string) data_get($record->data, 'candidate_status', 'pending')) !== 'pending') {
+                            if (! self::changeResult($record, 'bulk_passed', passed: true, skipUnauthorized: true)) {
                                 return;
                             }
-
-                            if (! WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::AwaitingResults)) {
-                                return;
-                            }
-
-                            self::markPassed($record);
                             WorkflowStageMessages::notifyResultStage($record);
                             $affectedEntries[] = $record;
                             $passedCount++;
@@ -367,7 +352,7 @@ class CandidateEntranceStatisticsTable
                     ->icon('heroicon-o-arrow-path')
                     ->color('danger')
                     ->button()
-                    ->visible(fn (): bool => FilamentActionPermissions::canForResource(CandidateEntranceStatisticResource::class, 'bulk_pending'))
+                    ->visible(fn (): bool => self::hasAuthorizedResultAction('bulk_pending'))
                     ->requiresConfirmation()
                     ->modalHeading(__('candidate_entrance_statistics.pending_modal.heading'))
                     ->modalDescription(__('candidate_entrance_statistics.pending_modal.description'))
@@ -375,20 +360,15 @@ class CandidateEntranceStatisticsTable
                     ->modalCancelActionLabel(__('candidate_entrance_statistics.pending_modal.cancel'))
                     ->deselectRecordsAfterCompletion()
                     ->action(function (Collection $records): void {
-                        FilamentActionPermissions::abortUnlessCanForResource(CandidateEntranceStatisticResource::class, 'bulk_pending');
+                        abort_unless(FilamentActionPermissions::canAccessWorkflowActions(CandidateEntranceStatisticResource::class), 403);
 
                         $editedCount = 0;
                         $affectedEntries = [];
 
                         $records->each(function (CustomFormEntry $record) use (&$editedCount, &$affectedEntries): void {
-                            if (
-                                strtolower((string) data_get($record->data, 'candidate_status', 'pending')) !== 'passed'
-                                || ! WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::AwaitingResults)
-                            ) {
+                            if (! self::changeResult($record, 'bulk_pending', passed: false, skipUnauthorized: true)) {
                                 return;
                             }
-
-                            self::markCandidatePending($record);
                             $affectedEntries[] = $record;
                             $editedCount++;
                         });
@@ -401,6 +381,64 @@ class CandidateEntranceStatisticsTable
                         );
                     }),
             ]);
+    }
+
+    protected static function canHandleResultAction(CustomFormEntry $record, string $action): bool
+    {
+        return FilamentActionPermissions::canForWorkflowStage(
+            CandidateEntranceStatisticResource::class,
+            $action,
+            $record,
+            WorkflowStageType::AwaitingResults,
+        );
+    }
+
+    protected static function hasAuthorizedResultAction(string $action): bool
+    {
+        if (! FilamentActionPermissions::canAccessWorkflowActions(CandidateEntranceStatisticResource::class)) {
+            return false;
+        }
+
+        if (FilamentActionPermissions::canForResource(CandidateEntranceStatisticResource::class, $action)) {
+            return true;
+        }
+
+        $status = $action === 'bulk_passed' ? 'pending' : 'passed';
+
+        return CandidateEntranceStatisticResource::getEloquentQuery()->lazy()->contains(
+            fn (CustomFormEntry $record): bool => strtolower((string) data_get($record->data, 'candidate_status', 'pending')) === $status
+                && WorkflowStageMessages::hasConfiguredWorkflow($record)
+                && self::canHandleResultAction($record, $action),
+        );
+    }
+
+    /** Recheck each selected application under its own lock before changing its result. */
+    protected static function changeResult(CustomFormEntry $record, string $action, bool $passed, bool $skipUnauthorized = false): bool
+    {
+        return DB::transaction(function () use ($record, $action, $passed, $skipUnauthorized): bool {
+            $current = CandidateEntranceStatisticResource::getEloquentQuery()
+                ->lockForUpdate()->find($record->getKey());
+            if ($current === null || ! self::canHandleResultAction($current, $action)) {
+                abort_unless($skipUnauthorized, 403);
+
+                return false;
+            }
+
+            $status = strtolower((string) data_get($current->data, 'candidate_status', 'pending'));
+            if ($status !== ($passed ? 'pending' : 'passed')
+                || (! $passed && self::hasStudentPassedNotification($current))) {
+                return false;
+            }
+
+            $record->setRawAttributes($current->getAttributes(), true)->unsetRelations();
+            if ($passed) {
+                self::markPassed($record);
+            } else {
+                self::markCandidatePending($record);
+            }
+
+            return true;
+        });
     }
 
     protected static function applyGlobalSearch(Builder $query, string $search): void

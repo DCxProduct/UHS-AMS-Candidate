@@ -48,16 +48,18 @@ return [
     ],
 
     'actions_for' => [
-        'accept' => 'Review – Accept',
-        'send_back' => 'Review – Send back',
-        'reject' => 'Review – Reject',
-        'payment' => 'Payment',
-        'awaiting_results' => 'Awaiting Results',
-        'completed' => 'Completed',
+        'form_submission' => 'Submit Form',
+        'verification' => 'Application Received',
+        'accept' => 'Checked',
+        'send_back' => 'Send Back',
+        'reject' => 'Reject',
+        'payment' => 'Record Payment',
+        'awaiting_results' => 'Mark Passed',
+        'completed' => 'Notify Candidate',
     ],
 
     'fields' => [
-        'action' => 'Used for (workflow action)',
+        'action' => 'Send SMS when',
         'template_name' => 'Template name',
         'name' => 'SMS',
         'app_name' => 'App name',
@@ -68,12 +70,12 @@ return [
     ],
 
     'placeholders' => [
-        'action' => 'Not used automatically',
+        'action' => 'Choose an action (optional)',
         'template_name' => 'Example: Exam reminder',
     ],
 
     'helpers' => [
-        'action' => 'The workflow uses this template automatically for this action\'s SMS (unless a stage chooses another template). One template per action.',
+        'action' => 'Enable SMS and add a notification message on the stage. A template selected on the stage takes priority.',
         'app_name' => 'Used for {{ app }}.',
         'body' => 'One SMS holds about 160 English or 70 Khmer characters; longer texts are sent as several parts.',
     ],

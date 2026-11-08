@@ -116,7 +116,8 @@ class WorkflowNotificationForm
 
             $types = self::stageTypes($value);
             // Preserve older templates when only their labels or messages are edited.
-            if ($record?->exists && $types === self::stageTypes($record->stages ?? [])) {
+            if ($record?->exists && $types === self::stageTypes($record->stages ?? [])
+                && collect($types)->every(fn (string $type): bool => WorkflowStageType::tryFrom($type) !== null)) {
                 return;
             }
 
@@ -144,13 +145,14 @@ class WorkflowNotificationForm
 
     private static function stageTypes(array $stages): array
     {
-        return array_values(array_map(function (mixed $stage): string {
-            if (! is_array($stage)) {
+        return array_values(array_filter(array_map(function (mixed $stage): ?string {
+            if (! is_array($stage) || (array_key_exists('data', $stage) && ! is_array($stage['data']))) {
                 return '';
             }
 
             $data = is_array($stage['data'] ?? null) ? $stage['data'] : $stage;
-            $canonical = is_string($data['stage_type'] ?? null) ? $data['stage_type'] : '';
+            $rawCanonical = $data['stage_type'] ?? null;
+            $canonical = is_string($rawCanonical) ? $rawCanonical : '';
             $selection = $data['stage_type_id'] ?? null;
 
             if (filled($selection)) {
@@ -165,8 +167,12 @@ class WorkflowNotificationForm
                 }
             }
 
-            return $canonical;
-        }, $stages));
+            if ($rawCanonical !== null && ! is_string($rawCanonical)) {
+                return '';
+            }
+
+            return blank($canonical) ? null : $canonical;
+        }, $stages), fn (?string $type): bool => $type !== null));
     }
 
     private static function catalogIdForSave(mixed $selection, ?WorkflowNotification $record): ?int
@@ -243,12 +249,12 @@ class WorkflowNotificationForm
     {
         $handledByStaff = fn (Get $get): bool => (bool) WorkflowStageType::tryFrom((string) $get('stage_type'))?->requiresRole();
         $isCompletedStage = fn (Get $get): bool => WorkflowStageType::tryFrom((string) $get('stage_type')) === WorkflowStageType::Completed;
-        $requiresManualRole = fn (Get $get): bool => $handledByStaff($get) && ! $isCompletedStage($get);
         $isReviewStage = fn (Get $get): bool => WorkflowStageType::tryFrom((string) $get('stage_type')) === WorkflowStageType::Review;
         $isPaymentStage = fn (Get $get): bool => WorkflowStageType::tryFrom((string) $get('stage_type')) === WorkflowStageType::Payment;
         $isAwaitingResultsStage = fn (Get $get): bool => WorkflowStageType::tryFrom((string) $get('stage_type')) === WorkflowStageType::AwaitingResults;
         $isSubmissionStage = fn (Get $get): bool => WorkflowStageType::tryFrom((string) $get('stage_type')) === WorkflowStageType::FormSubmission;
         $usesStageAudienceLayout = fn (Get $get): bool => in_array(WorkflowStageType::tryFrom((string) $get('stage_type')), [
+            WorkflowStageType::Verification,
             WorkflowStageType::Payment,
             WorkflowStageType::AwaitingResults,
             WorkflowStageType::Completed,
@@ -315,9 +321,19 @@ class WorkflowNotificationForm
                         }
                     })
                     ->dehydrateStateUsing(fn (mixed $state, ?WorkflowNotification $record): ?int => self::catalogIdForSave($state, $record))
-                    ->required()
+                    ->nullable()
+                    ->in(fn (Get $get): array => array_keys(StageTypeCatalog::selectOptions($get('stage_type_id'), $get('stage_type'))))
                     ->live()
                     ->afterStateUpdated(function (mixed $state, Get $get, Set $set): void {
+                        $old = $get('stage_type');
+                        if (blank($state)) {
+                            $set('stage_type', null);
+                            $set('enabled_actions', null);
+                            self::updateStageType(null, $old, $get, $set);
+
+                            return;
+                        }
+
                         $definition = StageTypeCatalog::selected($state);
                         $behavior = $definition?->behavior;
 
@@ -325,7 +341,6 @@ class WorkflowNotificationForm
                             return;
                         }
 
-                        $old = $get('stage_type');
                         $set('stage_type', $behavior);
                         self::updateStageType($behavior, $old, $get, $set, $definition->label());
 
@@ -357,7 +372,7 @@ class WorkflowNotificationForm
                 Select::make('stage_type')
                     ->label(__('workflow_notifications.fields.stage_type'))
                     ->options(fn (): array => WorkflowStageType::options())
-                    ->required()
+                    ->nullable()
                     ->hidden()
                     ->dehydratedWhenHidden()
                     ->live()
@@ -455,7 +470,7 @@ class WorkflowNotificationForm
                     ->searchable()
                     ->preload()
                     ->in(fn (Get $get): array => array_keys(self::stageRoleOptions($get)))
-                    ->required($requiresManualRole)
+                    ->nullable()
                     ->visible($handledByStaff)
                     ->columnSpanFull(),
 

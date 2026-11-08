@@ -12,6 +12,7 @@ use App\Models\Major;
 use App\Models\Payment;
 use App\Models\WorkflowNotification;
 use App\Services\CandidateIdGenerator;
+use App\Services\WorkflowCandidateVerifier;
 use App\Support\AuditLogger;
 use App\Support\CandidateNumber;
 use App\Support\CaseInsensitiveSearch;
@@ -38,6 +39,7 @@ use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Schema;
 
 class CustomFormEntriesTable
@@ -602,6 +604,7 @@ class CustomFormEntriesTable
                 // staff. Preserve the existing display for no-payment workflows.
                 if ((self::candidateIsViewing()
                         || in_array(WorkflowStageMessages::stageTypeFor($record), [
+                            WorkflowStageType::Verification,
                             WorkflowStageType::Payment,
                             WorkflowStageType::AwaitingResults,
                             WorkflowStageType::Completed,
@@ -1246,12 +1249,12 @@ class CustomFormEntriesTable
                 ->icon('heroicon-o-eye')
                 ->color('info')
                 ->action(function ($record, $livewire): void {
-                    FilamentActionPermissions::abortUnlessCanForResource(CustomFormEntryResource::class, 'view_pdf');
+                    abort_unless(self::canViewReviewPdf($record), 403);
                     $livewire->dispatch('open-resubmission-review-for-entry', entryId: (string) $record->getKey());
                 })
                 ->visible(fn ($record): bool =>
                     self::currentPanelIsAdmin()
-                    && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'view_pdf')
+                    && self::canViewReviewPdf($record)
                     && ! self::isProfileForm($record->custom_form_id)
                     && in_array(self::entryStatus($record), ['pending', 'failed'], true)
                     && self::hasDocumentTemplate($record)
@@ -1268,24 +1271,26 @@ class CustomFormEntriesTable
                 ->visible(fn ($record): bool =>
                     self::currentPanelIsAdmin()
                     && ! self::isProfileForm($record->custom_form_id)
-                    && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'accepted')
-                    && WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::Review)
+                    && self::canReview($record, 'accepted')
                     && in_array(self::entryStatus($record), ['pending', 'failed'], true)
                     && ! self::hasDocumentTemplate($record)
                 )
                 ->action(function ($record): void {
-                    FilamentActionPermissions::abortUnlessCanForResource(CustomFormEntryResource::class, 'accepted');
+                    $oldValues = DB::transaction(function () use ($record): array {
+                        self::authorizeFreshReview($record, 'accepted', ['pending', 'failed']);
 
-                    $data = is_array($record->data) ? $record->data : [];
-                    $oldValues = [
-                        'review_status' => $record->review_status,
-                        'registration_status' => data_get($data, 'registration_status'),
-                    ];
-                    $data['candidate_status'] = 'pending';
-                    $data['registration_status'] = 'approved';
+                        $data = is_array($record->data) ? $record->data : [];
+                        $oldValues = [
+                            'review_status' => $record->review_status,
+                            'registration_status' => data_get($data, 'registration_status'),
+                        ];
+                        $data['candidate_status'] = 'pending';
+                        $data['registration_status'] = 'approved';
 
-                    DB::transaction(function () use ($record, $data): void {
-                        app(CandidateIdGenerator::class)->assignToEntry($record);
+                        $workflow = WorkflowNotification::forEntry($record);
+                        if ($workflow !== null && ! $workflow->hasStageType(WorkflowStageType::Verification)) {
+                            app(CandidateIdGenerator::class)->assignToEntry($record);
+                        }
 
                         DB::table('custom_form_entries')
                             ->where('id', $record->id)
@@ -1297,6 +1302,8 @@ class CustomFormEntriesTable
                                 'updated_at' => now(),
                                 'data' => json_encode($data),
                             ]);
+
+                        return $oldValues;
                     });
 
                     $record->refresh();
@@ -1328,8 +1335,7 @@ class CustomFormEntriesTable
                 ->visible(fn ($record): bool =>
                     self::currentPanelIsAdmin()
                     && ! self::isProfileForm($record->custom_form_id)
-                    && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'rejected')
-                    && WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::Review)
+                    && self::canReview($record, 'rejected')
                     && self::entryStatus($record) === 'pending'
                     && ! self::hasDocumentTemplate($record)
                 )
@@ -1340,26 +1346,30 @@ class CustomFormEntriesTable
                         ->rows(4),
                 ])
                 ->action(function ($record, array $data): void {
-                    FilamentActionPermissions::abortUnlessCanForResource(CustomFormEntryResource::class, 'rejected');
+                    $oldValues = DB::transaction(function () use ($record, $data): array {
+                        self::authorizeFreshReview($record, 'rejected', ['pending']);
 
-                    $recordData = is_array($record->data) ? $record->data : [];
-                    $oldValues = [
-                        'review_status' => $record->review_status,
-                        'registration_status' => data_get($recordData, 'registration_status'),
-                        'review_note' => $record->review_note,
-                    ];
-                    $recordData['registration_status'] = 'rejected';
+                        $recordData = is_array($record->data) ? $record->data : [];
+                        $oldValues = [
+                            'review_status' => $record->review_status,
+                            'registration_status' => data_get($recordData, 'registration_status'),
+                            'review_note' => $record->review_note,
+                        ];
+                        $recordData['registration_status'] = 'rejected';
 
-                    DB::table('custom_form_entries')
-                        ->where('id', $record->id)
-                        ->update([
-                            'review_status' => 'rejected',
-                            'review_note' => $data['review_note'] ?? null,
-                            'reviewed_by' => auth()->id(),
-                            'reviewed_at' => now(),
-                            'updated_at' => now(),
-                            'data' => json_encode($recordData),
-                        ]);
+                        DB::table('custom_form_entries')
+                            ->where('id', $record->id)
+                            ->update([
+                                'review_status' => 'rejected',
+                                'review_note' => $data['review_note'] ?? null,
+                                'reviewed_by' => auth()->id(),
+                                'reviewed_at' => now(),
+                                'updated_at' => now(),
+                                'data' => json_encode($recordData),
+                            ]);
+
+                        return $oldValues;
+                    });
 
                     $record->refresh();
 
@@ -1391,8 +1401,7 @@ class CustomFormEntriesTable
                 ->visible(fn ($record): bool =>
                     self::currentPanelIsAdmin()
                     && ! self::isProfileForm($record->custom_form_id)
-                    && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'rejected')
-                    && WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::Review)
+                    && self::canReview($record, 'rejected')
                     && self::entryStatus($record) === 'failed'
                     && ! self::hasDocumentTemplate($record)
                 )
@@ -1414,8 +1423,7 @@ class CustomFormEntriesTable
                 ->visible(fn ($record): bool =>
                     self::currentPanelIsAdmin()
                     && ! self::isProfileForm($record->custom_form_id)
-                    && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'reject')
-                    && WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::Review)
+                    && self::canReview($record, 'reject')
                     && self::entryStatus($record) === 'pending'
                     && ! self::hasDocumentTemplate($record)
                 )
@@ -1427,27 +1435,31 @@ class CustomFormEntriesTable
                 ])
                 ->modalSubmitActionLabel(__('candidate_entrance_statistics.actions.reject'))
                 ->action(function ($record, array $data): void {
-                    FilamentActionPermissions::abortUnlessCanForResource(CustomFormEntryResource::class, 'reject');
+                    $oldValues = DB::transaction(function () use ($record, $data): array {
+                        self::authorizeFreshReview($record, 'reject', ['pending']);
 
-                    $recordData = is_array($record->data) ? $record->data : [];
-                    $oldValues = [
-                        'review_status' => $record->review_status,
-                        'registration_status' => data_get($recordData, 'registration_status'),
-                        'review_note' => $record->review_note,
-                    ];
-                    $recordData['candidate_status'] = 'failed';
-                    $recordData['registration_status'] = 'failed';
+                        $recordData = is_array($record->data) ? $record->data : [];
+                        $oldValues = [
+                            'review_status' => $record->review_status,
+                            'registration_status' => data_get($recordData, 'registration_status'),
+                            'review_note' => $record->review_note,
+                        ];
+                        $recordData['candidate_status'] = 'failed';
+                        $recordData['registration_status'] = 'failed';
 
-                    DB::table('custom_form_entries')
-                        ->where('id', $record->id)
-                        ->update([
-                            'review_status' => 'failed',
-                            'review_note' => $data['review_note'] ?? null,
-                            'reviewed_by' => auth()->id(),
-                            'reviewed_at' => now(),
-                            'updated_at' => now(),
-                            'data' => json_encode($recordData),
-                        ]);
+                        DB::table('custom_form_entries')
+                            ->where('id', $record->id)
+                            ->update([
+                                'review_status' => 'failed',
+                                'review_note' => $data['review_note'] ?? null,
+                                'reviewed_by' => auth()->id(),
+                                'reviewed_at' => now(),
+                                'updated_at' => now(),
+                                'data' => json_encode($recordData),
+                            ]);
+
+                        return $oldValues;
+                    });
 
                     $record->refresh();
 
@@ -1469,6 +1481,44 @@ class CustomFormEntriesTable
                     WorkflowActionFeedback::send(
                         Notification::make()->danger(),
                         WorkflowActionFeedback::title($record, 'reject', __('candidate_entrance_statistics.notifications.admin_reject_success_title')),
+                    );
+                });
+
+            $actions[] = Action::make('verify')
+                ->label(__('workflow_notifications.actions.verify'))
+                ->icon('heroicon-o-shield-check')
+                ->color('warning')
+                ->link()
+                ->requiresConfirmation()
+                ->modalHeading(__('workflow_notifications.confirmations.verify_title'))
+                ->modalDescription(fn ($record): string => __(WorkflowStageMessages::hasConfiguredWorkflow($record)
+                    ? 'workflow_notifications.confirmations.verify_body'
+                    : 'workflow_notifications.confirmations.static_receipt_body'))
+                ->modalSubmitActionLabel(__('workflow_notifications.actions.verify'))
+                ->modalCancelActionLabel(__('app.cancel'))
+                ->visible(fn ($record): bool => self::currentPanelIsAdmin()
+                    && Gate::allows('view', $record)
+                    && (WorkflowStageMessages::hasConfiguredWorkflow($record)
+                        ? WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::Verification)
+                        : FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'verify'))
+                    && app(WorkflowCandidateVerifier::class)->canVerify($record))
+                ->action(function ($record): void {
+                    $candidateId = app(WorkflowCandidateVerifier::class)->verify($record);
+
+                    if ($candidateId === null) {
+                        Notification::make()
+                            ->title(__('workflow_notifications.notifications.verification_missing_major_title'))
+                            ->body(__('workflow_notifications.notifications.verification_missing_major_body'))
+                            ->warning()
+                            ->send();
+
+                        return;
+                    }
+
+                    WorkflowActionFeedback::send(
+                        Notification::make()->success()
+                            ->body(__('workflow_notifications.notifications.verification_candidate_id', ['id' => $candidateId])),
+                        WorkflowActionFeedback::title($record, 'verify', __('workflow_notifications.notifications.verification_success')),
                     );
                 });
         }
@@ -1591,21 +1641,23 @@ class CustomFormEntriesTable
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->visible(fn (): bool => in_array(self::entryStatus($record), ['pending', 'failed'], true)
-                        && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'accepted')
-                        && WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::Review))
+                        && self::canReview($record, 'accepted'))
                     ->action(function () use ($record): void {
-                        FilamentActionPermissions::abortUnlessCanForResource(CustomFormEntryResource::class, 'accepted');
+                        $oldValues = DB::transaction(function () use ($record): array {
+                            self::authorizeFreshReview($record, 'accepted', ['pending', 'failed']);
 
-                        $data = is_array($record->data) ? $record->data : [];
-                        $oldValues = [
-                            'review_status' => $record->review_status,
-                            'registration_status' => data_get($data, 'registration_status'),
-                        ];
-                        $data['candidate_status'] = 'pending';
-                        $data['registration_status'] = 'approved';
+                            $data = is_array($record->data) ? $record->data : [];
+                            $oldValues = [
+                                'review_status' => $record->review_status,
+                                'registration_status' => data_get($data, 'registration_status'),
+                            ];
+                            $data['candidate_status'] = 'pending';
+                            $data['registration_status'] = 'approved';
 
-                        DB::transaction(function () use ($record, $data): void {
-                            app(CandidateIdGenerator::class)->assignToEntry($record);
+                            $workflow = WorkflowNotification::forEntry($record);
+                            if ($workflow !== null && ! $workflow->hasStageType(WorkflowStageType::Verification)) {
+                                app(CandidateIdGenerator::class)->assignToEntry($record);
+                            }
 
                             DB::table('custom_form_entries')
                                 ->where('id', $record->id)
@@ -1617,6 +1669,8 @@ class CustomFormEntriesTable
                                     'updated_at' => now(),
                                     'data' => json_encode($data),
                                 ]);
+
+                            return $oldValues;
                         });
 
                         $record->refresh();
@@ -1655,29 +1709,32 @@ class CustomFormEntriesTable
                     ])
                     ->modalSubmitActionLabel(__('candidate_entrance_statistics.statuses.send_back'))
                     ->visible(fn (): bool => self::entryStatus($record) === 'pending'
-                        && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'rejected')
-                        && WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::Review))
+                        && self::canReview($record, 'rejected'))
                     ->action(function (array $data) use ($record): void {
-                        FilamentActionPermissions::abortUnlessCanForResource(CustomFormEntryResource::class, 'rejected');
+                        $oldValues = DB::transaction(function () use ($record, $data): array {
+                            self::authorizeFreshReview($record, 'rejected', ['pending']);
 
-                        $recordData = is_array($record->data) ? $record->data : [];
-                        $oldValues = [
-                            'review_status' => $record->review_status,
-                            'registration_status' => data_get($recordData, 'registration_status'),
-                            'review_note' => $record->review_note,
-                        ];
-                        $recordData['registration_status'] = 'rejected';
+                            $recordData = is_array($record->data) ? $record->data : [];
+                            $oldValues = [
+                                'review_status' => $record->review_status,
+                                'registration_status' => data_get($recordData, 'registration_status'),
+                                'review_note' => $record->review_note,
+                            ];
+                            $recordData['registration_status'] = 'rejected';
 
-                        DB::table('custom_form_entries')
-                            ->where('id', $record->id)
-                            ->update([
-                                'review_status' => 'rejected',
-                                'review_note' => $data['review_note'] ?? null,
-                                'reviewed_by' => auth()->id(),
-                                'reviewed_at' => now(),
-                                'updated_at' => now(),
-                                'data' => json_encode($recordData),
-                            ]);
+                            DB::table('custom_form_entries')
+                                ->where('id', $record->id)
+                                ->update([
+                                    'review_status' => 'rejected',
+                                    'review_note' => $data['review_note'] ?? null,
+                                    'reviewed_by' => auth()->id(),
+                                    'reviewed_at' => now(),
+                                    'updated_at' => now(),
+                                    'data' => json_encode($recordData),
+                                ]);
+
+                            return $oldValues;
+                        });
 
                         $record->refresh();
 
@@ -1716,30 +1773,33 @@ class CustomFormEntriesTable
                     ])
                     ->modalSubmitActionLabel(__('candidate_entrance_statistics.actions.reject'))
                     ->visible(fn (): bool => self::entryStatus($record) === 'pending'
-                        && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'reject')
-                        && WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::Review))
+                        && self::canReview($record, 'reject'))
                     ->action(function (array $data) use ($record): void {
-                        FilamentActionPermissions::abortUnlessCanForResource(CustomFormEntryResource::class, 'reject');
+                        $oldValues = DB::transaction(function () use ($record, $data): array {
+                            self::authorizeFreshReview($record, 'reject', ['pending']);
 
-                        $recordData = is_array($record->data) ? $record->data : [];
-                        $oldValues = [
-                            'review_status' => $record->review_status,
-                            'registration_status' => data_get($recordData, 'registration_status'),
-                            'review_note' => $record->review_note,
-                        ];
-                        $recordData['candidate_status'] = 'failed';
-                        $recordData['registration_status'] = 'failed';
+                            $recordData = is_array($record->data) ? $record->data : [];
+                            $oldValues = [
+                                'review_status' => $record->review_status,
+                                'registration_status' => data_get($recordData, 'registration_status'),
+                                'review_note' => $record->review_note,
+                            ];
+                            $recordData['candidate_status'] = 'failed';
+                            $recordData['registration_status'] = 'failed';
 
-                        DB::table('custom_form_entries')
-                            ->where('id', $record->id)
-                            ->update([
-                                'review_status' => 'failed',
-                                'review_note' => $data['review_note'] ?? null,
-                                'reviewed_by' => auth()->id(),
-                                'reviewed_at' => now(),
-                                'updated_at' => now(),
-                                'data' => json_encode($recordData),
-                            ]);
+                            DB::table('custom_form_entries')
+                                ->where('id', $record->id)
+                                ->update([
+                                    'review_status' => 'failed',
+                                    'review_note' => $data['review_note'] ?? null,
+                                    'reviewed_by' => auth()->id(),
+                                    'reviewed_at' => now(),
+                                    'updated_at' => now(),
+                                    'data' => json_encode($recordData),
+                                ]);
+
+                            return $oldValues;
+                        });
 
                         $record->refresh();
 
@@ -1778,8 +1838,7 @@ class CustomFormEntriesTable
                     ])
                     ->modalSubmitActionLabel(__('candidate_entrance_statistics.statuses.send_back'))
                     ->visible(fn (): bool => self::entryStatus($record) === 'failed'
-                        && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'rejected')
-                        && WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::Review))
+                        && self::canReview($record, 'rejected'))
                     ->action(function (array $data) use ($record): void {
                         self::sendBackAfterFinalRejection($record, $data);
 
@@ -1790,11 +1849,36 @@ class CustomFormEntriesTable
             })
             ->visible(fn ($record): bool =>
                 self::currentPanelIsAdmin()
-                && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'view_pdf')
+                && self::canViewReviewPdf($record)
                 && ! self::isProfileForm($record->custom_form_id)
                 && in_array(self::entryStatus($record), ['pending', 'failed'], true)
                 && self::hasDocumentTemplate($record)
             );
+    }
+
+    protected static function canReview($record, string $action): bool
+    {
+        return Gate::allows('view', $record)
+            && FilamentActionPermissions::canForWorkflowStage(CustomFormEntryResource::class, $action, $record, WorkflowStageType::Review);
+    }
+
+    public static function canViewReviewPdf($record): bool
+    {
+        return self::currentPanelIsAdmin()
+            && Gate::allows('view', $record)
+            && (FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'view_pdf')
+                || FilamentActionPermissions::canForWorkflowStage(CustomFormEntryResource::class, 'view_pdf', $record, WorkflowStageType::Review));
+    }
+
+    protected static function authorizeFreshReview($record, string $action, array $allowedStatuses): void
+    {
+        $current = \Chanthoeun\FilamentCustomForms\Models\CustomFormEntry::query()
+            ->lockForUpdate()->findOrFail($record->getKey());
+        $record->setRawAttributes($current->getAttributes(), true)->unsetRelations();
+        abort_unless(self::currentPanelIsAdmin(), 403);
+        Gate::authorize('view', $record);
+        abort_unless(in_array(self::entryStatus($record), $allowedStatuses, true), 409);
+        FilamentActionPermissions::abortUnlessCanForWorkflowStage(CustomFormEntryResource::class, $action, $record, WorkflowStageType::Review);
     }
 
     protected static function canDownloadPdf($record): bool
@@ -1948,29 +2032,33 @@ class CustomFormEntriesTable
 
     protected static function sendBackAfterFinalRejection($record, array $data): void
     {
-        FilamentActionPermissions::abortUnlessCanForResource(CustomFormEntryResource::class, 'rejected');
-
-        $recordData = is_array($record->data) ? $record->data : [];
         $reviewNote = $data['review_note'] ?? null;
-        $oldValues = [
-            'review_status' => $record->review_status,
-            'registration_status' => data_get($recordData, 'registration_status'),
-            'candidate_status' => data_get($recordData, 'candidate_status'),
-            'review_note' => $record->review_note,
-        ];
-        $recordData['candidate_status'] = 'pending';
-        $recordData['registration_status'] = 'rejected';
+        $oldValues = DB::transaction(function () use ($record, $reviewNote): array {
+            self::authorizeFreshReview($record, 'rejected', ['failed']);
 
-        DB::table('custom_form_entries')
-            ->where('id', $record->id)
-            ->update([
-                'review_status' => 'rejected',
-                'review_note' => $reviewNote,
-                'reviewed_by' => auth()->id(),
-                'reviewed_at' => now(),
-                'updated_at' => now(),
-                'data' => json_encode($recordData),
-            ]);
+            $recordData = is_array($record->data) ? $record->data : [];
+            $oldValues = [
+                'review_status' => $record->review_status,
+                'registration_status' => data_get($recordData, 'registration_status'),
+                'candidate_status' => data_get($recordData, 'candidate_status'),
+                'review_note' => $record->review_note,
+            ];
+            $recordData['candidate_status'] = 'pending';
+            $recordData['registration_status'] = 'rejected';
+
+            DB::table('custom_form_entries')
+                ->where('id', $record->id)
+                ->update([
+                    'review_status' => 'rejected',
+                    'review_note' => $reviewNote,
+                    'reviewed_by' => auth()->id(),
+                    'reviewed_at' => now(),
+                    'updated_at' => now(),
+                    'data' => json_encode($recordData),
+                ]);
+
+            return $oldValues;
+        });
 
         $record->refresh();
 

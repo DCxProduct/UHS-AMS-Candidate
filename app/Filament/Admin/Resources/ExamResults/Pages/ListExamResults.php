@@ -36,7 +36,7 @@ class ListExamResults extends ListRecords
                 ->label(__('exam_results.notify_all_students'))
                 ->icon('heroicon-o-bell-alert')
                 ->color('danger')
-                ->visible(fn (): bool => FilamentActionPermissions::canForResource(static::getResource(), 'notify_all_students'))
+                ->visible(fn (): bool => ExamResultsTable::canSendPassedNotifications(static::getResource()::getResultMenuTarget()))
                 ->alpineClickHandler(<<<'JS'
                     const table = document.querySelector('.fi-ta');
                     const tableData = table?._x_dataStack?.find((data) => data.selectedRecords instanceof Set);
@@ -237,17 +237,13 @@ class ListExamResults extends ListRecords
         bool $isTrackingDeselectedRecords = false,
         array $deselectedRecordKeys = [],
     ): void {
-        FilamentActionPermissions::abortUnlessCanForResource(static::getResource(), 'notify_all_students');
+        abort_unless(FilamentActionPermissions::canAccessWorkflowActions(static::getResource()), 403);
 
         $selectedRecordKeys = array_values(array_filter($selectedRecordKeys));
         $deselectedRecordKeys = array_values(array_filter($deselectedRecordKeys));
 
         if ($selectedRecordsCount < 1) {
-            $records = ExamResultsTable::applyPassedResultMenuFilter(
-                query: CustomFormEntry::query()->with(['creator', 'customForm']),
-                resultMenu: static::getResource()::getResultMenuTarget(),
-                hiddenFlag: null,
-            )
+            $records = static::getResource()::getEloquentQuery()
                 ->get()
                 ->reject(fn (CustomFormEntry $record): bool => ExamResultsTable::hasStudentPassedNotification(
                     $record,
@@ -263,14 +259,8 @@ class ListExamResults extends ListRecords
 
             $records = $query->get();
         } elseif (filled($selectedRecordKeys)) {
-            $records = CustomFormEntry::query()
-                ->with(['creator', 'customForm'])
+            $records = static::getResource()::getEloquentQuery()
                 ->whereKey($selectedRecordKeys)
-                ->tap(fn ($query) => ExamResultsTable::applyPassedResultMenuFilter(
-                    query: $query,
-                    resultMenu: static::getResource()::getResultMenuTarget(),
-                    hiddenFlag: null,
-                ))
                 ->get();
         } else {
             Notification::make()

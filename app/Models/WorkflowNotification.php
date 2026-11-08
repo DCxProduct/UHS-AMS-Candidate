@@ -40,6 +40,27 @@ class WorkflowNotification extends Model
             $stages = self::normalizeStages($workflow->stages, applyTypeDefaults: ! $workflow->exists);
             $types = self::stageTypes($stages);
 
+            if (in_array(WorkflowStageType::Verification->value, $types, true)) {
+                $canonical = array_map(fn (string $type): string => $type === WorkflowStageType::Approval->value ? WorkflowStageType::Review->value : $type, $types);
+                $reviewIndex = array_search(WorkflowStageType::Review->value, $canonical, true);
+                $verificationIndex = array_search(WorkflowStageType::Verification->value, $canonical, true);
+                if ($reviewIndex === false || $reviewIndex >= $verificationIndex) {
+                    throw ValidationException::withMessages(['stages' => __('workflow_notifications.validation.verification_requires_review')]);
+                }
+                $seen = [];
+                foreach ($canonical as $type) {
+                    $behavior = WorkflowStageType::tryFrom($type);
+                    if ($behavior === null || $behavior === WorkflowStageType::Rejected || isset($seen[$type])) {
+                        throw ValidationException::withMessages([
+                            'stages' => isset($seen[$type])
+                                ? __('workflow_notifications.validation.duplicate_stage_type', ['stage' => $behavior?->label() ?? $type])
+                                : __('workflow_notifications.validation.invalid_stage_type'),
+                        ]);
+                    }
+                    $seen[$type] = true;
+                }
+            }
+
             if (self::hasCatalogSelection($stages) && $types !== self::stageTypes((array) $workflow->getOriginal('stages'))) {
                 $seen = [];
                 foreach ($types as $type) {
@@ -77,6 +98,12 @@ class WorkflowNotification extends Model
 
                 if (array_key_exists('stage_type_id', $data)) {
                     $data = \App\Models\WorkflowStageType::bindStage($data, $applyTypeDefaults);
+                }
+
+                $stageType = $data['stage_type'] ?? null;
+                if ($stageType === null || (is_string($stageType) && trim($stageType) === '')) {
+                    $data['stage_type'] = null;
+                    unset($data['enabled_actions'], $data['stage_type_labels']);
                 }
 
                 if (array_key_exists('enabled_actions', $data)) {
@@ -174,11 +201,21 @@ class WorkflowNotification extends Model
 
     private static function stageTypes(array $stages): array
     {
-        return array_values(array_map(function (mixed $stage): string {
+        $types = array_map(function (mixed $stage): ?string {
             $data = is_array($stage) && is_array($stage['data'] ?? null) ? $stage['data'] : $stage;
 
-            return is_array($data) ? (string) ($data['stage_type'] ?? '') : '';
-        }, $stages));
+            if (! is_array($data)) {
+                return '';
+            }
+
+            $type = $data['stage_type'] ?? null;
+
+            return $type === null || (is_string($type) && trim($type) === '')
+                ? null
+                : (is_scalar($type) ? (string) $type : '');
+        }, $stages);
+
+        return array_values(array_filter($types, fn (?string $type): bool => $type !== null));
     }
 
     private static function hasCatalogSelection(array $stages): bool

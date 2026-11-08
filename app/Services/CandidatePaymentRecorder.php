@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\Enums\WorkflowStageType;
+use App\Filament\Admin\Resources\PaymentStatusLists\PaymentStatusListResource;
 use App\Models\Payment;
+use App\Support\FilamentActionPermissions;
 use App\Support\StaticWorkflowMessages;
 use App\Support\WorkflowStageMessages;
 use App\Support\WorkflowStageProgression;
@@ -37,7 +39,12 @@ class CandidatePaymentRecorder
             if (AmsPaymentSync::usesAms($entry)) {
                 throw ValidationException::withMessages(['receipt_number' => __('workflow_notifications.validation.ams_payment_only')]);
             }
-            abort_unless(WorkflowStageMessages::canCurrentUserHandleStage($entry, WorkflowStageType::Payment), 403);
+            FilamentActionPermissions::abortUnlessCanForWorkflowStage(
+                PaymentStatusListResource::class,
+                'pay',
+                $entry,
+                WorkflowStageType::Payment,
+            );
             $ownerId = $entry->created_by;
             $status = strtolower((string) (data_get($entry->data, 'registration_status') ?: $entry->review_status));
             if (! $ownerId || (! WorkflowStageProgression::enabled($entry) && ! in_array($status, ['approved', 'accepted', 'passed'], true))

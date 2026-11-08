@@ -38,7 +38,10 @@ class EmailTemplateForm
                                     ->label(__('email_templates.fields.action'))
                                     ->placeholder(__('email_templates.placeholders.action'))
                                     ->helperText(__('email_templates.helpers.action'))
-                                    ->options(fn (): array => EmailTemplate::actionOptions())
+                                    ->options(fn (): array => EmailTemplate::actionPickerOptions())
+                                    ->extraAlpineAttributes(['class' => 'uhs-template-action-select'])
+                                    ->nullable()
+                                    ->in(fn (): array => array_keys(EmailTemplate::actionOptions()))
                                     ->unique(ignoreRecord: true)
                                     ->validationMessages([
                                         'unique' => __('email_templates.validation.action_taken'),

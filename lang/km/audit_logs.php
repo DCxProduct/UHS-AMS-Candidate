@@ -30,6 +30,7 @@ return [
             'updated' => 'កែប្រែ',
             'deleted' => 'លុប',
             'approved' => 'អនុម័ត',
+            'verified' => 'បានទទួលពាក្យស្នើសុំ',
             'rejected' => 'បដិសេធ',
             'submitted' => 'ដាក់ស្នើ',
             'saved_draft' => 'រក្សាទុកជាព្រាង',

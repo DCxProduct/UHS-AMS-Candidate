@@ -37,6 +37,11 @@ final class WorkflowStageProgression
         return self::change($entry, 'reviewed');
     }
 
+    public static function verified(CustomFormEntry $entry): bool
+    {
+        return self::change($entry, 'verified');
+    }
+
     public static function paid(CustomFormEntry $entry): bool
     {
         return self::change($entry, 'paid');
@@ -140,6 +145,7 @@ final class WorkflowStageProgression
             'version' => 1,
             'submitted' => $status !== 'draft' && strtolower((string) data_get($entry->data, 'registration_status')) !== 'draft',
             'reviewed' => in_array($status, ['approved', 'accepted', 'passed', 'completed'], true),
+            ...(in_array(WorkflowStageType::Verification->value, $types, true) ? ['verification_completed' => false] : []),
             'result_passed' => strtolower((string) data_get($entry->data, 'candidate_status')) === 'passed'
                 || in_array($status, ['passed', 'completed'], true),
             'payment_completed' => $entry->exists && self::latestPaymentIsPaid($entry),
@@ -161,6 +167,12 @@ final class WorkflowStageProgression
     {
         $state['ready_for_final'] = false;
         $state['finished'] = false;
+        if ($stages === []) {
+            $state['current_index'] = null;
+            $state['current_type'] = null;
+
+            return $state;
+        }
         if (! $state['submitted']) {
             return $state;
         }
@@ -181,6 +193,7 @@ final class WorkflowStageProgression
             } elseif (! match ($type) {
                 WorkflowStageType::FormSubmission => $state['submitted'],
                 WorkflowStageType::Review, WorkflowStageType::Approval => $state['reviewed'],
+                WorkflowStageType::Verification => $state['verification_completed'] ?? false,
                 WorkflowStageType::Payment => $state['payment_completed'],
                 WorkflowStageType::AwaitingResults => $state['result_passed'],
                 WorkflowStageType::Completed => true,
@@ -213,11 +226,15 @@ final class WorkflowStageProgression
             }
 
             $stages = self::stages($locked);
+            if ($stages === []) {
+                return false;
+            }
             $previous = data_get($locked->data, 'workflow_progress');
             $state = self::state($locked);
-            if (! is_array($previous) && in_array($event, ['reviewed', 'paid', 'passed'], true)) {
+            if (! is_array($previous) && in_array($event, ['reviewed', 'verified', 'paid', 'passed'], true)) {
                 $state[match ($event) {
                     'reviewed' => 'reviewed',
+                    'verified' => 'verification_completed',
                     'paid' => 'payment_completed',
                     'passed' => 'result_passed',
                 }] = false;
@@ -230,6 +247,8 @@ final class WorkflowStageProgression
                 'initialize' => ! is_array($previous),
                 'submitted' => strtolower((string) $locked->review_status) !== 'draft',
                 'reviewed' => ! $blocked && in_array($current, [WorkflowStageType::Review, WorkflowStageType::Approval], true),
+                'verified' => ! $blocked && $current === WorkflowStageType::Verification
+                    && ($state['reviewed'] ?? false) && filled($locked->candidate_id),
                 'paid' => ! $blocked && $current === WorkflowStageType::Payment && self::latestPaymentIsPaid($locked),
                 'passed' => ! $blocked && $current === WorkflowStageType::AwaitingResults,
                 'notified' => ! $blocked && $state['ready_for_final'] && $notifiedType === self::finalStageType($locked),
@@ -247,6 +266,8 @@ final class WorkflowStageProgression
                 $state['submitted'] = true;
             } elseif ($event === 'reviewed') {
                 $state['reviewed'] = true;
+            } elseif ($event === 'verified') {
+                $state['verification_completed'] = true;
             } elseif ($event === 'paid') {
                 $state['payment_completed'] = true;
             } elseif ($event === 'passed') {
@@ -429,6 +450,10 @@ final class WorkflowStageProgression
             $resultIndex = array_search('awaiting_results', array_column($stages, 'stage_type'), true);
             if ($reviewIndex !== false && $reviewIndex > $index) {
                 $state['reviewed'] = false;
+            }
+            $verificationIndex = array_search(WorkflowStageType::Verification->value, array_column($stages, 'stage_type'), true);
+            if ($verificationIndex !== false && $verificationIndex > $index) {
+                $state['verification_completed'] = false;
             }
             if ($resultIndex !== false && $resultIndex > $index) {
                 $state['result_passed'] = false;

@@ -30,6 +30,7 @@ return [
             'updated' => 'Updated',
             'deleted' => 'Deleted',
             'approved' => 'Approved',
+            'verified' => 'Application received',
             'rejected' => 'Rejected',
             'submitted' => 'Submitted',
             'saved_draft' => 'Saved Draft',

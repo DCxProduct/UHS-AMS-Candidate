@@ -5,8 +5,10 @@ namespace App\Models;
 use App\Enums\WorkflowPaymentSource;
 use App\Enums\WorkflowStageType as StageBehavior;
 use App\Support\WorkflowStageTypeSettings;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Lang;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
@@ -209,6 +211,10 @@ class WorkflowStageType extends Model
             return null;
         }
 
+        if ($behavior === 'verification') {
+            self::ensureVerificationAvailable();
+        }
+
         if (Schema::hasTable('workflow_stage_types')) {
             $type = static::query()->where('behavior', $behavior)->where('is_system', true)->first();
             if ($type) {
@@ -222,9 +228,10 @@ class WorkflowStageType extends Model
     public static function selectOptions(mixed $selected = null, ?string $legacyBehavior = null): array
     {
         $options = [];
+        self::ensureVerificationAvailable();
 
         if (Schema::hasTable('workflow_stage_types')) {
-            $types = static::query()->where('is_active', true)->orderBy('id')->get();
+            $types = static::query()->where('is_active', true)->orderForDisplay()->get();
             foreach ($types as $type) {
                 $options[$type->getKey()] = $type->label();
             }
@@ -243,6 +250,82 @@ class WorkflowStageType extends Model
         }
 
         return $options;
+    }
+
+    /** Present the built-in stages in order, followed by custom stages in creation order. */
+    public function scopeOrderForDisplay(Builder $query): Builder
+    {
+        $behaviors = array_keys(StageBehavior::options());
+        $grammar = $query->getQuery()->getGrammar();
+        $systemColumn = $grammar->wrap($query->qualifyColumn('is_system'));
+        $behaviorColumn = $grammar->wrap($query->qualifyColumn('behavior'));
+        $cases = [];
+        foreach (array_keys($behaviors) as $rank) {
+            $cases[] = 'WHEN ? THEN '.$rank;
+        }
+        $fallback = count($behaviors);
+
+        return $query->orderByRaw(
+            'CASE WHEN '.$systemColumn.' THEN CASE '.$behaviorColumn.' '.implode(' ', $cases).' ELSE '.$fallback.' END ELSE '.$fallback.' END',
+            $behaviors,
+        )->orderBy($query->qualifyColumn('id'));
+    }
+
+    /** Make the new behavior available to installations whose catalog was already seeded. */
+    private static function ensureVerificationAvailable(): void
+    {
+        if (! Schema::hasTable('workflow_stage_types')) {
+            return;
+        }
+
+        $stockLabels = [
+            'label_en' => 'Registrar Verification',
+            'label_km' => 'ការផ្ទៀងផ្ទាត់ដោយការិយាល័យចុះឈ្មោះ',
+        ];
+        $existing = static::query()->where('behavior', 'verification')->where('is_system', true)->first();
+        if ($existing && $existing->label_en !== $stockLabels['label_en'] && $existing->label_km !== $stockLabels['label_km']) {
+            return;
+        }
+
+        DB::transaction(static function () use ($stockLabels): void {
+            // Existing catalogs contain seeded rows; serialize concurrent first-time availability checks.
+            static::query()->orderBy('id')->lockForUpdate()->first();
+            $existing = static::query()->where('behavior', 'verification')->where('is_system', true)->lockForUpdate()->first();
+
+            $labels = self::defaultLabels('verification');
+            $values = [];
+            foreach (['label_en' => 'en', 'label_km' => 'km'] as $column => $locale) {
+                if ($existing && $existing->{$column} !== $stockLabels[$column]) {
+                    continue;
+                }
+
+                $base = $labels[$locale];
+                $suffix = 2;
+                while (static::query()->where($column, $labels[$locale])
+                    ->when($existing, fn ($query) => $query->whereKeyNot($existing->getKey()))->exists()) {
+                    $labels[$locale] = $base.' ('.$suffix++.')';
+                }
+                $values[$column] = $labels[$locale];
+            }
+
+            if ($existing) {
+                if ($values !== []) {
+                    DB::table('workflow_stage_types')->where('id', $existing->getKey())
+                        ->update([...$values, 'updated_at' => now()]);
+                }
+
+                return;
+            }
+
+            DB::table('workflow_stage_types')->insertOrIgnore([
+                ...$values,
+                'behavior' => 'verification',
+                'is_system' => true,
+                'is_active' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        });
     }
 
     /** Keep the engine key authoritative even if a client submits a different hidden value. */

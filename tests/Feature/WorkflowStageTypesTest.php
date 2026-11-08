@@ -269,7 +269,7 @@ class WorkflowStageTypesTest extends TestCase
 
         $this->assertSame('Renamed system review', $builtin->fresh()->label_en);
         $this->assertFalse($builtin->fresh()->is_active);
-        $this->assertSame(5, WorkflowStageType::query()->where('is_system', true)->count());
+        $this->assertSame(6, WorkflowStageType::query()->where('is_system', true)->count());
         $this->assertModelExists($custom);
         $this->assertSame($before, $workflow->fresh()->getRawOriginal('stages'));
         $this->assertSame(StageBehavior::Review->label(), WorkflowStageType::labelForStage(['stage_type' => 'review'], preferSaved: true));

@@ -39,7 +39,10 @@ class SmsTemplateForm
                                     ->label(__('sms_templates.fields.action'))
                                     ->placeholder(__('sms_templates.placeholders.action'))
                                     ->helperText(__('sms_templates.helpers.action'))
-                                    ->options(fn (): array => SmsTemplate::actionOptions())
+                                    ->options(fn (): array => SmsTemplate::actionPickerOptions())
+                                    ->extraAlpineAttributes(['class' => 'uhs-template-action-select'])
+                                    ->nullable()
+                                    ->in(fn (): array => array_keys(SmsTemplate::actionOptions()))
                                     ->unique(ignoreRecord: true)
                                     ->validationMessages([
                                         'unique' => __('sms_templates.validation.action_taken'),

@@ -525,7 +525,12 @@ class PaymentStatusListsTable
                             ->rows(4),
                     ])
                     ->action(function (PaymentStatusList $record, array $data): void {
-                        FilamentActionPermissions::abortUnlessCanForResource(PaymentStatusListResource::class, 'pay');
+                        FilamentActionPermissions::abortUnlessCanForWorkflowStage(
+                            PaymentStatusListResource::class,
+                            'pay',
+                            $record,
+                            WorkflowStageType::Payment,
+                        );
 
                         $paymentData = [
                             'users_id' => self::ownerId($record),
@@ -566,9 +571,13 @@ class PaymentStatusListsTable
                             WorkflowActionFeedback::title($record->fresh(), 'payment', __('payments.actions.record_payment')),
                         );
                     })
-                    ->visible(fn (PaymentStatusList $record): bool => FilamentActionPermissions::canForResource(PaymentStatusListResource::class, 'pay')
+                    ->visible(fn (PaymentStatusList $record): bool => FilamentActionPermissions::canForWorkflowStage(
+                        PaymentStatusListResource::class,
+                        'pay',
+                        $record,
+                        WorkflowStageType::Payment,
+                    )
                         && ! \App\Services\AmsPaymentSync::usesAms($record)
-                        && WorkflowStageMessages::canCurrentUserHandleStage($record, WorkflowStageType::Payment)
                         && self::latestPaymentRecord($record) === null),
             ]);
     }
