@@ -7,7 +7,6 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
-use Illuminate\Support\Str;
 
 class MajorForm
 {
@@ -18,21 +17,6 @@ class MajorForm
                 ->columnSpanFull()
                 ->columns(2)
                 ->schema([
-                    TextInput::make('key')
-                        ->label(__('majors.fields.key'))
-                        ->placeholder(__('majors.fields.key_placeholder'))
-                        ->live(onBlur: true)
-                        ->afterStateUpdated(fn ($state, $set) => $set('key', Str::lower((string) $state)))
-                        ->required()
-                        ->maxLength(100)
-                        ->unique(ignoreRecord: true)
-                        ->dehydrateStateUsing(fn ($state): string => Str::of((string) $state)
-                            ->trim()
-                            ->lower()
-                            ->replaceMatches('/[^a-z0-9_-]+/', '_')
-                            ->replaceMatches('/_+/', '_')
-                            ->trim('_')
-                            ->toString()),
                     TextInput::make('abbreviation')
                         ->label(__('majors.fields.abbreviation'))
                         ->placeholder(__('majors.fields.abbreviation_placeholder'))

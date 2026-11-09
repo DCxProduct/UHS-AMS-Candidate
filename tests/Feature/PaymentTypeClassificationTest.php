@@ -40,7 +40,6 @@ class PaymentTypeClassificationTest extends TestCase
     {
         Livewire::test(CreatePaymentType::class)
             ->fillForm([
-                'key' => 'aba',
                 'abbreviation' => 'ABA',
                 'name_en' => 'ABA',
                 'name_kh' => 'ABA',
@@ -65,7 +64,6 @@ class PaymentTypeClassificationTest extends TestCase
     {
         Livewire::test(CreatePaymentType::class)
             ->fillForm([
-                'key' => 'wire',
                 'name_en' => null,
                 'name_kh' => null,
                 'method' => 'bank',
@@ -76,7 +74,6 @@ class PaymentTypeClassificationTest extends TestCase
 
         Livewire::test(CreatePaymentType::class)
             ->fillForm([
-                'key' => 'wire',
                 'abbreviation' => 'WIRE',
                 'name_en' => null,
                 'name_kh' => null,

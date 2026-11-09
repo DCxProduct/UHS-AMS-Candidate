@@ -351,13 +351,15 @@ class UatWorkflowRemediationTest extends TestCase
     public function test_degree_create_populates_order_edit_and_validation_work(): void
     {
         $this->actingAs($this->user());
-        Livewire::test(CreateDegreeLevel::class)->fillForm(['key' => 'qa_degree', 'label_en' => 'QA Degree', 'label_kh' => 'QA', 'is_active' => true])->call('create')->assertHasNoFormErrors();
+        Livewire::test(CreateDegreeLevel::class)->fillForm(['label_en' => 'QA Degree', 'label_kh' => 'QA', 'is_active' => true])->call('create')->assertHasNoFormErrors();
         $degree = DegreeLevel::where('key', 'qa_degree')->sole();
         $this->assertNotNull($degree->sort_order);
         Livewire::test(EditDegreeLevel::class, ['record' => $degree->id])->fillForm(['label_en' => 'QA Updated'])->call('save')->assertHasNoFormErrors();
         $this->assertSame('QA Updated', $degree->fresh()->label_en);
-        Livewire::test(CreateDegreeLevel::class)->fillForm(['key' => 'qa_degree', 'label_en' => 'Duplicate'])->call('create')->assertHasFormErrors(['key' => 'unique']);
-        Livewire::test(CreateDegreeLevel::class)->fillForm(['key' => '', 'label_en' => ''])->call('create')->assertHasFormErrors(['key' => 'required', 'label_en' => 'required']);
+        $this->assertSame('qa_degree', $degree->fresh()->key);
+        Livewire::test(CreateDegreeLevel::class)->fillForm(['label_en' => 'QA Degree'])->call('create')->assertHasNoFormErrors();
+        $this->assertCount(2, DegreeLevel::query()->pluck('key')->unique());
+        Livewire::test(CreateDegreeLevel::class)->fillForm(['label_en' => ''])->call('create')->assertHasFormErrors(['label_en' => 'required']);
     }
 
     public function test_candidate_cannot_create_degree(): void

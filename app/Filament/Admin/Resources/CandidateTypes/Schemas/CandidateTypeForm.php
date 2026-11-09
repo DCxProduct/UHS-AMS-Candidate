@@ -10,7 +10,6 @@ use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
-use Illuminate\Support\Str;
 
 class CandidateTypeForm
 {
@@ -26,42 +25,6 @@ class CandidateTypeForm
                             'lg' => 3,
                         ])
                             ->schema([
-                                TextInput::make('key')
-                                    ->label(__('candidate_types.fields.key'))
-                                    ->placeholder(__('candidate_types.placeholders.key'))
-                                    ->required()
-                                    ->maxLength(255)
-                                    ->unique(column: 'key', ignoreRecord: true)
-                                    ->dehydrateStateUsing(fn ($state): ?string => blank($state)
-                                        ? null
-                                        : Str::of((string) $state)
-                                            ->trim()
-                                            ->lower()
-                                            ->replaceMatches('/[^a-z0-9_-]+/', '_')
-                                            ->replaceMatches('/_+/', '_')
-                                            ->trim('_')
-                                            ->toString()
-                                    )
-                                    ->rules([
-                                        'required',
-                                        'string',
-                                        'regex:/^[a-z0-9_-]+$/',
-                                        function (): \Closure {
-                                            return function (string $attribute, mixed $value, \Closure $fail): void {
-                                                $name = Str::lower(trim((string) $value));
-
-                                                if ($name === UserTypeOptions::BASE_ROLE) {
-                                                    $fail(__('candidate_types.validation.base_role_reserved'));
-                                                }
-                                            };
-                                        },
-                                    ])
-                                    ->validationMessages([
-                                        'required' => __('candidate_types.validation.name_required'),
-                                        'unique' => __('candidate_types.validation.name_unique'),
-                                        'regex' => __('candidate_types.validation.key_format'),
-                                    ]),
-
                                 TextInput::make('label_en')
                                     ->label(__('candidate_types.fields.label_en'))
                                     ->placeholder(__('candidate_types.placeholders.label_en'))
