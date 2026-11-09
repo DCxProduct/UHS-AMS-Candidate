@@ -4,6 +4,7 @@ namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Ta
 
 use App\Support\WorkflowStageMessages;
 use App\Support\WorkflowActionFeedback;
+use App\Support\WorkflowButtons;
 use App\Support\WorkflowStageProgression;
 use App\Support\WorkflowSubmissionMessages;
 use App\Support\StaticWorkflowMessages;
@@ -1264,9 +1265,9 @@ class CustomFormEntriesTable
                 ->extraAttributes(['style' => 'display: none;']);
 
             $actions[] = Action::make('accepted')
-                ->label(__('candidate_entrance_statistics.statuses.accepted'))
-                ->icon('heroicon-o-check-circle')
-                ->color('success')
+                ->label(fn ($record): string => WorkflowButtons::label($record, 'accept', __('candidate_entrance_statistics.statuses.accepted')))
+                ->icon(fn ($record): ?string => WorkflowButtons::icon($record, 'accept', 'heroicon-o-check-circle'))
+                ->color(fn ($record): string => WorkflowButtons::color($record, 'accept', 'success'))
                 ->requiresConfirmation()
                 ->visible(fn ($record): bool =>
                     self::currentPanelIsAdmin()
@@ -1331,9 +1332,9 @@ class CustomFormEntriesTable
                 });
 
             $actions[] = Action::make('rejected')
-                ->label(__('candidate_entrance_statistics.statuses.send_back'))
-                ->icon('heroicon-o-arrow-uturn-left')
-                ->color('warning')
+                ->label(fn ($record): string => WorkflowButtons::label($record, 'send_back', __('candidate_entrance_statistics.statuses.send_back')))
+                ->icon(fn ($record): ?string => WorkflowButtons::icon($record, 'send_back', 'heroicon-o-arrow-uturn-left'))
+                ->color(fn ($record): string => WorkflowButtons::color($record, 'send_back', 'warning'))
                 ->visible(fn ($record): bool =>
                     self::currentPanelIsAdmin()
                     && ! self::isProfileForm($record->custom_form_id)
@@ -1397,9 +1398,9 @@ class CustomFormEntriesTable
                 });
 
             $actions[] = Action::make('send_back_after_reject')
-                ->label(__('candidate_entrance_statistics.statuses.send_back'))
-                ->icon('heroicon-o-arrow-uturn-left')
-                ->color('warning')
+                ->label(fn ($record): string => WorkflowButtons::label($record, 'send_back', __('candidate_entrance_statistics.statuses.send_back')))
+                ->icon(fn ($record): ?string => WorkflowButtons::icon($record, 'send_back', 'heroicon-o-arrow-uturn-left'))
+                ->color(fn ($record): string => WorkflowButtons::color($record, 'send_back', 'warning'))
                 ->visible(fn ($record): bool =>
                     self::currentPanelIsAdmin()
                     && ! self::isProfileForm($record->custom_form_id)
@@ -1419,9 +1420,9 @@ class CustomFormEntriesTable
                 });
 
             $actions[] = Action::make('reject')
-                ->label(__('candidate_entrance_statistics.actions.reject'))
-                ->icon('heroicon-o-x-circle')
-                ->color('danger')
+                ->label(fn ($record): string => WorkflowButtons::label($record, 'reject', __('candidate_entrance_statistics.actions.reject')))
+                ->icon(fn ($record): ?string => WorkflowButtons::icon($record, 'reject', 'heroicon-o-x-circle'))
+                ->color(fn ($record): string => WorkflowButtons::color($record, 'reject', 'danger'))
                 ->visible(fn ($record): bool =>
                     self::currentPanelIsAdmin()
                     && ! self::isProfileForm($record->custom_form_id)
@@ -1487,9 +1488,9 @@ class CustomFormEntriesTable
                 });
 
             $actions[] = Action::make('verify')
-                ->label(__('workflow_notifications.actions.verify'))
-                ->icon('heroicon-o-shield-check')
-                ->color('warning')
+                ->label(fn ($record): string => WorkflowButtons::label($record, 'verify', __('workflow_notifications.actions.verify')))
+                ->icon(fn ($record): ?string => WorkflowButtons::icon($record, 'verify', 'heroicon-o-shield-check'))
+                ->color(fn ($record): string => WorkflowButtons::color($record, 'verify', 'warning'))
                 ->link()
                 ->requiresConfirmation()
                 ->modalHeading(__('workflow_notifications.confirmations.verify_title'))
@@ -1639,9 +1640,9 @@ class CustomFormEntriesTable
 
                 return [
                     Action::make('approve_from_view')
-                    ->label(__('candidate_entrance_statistics.statuses.accepted'))
-                    ->icon('heroicon-o-check-circle')
-                    ->color('success')
+                    ->label(fn (): string => WorkflowButtons::label($record, 'accept', __('candidate_entrance_statistics.statuses.accepted')))
+                    ->icon(fn (): ?string => WorkflowButtons::icon($record, 'accept', 'heroicon-o-check-circle'))
+                    ->color(fn (): string => WorkflowButtons::color($record, 'accept', 'success'))
                     ->visible(fn (): bool => self::eligibleReviewStatus($record, ['pending', 'failed'])
                         && self::canReview($record, 'accepted'))
                     ->action(function () use ($record): void {
@@ -1702,9 +1703,9 @@ class CustomFormEntriesTable
                     }),
 
                 Action::make('reject_from_view')
-                    ->label(__('candidate_entrance_statistics.statuses.send_back'))
-                    ->icon('heroicon-o-arrow-uturn-left')
-                    ->color('warning')
+                    ->label(fn (): string => WorkflowButtons::label($record, 'send_back', __('candidate_entrance_statistics.statuses.send_back')))
+                    ->icon(fn (): ?string => WorkflowButtons::icon($record, 'send_back', 'heroicon-o-arrow-uturn-left'))
+                    ->color(fn (): string => WorkflowButtons::color($record, 'send_back', 'warning'))
                     ->form([
                         Textarea::make('review_note')
                             ->label(__('candidate_entrance_statistics.review_note'))
@@ -1766,9 +1767,9 @@ class CustomFormEntriesTable
                     }),
 
                 Action::make('reject_final_from_view')
-                    ->label(__('candidate_entrance_statistics.actions.reject'))
-                    ->icon('heroicon-o-x-circle')
-                    ->color('danger')
+                    ->label(fn (): string => WorkflowButtons::label($record, 'reject', __('candidate_entrance_statistics.actions.reject')))
+                    ->icon(fn (): ?string => WorkflowButtons::icon($record, 'reject', 'heroicon-o-x-circle'))
+                    ->color(fn (): string => WorkflowButtons::color($record, 'reject', 'danger'))
                     ->form([
                         Textarea::make('review_note')
                             ->label(__('candidate_entrance_statistics.review_note'))
@@ -1831,9 +1832,9 @@ class CustomFormEntriesTable
                     }),
 
                 Action::make('send_back_after_reject_from_view')
-                    ->label(__('candidate_entrance_statistics.statuses.send_back'))
-                    ->icon('heroicon-o-arrow-uturn-left')
-                    ->color('warning')
+                    ->label(fn (): string => WorkflowButtons::label($record, 'send_back', __('candidate_entrance_statistics.statuses.send_back')))
+                    ->icon(fn (): ?string => WorkflowButtons::icon($record, 'send_back', 'heroicon-o-arrow-uturn-left'))
+                    ->color(fn (): string => WorkflowButtons::color($record, 'send_back', 'warning'))
                     ->form([
                         Textarea::make('review_note')
                             ->label(__('candidate_entrance_statistics.review_note'))

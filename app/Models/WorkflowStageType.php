@@ -17,13 +17,13 @@ use Illuminate\Validation\ValidationException;
 
 class WorkflowStageType extends Model
 {
-    protected $fillable = ['label_en', 'label_km', 'behavior', 'is_active', 'review_actions', 'stage_settings', 'enabled_actions'];
+    protected $fillable = ['label_en', 'label_km', 'behavior', 'is_active', 'review_actions', 'stage_settings', 'enabled_actions', 'workflow_button_ids'];
 
     protected $attributes = ['is_active' => true, 'is_system' => false];
 
     protected function casts(): array
     {
-        return ['is_active' => 'boolean', 'is_system' => 'boolean', 'review_actions' => 'array', 'stage_settings' => 'array', 'enabled_actions' => 'array'];
+        return ['is_active' => 'boolean', 'is_system' => 'boolean', 'review_actions' => 'array', 'stage_settings' => 'array', 'enabled_actions' => 'array', 'workflow_button_ids' => 'array'];
     }
 
     protected static function booted(): void
@@ -31,6 +31,13 @@ class WorkflowStageType extends Model
         static::saving(function (self $type): void {
             $type->label_en = trim((string) $type->label_en);
             $type->label_km = trim((string) $type->label_km);
+
+            if ($type->workflow_button_ids !== null) {
+                $definitions = $type->buttonDefinitions(validate: true);
+                $type->workflow_button_ids = array_column($definitions, 'id');
+                $type->enabled_actions = array_column($definitions, 'action_key');
+                $type->behavior = WorkflowStageTypeSettings::behaviorForSelection($type->enabled_actions);
+            }
 
             if ($type->exists && $type->isDirty('behavior')) {
                 throw ValidationException::withMessages(['behavior' => __('workflow_stage_types.validation.behavior_immutable')]);
@@ -122,6 +129,39 @@ class WorkflowStageType extends Model
         return array_values(array_intersect($this->enabledActionKeys(), array_keys(WorkflowStageTypeSettings::buttonActions())));
     }
 
+    /** Resolve catalog buttons only while configuring a template, never for an application's runtime. */
+    public function buttonDefinitions(bool $validate = false): array
+    {
+        $ids = $this->workflow_button_ids;
+        if ($ids === null) {
+            return [];
+        }
+
+        Validator::make(['workflow_button_ids' => $ids], [
+            'workflow_button_ids' => ['required', 'array', 'min:1'],
+            'workflow_button_ids.*' => ['required', 'integer', 'min:1', 'distinct'],
+        ])->validate();
+        $buttons = WorkflowButton::query()->whereKey($ids)->get()->keyBy('id');
+        $definitions = [];
+        $originalIds = (array) $this->getOriginal('workflow_button_ids');
+        foreach ($ids as $id) {
+            $button = $buttons->get($id);
+            if ($button === null || ($validate && ! $button->is_active && ! in_array((int) $id, array_map('intval', $originalIds), true))) {
+                throw ValidationException::withMessages(['workflow_button_ids' => __('workflow_stage_types.validation.invalid_button')]);
+            }
+            $definitions[] = $button->toDefinition();
+        }
+        $actions = array_column($definitions, 'action_key');
+        if (count(array_unique($actions)) !== count($actions)) {
+            throw ValidationException::withMessages(['workflow_button_ids' => __('workflow_stage_types.validation.duplicate_button_action')]);
+        }
+        if (WorkflowStageTypeSettings::behaviorForSelection($actions) === null) {
+            throw ValidationException::withMessages(['workflow_button_ids' => __('workflow_stage_types.validation.enabled_actions_same_group')]);
+        }
+
+        return $definitions;
+    }
+
     /** Defaults use the same state paths as the existing workflow form and engine. */
     public function stageDefaults(mixed $paymentSource = null): array
     {
@@ -151,6 +191,9 @@ class WorkflowStageType extends Model
         $settings = self::hasReviewActionSettings($settings) ? $settings : [];
         if ($this->enabled_actions !== null) {
             $settings['enabled_actions'] = $this->enabledActionKeys();
+        }
+        if ($this->workflow_button_ids !== null) {
+            $settings['buttons'] = $this->buttonDefinitions();
         }
 
         return $settings;

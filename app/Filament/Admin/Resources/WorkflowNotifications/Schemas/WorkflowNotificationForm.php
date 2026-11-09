@@ -31,6 +31,7 @@ use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Schemas\Components\Text;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Components\View;
@@ -329,6 +330,7 @@ class WorkflowNotificationForm
                         if (blank($state)) {
                             $set('stage_type', null);
                             $set('enabled_actions', null);
+                            $set('buttons', null);
                             self::updateStageType(null, $old, $get, $set);
 
                             return;
@@ -348,8 +350,14 @@ class WorkflowNotificationForm
                             $set('enabled_actions', $definition->enabled_actions);
                         }
 
+                        // Selecting a configured catalog type explicitly chooses its button presentation.
+                        $set('buttons', $definition->workflow_button_ids !== null ? $definition->buttonDefinitions() : null);
+                        if ($definition->workflow_button_ids !== null) {
+                            $set('enabled_actions', $definition->enabled_actions);
+                        }
+
                         $defaults = $definition->stageDefaults($get('payment_source'));
-                        $current = array_map(fn (string $key): mixed => $get($key), array_diff(array_keys($defaults), ['enabled_actions']));
+                        $current = array_map(fn (string $key): mixed => $get($key), array_diff(array_keys($defaults), ['enabled_actions', 'buttons']));
 
                         if ($old !== $behavior && ! StageTypeCatalog::hasReviewActionSettings($current)) {
                             self::applyStageTypeDefaults($definition, $get, $set);
@@ -369,6 +377,16 @@ class WorkflowNotificationForm
                     ->dehydrated(fn (mixed $state, Get $get, ?WorkflowNotification $record): bool => $state !== null
                         || (! $record?->exists && StageTypeCatalog::selected($get('stage_type_id'))?->enabled_actions !== null)),
 
+                Hidden::make('buttons')
+                    ->dehydrated(fn (mixed $state): bool => $state !== null),
+
+                Text::make(fn (Get $get): string => __('workflow_stage_types.fields.workflow_buttons').': '.implode(', ', array_map(
+                    fn (array $button): string => in_array(app()->getLocale(), ['km', 'kh'], true) ? ($button['label_km'] ?: $button['label_en']) : $button['label_en'],
+                    (array) $get('buttons'),
+                )))
+                    ->visible(fn (Get $get): bool => filled($get('buttons')))
+                    ->columnSpanFull(),
+
                 Select::make('stage_type')
                     ->label(__('workflow_notifications.fields.stage_type'))
                     ->options(fn (): array => WorkflowStageType::options())
@@ -383,6 +401,8 @@ class WorkflowNotificationForm
 
                         if ($state !== $old) {
                             $set('enabled_actions', StageTypeCatalog::selected($get('stage_type_id'))?->enabled_actions);
+                            $definition = StageTypeCatalog::selected($get('stage_type_id'));
+                            $set('buttons', $definition?->workflow_button_ids !== null ? $definition?->buttonDefinitions() : null);
                         }
 
                         self::updateStageType($state, $old, $get, $set);
@@ -657,6 +677,7 @@ class WorkflowNotificationForm
         $defaults = $definition->stageDefaults($get('payment_source'));
 
         $set('enabled_actions', $definition->enabled_actions);
+        $set('buttons', $defaults['buttons'] ?? null);
 
         foreach (array_keys(WorkflowStageTypeSettings::actions((string) $definition->behavior)) as $action) {
             foreach (WorkflowStageTypeSettings::fields((string) $definition->behavior, $action) as $field) {

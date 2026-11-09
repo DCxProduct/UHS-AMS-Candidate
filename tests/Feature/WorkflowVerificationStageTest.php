@@ -13,6 +13,7 @@ use App\Filament\Admin\Resources\WorkflowStageTypes\Pages\ListWorkflowStageTypes
 use App\Models\Major;
 use App\Models\Role;
 use App\Models\User;
+use App\Models\WorkflowButton;
 use App\Models\WorkflowNotification;
 use App\Models\WorkflowStageType as StageTypeCatalog;
 use App\Services\CandidatePaymentRecorder;
@@ -71,13 +72,16 @@ class WorkflowVerificationStageTest extends TestCase
         $admin = $this->user('admin');
         $admin->assignRole(Role::findOrCreate('admin', 'web'));
         $this->actingAs($admin);
+        $button = WorkflowButton::query()->create([
+            'label_en' => 'Application Received', 'label_km' => 'បានទទួលពាក្យស្នើសុំ', 'action_key' => 'verify',
+        ]);
         foreach (['en' => 'Application Received', 'km' => 'បានទទួលពាក្យស្នើសុំ'] as $locale => $label) {
             app()->setLocale($locale);
             $this->assertSame($label, __('workflow_notifications.actions.verify'));
             $this->assertSame($label, WorkflowStageType::Verification->label());
             $catalogForm = Livewire::test(CreateWorkflowStageType::class);
-            $field = $catalogForm->instance()->form->getFlatFields()['enabled_actions'];
-            $this->assertSame($label, $field->getOptions()['verify']);
+            $field = $catalogForm->instance()->form->getFlatFields()['workflow_button_ids'];
+            $this->assertSame($label, $field->getOptions()[$button->getKey()]);
             $catalogForm->assertSee($label);
         }
         app()->setLocale('en');
@@ -99,7 +103,7 @@ class WorkflowVerificationStageTest extends TestCase
 
         Livewire::test(CreateWorkflowStageType::class)
             ->fillForm(['label_en' => 'Registrar verification', 'label_km' => 'ការផ្ទៀងផ្ទាត់របស់មន្ត្រី'])
-            ->set('data.enabled_actions', ['verify'])->assertSet('data.behavior', 'verification')
+            ->set('data.workflow_button_ids', [$button->getKey()])->assertSet('data.behavior', 'verification')
             ->call('create')->assertHasNoFormErrors();
         $type = StageTypeCatalog::query()->where('label_en', 'Registrar verification')->firstOrFail();
         $this->assertSame(['verify'], $type->enabledActionKeys());

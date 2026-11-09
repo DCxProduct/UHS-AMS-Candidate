@@ -11,6 +11,7 @@ use App\Support\NotificationLanguage;
 use App\Support\ProfileFormData;
 use App\Support\StudentDynamicFormSchema;
 use App\Support\WorkflowActionFeedback;
+use App\Support\WorkflowButtons;
 use App\Support\WorkflowEntrySnapshot;
 use App\Support\WorkflowStageProgression;
 use App\Support\WorkflowSubmissionMessages;
@@ -274,6 +275,13 @@ class StudentDynamicFormPage extends Page implements HasForms
         $snapshot = in_array('workflow_snapshot', $columns, true)
             ? WorkflowEntrySnapshot::forForm($this->customForm->id)
             : null;
+        $buttonEntry = (new CustomFormEntry)->forceFill([
+            'custom_form_id' => $this->customForm->id,
+            'workflow_snapshot' => $snapshot,
+            'data' => [],
+        ]);
+        abort_unless(WorkflowButtons::allows($buttonEntry, 'submitted'), 403);
+
         if (($snapshot['schema_version'] ?? 1) >= 2 && ($snapshot['has_workflow'] ?? false)) {
             $state['registration_status'] = 'pending';
             $state['submitted_at'] = now()->toDateTimeString();
@@ -328,6 +336,18 @@ class StudentDynamicFormPage extends Page implements HasForms
         }
 
         return true;
+    }
+
+    public function submissionButton(): array
+    {
+        $entry = WorkflowButtons::forForm($this->customForm->getKey());
+
+        return [
+            'label' => WorkflowButtons::label($entry, 'submitted', __('app.save')),
+            'icon' => WorkflowButtons::icon($entry, 'submitted', 'heroicon-o-check-circle'),
+            'color' => WorkflowButtons::color($entry, 'submitted', 'warning'),
+            'visible' => WorkflowButtons::allows($entry, 'submitted'),
+        ];
     }
 
     private function authorizeApplicationForm(): void

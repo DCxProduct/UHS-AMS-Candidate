@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\CandidateEntranceStatistics\Tables;
 
 use App\Support\WorkflowStageMessages;
+use App\Support\WorkflowButtons;
 use App\Support\WorkflowStageProgression;
 use App\Support\WorkflowActionFeedback;
 use App\Support\StaticWorkflowMessages;
@@ -265,9 +266,9 @@ class CandidateEntranceStatisticsTable
             ->filtersFormColumns(4)
             ->recordActions([
                 Action::make('passed')
-                    ->label(__('candidate_entrance_statistics.statuses.passed'))
-                    ->icon('heroicon-o-check-circle')
-                    ->color('success')
+                    ->label(fn ($record): string => WorkflowButtons::label($record, 'passed', __('candidate_entrance_statistics.statuses.passed')))
+                    ->icon(fn ($record): ?string => WorkflowButtons::icon($record, 'passed', 'heroicon-o-check-circle'))
+                    ->color(fn ($record): string => WorkflowButtons::color($record, 'passed', 'success'))
                     ->requiresConfirmation()
                     ->modalHeading(__('candidate_entrance_statistics.passed_confirm_title'))
                     ->modalDescription(__('candidate_entrance_statistics.passed_confirm_description'))

@@ -16,6 +16,7 @@ use App\Support\FormEntryData;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
 use App\Support\WorkflowStageMessages;
+use App\Support\WorkflowButtons;
 use App\Support\WorkflowStageProgression;
 use App\Support\WorkflowActionFeedback;
 use Carbon\Carbon;
@@ -191,9 +192,9 @@ class CandidateExitStatisticsTable
             ->filtersFormColumns(4)
             ->recordActions([
                 Action::make('passed')
-                    ->label(__('candidate_exit_statistics.statuses.passed'))
-                    ->icon('heroicon-o-check-circle')
-                    ->color('success')
+                    ->label(fn ($record): string => WorkflowButtons::label($record->customFormEntry, 'passed', __('candidate_exit_statistics.statuses.passed')))
+                    ->icon(fn ($record): ?string => WorkflowButtons::icon($record->customFormEntry, 'passed', 'heroicon-o-check-circle'))
+                    ->color(fn ($record): string => WorkflowButtons::color($record->customFormEntry, 'passed', 'success'))
                     ->requiresConfirmation()
                     ->modalHeading(__('candidate_exit_statistics.passed_confirm_title'))
                     ->modalDescription(__('candidate_exit_statistics.passed_confirm_description'))

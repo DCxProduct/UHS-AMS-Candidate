@@ -17,6 +17,7 @@ use App\Filament\Admin\Resources\MefInvoiceCodes\MefInvoiceCodeResource;
 use App\Filament\Admin\Resources\MessagingSettings\MessagingSettingResource;
 use App\Filament\Admin\Resources\Payments\PaymentResource;
 use App\Filament\Admin\Resources\SystemUsers\SystemUserResource;
+use App\Filament\Admin\Resources\WorkflowButtons\WorkflowButtonResource;
 use App\Filament\Admin\Resources\WorkflowStageTypes\WorkflowStageTypeResource;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomForms\CustomFormResource;
@@ -33,6 +34,12 @@ class FilamentActionPermissions
     public static function resourceActions(): array
     {
         return [
+            WorkflowButtonResource::class => [
+                'view_any',
+                'create',
+                'update',
+                'delete',
+            ],
             WorkflowStageTypeResource::class => [
                 'view_any',
                 'create',
@@ -209,6 +216,10 @@ class FilamentActionPermissions
 
         if ($entry === null || ! WorkflowStageMessages::hasConfiguredWorkflow($entry)) {
             return self::canForResource($resourceClass, $action);
+        }
+
+        if (! WorkflowButtons::allows($entry, $action, $stage)) {
+            return false;
         }
 
         if (WorkflowStageMessages::canCurrentUserHandleStage($entry, $stage)) {

@@ -23,7 +23,7 @@ class SmsTemplateResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-device-phone-mobile';
 
-    protected static ?int $navigationSort = 92;
+    protected static ?int $navigationSort = 93;
 
     public static function getNavigationGroup(): string|UnitEnum|null
     {

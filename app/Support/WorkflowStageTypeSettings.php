@@ -14,6 +14,7 @@ final class WorkflowStageTypeSettings
     {
         $actions = self::allActions();
         unset($actions['unpaid'], $actions['pending']);
+        $actions = array_replace(array_flip(['submitted', 'verify', 'accept', 'send_back', 'reject', 'paid', 'passed', 'notify']), $actions);
 
         foreach (array_keys($actions) as $key) {
             $actions[$key]['label'] = __('workflow_stage_types.button_actions.'.$key);

@@ -98,7 +98,24 @@ class WorkflowNotification extends Model
                 $stageType = $data['stage_type'] ?? null;
                 if ($stageType === null || (is_string($stageType) && trim($stageType) === '')) {
                     $data['stage_type'] = null;
-                    unset($data['enabled_actions'], $data['stage_type_labels']);
+                    unset($data['enabled_actions'], $data['stage_type_labels'], $data['buttons']);
+                }
+
+                if (array_key_exists('buttons', $data) && $data['buttons'] !== null) {
+                    $behavior = ($data['stage_type'] ?? null) === WorkflowStageType::Approval->value
+                        ? WorkflowStageType::Review->value : (string) ($data['stage_type'] ?? '');
+                    Validator::make($data, [
+                        'buttons' => ['array', 'min:1'],
+                        'buttons.*' => ['required', 'array:id,label_en,label_km,action_key,icon,color'],
+                        'buttons.*.id' => ['required', 'integer', 'min:1', 'distinct'],
+                        'buttons.*.label_en' => ['required', 'string', 'max:255'],
+                        'buttons.*.label_km' => ['nullable', 'string', 'max:255'],
+                        'buttons.*.action_key' => ['required', 'string', 'distinct:strict', Rule::in(array_keys(array_intersect_key(WorkflowStageTypeSettings::actions($behavior), WorkflowStageTypeSettings::buttonActions())))],
+                        'buttons.*.icon' => ['required', 'string', Rule::in(array_keys(WorkflowButton::iconOptions()))],
+                        'buttons.*.color' => ['required', 'string', Rule::in(array_keys(WorkflowButton::colorOptions()))],
+                    ])->validate();
+                    $data['buttons'] = array_values($data['buttons']);
+                    $data['enabled_actions'] = array_column($data['buttons'], 'action_key');
                 }
 
                 if (array_key_exists('enabled_actions', $data)) {

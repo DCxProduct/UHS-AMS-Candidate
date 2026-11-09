@@ -10,23 +10,26 @@
             <br>
 
             <div class="flex justify-end">
+                @php($submissionButton = $this->submissionButton())
+                @if ($submissionButton['visible'])
                 @if ($this->isSubmitPopupActive())
                 <x-filament::button
                     type="button"
-                    color="warning"
-                    icon="heroicon-o-check-circle"
+                    :color="$submissionButton['color']"
+                    :icon="$submissionButton['icon']"
                     x-on:click="confirmSubmitOpen = true"
                 >
-                    {{ __('app.save') }}
+                    {{ $submissionButton['label'] }}
                 </x-filament::button>
                 @else
                 <x-filament::button
                     type="submit"
-                    color="warning"
-                    icon="heroicon-o-check-circle"
+                    :color="$submissionButton['color']"
+                    :icon="$submissionButton['icon']"
                 >
-                    {{ __('app.save') }}
+                    {{ $submissionButton['label'] }}
                 </x-filament::button>
+                @endif
                 @endif
             </div>
         </form>

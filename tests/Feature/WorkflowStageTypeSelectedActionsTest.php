@@ -7,6 +7,7 @@ use App\Filament\Admin\Resources\WorkflowNotifications\Pages\EditWorkflowNotific
 use App\Filament\Admin\Resources\WorkflowStageTypes\Pages\EditWorkflowStageType;
 use App\Models\Role;
 use App\Models\User;
+use App\Models\WorkflowButton;
 use App\Models\WorkflowNotification;
 use App\Models\WorkflowStageType;
 use App\Support\WorkflowStageTypeSettings;
@@ -15,6 +16,7 @@ use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Actions\Action;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
+use Filament\Forms\Components\Hidden;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
@@ -66,18 +68,23 @@ class WorkflowStageTypeSelectedActionsTest extends TestCase
     public function test_catalog_button_edits_preserve_saved_configuration_and_legacy_status_selections(): void
     {
         $actions = ['accept' => ['status_message' => 'Checked wording'], 'send_back' => ['status_message' => 'Retained send back wording'], 'reject' => ['status_message' => 'Retained rejection wording']];
+        $buttons = collect(array_keys($actions))->mapWithKeys(fn (string $action): array => [
+            $action => WorkflowButton::query()->create(['label_en' => 'Selected '.$action, 'action_key' => $action]),
+        ]);
         $type = $this->type('Selected catalog review', 'review', ['accept', 'send_back', 'reject'], ['review_actions' => $actions]);
         $this->assertSame(['accept', 'send_back', 'reject'], $type->enabled_actions);
         $before = $type->getRawOriginal('review_actions');
         Livewire::test(EditWorkflowStageType::class, ['record' => $type->getRouteKey()])
             ->set('data.label_en', 'Renamed catalog review')
-            ->set('data.enabled_actions', ['accept'])
+            ->set('data.workflow_button_ids', [$buttons['accept']->getKey()])
+            ->set('data.enabled_actions', ['reject'])
             ->call('save')->assertHasNoFormErrors();
         $this->assertSame($before, $type->fresh()->getRawOriginal('review_actions'));
         $this->assertSame(['accept'], array_keys($type->fresh()->actionDefaults()));
         Livewire::test(EditWorkflowStageType::class, ['record' => $type->getRouteKey()])
-            ->set('data.enabled_actions', ['accept', 'send_back', 'reject'])
+            ->set('data.workflow_button_ids', $buttons->pluck('id')->all())
             ->call('save')->assertHasNoFormErrors();
+        $this->assertSame(['accept', 'send_back', 'reject'], $type->fresh()->enabled_actions);
         $this->assertSame($before, $type->fresh()->getRawOriginal('review_actions'));
 
         $cases = [
@@ -95,25 +102,24 @@ class WorkflowStageTypeSelectedActionsTest extends TestCase
             $legacy = $this->type('Legacy button selection '.$index, $behavior, $selection, ['stage_settings' => $settings]);
             $selectionBefore = $legacy->getRawOriginal('enabled_actions');
             $settingsBefore = $legacy->getRawOriginal('stage_settings');
-            $visible = $selection === [$status] ? [] : [$button];
-            $this->assertSame($visible, $legacy->enabledButtonKeys());
-            Livewire::test(EditWorkflowStageType::class, ['record' => $legacy->getRouteKey()])
-                ->assertSet('data.enabled_actions', $visible)
+            $component = Livewire::test(EditWorkflowStageType::class, ['record' => $legacy->getRouteKey()]);
+            $this->assertInstanceOf(Hidden::class, $component->instance()->form->getFlatFields(withHidden: true)['enabled_actions']);
+            $component->assertSet('data.enabled_actions', $selection)
                 ->set('data.label_en', 'Renamed legacy selection '.$index)
                 ->call('save')->assertHasNoFormErrors();
             $this->assertSame($selectionBefore, $legacy->fresh()->getRawOriginal('enabled_actions'));
             $this->assertSame($settingsBefore, $legacy->fresh()->getRawOriginal('stage_settings'));
 
-            Livewire::test(EditWorkflowStageType::class, ['record' => $legacy->getRouteKey()])
-                ->set('data.enabled_actions', [$status])->call('save')->assertHasFormErrors();
-            $this->assertSame($selectionBefore, $legacy->fresh()->getRawOriginal('enabled_actions'));
-            $this->assertSame($settingsBefore, $legacy->fresh()->getRawOriginal('stage_settings'));
-
-            if ($visible === []) {
+            // Posted hidden values must never replace legacy nulls, status keys, or behavior.
+            foreach ([[$status], [$button], []] as $forgedSelection) {
                 Livewire::test(EditWorkflowStageType::class, ['record' => $legacy->getRouteKey()])
-                    ->set('data.enabled_actions', [$button])->call('save')->assertHasNoFormErrors();
-                $this->assertSame([$status, $button], $legacy->fresh()->enabled_actions);
+                    ->set('data.enabled_actions', $forgedSelection)
+                    ->set('data.behavior', 'review')
+                    ->call('save')->assertHasNoFormErrors();
+                $this->assertSame($selectionBefore, $legacy->fresh()->getRawOriginal('enabled_actions'));
                 $this->assertSame($settingsBefore, $legacy->fresh()->getRawOriginal('stage_settings'));
+                $this->assertSame($behavior, $legacy->fresh()->behavior);
+                $this->assertNull($legacy->fresh()->workflow_button_ids);
             }
         }
     }

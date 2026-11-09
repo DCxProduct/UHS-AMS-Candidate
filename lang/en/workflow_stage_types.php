@@ -12,6 +12,9 @@ return [
         'behavior_immutable' => 'The stage action cannot be changed after creation.',
         'delete_protected' => 'Built-in stage types and stage types used by a workflow cannot be deleted. You can deactivate them instead.',
         'invalid_selection' => 'Select an available stage type.',
+        'invalid_button' => 'Select an available workflow button.',
+        'workflow_buttons_required' => 'Select at least one workflow button for this stage.',
+        'duplicate_button_action' => 'Select only one button for each action in a stage.',
         'enabled_actions_required' => 'Select at least one button for this stage.',
         'enabled_actions_invalid' => 'Choose one of the listed buttons.',
         'enabled_actions_same_group' => 'Choose buttons from the same group. Use separate stages for different groups.',
@@ -19,6 +22,7 @@ return [
     ],
     'form' => [
         'section_title' => 'Stage Type Details',
+        'workflow_buttons_help' => 'Select buttons created in Workflow Buttons, using the same action group. Existing stages keep their saved actions until you select workflow buttons.',
         'enabled_actions_create_help' => 'Select related buttons for this stage.',
         'enabled_actions_edit_help' => 'Stage group: :group.',
     ],
@@ -28,6 +32,7 @@ return [
         'behavior' => 'Stage action',
         'is_active' => 'Active',
         'enabled_actions' => 'Action buttons for this stage',
+        'workflow_buttons' => 'Custom workflow buttons',
     ],
     'picker_groups' => [
         'candidate' => 'Candidate actions',
@@ -67,6 +72,7 @@ return [
         'no' => 'No.',
         'label' => 'Name',
         'selected_buttons' => 'Selected action buttons',
+        'workflow_templates' => 'Workflow templates',
         'created_at' => 'Created at',
         'updated_at' => 'Updated at',
     ],

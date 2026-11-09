@@ -18,6 +18,7 @@ use App\Support\LocalizedDate;
 use App\Support\MenuRecordVisibility;
 use App\Support\UserTypeOptions;
 use App\Support\WorkflowStageMessages;
+use App\Support\WorkflowButtons;
 use App\Support\WorkflowStageProgression;
 use App\Support\WorkflowProgressQuery;
 use App\Support\WorkflowPassedResultRouting;
@@ -198,9 +199,9 @@ class ExamResultsTable
             ->filtersFormColumns(4)
             ->recordActions([
                 Action::make('notify_student')
-                    ->label(__('exam_results.notify_student'))
-                    ->icon('heroicon-o-bell-alert')
-                    ->color('danger')
+                    ->label(fn ($record): string => WorkflowButtons::label($record, 'notify', __('exam_results.notify_student')))
+                    ->icon(fn ($record): ?string => WorkflowButtons::icon($record, 'notify', 'heroicon-o-bell-alert'))
+                    ->color(fn ($record): string => WorkflowButtons::color($record, 'notify', 'danger'))
                     ->requiresConfirmation()
                     ->modalHeading(__('exam_results.notify_student_confirm_title'))
                     ->modalDescription(__('exam_results.notify_student_confirm_description'))

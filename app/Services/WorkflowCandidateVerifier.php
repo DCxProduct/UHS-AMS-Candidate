@@ -6,6 +6,7 @@ use App\Enums\WorkflowStageType;
 use App\Models\WorkflowNotification;
 use App\Support\AuditLogger;
 use App\Support\FilamentActionPermissions;
+use App\Support\WorkflowButtons;
 use App\Support\WorkflowStageMessages;
 use App\Support\WorkflowStageProgression;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
@@ -22,6 +23,7 @@ final class WorkflowCandidateVerifier
         return $entry->exists
             && $entry->customForm?->is_active
             && ! $entry->customForm->isProfileForm()
+            && WorkflowButtons::allows($entry, 'verify')
             && (WorkflowStageMessages::hasConfiguredWorkflow($entry)
                 ? (! $this->hasBlockedStatus($entry)
                     && WorkflowStageProgression::isCurrent($entry, WorkflowStageType::Verification))
@@ -44,6 +46,7 @@ final class WorkflowCandidateVerifier
             }
 
             $current->loadMissing('customForm');
+            abort_unless(WorkflowButtons::allows($current, 'verify'), 403);
             abort_unless($current->customForm?->is_active
                 && ! $current->customForm->isProfileForm()
                 && WorkflowStageProgression::enabled($current)
