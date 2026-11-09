@@ -6,6 +6,7 @@ use App\Models\CandidateSubmitPopupSetting;
 use App\Support\ClosingDateWorkflow;
 use App\Support\ProfileFormData;
 use App\Support\WorkflowActionFeedback;
+use App\Support\WorkflowButtons;
 use App\Support\WorkflowSubmissionMessages;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
@@ -155,14 +156,15 @@ class CreateCustomFormEntry extends CreateRecord
     {
         return [
             Action::make('submit')
-                ->label(__('app.done'))
-                ->color('primary')
+                ->label(fn (): string => WorkflowButtons::label($this->submissionButtonEntry(), 'submitted', __('app.done')))
+                ->icon(fn (): ?string => WorkflowButtons::icon($this->submissionButtonEntry(), 'submitted'))
+                ->color(fn (): string => WorkflowButtons::color($this->submissionButtonEntry(), 'submitted', 'primary'))
                 ->requiresConfirmation(fn (): bool => $this->isSubmitPopupActive())
                 ->modalHeading($this->submitPopupTitle())
                 ->modalDescription($this->submitPopupDescription())
                 ->modalSubmitActionLabel($this->submitPopupConfirmLabel())
                 ->modalCancelActionLabel($this->submitPopupCancelLabel())
-                ->hidden(fn () => ! $this->isLastWizardStep())
+                ->hidden(fn () => ! $this->isLastWizardStep() || ! WorkflowButtons::allows($this->submissionButtonEntry(), 'submitted'))
                 ->action(function (): void {
                     $state = $this->rawFormState();
 
@@ -222,6 +224,10 @@ class CreateCustomFormEntry extends CreateRecord
         abort_unless(CustomFormEntryResource::canCurrentUserAccessForm($form), 403);
         Gate::authorize('create', [CustomFormEntry::class, $form]);
 
+        if (! $this->isSavingDraft) {
+            abort_unless(WorkflowButtons::allows($this->submissionButtonEntry($form->getKey()), 'submitted'), 403);
+        }
+
         $user = auth()->user();
         $isCandidate = $user?->registration_type === 'student'
             && ! (method_exists($user, 'hasEffectiveStaffRole') && $user->hasEffectiveStaffRole());
@@ -250,6 +256,15 @@ class CreateCustomFormEntry extends CreateRecord
         }
 
         return $data;
+    }
+
+    protected function submissionButtonEntry(int|string|null $formId = null): CustomFormEntry
+    {
+        if ($this->draftEntryId && ($draft = CustomFormEntryResource::getEloquentQuery()->find($this->draftEntryId))) {
+            return $draft;
+        }
+
+        return WorkflowButtons::forForm($formId ?? $this->form_id ?? data_get($this->data ?? [], 'custom_form_id'));
     }
 
     protected function getRedirectUrl(): string

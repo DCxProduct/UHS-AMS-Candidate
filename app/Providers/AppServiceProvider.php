@@ -29,12 +29,15 @@ use App\Support\AdminRolePermissions;
 use App\Support\FilamentActionPermissions;
 use App\Support\NotificationLanguage;
 use App\Support\WorkflowStageMessages;
+use App\Support\WorkflowButtonColors;
+use App\Support\WorkflowConfigurationUsage;
 use App\Support\WorkflowSubmissionMessages;
 use BezhanSalleh\LanguageSwitch\LanguageSwitch;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate;
 use Filament\Notifications\Notification;
+use Filament\Support\Facades\FilamentColor;
 use Filament\Tables\Columns\TextColumn;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Notifications\ResetPassword;
@@ -52,11 +55,13 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-
+        $this->app->scoped(WorkflowConfigurationUsage::class);
     }
 
     public function boot(): void
     {
+
+        FilamentColor::register(WorkflowButtonColors::palettes());
 
         MessagingSetting::applyToConfig();
 

@@ -11,6 +11,7 @@ use App\Filament\Admin\Resources\WorkflowStageTypes\Pages\ListWorkflowStageTypes
 use App\Filament\Admin\Resources\WorkflowStageTypes\WorkflowStageTypeResource;
 use App\Models\Role;
 use App\Models\User;
+use App\Models\WorkflowButton;
 use App\Models\WorkflowNotification;
 use App\Models\WorkflowStageType;
 use App\Policies\WorkflowStageTypePolicy;
@@ -52,11 +53,14 @@ class WorkflowStageTypesTest extends TestCase
 
     public function test_admin_can_create_and_edit_localized_options_in_id_order_and_disable_them_without_losing_existing_selection(): void
     {
+        $button = WorkflowButton::query()->create(['label_en' => 'Check clinical application', 'action_key' => 'accept']);
         Livewire::test(CreateWorkflowStageType::class)
-            ->fillForm(['label_en' => 'Clinical review', 'label_km' => 'ការពិនិត្យគ្លីនិក', 'behavior' => 'review', 'is_active' => true])
+            ->fillForm(['label_en' => 'Clinical review', 'label_km' => 'ការពិនិត្យគ្លីនិក', 'workflow_button_ids' => [$button->getKey()], 'is_active' => true])
             ->call('create')
             ->assertHasNoFormErrors();
         $type = WorkflowStageType::query()->where('label_en', 'Clinical review')->firstOrFail();
+        $this->assertSame([$button->getKey()], $type->workflow_button_ids);
+        $this->assertSame(['accept'], $type->enabled_actions);
         $this->assertSame(WorkflowStageType::query()->where('is_active', true)->orderBy('id')->pluck('id')->all(), array_keys(WorkflowStageType::selectOptions()));
         $this->assertSame('Clinical review', WorkflowStageType::selectOptions()[$type->getKey()]);
         app()->setLocale('km');
@@ -111,18 +115,19 @@ class WorkflowStageTypesTest extends TestCase
         $this->assertSame('review', $type->fresh()->behavior);
         $this->assertValidation(fn () => $this->type('Unsupported behavior', 'unsupported'), 'behavior');
 
+        $button = WorkflowButton::query()->create(['label_en' => 'Check duplicate application', 'action_key' => 'accept']);
         Livewire::test(CreateWorkflowStageType::class)
-            ->fillForm(['label_en' => $type->label_en, 'label_km' => $type->label_km, 'behavior' => 'review', 'is_active' => true])
+            ->fillForm(['label_en' => $type->label_en, 'label_km' => $type->label_km, 'workflow_button_ids' => [$button->getKey()], 'is_active' => true])
             ->call('create')
             ->assertHasFormErrors(['label_en' => 'unique', 'label_km' => 'unique']);
     }
 
-    public function test_builtin_and_referenced_types_cannot_be_deleted_but_unused_custom_types_can(): void
+    public function test_unused_builtin_and_custom_types_can_be_deleted_but_referenced_types_cannot(): void
     {
         $builtin = WorkflowStageType::query()->where('is_system', true)->firstOrFail();
         $used = $this->type('Referenced review');
         WorkflowNotification::query()->create(['name' => 'Referenced type workflow', 'stages' => [$this->stage($used)]]);
-        foreach ([$builtin, $used] as $protected) {
+        foreach ([$used] as $protected) {
             $this->assertFalse($protected->canDelete());
             $this->assertFalse(WorkflowStageTypeResource::canDelete($protected));
             $this->assertValidation(fn () => $protected->delete(), 'stage_type');
@@ -132,6 +137,13 @@ class WorkflowStageTypesTest extends TestCase
             $this->assertModelExists($protected);
             Livewire::test(EditWorkflowStageType::class, ['record' => $protected->getRouteKey()])->assertActionHidden('delete');
         }
+        $this->assertTrue($builtin->canDelete());
+        $this->assertTrue(WorkflowStageTypeResource::canDelete($builtin));
+        Livewire::test(ListWorkflowStageTypes::class)
+            ->assertTableActionVisible('delete', $builtin)
+            ->assertTableActionEnabled('delete', $builtin)
+            ->callTableAction('delete', $builtin);
+        $this->assertModelMissing($builtin);
         $unused = $this->type('Unused review');
         Livewire::test(EditWorkflowStageType::class, ['record' => $unused->getRouteKey()])->callAction('delete');
         $this->assertModelMissing($unused);
@@ -225,8 +237,8 @@ class WorkflowStageTypesTest extends TestCase
             $this->assertArrayNotHasKey('stage_type_id', $stage['data']);
             $this->assertArrayNotHasKey('stage_type_labels', $stage['data']);
         }
-        $this->assertArrayHasKey('legacy:approval', WorkflowStageType::selectOptions('legacy:approval', 'approval'));
-        $this->assertArrayHasKey('legacy:rejected', WorkflowStageType::selectOptions('legacy:rejected', 'rejected'));
+        $this->assertArrayNotHasKey('legacy:approval', WorkflowStageType::selectOptions('legacy:approval', 'approval'));
+        $this->assertArrayNotHasKey('legacy:rejected', WorkflowStageType::selectOptions('legacy:rejected', 'rejected'));
     }
 
     public function test_existing_application_snapshots_and_engine_progress_stay_frozen_after_catalog_rename_disable_and_deletion(): void

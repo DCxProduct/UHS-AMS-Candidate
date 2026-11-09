@@ -181,16 +181,16 @@ class WorkflowOrderedStagesTest extends TestCase
             $entry = $this->entry($form);
             WorkflowStageProgression::submitted($entry);
             $context = implode(' -> ', array_map(fn (WorkflowStageType $type): string => $type->value, $order));
-            $gates = array_values(array_filter($order, fn (WorkflowStageType $type): bool => ! in_array($type, [WorkflowStageType::FormSubmission, WorkflowStageType::Completed], true)));
+            $gates = array_values(array_filter($order, fn (WorkflowStageType $type): bool => $type !== WorkflowStageType::FormSubmission));
 
             foreach ($gates as $index => $gate) {
                 $this->assertSame($gate, WorkflowStageProgression::currentType($entry->fresh()), $context);
                 $this->assertTrue(WorkflowStageProgression::isCurrent($entry->fresh(), $gate), $context);
-                $this->assertFalse(WorkflowStageProgression::readyForFinal($entry->fresh()), $context);
+                $this->assertSame($gate === WorkflowStageType::Completed && end($order) === WorkflowStageType::Completed, WorkflowStageProgression::readyForFinal($entry->fresh()), $context);
                 $this->assertFalse(WorkflowStageProgression::finished($entry->fresh()), $context);
-                $this->assertFalse(ExamResultResource::getEloquentQuery()->whereKey($entry->id)->exists(), $context);
+                $this->assertSame($gate === WorkflowStageType::Completed, ExamResultResource::getEloquentQuery()->whereKey($entry->id)->exists(), $context);
 
-                foreach ([WorkflowStageType::Review, WorkflowStageType::Payment, WorkflowStageType::AwaitingResults] as $other) {
+                foreach ([WorkflowStageType::Review, WorkflowStageType::Payment, WorkflowStageType::AwaitingResults, WorkflowStageType::Completed] as $other) {
                     if ($other !== $gate && ! in_array($other, array_slice($gates, 0, $index), true)) {
                         $before = data_get($entry->fresh()->data, 'workflow_progress');
                         $this->performEngineEvent($entry, $other, prepare: false);
@@ -203,14 +203,6 @@ class WorkflowOrderedStagesTest extends TestCase
                 $after = data_get($entry->fresh()->data, 'workflow_progress');
                 $this->performEngineEvent($entry, $gate, prepare: false);
                 $this->assertSame($after, data_get($entry->fresh()->data, 'workflow_progress'), $context.' duplicate '.$gate->value);
-            }
-
-            if ($order[array_key_last($order)] === WorkflowStageType::Completed) {
-                $this->assertSame(WorkflowStageType::Completed, WorkflowStageProgression::currentType($entry->fresh()), $context);
-                $this->assertTrue(WorkflowStageProgression::readyForFinal($entry->fresh()), $context);
-                $this->assertFalse(WorkflowStageProgression::finished($entry->fresh()), $context);
-                $this->assertFalse(WorkflowStageMessages::hasSentNotification($entry->fresh(), WorkflowStageType::Completed), $context);
-                WorkflowStageProgression::notified($entry, WorkflowStageType::Completed);
             }
 
             $this->assertTrue(WorkflowStageProgression::finished($entry->fresh()), $context);
@@ -322,6 +314,17 @@ class WorkflowOrderedStagesTest extends TestCase
         WorkflowStageProgression::submitted($entry);
         $this->assertFalse(WorkflowStageMessages::notifyCheckpoint($entry, WorkflowStageType::Completed));
         $this->post(route('admin.custom-form-entries.approve', $entry))->assertRedirect();
+        $entry->refresh();
+
+        $this->assertSame(WorkflowStageType::Completed, WorkflowStageProgression::currentType($entry->fresh()));
+        $this->assertNull($this->completedAt($entry, WorkflowStageType::Completed));
+        $this->assertFalse(WorkflowStageProgression::readyForFinal($entry));
+        $this->assertTrue(ExamResultResource::getEloquentQuery()->whereKey($entry->id)->exists());
+        $this->assertSame('pending', data_get($entry->data, 'candidate_status'));
+        $this->assertSame(__('workflow_notifications.status_defaults.notification_pending'), WorkflowStageMessages::statusText($entry));
+        $this->assertFalse(WorkflowStageMessages::hasSentNotification($entry, WorkflowStageType::Completed));
+        Livewire::test(ListExamResults::class)->assertCanSeeTableRecords([$entry])->assertTableActionVisible('notify_student', $entry)
+            ->callTableAction('notify_student', $entry)->assertHasNoTableActionErrors();
 
         $this->assertSame(WorkflowStageType::AwaitingResults, WorkflowStageMessages::stageTypeFor($entry->fresh()));
         $this->assertNotNull($this->completedAt($entry->fresh(), WorkflowStageType::Completed));
@@ -692,6 +695,7 @@ class WorkflowOrderedStagesTest extends TestCase
             WorkflowStageType::Review => WorkflowStageProgression::reviewed($entry),
             WorkflowStageType::Payment => WorkflowStageProgression::paid($entry),
             WorkflowStageType::AwaitingResults => WorkflowStageProgression::passed($entry),
+            WorkflowStageType::Completed => WorkflowStageProgression::notified($entry, WorkflowStageType::Completed),
             default => null,
         };
     }

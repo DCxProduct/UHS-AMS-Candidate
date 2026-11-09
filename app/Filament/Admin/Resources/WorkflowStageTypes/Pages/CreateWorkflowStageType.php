@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\WorkflowStageTypes\Pages;
 
 use App\Filament\Admin\Resources\WorkflowStageTypes\WorkflowStageTypeResource;
+use App\Models\WorkflowStageType;
 use App\Support\WorkflowStageTypeSettings;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Validation\ValidationException;
@@ -13,21 +14,16 @@ class CreateWorkflowStageType extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        unset($data['review_actions'], $data['stage_settings']);
+        unset($data['review_actions'], $data['stage_settings'], $data['enabled_actions'], $data['behavior']);
 
-        $selection = $data['enabled_actions'] ?? null;
-
-        if ($selection !== null) {
-            $behavior = WorkflowStageTypeSettings::behaviorForSelection($selection);
-            if ($behavior === null) {
-                throw ValidationException::withMessages([
-                    'data.enabled_actions' => __('workflow_stage_types.validation.enabled_actions_same_group'),
-                ]);
-            }
-
-            // Chosen buttons, rather than a client-supplied hidden value, determine execution.
-            $data['behavior'] = $behavior;
+        if (blank($data['workflow_button_ids'] ?? null)) {
+            throw ValidationException::withMessages([
+                'data.workflow_button_ids' => __('workflow_stage_types.validation.workflow_buttons_required'),
+            ]);
         }
+
+        $data['enabled_actions'] = array_column((new WorkflowStageType($data))->buttonDefinitions(), 'action_key');
+        $data['behavior'] = WorkflowStageTypeSettings::behaviorForSelection($data['enabled_actions']);
 
         return $data;
     }

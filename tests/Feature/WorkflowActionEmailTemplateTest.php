@@ -47,7 +47,7 @@ class WorkflowActionEmailTemplateTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const ACTIONS = ['form_submission', 'verification', 'accept', 'send_back', 'reject', 'payment', 'awaiting_results', 'completed'];
+    private const ACTIONS = ['form_submission', 'accept', 'send_back', 'reject', 'verification', 'payment', 'awaiting_results', 'completed'];
 
     private const STAGE_NAMES = ['form_submission' => 'Submit checkpoint', 'review' => 'Review checkpoint', 'verification' => 'Receipt checkpoint', 'payment' => 'Payment checkpoint', 'awaiting_results' => 'Results checkpoint', 'completed' => 'Final checkpoint'];
 
@@ -239,7 +239,7 @@ class WorkflowActionEmailTemplateTest extends TestCase
             $this->assertCount(6, $options);
             $this->assertSame(array_values(WorkflowStageType::options()), array_keys($options));
             $this->assertSame(self::ACTIONS, collect($options)->collapse()->keys()->all());
-            $this->assertSame($model::actionOptions(), collect($options)->collapse()->all());
+            $this->assertEqualsCanonicalizing($model::actionOptions(), collect($options)->collapse()->all());
             $this->assertSame($model::actionPickerOptions(), $options);
             $this->assertFalse($field->isNative());
             $this->assertFalse($field->isHtmlAllowed());
@@ -256,7 +256,7 @@ class WorkflowActionEmailTemplateTest extends TestCase
             $this->assertCount(6, $jsOptions);
             $this->assertSame(array_keys($options), array_column($jsOptions, 'label'));
             $this->assertSame(self::ACTIONS, collect($jsOptions)->pluck('options')->collapse()->pluck('value')->all());
-            $this->assertSame($model::actionOptions(), collect($jsOptions)->pluck('options')->collapse()->pluck('label', 'value')->all());
+            $this->assertEqualsCanonicalizing($model::actionOptions(), collect($jsOptions)->pluck('options')->collapse()->pluck('label', 'value')->all());
         }
         $this->assertSame(__('candidate_entrance_statistics.statuses.accepted'), EmailTemplate::actionOptions()['accept']);
         $this->assertSame(__('workflow_notifications.actions.verify'), EmailTemplate::actionOptions()['verification']);
@@ -338,14 +338,14 @@ class WorkflowActionEmailTemplateTest extends TestCase
                 $options = $field->getOptions();
                 $this->assertCount(6, $options);
                 $this->assertSame(self::ACTIONS, collect($options)->collapse()->keys()->all());
-                $this->assertSame($model::actionOptions(), collect($options)->collapse()->all());
+                $this->assertEqualsCanonicalizing($model::actionOptions(), collect($options)->collapse()->all());
                 $this->assertFalse($field->isNative());
                 $this->assertFalse($field->isHtmlAllowed());
                 $jsOptions = $field->getOptionsForJs();
                 $this->assertCount(6, $jsOptions);
                 $this->assertSame(array_keys($options), array_column($jsOptions, 'label'));
                 $this->assertSame(self::ACTIONS, collect($jsOptions)->pluck('options')->collapse()->pluck('value')->all());
-                $this->assertSame($model::actionOptions(), collect($jsOptions)->pluck('options')->collapse()->pluck('label', 'value')->all());
+                $this->assertEqualsCanonicalizing($model::actionOptions(), collect($jsOptions)->pluck('options')->collapse()->pluck('label', 'value')->all());
                 if ($parameters !== []) {
                     $this->assertSame($model::actionOptions()['accept'], $field->getOptionLabel());
                 }
@@ -399,7 +399,7 @@ class WorkflowActionEmailTemplateTest extends TestCase
         foreach ([EmailTemplate::class, SmsTemplate::class] as $model) {
             $options = $model::actionPickerOptions();
             $this->assertCount(5, $options);
-            $this->assertSame($model::actionOptions(), collect($options)->collapse()->all());
+            $this->assertEqualsCanonicalizing($model::actionOptions(), collect($options)->collapse()->all());
             $this->assertSame(['accept', 'send_back', 'reject', 'payment'], array_keys($options['Shared stage heading']));
         }
         $this->assertEquals($before, DB::table('workflow_stage_types')->orderBy('id')->get()->toArray());

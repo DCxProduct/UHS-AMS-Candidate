@@ -53,7 +53,7 @@ class CandidateIdGenerator
         return sprintf('%s-%04d', $abbreviation, $next);
     }
 
-    /** Assign an ID once, at the point the application is checked. */
+    /** Assign an ID at the authorized workflow or static receipt checkpoint. */
     public function assignToEntry(CustomFormEntry $entry): ?string
     {
         return DB::transaction(function () use ($entry): ?string {

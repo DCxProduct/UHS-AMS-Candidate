@@ -407,8 +407,8 @@ class WorkflowNotificationResourceTest extends TestCase
 
             $this->assertSame([
                 'form_submission',
-                'verification',
                 'review',
+                'verification',
                 'payment',
                 'awaiting_results',
                 'completed',

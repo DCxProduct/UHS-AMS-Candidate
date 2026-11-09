@@ -16,6 +16,7 @@ use App\Support\FormEntryData;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
 use App\Support\WorkflowStageMessages;
+use App\Support\WorkflowButtons;
 use App\Support\WorkflowStageProgression;
 use App\Support\WorkflowActionFeedback;
 use Carbon\Carbon;
@@ -191,16 +192,16 @@ class CandidateExitStatisticsTable
             ->filtersFormColumns(4)
             ->recordActions([
                 Action::make('passed')
-                    ->label(__('candidate_exit_statistics.statuses.passed'))
-                    ->icon('heroicon-o-check-circle')
-                    ->color('success')
+                    ->label(fn ($record): string => WorkflowButtons::label($record->customFormEntry, 'passed', __('candidate_exit_statistics.statuses.passed')))
+                    ->icon(fn ($record): ?string => WorkflowButtons::icon($record->customFormEntry, 'passed', 'heroicon-o-check-circle'))
+                    ->color(fn ($record): string => WorkflowButtons::color($record->customFormEntry, 'passed', 'success'))
                     ->requiresConfirmation()
                     ->modalHeading(__('candidate_exit_statistics.passed_confirm_title'))
                     ->modalDescription(__('candidate_exit_statistics.passed_confirm_description'))
                     ->modalSubmitActionLabel(__('candidate_exit_statistics.passed_confirm_yes'))
                     ->modalCancelActionLabel(__('candidate_exit_statistics.passed_confirm_no'))
                     ->visible(fn (CandidateExitStatistic $record): bool => self::canHandleResultAction($record, 'passed')
-                        && strtolower((string) $record->candidate_status) === 'pending')
+                        && self::hasResultStatus($record, passed: false))
                     ->action(function (CandidateExitStatistic $record): void {
                         abort_unless(self::changeResult($record, 'passed', passed: true), 409);
                         $entry = CustomFormEntry::query()->find($record->custom_form_entry_id);
@@ -231,7 +232,7 @@ class CandidateExitStatisticsTable
 
                         return self::canHandleResultAction($record, 'edit_result')
                             && ($entry === null || ! CandidateEntranceStatisticsTable::hasStudentPassedNotification($entry))
-                            && strtolower((string) $record->candidate_status) === 'passed';
+                            && self::hasResultStatus($record, passed: true);
                     })
                     ->action(function (CandidateExitStatistic $record): void {
                         abort_unless(self::changeResult($record, 'edit_result', passed: false), 409);
@@ -328,6 +329,15 @@ class CandidateExitStatisticsTable
             ]);
     }
 
+    protected static function hasResultStatus(CandidateExitStatistic $record, bool $passed): bool
+    {
+        $entry = $record->customFormEntry;
+
+        return $entry !== null && WorkflowStageProgression::enabled($entry)
+            ? (bool) data_get($entry->data, 'workflow_progress.result_passed', false) === $passed
+            : strtolower((string) $record->candidate_status) === ($passed ? 'passed' : 'pending');
+    }
+
     protected static function canHandleResultAction(CandidateExitStatistic $record, string $action): bool
     {
         return FilamentActionPermissions::canForWorkflowStage(
@@ -348,10 +358,10 @@ class CandidateExitStatisticsTable
             return true;
         }
 
-        $status = $action === 'bulk_passed' ? 'pending' : 'passed';
+        $passed = $action !== 'bulk_passed';
 
         return CandidateExitStatisticResource::getEloquentQuery()->lazy()->contains(
-            fn (CandidateExitStatistic $record): bool => strtolower((string) $record->candidate_status) === $status
+            fn (CandidateExitStatistic $record): bool => self::hasResultStatus($record, $passed)
                 && $record->customFormEntry !== null
                 && WorkflowStageMessages::hasConfiguredWorkflow($record->customFormEntry)
                 && self::canHandleResultAction($record, $action),
@@ -377,7 +387,7 @@ class CandidateExitStatisticsTable
                 return false;
             }
 
-            if (strtolower((string) $current->candidate_status) !== ($passed ? 'pending' : 'passed')
+            if (! self::hasResultStatus($current, ! $passed)
                 || (! $passed && $entry !== null && CandidateEntranceStatisticsTable::hasStudentPassedNotification($entry))) {
                 return false;
             }
@@ -435,20 +445,24 @@ class CandidateExitStatisticsTable
             $data = is_array($entry->data) ? $entry->data : [];
             $now = now();
 
-            $data['candidate_status'] = 'passed';
-            $data['registration_status'] = 'passed';
+            $ordered = WorkflowStageProgression::enabled($entry);
+            if (! $ordered) {
+                $data['candidate_status'] = 'passed';
+                $data['registration_status'] = 'passed';
+            }
             $data['exam_result'] = 'passed';
             $data['result_status'] = 'passed';
             $data['candidate_reviewed_at'] = $now->toDateTimeString();
 
-            DB::table('custom_form_entries')
-                ->where('id', $entry->getKey())
-                ->update([
-                    'data' => json_encode($data, JSON_UNESCAPED_UNICODE),
-                    'review_status' => 'passed',
-                    'reviewed_at' => $now,
-                    'updated_at' => $now,
-                ]);
+            $updates = [
+                'data' => json_encode($data, JSON_UNESCAPED_UNICODE),
+                'updated_at' => $now,
+            ];
+            if (! $ordered) {
+                $updates['review_status'] = 'passed';
+                $updates['reviewed_at'] = $now;
+            }
+            DB::table('custom_form_entries')->where('id', $entry->getKey())->update($updates);
 
             $entry->refresh();
             if (WorkflowStageProgression::enabled($entry)) {

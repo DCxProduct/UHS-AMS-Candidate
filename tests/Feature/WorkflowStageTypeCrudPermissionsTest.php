@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Filament\Admin\Resources\EmailTemplates\EmailTemplateResource;
 use App\Filament\Admin\Resources\SmsTemplates\SmsTemplateResource;
+use App\Filament\Admin\Resources\WorkflowButtons\WorkflowButtonResource;
 use App\Filament\Admin\Resources\WorkflowNotifications\WorkflowNotificationResource;
 use App\Filament\Admin\Resources\WorkflowStageTypes\Pages\CreateWorkflowStageType;
 use App\Filament\Admin\Resources\WorkflowStageTypes\Pages\EditWorkflowStageType;
@@ -11,6 +12,7 @@ use App\Filament\Admin\Resources\WorkflowStageTypes\Pages\ListWorkflowStageTypes
 use App\Filament\Admin\Resources\WorkflowStageTypes\WorkflowStageTypeResource;
 use App\Models\Role;
 use App\Models\User;
+use App\Models\WorkflowButton;
 use App\Models\WorkflowNotification;
 use App\Models\WorkflowStageType;
 use BezhanSalleh\FilamentShield\Resources\Roles\Pages\EditRole;
@@ -35,7 +37,7 @@ class WorkflowStageTypeCrudPermissionsTest extends TestCase
 
     private const PERMISSIONS = ['ViewAny:WorkflowStageType', 'Create:WorkflowStageType', 'Update:WorkflowStageType', 'Delete:WorkflowStageType'];
 
-    private const FORM_BUILDER_RESOURCES = [CustomFormResource::class, DocumentTemplateResource::class, WorkflowNotificationResource::class, WorkflowStageTypeResource::class, EmailTemplateResource::class, SmsTemplateResource::class];
+    private const FORM_BUILDER_RESOURCES = [CustomFormResource::class, DocumentTemplateResource::class, WorkflowNotificationResource::class, WorkflowStageTypeResource::class, WorkflowButtonResource::class, EmailTemplateResource::class, SmsTemplateResource::class];
 
     protected function setUp(): void
     {
@@ -58,11 +60,14 @@ class WorkflowStageTypeCrudPermissionsTest extends TestCase
         foreach (self::PERMISSIONS as $permission) {
             $this->assertTrue($staff->can($permission));
         }
+        $accept = WorkflowButton::query()->create(['label_en' => 'Check application', 'action_key' => 'accept']);
+        $reject = WorkflowButton::query()->create(['label_en' => 'Reject application', 'action_key' => 'reject']);
+        $this->assertFalse($staff->can('Create:WorkflowButton'));
         $this->assertTrue(WorkflowStageTypeResource::shouldRegisterNavigation());
         Livewire::test(ListWorkflowStageTypes::class)->assertActionVisible('create');
         Livewire::test(CreateWorkflowStageType::class)
             ->fillForm(['label_en' => 'CRUD configured review', 'label_km' => 'ការពិនិត្យសម្រាប់ CRUD', 'is_active' => true])
-            ->set('data.enabled_actions', ['accept'])
+            ->set('data.workflow_button_ids', [$accept->getKey()])
             ->call('create')->assertHasNoFormErrors();
         $type = WorkflowStageType::query()->where('label_en', 'CRUD configured review')->firstOrFail();
         $list = Livewire::test(ListWorkflowStageTypes::class)
@@ -72,11 +77,12 @@ class WorkflowStageTypeCrudPermissionsTest extends TestCase
         $this->assertSame(WorkflowStageTypeResource::getUrl('edit', ['record' => $type]), $list->instance()->getTable()->getRecordUrl($type));
         Livewire::test(EditWorkflowStageType::class, ['record' => $type->getRouteKey()])
             ->set('data.label_en', 'Renamed CRUD review')
-            ->set('data.enabled_actions', ['accept', 'reject'])
+            ->set('data.workflow_button_ids', [$accept->getKey(), $reject->getKey()])
             ->set('data.is_active', false)
             ->call('save')->assertHasNoFormErrors();
         $this->assertSame('Renamed CRUD review', $type->fresh()->label_en);
         $this->assertSame(['accept', 'reject'], $type->fresh()->enabled_actions);
+        $this->assertSame([$accept->getKey(), $reject->getKey()], $type->fresh()->workflow_button_ids);
         $this->assertFalse($type->fresh()->is_active);
         Livewire::test(ListWorkflowStageTypes::class)->callTableAction('delete', $type);
         $this->assertModelMissing($type);
@@ -84,7 +90,13 @@ class WorkflowStageTypeCrudPermissionsTest extends TestCase
         $used = $this->type('Referenced CRUD review');
         WorkflowNotification::query()->create(['name' => 'Referenced CRUD workflow', 'stages' => [['type' => 'stage', 'data' => ['stage_name' => 'Review', 'stage_type_id' => $used->getKey(), 'stage_type' => 'review']]]]);
         $builtin = WorkflowStageType::query()->where('is_system', true)->firstOrFail();
-        foreach ([$builtin, $used] as $protected) {
+        $this->assertTrue(WorkflowStageTypeResource::canDelete($builtin));
+        Livewire::test(ListWorkflowStageTypes::class)
+            ->assertTableActionVisible('delete', $builtin)
+            ->assertTableActionEnabled('delete', $builtin)
+            ->callTableAction('delete', $builtin);
+        $this->assertModelMissing($builtin);
+        foreach ([$used] as $protected) {
             $this->assertFalse(WorkflowStageTypeResource::canDelete($protected));
             Livewire::test(ListWorkflowStageTypes::class)
                 ->assertTableActionHidden('delete', $protected)
@@ -180,7 +192,7 @@ class WorkflowStageTypeCrudPermissionsTest extends TestCase
         try {
             $sort->setValue(null, 200);
             $component = Livewire::test(EditRole::class, ['record' => $role->getRouteKey()]);
-            $this->assertSame([CustomFormResource::class, DocumentTemplateResource::class, WorkflowNotificationResource::class, EmailTemplateResource::class, SmsTemplateResource::class, WorkflowStageTypeResource::class], $this->formBuilderPermissionOrder($component));
+            $this->assertSame([CustomFormResource::class, DocumentTemplateResource::class, WorkflowNotificationResource::class, WorkflowButtonResource::class, EmailTemplateResource::class, SmsTemplateResource::class, WorkflowStageTypeResource::class], $this->formBuilderPermissionOrder($component));
         } finally {
             $sort->setValue(null, $original);
         }

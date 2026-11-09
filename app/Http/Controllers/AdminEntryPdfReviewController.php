@@ -8,6 +8,7 @@ use App\Support\FilamentActionPermissions;
 use App\Support\StaticWorkflowMessages;
 use App\Support\WorkflowActionFeedback;
 use App\Support\WorkflowStageMessages;
+use App\Support\WorkflowStageProgression;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate;
@@ -55,7 +56,9 @@ class AdminEntryPdfReviewController extends Controller
                 'review_status' => $entry->review_status,
                 'registration_status' => data_get($data, 'registration_status'),
             ];
-            $data['candidate_status'] = 'pending';
+            if (! WorkflowStageProgression::enabled($entry)) {
+                $data['candidate_status'] = 'pending';
+            }
             $data['registration_status'] = 'approved';
 
             DB::table('custom_form_entries')->where('id', $entry->id)->update([
@@ -165,7 +168,7 @@ class AdminEntryPdfReviewController extends Controller
 
         $status = strtolower((string) (data_get($entry->data, 'registration_status') ?: $entry->review_status));
         $allowed = $action === 'accepted' ? ['pending', 'failed'] : ['pending'];
-        abort_unless(in_array($status, $allowed, true), 409, 'This application is no longer eligible for review.');
+        abort_unless(WorkflowStageProgression::enabled($entry) || in_array($status, $allowed, true), 409, 'This application is no longer eligible for review.');
     }
 
     protected function authorizePdfView(CustomFormEntry $entry): void

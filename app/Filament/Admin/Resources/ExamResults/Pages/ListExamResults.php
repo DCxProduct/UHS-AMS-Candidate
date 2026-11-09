@@ -271,6 +271,10 @@ class ListExamResults extends ListRecords
             return;
         }
 
+        $notificationStages = $records->mapWithKeys(fn (CustomFormEntry $record): array => [
+            $record->getKey() => ExamResultsTable::notificationStageForRecord($record, static::getResource()::getResultMenuTarget()),
+        ])->all();
+
         $sentCount = ExamResultsTable::sendPassedNotifications(
             $records,
             static::getResource()::getResultMenuTarget(),
@@ -289,7 +293,7 @@ class ListExamResults extends ListRecords
         $this->dispatch('$refresh');
 
         $summary = __('exam_results.notifications_sent', ['count' => $sentCount]);
-        $title = WorkflowActionFeedback::bulkTitle($records, 'completed', $summary);
+        $title = WorkflowActionFeedback::bulkTitle($records, 'completed', $summary, notificationStages: $notificationStages);
         if ($title !== null && ($sentCount === 0 || $sentCount !== $records->count())) {
             $title = $summary;
         }

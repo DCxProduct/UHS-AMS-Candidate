@@ -13,6 +13,7 @@ use App\Filament\Admin\Resources\WorkflowStageTypes\Pages\ListWorkflowStageTypes
 use App\Models\Major;
 use App\Models\Role;
 use App\Models\User;
+use App\Models\WorkflowButton;
 use App\Models\WorkflowNotification;
 use App\Models\WorkflowStageType as StageTypeCatalog;
 use App\Services\CandidatePaymentRecorder;
@@ -26,6 +27,7 @@ use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Pages\Li
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate;
+use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -70,13 +72,16 @@ class WorkflowVerificationStageTest extends TestCase
         $admin = $this->user('admin');
         $admin->assignRole(Role::findOrCreate('admin', 'web'));
         $this->actingAs($admin);
+        $button = WorkflowButton::query()->create([
+            'label_en' => 'Application Received', 'label_km' => 'បានទទួលពាក្យស្នើសុំ', 'action_key' => 'verify',
+        ]);
         foreach (['en' => 'Application Received', 'km' => 'បានទទួលពាក្យស្នើសុំ'] as $locale => $label) {
             app()->setLocale($locale);
             $this->assertSame($label, __('workflow_notifications.actions.verify'));
             $this->assertSame($label, WorkflowStageType::Verification->label());
             $catalogForm = Livewire::test(CreateWorkflowStageType::class);
-            $field = $catalogForm->instance()->form->getFlatFields()['enabled_actions'];
-            $this->assertSame($label, $field->getOptions()['verify']);
+            $field = $catalogForm->instance()->form->getFlatFields()['workflow_button_ids'];
+            $this->assertSame($label, $field->getOptions()[$button->getKey()]);
             $catalogForm->assertSee($label);
         }
         app()->setLocale('en');
@@ -98,7 +103,7 @@ class WorkflowVerificationStageTest extends TestCase
 
         Livewire::test(CreateWorkflowStageType::class)
             ->fillForm(['label_en' => 'Registrar verification', 'label_km' => 'ការផ្ទៀងផ្ទាត់របស់មន្ត្រី'])
-            ->set('data.enabled_actions', ['verify'])->assertSet('data.behavior', 'verification')
+            ->set('data.workflow_button_ids', [$button->getKey()])->assertSet('data.behavior', 'verification')
             ->call('create')->assertHasNoFormErrors();
         $type = StageTypeCatalog::query()->where('label_en', 'Registrar verification')->firstOrFail();
         $this->assertSame(['verify'], $type->enabledActionKeys());
@@ -142,17 +147,76 @@ class WorkflowVerificationStageTest extends TestCase
         Livewire::test(ListWorkflowStageTypes::class)->callTableAction('delete', $type);
         $this->assertModelMissing($type);
 
-        foreach ([[$this->stages()[1]], [$this->stages()[1], $this->stages()[0]]] as $invalidOrder) {
+        foreach ([[$this->stages()[1], $this->stages()[1]], [$this->stages()[1], ['type' => 'stage', 'data' => ['stage_type' => 'unsupported_stage']]]] as $invalidTypes) {
             try {
-                WorkflowNotification::query()->create(['name' => 'Invalid verification '.uniqid(), 'stages' => $invalidOrder]);
-                $this->fail('Verification requires a preceding review gate.');
+                WorkflowNotification::query()->create(['name' => 'Invalid verification '.uniqid(), 'stages' => $invalidTypes]);
+                $this->fail('Workflow stage types must remain unique and supported.');
             } catch (ValidationException $exception) {
                 $this->assertArrayHasKey('stages', $exception->errors());
             }
         }
     }
 
-    public function test_catalog_and_workflow_picker_display_received_second_without_reordering_saved_applications(): void
+    public static function workflowSavePages(): array
+    {
+        return [
+            'create in English' => ['en', false],
+            'edit in English' => ['en', true],
+            'create in Khmer' => ['km', false],
+            'edit in Khmer' => ['km', true],
+        ];
+    }
+
+    #[DataProvider('workflowSavePages')]
+    public function test_receipt_before_review_saves_in_both_locales_and_can_be_reordered_without_relaxing_type_validation(string $locale, bool $editing): void
+    {
+        $this->staff->assignRole(Role::findOrCreate('admin', 'web'));
+        app()->setLocale($locale);
+        [$review, $receipt] = array_slice($this->stages(), 0, 2);
+        $review['data']['review_actions']['accept'] = [
+            'status_message' => 'Ready for receipt',
+            'notification_message' => 'Please bring your application.',
+            'staff_notification_message' => '',
+            'staff_recipient_roles' => [],
+        ];
+        $validStages = ['review' => $review, 'receipt' => $receipt];
+        $name = 'Workflow save feedback';
+        $workflow = $editing ? WorkflowNotification::query()->create(['name' => $name, 'stages' => array_values($validStages)]) : null;
+        $component = Livewire::test(
+            $editing ? EditWorkflowNotification::class : CreateWorkflowNotification::class,
+            $editing ? ['record' => $workflow->getRouteKey()] : [],
+        )->set('data.stages', [])->fillForm([
+            'name' => $name,
+            'stages' => ['receipt' => $receipt, 'review' => $review],
+        ]);
+        $component->call($editing ? 'save' : 'create')->assertHasNoFormErrors();
+        $saved = WorkflowNotification::query()->where('name', $name)->sole();
+        $this->assertSame(['verification', 'review'], array_column(array_column($saved->stages, 'data'), 'stage_type'));
+        $this->assertSame('Please bring your application.', data_get($saved->stages, '1.data.review_actions.accept.notification_message'));
+        $this->assertEmpty(data_get($saved->stages, '1.data.review_actions.accept.staff_notification_message'));
+        $this->assertEmpty(data_get($saved->stages, '1.data.review_actions.accept.staff_recipient_roles'));
+
+        $component = Livewire::test(EditWorkflowNotification::class, ['record' => $saved->getRouteKey()]);
+        $component->callAction(TestAction::make('moveUp')
+            ->schemaComponent('stages-section.stages', schema: 'form')
+            ->arguments(['item' => array_keys($component->get('data.stages'))[1]]))
+            ->call('save')
+            ->assertHasNoFormErrors();
+        $saved->refresh();
+        $this->assertSame(['review', 'verification'], array_column(array_column($saved->stages, 'data'), 'stage_type'));
+        $this->assertSame('Please bring your application.', data_get($saved->stages, '0.data.review_actions.accept.notification_message'));
+        $this->assertEmpty(data_get($saved->stages, '0.data.review_actions.accept.staff_notification_message'));
+        $this->assertEmpty(data_get($saved->stages, '0.data.review_actions.accept.staff_recipient_roles'));
+        $before = $saved->getRawOriginal('stages');
+        foreach ([['receipt' => $receipt, 'duplicate' => $receipt], ['review' => $review, 'unknown' => ['type' => 'stage', 'data' => ['stage_name' => 'Unsupported', 'stage_type' => 'unsupported_stage']]]] as $invalidStages) {
+            Livewire::test(EditWorkflowNotification::class, ['record' => $saved->getRouteKey()])
+                ->set('data.stages', [])->fillForm(['name' => $name, 'stages' => $invalidStages])
+                ->call('save')->assertHasFormErrors(['stages']);
+            $this->assertSame($before, $saved->fresh()->getRawOriginal('stages'));
+        }
+    }
+
+    public function test_catalog_and_workflow_picker_display_review_second_and_received_third_without_reordering_saved_applications(): void
     {
         $this->staff->assignRole(Role::findOrCreate('admin', 'web'));
         $builtins = DB::table('workflow_stage_types')->where('is_system', true)->get()->keyBy('behavior');
@@ -166,10 +230,11 @@ class WorkflowVerificationStageTest extends TestCase
         $secondCustom = StageTypeCatalog::query()->create([
             'label_en' => 'Custom submission', 'label_km' => 'ការដាក់ស្នើផ្ទាល់ខ្លួន', 'behavior' => 'form_submission', 'is_active' => true,
         ]);
-        $expected = StageTypeCatalog::query()->whereIn('id', [1, 6, 2, 3, 4, 5])->get()->keyBy('id');
-        $expected = collect([1, 6, 2, 3, 4, 5])->map(fn (int $id) => $expected[$id])->push($firstCustom, $secondCustom);
+        $expected = StageTypeCatalog::query()->whereIn('id', [1, 2, 6, 3, 4, 5])->get()->keyBy('id');
+        $expected = collect([1, 2, 6, 3, 4, 5])->map(fn (int $id) => $expected[$id])->push($firstCustom, $secondCustom);
         $expectedIds = $expected->pluck('id')->all();
-        $this->assertSame(6, $expected[1]->id);
+        $this->assertSame('review', $expected[1]->behavior);
+        $this->assertSame('verification', $expected[2]->behavior);
         $form = $this->form();
         $stages = $this->stages();
         $workflow = WorkflowNotification::query()->create([

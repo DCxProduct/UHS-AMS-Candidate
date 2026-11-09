@@ -7,6 +7,7 @@ use App\Filament\Admin\Resources\WorkflowStageTypes\Pages\CreateWorkflowStageTyp
 use App\Filament\Admin\Resources\WorkflowStageTypes\Pages\EditWorkflowStageType;
 use App\Models\Role;
 use App\Models\User;
+use App\Models\WorkflowButton;
 use App\Models\WorkflowNotification;
 use App\Models\WorkflowStageType;
 use App\Support\WorkflowStageTypeSettings;
@@ -15,7 +16,7 @@ use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use DOMDocument;
 use DOMXPath;
 use Filament\Facades\Filament;
-use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -46,129 +47,109 @@ class WorkflowStageTypeGlobalActionsTest extends TestCase
         $this->actingAs($admin);
     }
 
-    public function test_blank_create_shows_eight_localized_buttons_without_statuses_or_extra_settings(): void
+    public function test_blank_create_shows_only_the_localized_catalog_selector_without_fixed_action_checkboxes(): void
     {
+        $buttons = array_map(fn (string $action): WorkflowButton => $this->button($action), self::ACTIONS);
+
         foreach (['en', 'km'] as $locale) {
             app()->setLocale($locale);
-            $component = Livewire::test(CreateWorkflowStageType::class)->assertFormFieldHidden('behavior')->assertFormFieldVisible('enabled_actions');
+            $component = Livewire::test(CreateWorkflowStageType::class)
+                ->assertFormFieldVisible('workflow_button_ids');
             $fields = $component->instance()->form->getFlatFields(withHidden: true);
+            $this->assertInstanceOf(Hidden::class, $fields['behavior']);
+            $this->assertInstanceOf(Hidden::class, $fields['enabled_actions']);
+            $this->assertInstanceOf(Select::class, $fields['workflow_button_ids']);
             $this->assertArrayNotHasKey('base_stage_type_id', $fields);
             $this->assertArrayNotHasKey('review_actions.accept.status_message', $fields);
             $this->assertArrayNotHasKey('stage_settings.status_message', $fields);
-            $this->assertInstanceOf(CheckboxList::class, $fields['enabled_actions']);
-            $this->assertSame(self::ACTIONS, array_keys($fields['enabled_actions']->getOptions()));
-            foreach ($fields['enabled_actions']->getOptions() as $value => $label) {
-                $this->assertFalse($fields['enabled_actions']->isOptionDisabled($value, $label), $value);
+            $options = $fields['workflow_button_ids']->getOptions();
+            $this->assertCount(count(self::ACTIONS), $options);
+            foreach ($buttons as $button) {
+                $this->assertSame($button->label(), $options[$button->getKey()]);
             }
-            $this->assertSame([], $component->get('data.enabled_actions'));
-            $this->assertSame([], $fields['enabled_actions']->getDescriptions());
-            foreach (WorkflowStageTypeSettings::buttonActions() as $value => $action) {
-                $component->assertSee($action['label']);
-                $this->assertSame($action['label'], $fields['enabled_actions']->getOptions()[$value]);
-            }
-            $xpath = $this->renderedButtons($component);
-            $this->assertSame(2, $xpath->query('//fieldset[@data-stage-type-button-group]')->length);
-            foreach (['candidate' => ['submitted'], 'system' => ['verify', 'accept', 'send_back', 'reject', 'paid', 'passed', 'notify']] as $group => $expected) {
-                $legend = $xpath->query('//fieldset[@data-stage-type-button-group="'.$group.'"]/legend')->item(0);
-                $this->assertNotNull($legend);
-                $this->assertStringContainsString(__('workflow_stage_types.picker_groups.'.$group), $legend->textContent);
-                $inputs = $xpath->query('//fieldset[@data-stage-type-button-group="'.$group.'"]//input[@type="checkbox"]');
-                $this->assertSame($expected, array_map(fn ($input): string => $input->getAttribute('value'), iterator_to_array($inputs)));
-                foreach ($inputs as $input) {
-                    $this->assertSame('data.enabled_actions', $input->getAttribute('wire:model.live'));
-                    $this->assertFalse($input->hasAttribute('disabled'));
-                }
-            }
-            $component->set('data.enabled_actions', ['accept']);
-            $afterSelection = $this->actionField($component);
-            foreach ($afterSelection->getOptions() as $value => $label) {
-                $this->assertFalse($afterSelection->isOptionDisabled($value, $label), $value);
-            }
-            $checked = $this->renderedButtons($component)->query('//fieldset[@data-stage-type-button-group]//input[@checked]');
-            $this->assertSame(['accept'], array_map(fn ($input): string => $input->getAttribute('value'), iterator_to_array($checked)));
+            $document = new DOMDocument;
+            $this->assertTrue($document->loadHTML('<meta charset="UTF-8">'.$component->html(), LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING));
+            $this->assertSame(0, (new DOMXPath($document))->query('//fieldset[@data-stage-type-button-group]')->length);
         }
     }
 
-    public function test_each_action_group_infers_its_existing_canonical_behavior_and_saves_without_a_base_selection(): void
+    public function test_catalog_button_groups_infer_their_existing_canonical_behavior_and_save_without_a_base_selection(): void
     {
-        $groups = ['form_submission' => ['submitted'], 'review' => ['accept', 'reject'], 'payment' => ['paid'], 'awaiting_results' => ['passed'], 'completed' => ['notify']];
+        $groups = ['form_submission' => ['submitted'], 'verification' => ['verify'], 'review' => ['accept', 'reject'], 'payment' => ['paid'], 'awaiting_results' => ['passed'], 'completed' => ['notify']];
         foreach ($groups as $behavior => $actions) {
             $this->assertSame($behavior, WorkflowStageTypeSettings::behaviorForSelection($actions));
+            $ids = array_map(fn (string $action): int => $this->button($action)->getKey(), $actions);
             Livewire::test(CreateWorkflowStageType::class)
                 ->fillForm(['label_en' => 'Global '.$behavior, 'label_km' => 'ខ្មែរ '.$behavior, 'is_active' => true])
-                ->set('data.enabled_actions', $actions)->assertSet('data.behavior', $behavior)->assertSet('data.enabled_actions', $actions)
+                ->set('data.workflow_button_ids', $ids)
                 ->call('create')->assertHasNoFormErrors();
             $type = WorkflowStageType::query()->where('label_en', 'Global '.$behavior)->firstOrFail();
             $this->assertSame($behavior, $type->behavior);
             $this->assertSame($actions, $type->enabled_actions);
+            $this->assertSame($ids, $type->workflow_button_ids);
             $this->assertEmpty($type->review_actions);
             $this->assertEmpty($type->stage_settings);
         }
     }
 
-    public function test_changing_actions_in_the_same_group_preserves_entered_labels_and_active_state(): void
+    public function test_changing_catalog_buttons_in_the_same_group_preserves_entered_labels_and_active_state(): void
     {
-        $component = Livewire::test(CreateWorkflowStageType::class)
+        $accept = $this->button('accept');
+        $reject = $this->button('reject');
+        Livewire::test(CreateWorkflowStageType::class)
             ->fillForm(['label_en' => 'My configured review', 'label_km' => 'ការពិនិត្យរបស់ខ្ញុំ', 'is_active' => false])
-            ->set('data.enabled_actions', ['accept'])
-            ->set('data.enabled_actions', ['accept', 'reject'])
-            ->set('data.enabled_actions', ['reject'])->set('data.enabled_actions', ['accept', 'reject'])
-            ->assertSet('data.behavior', 'review')
+            ->set('data.workflow_button_ids', [$accept->getKey()])
+            ->set('data.workflow_button_ids', [$accept->getKey(), $reject->getKey()])
+            ->set('data.workflow_button_ids', [$reject->getKey()])
+            ->set('data.workflow_button_ids', [$accept->getKey(), $reject->getKey()])
             ->assertSet('data.label_en', 'My configured review')->assertSet('data.label_km', 'ការពិនិត្យរបស់ខ្ញុំ')
             ->assertSet('data.is_active', false)
             ->call('create')->assertHasNoFormErrors();
         $type = WorkflowStageType::query()->where('label_en', 'My configured review')->firstOrFail();
         $this->assertSame(['accept', 'reject'], $type->enabled_actions);
+        $this->assertSame([$accept->getKey(), $reject->getKey()], $type->workflow_button_ids);
         $this->assertFalse($type->is_active);
-        $this->assertSame(self::ACTIONS, array_keys($this->actionField($component)->getOptions()));
     }
 
-    public function test_mixed_empty_unknown_and_status_selections_fail_without_being_silently_truncated(): void
+    public function test_mixed_empty_unknown_and_duplicate_catalog_selections_fail_without_being_silently_truncated(): void
     {
-        $cases = [[['accept', 'paid'], null], [[], null], [['unknown'], null], [self::ACTIONS, null], [['unpaid'], 'payment'], [['pending'], 'awaiting_results']];
-        foreach ($cases as $index => [$actions, $canonicalBehavior]) {
-            $this->assertSame($canonicalBehavior, WorkflowStageTypeSettings::behaviorForSelection($actions));
+        $accept = $this->button('accept');
+        $otherAccept = $this->button('accept');
+        $paid = $this->button('paid');
+        $cases = [[$accept->getKey(), $paid->getKey()], [], [999999], [$accept->getKey(), $accept->getKey()], [$accept->getKey(), $otherAccept->getKey()]];
+        foreach ($cases as $index => $ids) {
             $component = Livewire::test(CreateWorkflowStageType::class)
                 ->fillForm(['label_en' => 'Invalid global '.$index, 'label_km' => 'មិនត្រឹមត្រូវ '.$index])
-                ->set('data.enabled_actions', $actions)->call('create')->assertHasFormErrors();
-            $component->assertSet('data.enabled_actions', $actions);
-            $this->assertNotEmpty(array_filter($component->errors()->keys(), fn (string $key): bool => str_starts_with($key, 'data.enabled_actions')));
-            $this->assertSame(self::ACTIONS, array_keys($this->actionField($component)->getOptions()));
+                ->set('data.workflow_button_ids', $ids)->call('create')->assertHasFormErrors();
+            $this->assertNotEmpty(array_filter($component->errors()->keys(), fn (string $key): bool => str_starts_with($key, 'data.workflow_button_ids')));
             $this->assertDatabaseMissing('workflow_stage_types', ['label_en' => 'Invalid global '.$index]);
         }
     }
 
-    public function test_edit_rejects_a_different_action_group_and_leaves_the_existing_definition_unchanged(): void
+    public function test_edit_rejects_a_different_catalog_action_group_and_leaves_the_existing_definition_unchanged(): void
     {
-        $type = WorkflowStageType::query()->create(['label_en' => 'Immutable review', 'label_km' => 'ការពិនិត្យមិនអាចប្តូរ', 'behavior' => 'review', 'enabled_actions' => ['accept'], 'review_actions' => ['accept' => ['status_message' => 'Original checked wording']]])->fresh();
+        $accept = $this->button('accept');
+        $paid = $this->button('paid');
+        $type = WorkflowStageType::query()->create(['label_en' => 'Immutable review', 'label_km' => 'ការពិនិត្យមិនអាចប្តូរ', 'workflow_button_ids' => [$accept->getKey()], 'review_actions' => ['accept' => ['status_message' => 'Original checked wording']]])->fresh();
         $before = $type->getRawOriginal();
-        $component = Livewire::test(EditWorkflowStageType::class, ['record' => $type->getRouteKey()])
-            ->assertFormFieldHidden('behavior')->assertFormFieldDisabled('behavior');
-        $field = $this->actionField($component);
-        foreach ($field->getOptions() as $value => $label) {
-            $this->assertSame(! in_array($value, ['accept', 'send_back', 'reject'], true), $field->isOptionDisabled($value, $label), $value);
-        }
-        $inputs = $this->renderedButtons($component)->query('//fieldset[@data-stage-type-button-group]//input[@type="checkbox"]');
-        $this->assertSame(8, $inputs->length);
-        foreach ($inputs as $input) {
-            $this->assertSame(! in_array($input->getAttribute('value'), ['accept', 'send_back', 'reject'], true), $input->hasAttribute('disabled'), $input->getAttribute('value'));
-            $this->assertSame($input->getAttribute('value') === 'accept', $input->hasAttribute('checked'), $input->getAttribute('value'));
-        }
-        $component->set('data.enabled_actions', ['paid'])->assertSet('data.behavior', 'review')->call('save')->assertHasFormErrors();
-        $component->assertSet('data.enabled_actions', ['paid']);
+        Livewire::test(EditWorkflowStageType::class, ['record' => $type->getRouteKey()])
+            ->assertFormFieldDisabled('behavior')
+            ->set('data.workflow_button_ids', [$paid->getKey()])
+            ->call('save')->assertHasFormErrors();
         $this->assertSame($before, $type->fresh()->getRawOriginal());
-        $this->assertSame(self::ACTIONS, array_keys($this->actionField($component)->getOptions()));
     }
 
-    public function test_create_guard_derives_behavior_from_actions_and_new_names_appear_in_workflow_options(): void
+    public function test_create_guard_derives_behavior_from_catalog_ids_and_new_names_appear_in_workflow_options(): void
     {
+        $paid = $this->button('paid');
         $component = Livewire::test(CreateWorkflowStageType::class);
-        $payload = (new ReflectionMethod(CreateWorkflowStageType::class, 'mutateFormDataBeforeCreate'))->invoke($component->instance(), ['behavior' => 'review', 'enabled_actions' => ['paid'], 'review_actions' => ['accept' => ['status_message' => 'Unused posted review settings']], 'stage_settings' => ['status_message' => 'Unused posted stage settings']]);
+        $payload = (new ReflectionMethod(CreateWorkflowStageType::class, 'mutateFormDataBeforeCreate'))->invoke($component->instance(), ['workflow_button_ids' => [$paid->getKey()], 'behavior' => 'review', 'enabled_actions' => ['accept'], 'review_actions' => ['accept' => ['status_message' => 'Unused posted review settings']], 'stage_settings' => ['status_message' => 'Unused posted stage settings']]);
         $this->assertSame('payment', $payload['behavior']);
+        $this->assertSame(['paid'], $payload['enabled_actions']);
         $this->assertArrayNotHasKey('review_actions', $payload);
         $this->assertArrayNotHasKey('stage_settings', $payload);
         $component->fillForm(['label_en' => 'New payment name', 'label_km' => 'ឈ្មោះការបង់ប្រាក់ថ្មី', 'is_active' => true])
-            ->set('data.enabled_actions', ['paid'])->call('create')->assertHasNoFormErrors();
+            ->set('data.workflow_button_ids', [$paid->getKey()])->call('create')->assertHasNoFormErrors();
         $type = WorkflowStageType::query()->where('label_en', 'New payment name')->firstOrFail();
         $this->assertSame('payment', $type->behavior);
         foreach (['en' => 'New payment name', 'km' => 'ឈ្មោះការបង់ប្រាក់ថ្មី'] as $locale => $label) {
@@ -183,7 +164,7 @@ class WorkflowStageTypeGlobalActionsTest extends TestCase
         }
     }
 
-    public function test_creating_a_definition_from_global_actions_does_not_change_legacy_workflows_or_application_snapshots(): void
+    public function test_creating_a_definition_from_catalog_buttons_does_not_change_legacy_workflows_or_application_snapshots(): void
     {
         $workflow = WorkflowNotification::query()->create(['name' => 'Legacy unchanged workflow', 'stages' => [['type' => 'stage', 'data' => ['stage_name' => 'Legacy review', 'stage_type' => 'review', 'responsible_role' => ['registrar_officer']]]]]);
         $form = CustomForm::query()->create(['name' => 'Legacy global checklist application', 'slug' => 'legacy-global-checklist-application', 'is_active' => true]);
@@ -191,9 +172,10 @@ class WorkflowStageTypeGlobalActionsTest extends TestCase
         $entry = CustomFormEntry::query()->forceCreate(['custom_form_id' => $form->getKey(), 'review_status' => 'pending', 'data' => ['registration_status' => 'pending']]);
         $workflowBefore = $workflow->getRawOriginal('stages');
         $entryBefore = $entry->fresh()->getRawOriginal();
+        $paid = $this->button('paid');
         Livewire::test(CreateWorkflowStageType::class)
             ->fillForm(['label_en' => 'Independent paid action', 'label_km' => 'សកម្មភាពបង់ប្រាក់ឯករាជ្យ'])
-            ->set('data.enabled_actions', ['paid'])->call('create')->assertHasNoFormErrors();
+            ->set('data.workflow_button_ids', [$paid->getKey()])->call('create')->assertHasNoFormErrors();
         $this->assertSame($workflowBefore, $workflow->fresh()->getRawOriginal('stages'));
         $this->assertSame($entryBefore, $entry->fresh()->getRawOriginal());
         $this->assertArrayNotHasKey('enabled_actions', $workflow->fresh()->stages[0]['data']);
@@ -203,19 +185,13 @@ class WorkflowStageTypeGlobalActionsTest extends TestCase
         Mail::assertNothingSent();
     }
 
-    private function renderedButtons($component): DOMXPath
+    private function button(string $action): WorkflowButton
     {
-        $document = new DOMDocument;
-        $this->assertTrue($document->loadHTML('<meta charset="UTF-8">'.$component->html(), LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING));
-
-        return new DOMXPath($document);
-    }
-
-    private function actionField($component): CheckboxList
-    {
-        $field = $component->instance()->form->getFlatFields(withHidden: true)['enabled_actions'];
-        $this->assertInstanceOf(CheckboxList::class, $field);
-
-        return $field;
+        return WorkflowButton::query()->create([
+            'label_en' => 'Catalog '.$action,
+            'label_km' => 'ប៊ូតុង '.$action,
+            'action_key' => $action,
+            'icon' => WorkflowStageTypeSettings::buttonActions()[$action]['icon'],
+        ]);
     }
 }

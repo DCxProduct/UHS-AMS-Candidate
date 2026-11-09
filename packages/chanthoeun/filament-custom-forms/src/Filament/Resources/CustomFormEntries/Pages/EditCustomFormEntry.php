@@ -8,6 +8,7 @@ use App\Support\DashboardUserAccess;
 use App\Support\NotificationLanguage;
 use App\Support\ProfileFormData;
 use App\Support\WorkflowActionFeedback;
+use App\Support\WorkflowButtons;
 use App\Support\WorkflowResubmissionStaffMessages;
 use App\Support\WorkflowStageProgression;
 use App\Support\WorkflowSubmissionMessages;
@@ -32,6 +33,8 @@ class EditCustomFormEntry extends EditRecord
     protected static string $resource = CustomFormEntryResource::class;
 
     protected bool $shouldResetToPendingAfterSave = false;
+
+    protected bool $isSavingDraft = false;
 
     protected bool $shouldNotifyAdminsAboutResubmission = false;
 
@@ -86,8 +89,9 @@ class EditCustomFormEntry extends EditRecord
         $actions = [];
 
         $actions[] = Action::make('save')
-            ->label(__('app.done'))
-            ->color('primary')
+            ->label(fn (): string => WorkflowButtons::label($this->record, 'submitted', __('app.done')))
+            ->icon(fn (): ?string => WorkflowButtons::icon($this->record, 'submitted'))
+            ->color(fn (): string => WorkflowButtons::color($this->record, 'submitted', 'primary'))
             ->keyBindings(['mod+s'])
             ->requiresConfirmation(fn (): bool => $this->isSubmitPopupActive())
             ->modalHeading($this->submitPopupTitle())
@@ -101,7 +105,8 @@ class EditCustomFormEntry extends EditRecord
                     $this->handleSubmitValidationException($exception);
                 }
             })
-            ->hidden(fn () => $this->isLockedForEditing() || $this->hasWizardBeforeFinalStep());
+            ->hidden(fn () => $this->isLockedForEditing() || $this->hasWizardBeforeFinalStep()
+                || ! WorkflowButtons::allows($this->record, 'submitted'));
 
         $actions[] = Action::make('back')
             ->label(__('student_profile.back'))
@@ -142,7 +147,12 @@ class EditCustomFormEntry extends EditRecord
             ->action(function (): void {
                 $data = $this->form->getStateSnapshot();
                 $data = array_replace_recursive($this->rawFormState(), $data);
-                $data = $this->mutateFormDataBeforeSave($data);
+                $this->isSavingDraft = true;
+                try {
+                    $data = $this->mutateFormDataBeforeSave($data);
+                } finally {
+                    $this->isSavingDraft = false;
+                }
 
                 $data['review_status'] = 'draft';
                 $data['data'] = $data['data'] ?? [];
@@ -208,6 +218,10 @@ class EditCustomFormEntry extends EditRecord
         }
 
         $oldStatus = $this->entryStatus();
+        if (! $this->isSavingDraft) {
+            abort_unless(WorkflowButtons::allows($this->record, 'submitted'), 403);
+        }
+
         $slug = $this->record->customForm?->slug;
         $data['data'] = $this->preserveWorkflowProgress($data['data'] ?? []);
 

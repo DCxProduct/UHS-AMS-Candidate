@@ -15,6 +15,7 @@ use App\Rules\ValidMefInvoiceReceipt;
 use App\Services\CandidatePaymentRecorder;
 use App\Support\CandidateNumber;
 use App\Support\CaseInsensitiveSearch;
+use App\Support\WorkflowButtons;
 use App\Support\FilamentActionPermissions;
 use App\Support\FormEntryData;
 use App\Support\LocalizedDate;
@@ -360,9 +361,9 @@ class PaymentStatusListsTable
             ->filtersFormColumns(3)
             ->recordActions([
                 Action::make('pay')
-                    ->label(__('payments.actions.pay'))
-                    ->icon('heroicon-o-banknotes')
-                    ->color('success')
+                    ->label(fn ($record): string => WorkflowButtons::label($record, 'paid', __('payments.actions.pay')))
+                    ->icon(fn ($record): ?string => WorkflowButtons::icon($record, 'paid', 'heroicon-o-banknotes'))
+                    ->color(fn ($record): string => WorkflowButtons::color($record, 'paid', 'success'))
                     ->link()
                     ->modalWidth('4xl')
                     ->modalHeading(__('payments.actions.create_payment'))

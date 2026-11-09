@@ -4,6 +4,7 @@ namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Ta
 
 use App\Support\WorkflowStageMessages;
 use App\Support\WorkflowActionFeedback;
+use App\Support\WorkflowButtons;
 use App\Support\WorkflowStageProgression;
 use App\Support\WorkflowSubmissionMessages;
 use App\Support\StaticWorkflowMessages;
@@ -1256,7 +1257,7 @@ class CustomFormEntriesTable
                     self::currentPanelIsAdmin()
                     && self::canViewReviewPdf($record)
                     && ! self::isProfileForm($record->custom_form_id)
-                    && in_array(self::entryStatus($record), ['pending', 'failed'], true)
+                    && self::eligibleReviewStatus($record, ['pending', 'failed'])
                     && self::hasDocumentTemplate($record)
                 );
 
@@ -1264,15 +1265,15 @@ class CustomFormEntriesTable
                 ->extraAttributes(['style' => 'display: none;']);
 
             $actions[] = Action::make('accepted')
-                ->label(__('candidate_entrance_statistics.statuses.accepted'))
-                ->icon('heroicon-o-check-circle')
-                ->color('success')
+                ->label(fn ($record): string => WorkflowButtons::label($record, 'accept', __('candidate_entrance_statistics.statuses.accepted')))
+                ->icon(fn ($record): ?string => WorkflowButtons::icon($record, 'accept', 'heroicon-o-check-circle'))
+                ->color(fn ($record): string => WorkflowButtons::color($record, 'accept', 'success'))
                 ->requiresConfirmation()
                 ->visible(fn ($record): bool =>
                     self::currentPanelIsAdmin()
                     && ! self::isProfileForm($record->custom_form_id)
                     && self::canReview($record, 'accepted')
-                    && in_array(self::entryStatus($record), ['pending', 'failed'], true)
+                    && self::eligibleReviewStatus($record, ['pending', 'failed'])
                     && ! self::hasDocumentTemplate($record)
                 )
                 ->action(function ($record): void {
@@ -1284,7 +1285,9 @@ class CustomFormEntriesTable
                             'review_status' => $record->review_status,
                             'registration_status' => data_get($data, 'registration_status'),
                         ];
-                        $data['candidate_status'] = 'pending';
+                        if (! WorkflowStageProgression::enabled($record)) {
+                            $data['candidate_status'] = 'pending';
+                        }
                         $data['registration_status'] = 'approved';
 
                         $workflow = WorkflowNotification::forEntry($record);
@@ -1329,14 +1332,14 @@ class CustomFormEntriesTable
                 });
 
             $actions[] = Action::make('rejected')
-                ->label(__('candidate_entrance_statistics.statuses.send_back'))
-                ->icon('heroicon-o-arrow-uturn-left')
-                ->color('warning')
+                ->label(fn ($record): string => WorkflowButtons::label($record, 'send_back', __('candidate_entrance_statistics.statuses.send_back')))
+                ->icon(fn ($record): ?string => WorkflowButtons::icon($record, 'send_back', 'heroicon-o-arrow-uturn-left'))
+                ->color(fn ($record): string => WorkflowButtons::color($record, 'send_back', 'warning'))
                 ->visible(fn ($record): bool =>
                     self::currentPanelIsAdmin()
                     && ! self::isProfileForm($record->custom_form_id)
                     && self::canReview($record, 'rejected')
-                    && self::entryStatus($record) === 'pending'
+                    && self::eligibleReviewStatus($record, ['pending'])
                     && ! self::hasDocumentTemplate($record)
                 )
                 ->form([
@@ -1395,9 +1398,9 @@ class CustomFormEntriesTable
                 });
 
             $actions[] = Action::make('send_back_after_reject')
-                ->label(__('candidate_entrance_statistics.statuses.send_back'))
-                ->icon('heroicon-o-arrow-uturn-left')
-                ->color('warning')
+                ->label(fn ($record): string => WorkflowButtons::label($record, 'send_back', __('candidate_entrance_statistics.statuses.send_back')))
+                ->icon(fn ($record): ?string => WorkflowButtons::icon($record, 'send_back', 'heroicon-o-arrow-uturn-left'))
+                ->color(fn ($record): string => WorkflowButtons::color($record, 'send_back', 'warning'))
                 ->visible(fn ($record): bool =>
                     self::currentPanelIsAdmin()
                     && ! self::isProfileForm($record->custom_form_id)
@@ -1417,14 +1420,14 @@ class CustomFormEntriesTable
                 });
 
             $actions[] = Action::make('reject')
-                ->label(__('candidate_entrance_statistics.actions.reject'))
-                ->icon('heroicon-o-x-circle')
-                ->color('danger')
+                ->label(fn ($record): string => WorkflowButtons::label($record, 'reject', __('candidate_entrance_statistics.actions.reject')))
+                ->icon(fn ($record): ?string => WorkflowButtons::icon($record, 'reject', 'heroicon-o-x-circle'))
+                ->color(fn ($record): string => WorkflowButtons::color($record, 'reject', 'danger'))
                 ->visible(fn ($record): bool =>
                     self::currentPanelIsAdmin()
                     && ! self::isProfileForm($record->custom_form_id)
                     && self::canReview($record, 'reject')
-                    && self::entryStatus($record) === 'pending'
+                    && self::eligibleReviewStatus($record, ['pending'])
                     && ! self::hasDocumentTemplate($record)
                 )
                 ->form([
@@ -1485,9 +1488,9 @@ class CustomFormEntriesTable
                 });
 
             $actions[] = Action::make('verify')
-                ->label(__('workflow_notifications.actions.verify'))
-                ->icon('heroicon-o-shield-check')
-                ->color('warning')
+                ->label(fn ($record): string => WorkflowButtons::label($record, 'verify', __('workflow_notifications.actions.verify')))
+                ->icon(fn ($record): ?string => WorkflowButtons::icon($record, 'verify', 'heroicon-o-shield-check'))
+                ->color(fn ($record): string => WorkflowButtons::color($record, 'verify', 'warning'))
                 ->link()
                 ->requiresConfirmation()
                 ->modalHeading(__('workflow_notifications.confirmations.verify_title'))
@@ -1637,10 +1640,10 @@ class CustomFormEntriesTable
 
                 return [
                     Action::make('approve_from_view')
-                    ->label(__('candidate_entrance_statistics.statuses.accepted'))
-                    ->icon('heroicon-o-check-circle')
-                    ->color('success')
-                    ->visible(fn (): bool => in_array(self::entryStatus($record), ['pending', 'failed'], true)
+                    ->label(fn (): string => WorkflowButtons::label($record, 'accept', __('candidate_entrance_statistics.statuses.accepted')))
+                    ->icon(fn (): ?string => WorkflowButtons::icon($record, 'accept', 'heroicon-o-check-circle'))
+                    ->color(fn (): string => WorkflowButtons::color($record, 'accept', 'success'))
+                    ->visible(fn (): bool => self::eligibleReviewStatus($record, ['pending', 'failed'])
                         && self::canReview($record, 'accepted'))
                     ->action(function () use ($record): void {
                         $oldValues = DB::transaction(function () use ($record): array {
@@ -1651,7 +1654,9 @@ class CustomFormEntriesTable
                                 'review_status' => $record->review_status,
                                 'registration_status' => data_get($data, 'registration_status'),
                             ];
-                            $data['candidate_status'] = 'pending';
+                            if (! WorkflowStageProgression::enabled($record)) {
+                                $data['candidate_status'] = 'pending';
+                            }
                             $data['registration_status'] = 'approved';
 
                             $workflow = WorkflowNotification::forEntry($record);
@@ -1698,9 +1703,9 @@ class CustomFormEntriesTable
                     }),
 
                 Action::make('reject_from_view')
-                    ->label(__('candidate_entrance_statistics.statuses.send_back'))
-                    ->icon('heroicon-o-arrow-uturn-left')
-                    ->color('warning')
+                    ->label(fn (): string => WorkflowButtons::label($record, 'send_back', __('candidate_entrance_statistics.statuses.send_back')))
+                    ->icon(fn (): ?string => WorkflowButtons::icon($record, 'send_back', 'heroicon-o-arrow-uturn-left'))
+                    ->color(fn (): string => WorkflowButtons::color($record, 'send_back', 'warning'))
                     ->form([
                         Textarea::make('review_note')
                             ->label(__('candidate_entrance_statistics.review_note'))
@@ -1708,7 +1713,7 @@ class CustomFormEntriesTable
                             ->rows(4),
                     ])
                     ->modalSubmitActionLabel(__('candidate_entrance_statistics.statuses.send_back'))
-                    ->visible(fn (): bool => self::entryStatus($record) === 'pending'
+                    ->visible(fn (): bool => self::eligibleReviewStatus($record, ['pending'])
                         && self::canReview($record, 'rejected'))
                     ->action(function (array $data) use ($record): void {
                         $oldValues = DB::transaction(function () use ($record, $data): array {
@@ -1762,9 +1767,9 @@ class CustomFormEntriesTable
                     }),
 
                 Action::make('reject_final_from_view')
-                    ->label(__('candidate_entrance_statistics.actions.reject'))
-                    ->icon('heroicon-o-x-circle')
-                    ->color('danger')
+                    ->label(fn (): string => WorkflowButtons::label($record, 'reject', __('candidate_entrance_statistics.actions.reject')))
+                    ->icon(fn (): ?string => WorkflowButtons::icon($record, 'reject', 'heroicon-o-x-circle'))
+                    ->color(fn (): string => WorkflowButtons::color($record, 'reject', 'danger'))
                     ->form([
                         Textarea::make('review_note')
                             ->label(__('candidate_entrance_statistics.review_note'))
@@ -1772,7 +1777,7 @@ class CustomFormEntriesTable
                             ->rows(4),
                     ])
                     ->modalSubmitActionLabel(__('candidate_entrance_statistics.actions.reject'))
-                    ->visible(fn (): bool => self::entryStatus($record) === 'pending'
+                    ->visible(fn (): bool => self::eligibleReviewStatus($record, ['pending'])
                         && self::canReview($record, 'reject'))
                     ->action(function (array $data) use ($record): void {
                         $oldValues = DB::transaction(function () use ($record, $data): array {
@@ -1827,9 +1832,9 @@ class CustomFormEntriesTable
                     }),
 
                 Action::make('send_back_after_reject_from_view')
-                    ->label(__('candidate_entrance_statistics.statuses.send_back'))
-                    ->icon('heroicon-o-arrow-uturn-left')
-                    ->color('warning')
+                    ->label(fn (): string => WorkflowButtons::label($record, 'send_back', __('candidate_entrance_statistics.statuses.send_back')))
+                    ->icon(fn (): ?string => WorkflowButtons::icon($record, 'send_back', 'heroicon-o-arrow-uturn-left'))
+                    ->color(fn (): string => WorkflowButtons::color($record, 'send_back', 'warning'))
                     ->form([
                         Textarea::make('review_note')
                             ->label(__('candidate_entrance_statistics.review_note'))
@@ -1851,7 +1856,7 @@ class CustomFormEntriesTable
                 self::currentPanelIsAdmin()
                 && self::canViewReviewPdf($record)
                 && ! self::isProfileForm($record->custom_form_id)
-                && in_array(self::entryStatus($record), ['pending', 'failed'], true)
+                && self::eligibleReviewStatus($record, ['pending', 'failed'])
                 && self::hasDocumentTemplate($record)
             );
     }
@@ -1870,14 +1875,25 @@ class CustomFormEntriesTable
                 || FilamentActionPermissions::canForWorkflowStage(CustomFormEntryResource::class, 'view_pdf', $record, WorkflowStageType::Review));
     }
 
+    protected static function eligibleReviewStatus($record, array $allowedStatuses): bool
+    {
+        return WorkflowStageProgression::enabled($record)
+            ? WorkflowStageProgression::isCurrent($record, WorkflowStageType::Review)
+            : in_array(self::entryStatus($record), $allowedStatuses, true);
+    }
+
     protected static function authorizeFreshReview($record, string $action, array $allowedStatuses): void
     {
+        $mountedStatus = [$record->review_status, data_get($record->data, 'registration_status')];
         $current = \Chanthoeun\FilamentCustomForms\Models\CustomFormEntry::query()
             ->lockForUpdate()->findOrFail($record->getKey());
         $record->setRawAttributes($current->getAttributes(), true)->unsetRelations();
         abort_unless(self::currentPanelIsAdmin(), 403);
         Gate::authorize('view', $record);
-        abort_unless(in_array(self::entryStatus($record), $allowedStatuses, true), 409);
+        if (WorkflowStageProgression::enabled($record)) {
+            abort_unless($mountedStatus === [$record->review_status, data_get($record->data, 'registration_status')], 409);
+        }
+        abort_unless(self::eligibleReviewStatus($record, $allowedStatuses), 409);
         FilamentActionPermissions::abortUnlessCanForWorkflowStage(CustomFormEntryResource::class, $action, $record, WorkflowStageType::Review);
     }
 

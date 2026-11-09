@@ -156,6 +156,7 @@ final class WorkflowStageProgression
             'completed_at' => [],
             'ready_for_final' => false,
             'finished' => false,
+            'completion_notified_at' => null,
             'final_notified_at' => null,
         ];
 
@@ -185,9 +186,10 @@ final class WorkflowStageProgression
             $type = WorkflowStageType::from($stage['stage_type']);
             $state['current_index'] = $index;
             $state['current_type'] = $type->value;
-            if ($type === WorkflowStageType::Completed && $index === count($stages) - 1) {
-                $state['ready_for_final'] = true;
-                if (blank($state['final_notified_at'])) {
+            if ($type === WorkflowStageType::Completed) {
+                $isFinal = $index === count($stages) - 1;
+                $state['ready_for_final'] = $isFinal;
+                if (blank($state['completion_notified_at'] ?? ($isFinal ? ($state['final_notified_at'] ?? null) : null))) {
                     return $state;
                 }
             } elseif (! match ($type) {
@@ -248,10 +250,11 @@ final class WorkflowStageProgression
                 'submitted' => strtolower((string) $locked->review_status) !== 'draft',
                 'reviewed' => ! $blocked && in_array($current, [WorkflowStageType::Review, WorkflowStageType::Approval], true),
                 'verified' => ! $blocked && $current === WorkflowStageType::Verification
-                    && ($state['reviewed'] ?? false) && filled($locked->candidate_id),
+                    && filled($locked->candidate_id),
                 'paid' => ! $blocked && $current === WorkflowStageType::Payment && self::latestPaymentIsPaid($locked),
                 'passed' => ! $blocked && $current === WorkflowStageType::AwaitingResults,
-                'notified' => ! $blocked && $state['ready_for_final'] && $notifiedType === self::finalStageType($locked),
+                'notified' => ! $blocked && (($current === WorkflowStageType::Completed && $notifiedType === $current)
+                    || ($state['ready_for_final'] && $notifiedType === self::finalStageType($locked))),
                 default => false,
             };
             if (! $accepted && is_array($previous)) {
@@ -273,7 +276,12 @@ final class WorkflowStageProgression
             } elseif ($event === 'passed') {
                 $state['result_passed'] = true;
             } elseif ($event === 'notified') {
-                $state['final_notified_at'] = now()->toIso8601String();
+                if ($notifiedType === WorkflowStageType::Completed) {
+                    $state['completion_notified_at'] = now()->toIso8601String();
+                }
+                if ($notifiedType === self::finalStageType($locked)) {
+                    $state['final_notified_at'] = now()->toIso8601String();
+                }
             }
 
             $state = self::settle($state, $stages);
@@ -286,15 +294,8 @@ final class WorkflowStageProgression
             $newlyCompleted = array_diff(array_keys($state['completed_at']), array_keys($previous['completed_at'] ?? []));
             foreach ($newlyCompleted as $index) {
                 $checkpoint = WorkflowStageType::from($stages[$index]['stage_type']);
-                if ($checkpoint === WorkflowStageType::FormSubmission
-                    || ($checkpoint === WorkflowStageType::Completed && $index < count($stages) - 1)) {
-                    DB::afterCommit(function () use ($locked, $checkpoint): void {
-                        if ($checkpoint === WorkflowStageType::FormSubmission) {
-                            WorkflowSubmissionMessages::notifyCheckpoint($locked);
-                        } else {
-                            WorkflowStageMessages::notifyCheckpoint($locked, $checkpoint);
-                        }
-                    });
+                if ($checkpoint === WorkflowStageType::FormSubmission) {
+                    DB::afterCommit(fn () => WorkflowSubmissionMessages::notifyCheckpoint($locked));
                 }
             }
             if ($state['submitted']
@@ -458,8 +459,11 @@ final class WorkflowStageProgression
             if ($resultIndex !== false && $resultIndex > $index) {
                 $state['result_passed'] = false;
             }
-            self::storeProgress($locked, self::settle($state, $stages), 'workflow_payment_reversed');
             $completedIndex = array_search('completed', array_column($stages, 'stage_type'), true);
+            if ($completedIndex !== false && $completedIndex >= $index) {
+                $state['completion_notified_at'] = null;
+            }
+            self::storeProgress($locked, self::settle($state, $stages), 'workflow_payment_reversed');
             if ($completedIndex !== false && $completedIndex >= $index) {
                 WorkflowStageMessages::resetCompletedNotification($locked);
             }

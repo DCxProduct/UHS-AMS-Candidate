@@ -11,8 +11,12 @@ use Throwable;
 /** Immediate action alerts use separate frozen messages, even after their stage advances. */
 final class WorkflowActionFeedback
 {
-    /** Silent entries do not generate a batch alert; other entries retain their own feedback. */
-    public static function bulkTitle(iterable $entries, string $event, string $fallback): ?string
+    /**
+     * Silent entries do not generate a batch alert; other entries retain their own feedback.
+     *
+     * @param  array<int|string, WorkflowStageType>  $notificationStages
+     */
+    public static function bulkTitle(iterable $entries, string $event, string $fallback, array $notificationStages = []): ?string
     {
         $shared = null;
         $hasEntries = false;
@@ -23,7 +27,7 @@ final class WorkflowActionFeedback
             }
 
             $hasEntries = true;
-            $title = self::title($entry, $event, $fallback);
+            $title = self::title($entry, $event, $fallback, $notificationStages[$entry->getKey()] ?? null);
             if ($title === null) {
                 continue;
             }
@@ -46,7 +50,7 @@ final class WorkflowActionFeedback
     }
 
     /** A blank configured alert is silent; forms without a workflow retain their original feedback. */
-    public static function title(CustomFormEntry $entry, string $event, string $fallback): ?string
+    public static function title(CustomFormEntry $entry, string $event, string $fallback, ?WorkflowStageType $notificationStage = null): ?string
     {
         try {
             $entry->loadMissing('customForm');
@@ -71,9 +75,9 @@ final class WorkflowActionFeedback
             );
 
             if ($event === 'completed') {
-                $type = WorkflowStageProgression::enabled($entry)
+                $type = $notificationStage ?? (WorkflowStageProgression::enabled($entry)
                     ? WorkflowStageProgression::finalStageType($entry)
-                    : WorkflowStageType::Completed;
+                    : WorkflowStageType::Completed);
                 $event = match ($type) {
                     WorkflowStageType::FormSubmission => 'submission',
                     WorkflowStageType::Review, WorkflowStageType::Approval => 'accept',
