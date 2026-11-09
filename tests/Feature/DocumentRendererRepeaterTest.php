@@ -113,6 +113,19 @@ class DocumentRendererRepeaterTest extends TestCase
         $this->assertStringNotContainsString('thailand', $html);
     }
 
+    public function test_tiny_mce_page_break_markers_are_converted_for_mpdf(): void
+    {
+        $html = $this->render(
+            '<p>First page</p><!-- pagebreak --><p>Second page</p>'
+                . '<img class="mce-pagebreak" data-mce-placeholder="1" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==">',
+            $this->entry(false),
+        );
+
+        $this->assertSame(2, substr_count($html, '<pagebreak />'));
+        $this->assertStringNotContainsString('mce-pagebreak', $html);
+        $this->assertStringNotContainsString('<!-- pagebreak -->', $html);
+    }
+
     public static function degreeChoiceLocales(): array
     {
         return [

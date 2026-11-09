@@ -344,6 +344,24 @@ class DocumentRenderer
     }
 
     /**
+     * Convert TinyMCE page-break markers to the mPDF page-break element.
+     */
+    protected function replacePageBreaks(?string $content): ?string
+    {
+        if (empty($content)) {
+            return $content;
+        }
+
+        $content = preg_replace('/<!--\s*pagebreak\s*-->/i', '<pagebreak />', $content) ?? $content;
+
+        return preg_replace(
+            '/<img\b[^>]*class=["\'][^"\']*\bmce-pagebreak\b[^"\']*["\'][^>]*>/i',
+            '<pagebreak />',
+            $content,
+        ) ?? $content;
+    }
+
+    /**
      * Replaces string variables like {{ variable.name }} with actual data.
      */
     protected function replaceVariables(?string $content, array|object $data): ?string
@@ -1071,6 +1089,7 @@ class DocumentRenderer
         $htmlContent = $this->replaceQrCodes($htmlContent, $data);
         $htmlContent = $this->replaceBarcodes($htmlContent, $data);
         $htmlContent = $this->replaceVariables($htmlContent, $data);
+        $htmlContent = $this->replacePageBreaks($htmlContent);
         $htmlContent = $this->localizeFallbackChoiceWords($htmlContent);
         $htmlContent .= $this->attachmentImagesHtml($recordData);
 
