@@ -5,6 +5,10 @@ return [
     'resource_label' => 'ជំនាញ / ផ្នែក',
     'resource_plural_label' => 'ជំនាញ / ផ្នែក',
     'search' => 'ស្វែងរកជំនាញ',
+    'actions' => [
+        'select_all' => 'ជ្រើសរើសទាំងអស់',
+        'reset_all' => 'ដកការជ្រើសរើសទាំងអស់',
+    ],
     'form' => [
         'section_title' => 'ព័ត៌មានជំនាញ',
     ],

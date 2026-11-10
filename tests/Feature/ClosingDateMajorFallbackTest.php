@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Support\StudentDynamicFormSchema;
 use Carbon\Carbon;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
+use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -139,6 +140,47 @@ class ClosingDateMajorFallbackTest extends TestCase
         $this->assertSame([], Major::optionsForCustomFormId($this->form()->id));
         $this->assertSame([], Major::optionsForCustomFormId(null));
         $this->assertSame([], Major::optionsForCustomFormId(999));
+    }
+
+    public function test_major_bulk_actions_follow_the_selected_degree_and_can_reset_saved_selections(): void
+    {
+        $form = $this->form();
+        $bachelor = DegreeLevel::query()->create(['key' => 'bachelor', 'label_en' => 'Bachelor', 'is_active' => true]);
+        $master = DegreeLevel::query()->create(['key' => 'master', 'label_en' => 'Master', 'is_active' => true]);
+        $medicine = $this->major('medicine', 'Medicine', 'MED');
+        $nursing = $this->major('nursing', 'Nursing', 'NUR');
+        $inactive = $this->major('inactive', 'Inactive major', 'INACTIVE', active: false);
+        $research = $this->major('research', 'Research', 'RES');
+        $this->major('unrelated', 'Unrelated major', 'OTHER');
+        $bachelor->majors()->attach([$medicine->id, $nursing->id, $inactive->id]);
+        $master->majors()->attach($research);
+
+        $selectAll = TestAction::make('select_all_majors')->schemaComponent('major_ids', schema: 'form');
+        $resetAll = TestAction::make('reset_all_majors')->schemaComponent('major_ids', schema: 'form');
+        $create = Livewire::test(CreateClosingDate::class)
+            ->fillForm(['degree_level_id' => $bachelor->id])
+            ->callAction($selectAll)
+            ->assertFormSet(['major_ids' => [$medicine->id, $nursing->id]])
+            ->callAction($resetAll)
+            ->assertFormSet(['major_ids' => []])
+            ->set('data.degree_level_id', $master->id)
+            ->callAction($selectAll)
+            ->assertFormSet(['major_ids' => [$research->id]]);
+
+        $create->fillForm([
+            'name' => 'Selected majors intake', 'type' => [ClosingDate::customFormTypeKey($form->id)],
+            'status' => 'open', 'start_date' => '2026-11-01', 'end_date' => '2026-11-30',
+        ])->call('create')->assertHasNoFormErrors();
+        $schedule = ClosingDate::query()->sole();
+        $this->assertSame([$research->id], $schedule->majors()->pluck('majors.id')->all());
+
+        Livewire::test(EditClosingDate::class, ['record' => $schedule->getRouteKey()])
+            ->callAction($resetAll)
+            ->assertFormSet(['major_ids' => []])
+            ->call('save')->assertHasNoFormErrors();
+
+        $this->assertSame([], $schedule->majors()->pluck('majors.id')->all());
+        $this->assertSame([$research->id => 'RES-Research'], $this->candidateOptions($form));
     }
 
     private function form(): CustomForm

@@ -5,6 +5,10 @@ return [
     'resource_label' => 'Major',
     'resource_plural_label' => 'Majors',
     'search' => 'Search majors',
+    'actions' => [
+        'select_all' => 'Select all',
+        'reset_all' => 'Reset all',
+    ],
     'form' => [
         'section_title' => 'Major Information',
     ],
