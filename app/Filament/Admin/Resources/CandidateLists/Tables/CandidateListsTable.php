@@ -11,6 +11,7 @@ use App\Support\LocalizedDate;
 use App\Support\NotificationLanguage;
 use App\Support\LocalizedNumber;
 use App\Support\UserTypeOptions;
+use App\Support\TableFilterOptions;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
@@ -18,6 +19,7 @@ use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -116,7 +118,7 @@ class CandidateListsTable
             ->filters([
                 SelectFilter::make('roles')
                     ->label(__('candidate_lists.fields.candidate_type'))
-                    ->options(fn (): array => UserTypeOptions::options())
+                    ->options(fn (HasTable $livewire): array => self::roleFilterOptions(TableFilterOptions::query($livewire, 'roles')))
                     ->native(false)
                     ->searchable()
                     ->preload()
@@ -138,10 +140,7 @@ class CandidateListsTable
 
                 SelectFilter::make('is_active')
                     ->label(__('candidate_lists.fields.is_active'))
-                    ->options([
-                        '1' => __('candidate_lists.filters.active'),
-                        '0' => __('candidate_lists.filters.inactive'),
-                    ])
+                    ->options(fn (HasTable $livewire): array => self::activeFilterOptions(TableFilterOptions::query($livewire, 'is_active')))
                     ->native(false)
                     ->query(function ($query, array $data) {
                         $value = $data['value'] ?? null;
@@ -210,6 +209,25 @@ class CandidateListsTable
                     ->color('warning')
                     ->tooltip(__('candidate_lists.actions.actions')),
             ]);
+    }
+
+    protected static function roleFilterOptions(Builder $query): array
+    {
+        return $query->get()
+            ->map(fn (SystemUser $record): ?string => self::resolveCandidateRole($record))
+            ->filter(fn ($role): bool => filled($role))
+            ->unique()
+            ->sort()
+            ->mapWithKeys(fn (string $role): array => [$role => UserTypeOptions::formatLabel($role)])
+            ->all();
+    }
+
+    protected static function activeFilterOptions(Builder $query): array
+    {
+        return $query->pluck('is_active')->unique()
+            ->mapWithKeys(fn ($active): array => [(string) (int) (bool) $active => (bool) $active
+                ? __('candidate_lists.filters.active') : __('candidate_lists.filters.inactive')])
+            ->all();
     }
 
     protected static function resolveCandidateRole(SystemUser $record): ?string

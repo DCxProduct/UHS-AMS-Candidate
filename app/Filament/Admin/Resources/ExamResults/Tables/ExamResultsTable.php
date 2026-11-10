@@ -16,6 +16,7 @@ use App\Support\PassedResultMenuOptions;
 use App\Support\LocalizedNumber;
 use App\Support\LocalizedDate;
 use App\Support\MenuRecordVisibility;
+use App\Support\TableFilterOptions;
 use App\Support\UserTypeOptions;
 use App\Support\WorkflowStageMessages;
 use App\Support\WorkflowButtons;
@@ -153,20 +154,20 @@ class ExamResultsTable
                     ->schema([
                         Select::make('degree_level')
                             ->label(__('exam_results.degree_level'))
-                            ->options(fn (): array => self::dynamicDegreeLevelOptions($resultMenu))
+                            ->options(fn ($livewire): array => self::dynamicDegreeLevelOptions($resultMenu, TableFilterOptions::query($livewire, 'exam_result_filters', 'degree_level')))
                             ->native(false)
                             ->searchable()
                             ->live(),
 
                         Select::make('academic_year')
                             ->label(__('exam_results.academic_year'))
-                            ->options(fn (): array => self::dynamicAcademicYearOptions($resultMenu))
+                            ->options(fn ($livewire): array => self::dynamicAcademicYearOptions($resultMenu, TableFilterOptions::query($livewire, 'exam_result_filters', 'academic_year')))
                             ->native(false)
                             ->searchable()
                             ->live(),
                         Select::make('major')
                             ->label(__('exam_results.major'))
-                            ->options(fn (): array => self::dynamicMajorOptions($resultMenu))
+                            ->options(fn ($livewire): array => self::dynamicMajorOptions($resultMenu, TableFilterOptions::query($livewire, 'exam_result_filters', 'major')))
                             ->native(false)
                             ->searchable()
                             ->live(),
@@ -730,14 +731,14 @@ class ExamResultsTable
         );
     }
 
-    protected static function dynamicAcademicYearOptions(string $resultMenu = PassedResultMenuOptions::EXAM_RESULTS): array
+    protected static function dynamicAcademicYearOptions(string $resultMenu = PassedResultMenuOptions::EXAM_RESULTS, ?Builder $query = null): array
     {
-        return self::applyPassedResultMenuFilter(
-            query: CustomFormEntry::query()->with('creator:id,academic_year'),
-            resultMenu: $resultMenu,
-            hiddenFlag: null,
-        )
-            ->get(['id', 'data'])
+        $query ??= PassedResultMenuOptions::normalize($resultMenu) === PassedResultMenuOptions::EXIT_EXAM_RESULTS
+            ? ExitExamResultResource::getEloquentQuery()
+            : ExamResultResource::getEloquentQuery();
+
+        return (clone $query)->with('creator:id,academic_year')
+            ->get(['id', 'created_by', 'data'])
             ->flatMap(function (CustomFormEntry $entry): array {
                 return array_filter([
                     data_get($entry->data, 'academic_year'),
@@ -752,19 +753,15 @@ class ExamResultsTable
             ->toArray();
     }
 
-    protected static function dynamicMajorOptions(string $resultMenu = PassedResultMenuOptions::EXAM_RESULTS): array
+    protected static function dynamicMajorOptions(string $resultMenu = PassedResultMenuOptions::EXAM_RESULTS, ?Builder $query = null): array
     {
-        return self::applyPassedResultMenuFilter(
-            query: CustomFormEntry::query(),
-            resultMenu: $resultMenu,
-            hiddenFlag: null,
-        )
+        $query ??= PassedResultMenuOptions::normalize($resultMenu) === PassedResultMenuOptions::EXIT_EXAM_RESULTS
+            ? ExitExamResultResource::getEloquentQuery()
+            : ExamResultResource::getEloquentQuery();
+
+        return (clone $query)
             ->get(['data'])
-            ->flatMap(function (CustomFormEntry $entry): array {
-                return array_filter([
-                    FormEntryData::firstFilled($entry->data, FormEntryData::majorKeys()),
-                ], fn ($value): bool => filled($value));
-            })
+            ->flatMap(fn (CustomFormEntry $entry): array => FormEntryData::majorValues($entry->data))
             ->map(fn ($value): string => trim((string) $value))
             ->filter()
             ->unique()
@@ -773,9 +770,9 @@ class ExamResultsTable
             ->toArray();
     }
 
-    protected static function dynamicDegreeLevelOptions(string $resultMenu = PassedResultMenuOptions::EXAM_RESULTS): array
+    protected static function dynamicDegreeLevelOptions(string $resultMenu = PassedResultMenuOptions::EXAM_RESULTS, ?Builder $query = null): array
     {
-        $query = PassedResultMenuOptions::normalize($resultMenu) === PassedResultMenuOptions::EXIT_EXAM_RESULTS
+        $query ??= PassedResultMenuOptions::normalize($resultMenu) === PassedResultMenuOptions::EXIT_EXAM_RESULTS
             ? ExitExamResultResource::getEloquentQuery()
             : ExamResultResource::getEloquentQuery();
 

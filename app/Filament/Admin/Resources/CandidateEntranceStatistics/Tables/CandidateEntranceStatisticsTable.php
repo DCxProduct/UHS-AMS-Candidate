@@ -20,6 +20,7 @@ use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
 use App\Support\NotificationLanguage;
 use App\Support\UserTypeOptions;
+use App\Support\TableFilterOptions;
 use Carbon\Carbon;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
@@ -31,6 +32,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
+use Filament\Tables\Contracts\HasTable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -120,22 +122,28 @@ class CandidateEntranceStatisticsTable
                     })
                     ->toggleable(isToggledHiddenByDefault: false),
 
-                TextColumn::make('name_khmer')
-                    ->label(__('exam_results.name_khmer'))
-                    ->getStateUsing(fn ($record): string => self::khmerName($record))
-                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyAny($query, [
-                        'data->first_name_kh',
-                        'data->last_name_kh',
-                    ], $search))
+                TextColumn::make('first_name_kh')
+                    ->label(__('exam_results.first_name_khmer'))
+                    ->getStateUsing(fn ($record): string => self::entryValue($record, 'first_name_kh'))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::apply($query, 'data->first_name_kh', $search))
                     ->toggleable(isToggledHiddenByDefault: false),
 
-                TextColumn::make('name_latin')
-                    ->label(__('exam_results.name_latin'))
-                    ->getStateUsing(fn ($record): string => self::latinName($record))
-                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyAny($query, [
-                        'data->first_name_en',
-                        'data->last_name_en',
-                    ], $search))
+                TextColumn::make('last_name_kh')
+                    ->label(__('exam_results.last_name_khmer'))
+                    ->getStateUsing(fn ($record): string => self::entryValue($record, 'last_name_kh'))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::apply($query, 'data->last_name_kh', $search))
+                    ->toggleable(isToggledHiddenByDefault: false),
+
+                TextColumn::make('first_name_en')
+                    ->label(__('exam_results.first_name_latin'))
+                    ->getStateUsing(fn ($record): string => self::entryValue($record, 'first_name_en'))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::apply($query, 'data->first_name_en', $search))
+                    ->toggleable(isToggledHiddenByDefault: false),
+
+                TextColumn::make('last_name_en')
+                    ->label(__('exam_results.last_name_latin'))
+                    ->getStateUsing(fn ($record): string => self::entryValue($record, 'last_name_en'))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::apply($query, 'data->last_name_en', $search))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('gender')
@@ -187,33 +195,33 @@ class CandidateEntranceStatisticsTable
                     ->schema([
                         Select::make('form_selection')
                             ->label(__('candidate_entrance_statistics.form_type'))
-                            ->options(fn (): array => self::dynamicFormTypeOptions())
+                            ->options(fn (HasTable $livewire): array => self::dynamicFormTypeOptions(TableFilterOptions::query($livewire, 'application_review_filters', 'form_selection')))
                             ->native(false)
                             ->live(),
 
                         Select::make('review_status')
                             ->label(__('candidate_entrance_statistics.review_status'))
-                            ->options(fn (): array => self::dynamicReviewStatusOptions())
+                            ->options(fn (HasTable $livewire): array => self::dynamicReviewStatusOptions(TableFilterOptions::query($livewire, 'application_review_filters', 'review_status')))
                             ->native(false)
                             ->live(),
 
                         Select::make('user_type')
                             ->label(__('candidate_entrance_statistics.user_type'))
-                            ->options(fn (): array => self::dynamicUserTypeOptions())
+                            ->options(fn (HasTable $livewire): array => self::dynamicUserTypeOptions(TableFilterOptions::query($livewire, 'application_review_filters', 'user_type')))
                             ->native(false)
                             ->searchable()
                             ->live(),
 
                         Select::make('major')
                             ->label(__('candidate_entrance_statistics.major'))
-                            ->options(fn (): array => self::dynamicMajorOptions())
+                            ->options(fn (HasTable $livewire): array => self::dynamicMajorOptions(TableFilterOptions::query($livewire, 'application_review_filters', 'major')))
                             ->native(false)
                             ->searchable()
                             ->live(),
 
                         Select::make('reviewed_year')
                             ->label(__('candidate_entrance_statistics.reviewed_year'))
-                            ->options(fn (): array => self::dynamicRequestReviewedYears())
+                            ->options(fn (HasTable $livewire): array => self::dynamicRequestReviewedYears(TableFilterOptions::query($livewire, 'application_review_filters', 'reviewed_year')))
                             ->native(false)
                             ->live(),
                     ])
@@ -248,11 +256,15 @@ class CandidateEntranceStatisticsTable
                                 function (Builder $query) use ($data): Builder {
                                     return $query->where(function (Builder $query) use ($data): void {
                                         $query->whereYear('created_at', $data['reviewed_year'])
-                                            ->orWhereYear('reviewed_at', $data['reviewed_year'])
-                                            ->orWhereRaw(
+                                            ->orWhereYear('reviewed_at', $data['reviewed_year']);
+                                        if ($query->getConnection()->getDriverName() === 'pgsql') {
+                                            $query->orWhereRaw(
                                                 "EXTRACT(YEAR FROM NULLIF(data->>'candidate_reviewed_at', '')::timestamp) = ?",
-                                                [$data['reviewed_year']]
+                                                [$data['reviewed_year']],
                                             );
+                                        } else {
+                                            $query->orWhereYear('data->candidate_reviewed_at', $data['reviewed_year']);
+                                        }
                                     });
                                 }
                             )
@@ -384,14 +396,14 @@ class CandidateEntranceStatisticsTable
             ]);
     }
 
-    protected static function hasResultStatus(CustomFormEntry $record, bool $passed): bool
+    public static function hasResultStatus(CustomFormEntry $record, bool $passed): bool
     {
         return WorkflowStageProgression::enabled($record)
             ? (bool) data_get($record->data, 'workflow_progress.result_passed', false) === $passed
             : strtolower((string) data_get($record->data, 'candidate_status', 'pending')) === ($passed ? 'passed' : 'pending');
     }
 
-    protected static function canHandleResultAction(CustomFormEntry $record, string $action): bool
+    public static function canHandleResultAction(CustomFormEntry $record, string $action): bool
     {
         return FilamentActionPermissions::canForWorkflowStage(
             CandidateEntranceStatisticResource::class,
@@ -446,6 +458,12 @@ class CandidateEntranceStatisticsTable
 
             return true;
         });
+    }
+
+    /** Apply an imported result through the same authorization and locking as Bulk Passed. */
+    public static function markImportedPassed(CustomFormEntry $record): bool
+    {
+        return self::changeResult($record, 'bulk_passed', passed: true, skipUnauthorized: true);
     }
 
     protected static function applyGlobalSearch(Builder $query, string $search): void
@@ -610,7 +628,7 @@ class CandidateEntranceStatisticsTable
             ->all();
     }
 
-    protected static function exportColumnDefinitions(): array
+    public static function exportColumnDefinitions(): array
     {
         return [
             'row_number' => [
@@ -651,17 +669,29 @@ class CandidateEntranceStatisticsTable
                 'value' => fn (CustomFormEntry $record): string => self::entryValue($record, 'seat_number', self::entryValue($record, 'list_number', $record->creator?->seat_number)),
                 'clean' => fn (CustomFormEntry $record): string => self::entryValue($record, 'seat_number', self::entryValue($record, 'list_number', $record->creator?->seat_number)),
             ],
-            'name_khmer' => [
-                'label' => __('exam_results.name_khmer'),
-                'field_key' => 'name_khmer',
-                'value' => fn (CustomFormEntry $record): string => self::khmerName($record),
-                'clean' => fn (CustomFormEntry $record): string => self::khmerName($record),
+            'first_name_kh' => [
+                'label' => __('exam_results.first_name_khmer'),
+                'field_key' => 'first_name_kh',
+                'value' => fn (CustomFormEntry $record): string => self::entryValue($record, 'first_name_kh'),
+                'clean' => fn (CustomFormEntry $record): string => self::entryValue($record, 'first_name_kh'),
             ],
-            'name_latin' => [
-                'label' => __('exam_results.name_latin'),
-                'field_key' => 'name_latin',
-                'value' => fn (CustomFormEntry $record): string => self::latinName($record),
-                'clean' => fn (CustomFormEntry $record): string => self::latinName($record),
+            'last_name_kh' => [
+                'label' => __('exam_results.last_name_khmer'),
+                'field_key' => 'last_name_kh',
+                'value' => fn (CustomFormEntry $record): string => self::entryValue($record, 'last_name_kh'),
+                'clean' => fn (CustomFormEntry $record): string => self::entryValue($record, 'last_name_kh'),
+            ],
+            'first_name_en' => [
+                'label' => __('exam_results.first_name_latin'),
+                'field_key' => 'first_name_en',
+                'value' => fn (CustomFormEntry $record): string => self::entryValue($record, 'first_name_en'),
+                'clean' => fn (CustomFormEntry $record): string => self::entryValue($record, 'first_name_en'),
+            ],
+            'last_name_en' => [
+                'label' => __('exam_results.last_name_latin'),
+                'field_key' => 'last_name_en',
+                'value' => fn (CustomFormEntry $record): string => self::entryValue($record, 'last_name_en'),
+                'clean' => fn (CustomFormEntry $record): string => self::entryValue($record, 'last_name_en'),
             ],
             'gender' => [
                 'label' => __('exam_results.gender'),
@@ -686,14 +716,6 @@ class CandidateEntranceStatisticsTable
                 'field_key' => 'candidate_status',
                 'value' => fn (CustomFormEntry $record): string => self::resultStatusLabel($record, data_get($record->data, 'candidate_status')),
                 'clean' => fn (CustomFormEntry $record): string => (string) data_get($record->data, 'candidate_status', 'pending'),
-            ],
-            'data.candidate_reviewed_at' => [
-                'label' => __('candidate_entrance_statistics.reviewed_at'),
-                'field_key' => 'candidate_reviewed_at',
-                'value' => fn (CustomFormEntry $record): string => filled(data_get($record->data, 'candidate_reviewed_at'))
-                    ? LocalizedDate::dayMonthYear((string) data_get($record->data, 'candidate_reviewed_at'))
-                    : '-',
-                'clean' => fn (CustomFormEntry $record): string => (string) data_get($record->data, 'candidate_reviewed_at', ''),
             ],
         ];
     }
@@ -738,9 +760,9 @@ class CandidateEntranceStatisticsTable
         return $xml . '</Relationships>';
     }
 
-    protected static function dynamicRequestReviewedYears(): array
+    protected static function dynamicRequestReviewedYears(?Builder $query = null): array
     {
-        return CustomFormEntry::query()
+        return ($query ?? CandidateEntranceStatisticResource::getEloquentQuery())
             ->get(['created_at', 'reviewed_at', 'data'])
             ->flatMap(function (CustomFormEntry $entry): array {
                 $years = [];
@@ -768,9 +790,9 @@ class CandidateEntranceStatisticsTable
             ->toArray();
     }
 
-    protected static function dynamicUserTypeOptions(): array
+    protected static function dynamicUserTypeOptions(?Builder $query = null): array
     {
-        return CustomFormEntry::query()
+        return ($query ?? CandidateEntranceStatisticResource::getEloquentQuery())
             ->with(['creator', 'customForm'])
             ->get()
             ->flatMap(function (CustomFormEntry $entry): array {
@@ -791,14 +813,12 @@ class CandidateEntranceStatisticsTable
         return CandidateTypeResolver::filterEntries($query, $candidateType);
     }
 
-    protected static function dynamicMajorOptions(): array
+    protected static function dynamicMajorOptions(?Builder $query = null): array
     {
-        return CustomFormEntry::query()
+        return ($query ?? CandidateEntranceStatisticResource::getEloquentQuery())
             ->get(['data'])
             ->flatMap(function (CustomFormEntry $entry): array {
-                return array_filter([
-                    FormEntryData::firstFilled($entry->data, FormEntryData::majorKeys()),
-                ], fn ($value): bool => filled($value));
+                return FormEntryData::majorValues($entry->data);
             })
             ->map(fn ($value): string => trim((string) $value))
             ->filter()
@@ -808,9 +828,9 @@ class CandidateEntranceStatisticsTable
             ->toArray();
     }
 
-    protected static function dynamicFormTypeOptions(): array
+    protected static function dynamicFormTypeOptions(?Builder $query = null): array
     {
-        $formIds = CandidateEntranceStatisticResource::getEloquentQuery()
+        $formIds = ($query ?? CandidateEntranceStatisticResource::getEloquentQuery())
             ->reorder()
             ->distinct()
             ->pluck('custom_form_id')
@@ -976,9 +996,9 @@ class CandidateEntranceStatisticsTable
         return CandidateTypeResolver::label($state);
     }
 
-    protected static function dynamicReviewStatusOptions(): array
+    protected static function dynamicReviewStatusOptions(?Builder $query = null): array
     {
-        return CandidateEntranceStatisticResource::getEloquentQuery()
+        return ($query ?? CandidateEntranceStatisticResource::getEloquentQuery())
             ->get()
             ->map(fn (CustomFormEntry $record): string => self::resultStatusLabel($record, data_get($record->data, 'candidate_status') ?: 'pending'))
             ->unique()

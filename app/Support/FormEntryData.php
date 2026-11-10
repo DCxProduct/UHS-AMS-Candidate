@@ -66,16 +66,26 @@ class FormEntryData
     public static function applyJsonExactFilter(Builder $query, array $keys, mixed $value): Builder
     {
         return $query->where(function (Builder $query) use ($keys, $value): void {
-            foreach ($keys as $index => $key) {
-                if ($index === 0) {
-                    $query->where("data->{$key}", $value);
-
-                    continue;
-                }
-
-                $query->orWhere("data->{$key}", $value);
+            foreach ($keys as $key) {
+                $query->orWhere(function (Builder $values) use ($key, $value): void {
+                    $values->where("data->{$key}", $value)
+                        ->orWhereJsonContains("data->{$key}", $value);
+                    if (is_string($value) && ctype_digit($value)) {
+                        $values->orWhereJsonContains("data->{$key}", (int) $value);
+                    }
+                });
             }
         });
+    }
+
+    /** @return list<string> */
+    public static function majorValues(array | object | null $data): array
+    {
+        return collect(static::normalizeOptionValues(static::firstFilled($data, static::majorKeys())))
+            ->filter(fn ($value): bool => is_scalar($value) && filled($value))
+            ->map(fn ($value): string => trim((string) $value))
+            ->filter(fn (string $value): bool => $value !== '' && $value !== '-')
+            ->unique()->values()->all();
     }
 
     public static function majorValue(array | object | null $data, mixed $fallback = '-'): string

@@ -11,6 +11,7 @@ use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
 use App\Support\NotificationLanguage;
 use App\Support\UserTypeOptions;
+use App\Support\TableFilterOptions;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
@@ -18,9 +19,11 @@ use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
 class SystemUsersTable
@@ -145,7 +148,7 @@ class SystemUsersTable
             ->filters([
                 SelectFilter::make('roles')
                     ->label(__('system_users.fields.candidate_type'))
-                    ->options(fn (): array => UserTypeOptions::systemOptions())
+                    ->options(fn (HasTable $livewire): array => self::roleFilterOptions(TableFilterOptions::query($livewire, 'roles')))
                     ->native(false)
                     ->searchable()
                     ->preload()
@@ -167,10 +170,7 @@ class SystemUsersTable
 
                 SelectFilter::make('is_active')
                     ->label(__('system_users.fields.is_active'))
-                    ->options([
-                        '1' => __('system_users.filters.active'),
-                        '0' => __('system_users.filters.inactive'),
-                    ])
+                    ->options(fn (HasTable $livewire): array => self::activeFilterOptions(TableFilterOptions::query($livewire, 'is_active')))
                     ->native(false)
                     ->query(function ($query, array $data) {
                         $value = $data['value'] ?? null;
@@ -243,6 +243,25 @@ class SystemUsersTable
                     ->color('warning')
                     ->tooltip(__('system_users.actions.actions')),
             ]);
+    }
+
+    protected static function roleFilterOptions(Builder $query): array
+    {
+        return $query->get()
+            ->map(fn (SystemUser $record): ?string => self::resolveCandidateRole($record))
+            ->filter(fn ($role): bool => filled($role))
+            ->unique()
+            ->sort()
+            ->mapWithKeys(fn (string $role): array => [$role => self::resolveRoleLabel($role)])
+            ->all();
+    }
+
+    protected static function activeFilterOptions(Builder $query): array
+    {
+        return $query->pluck('is_active')->unique()
+            ->mapWithKeys(fn ($active): array => [(string) (int) (bool) $active => (bool) $active
+                ? __('system_users.filters.active') : __('system_users.filters.inactive')])
+            ->all();
     }
 
     protected static function resolveCandidateRole(SystemUser $record): ?string

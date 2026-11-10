@@ -25,6 +25,7 @@ use App\Support\PaymentValidation;
 use App\Support\TablePdfExporter;
 use App\Support\WorkflowStageMessages;
 use App\Support\WorkflowActionFeedback;
+use App\Support\TableFilterOptions;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormField;
 use Filament\Actions\Action;
@@ -39,6 +40,7 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\RawJs;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
@@ -292,17 +294,17 @@ class PaymentStatusListsTable
                         Select::make('status_payt')
                             ->label(__('payment_status_lists.columns.payment_status'))
                             ->placeholder(__('payment_status_lists.filters.all_statuses'))
-                            ->options([
-                                'paid' => __('payments.options.status_payt.paid'),
-                                'unpaid' => __('payments.options.status_payt.unpaid'),
-                            ])
+                            ->options(fn (HasTable $livewire): array => self::paymentFilterOptions(
+                                TableFilterOptions::query($livewire, 'payment_status_list_filters', 'status_payt'),
+                                'status_payt',
+                            ))
                             ->native(false)
                             ->live(),
 
                         Select::make('received_by')
                             ->label(__('payments.table.received_by'))
                             ->placeholder(__('payments.options.all_cashiers'))
-                            ->options(fn (): array => self::dynamicReceiverOptions())
+                            ->options(fn (HasTable $livewire): array => self::dynamicReceiverOptions(TableFilterOptions::query($livewire, 'payment_status_list_filters', 'received_by')))
                             ->native(false)
                             ->searchable()
                             ->live(),
@@ -310,14 +312,14 @@ class PaymentStatusListsTable
 
                         Select::make('form_id')
                             ->label(__('payment_status_lists.columns.application_form_type'))
-                            ->options(fn (): array => self::dynamicFormOptions())
+                            ->options(fn (HasTable $livewire): array => self::dynamicFormOptions(TableFilterOptions::query($livewire, 'payment_status_list_filters', 'form_id')))
                             ->native(false)
                             ->searchable()
                             ->live(),
 
                         Select::make('major')
                             ->label(__('payment_status_lists.columns.major'))
-                            ->options(fn (): array => self::dynamicMajorOptions())
+                            ->options(fn (HasTable $livewire): array => self::dynamicMajorOptions(TableFilterOptions::query($livewire, 'payment_status_list_filters', 'major')))
                             ->native(false)
                             ->searchable()
                             ->live(),
@@ -325,7 +327,7 @@ class PaymentStatusListsTable
                         Select::make('receipt_number')
                             ->label(__('payments.table.receipt_number'))
                             ->placeholder(__('payments.placeholders.receipt_number'))
-                            ->options(fn (): array => self::dynamicReceiptOptions())
+                            ->options(fn (HasTable $livewire): array => self::dynamicReceiptOptions(TableFilterOptions::query($livewire, 'payment_status_list_filters', 'receipt_number')))
                             ->native(false)
                             ->searchable()
                             ->live(),
@@ -333,10 +335,10 @@ class PaymentStatusListsTable
                         Select::make('payment_source')
                             ->label(__('payments.table.payment_source'))
                             ->placeholder(__('payments.placeholders.payment_source'))
-                            ->options([
-                                'ams' => __('payments.payment_sources.ams'),
-                                'candidate' => __('payments.payment_sources.candidate'),
-                            ])
+                            ->options(fn (HasTable $livewire): array => self::paymentFilterOptions(
+                                TableFilterOptions::query($livewire, 'payment_status_list_filters', 'payment_source'),
+                                'payment_source',
+                            ))
                             ->native(false)
                             ->live(),
                     ])
@@ -1131,28 +1133,42 @@ class PaymentStatusListsTable
         return (string) ($record->creator?->name ?: $record->creator?->username ?: $record->creator?->email ?: '-');
     }
 
-    protected static function listedPaymentsQuery(): Builder
+    protected static function paymentFilterOptions(Builder $query, string $field): array
     {
-        return Payment::query()->whereIn('id', PaymentStatusListResource::getEloquentQuery()
+        $options = $field === 'status_payt'
+            ? ['paid' => __('payments.options.status_payt.paid'), 'unpaid' => __('payments.options.status_payt.unpaid')]
+            : ['ams' => __('payments.payment_sources.ams'), 'candidate' => __('payments.payment_sources.candidate')];
+
+        return array_filter($options, function (string $label, string $value) use ($query, $field): bool {
+            $filtered = $field === 'status_payt'
+                ? self::applyPaymentStatusFilter(clone $query, $value)
+                : self::applyPaymentSourceFilter(clone $query, $value);
+
+            return $filtered->exists();
+        }, ARRAY_FILTER_USE_BOTH);
+    }
+
+    protected static function listedPaymentsQuery(?Builder $query = null): Builder
+    {
+        return Payment::query()->whereIn('id', ($query ?? PaymentStatusListResource::getEloquentQuery())
             ->reorder()
             ->select([])
             ->selectSub(self::latestPaymentQuery()->select('id'), 'latest_payment_id'));
     }
 
-    protected static function dynamicReceiverOptions(): array
+    protected static function dynamicReceiverOptions(?Builder $query = null): array
     {
         return User::query()
-            ->whereIn('id', self::listedPaymentsQuery()->select('received_by'))
-            ->when(auth()->check(), fn (Builder $query): Builder => $query->orWhereKey(auth()->id()))
+            ->whereIn('id', self::listedPaymentsQuery($query)->select('received_by'))
             ->orderBy('name')
             ->get(['id', 'name', 'username'])
             ->mapWithKeys(fn (User $user): array => [$user->getKey() => (string) ($user->name ?: $user->username ?: '-')])
             ->all();
     }
 
-    protected static function dynamicReceiptOptions(): array
+    protected static function dynamicReceiptOptions(?Builder $query = null): array
     {
-        return self::listedPaymentsQuery()
+        return self::listedPaymentsQuery($query)
             ->whereNotNull('receipt_number')
             ->orderBy('receipt_number')
             ->pluck('receipt_number')
@@ -1161,10 +1177,10 @@ class PaymentStatusListsTable
             ->all();
     }
 
-    protected static function dynamicFormOptions(): array
+    protected static function dynamicFormOptions(?Builder $query = null): array
     {
         return CustomForm::query()
-            ->whereIn('id', PaymentStatusListResource::getEloquentQuery()
+            ->whereIn('id', ($query ?? PaymentStatusListResource::getEloquentQuery())
                 ->reorder()
                 ->select('custom_form_id')
                 ->distinct())
@@ -1179,15 +1195,11 @@ class PaymentStatusListsTable
             ->all();
     }
 
-    protected static function dynamicMajorOptions(): array
+    protected static function dynamicMajorOptions(?Builder $query = null): array
     {
-        return PaymentStatusListResource::getEloquentQuery()
+        return ($query ?? PaymentStatusListResource::getEloquentQuery())
             ->get(['data'])
-            ->flatMap(function (PaymentStatusList $record): array {
-                return array_filter([
-                    FormEntryData::firstFilled($record->data, FormEntryData::majorKeys()),
-                ], fn ($value): bool => filled($value));
-            })
+            ->flatMap(fn (PaymentStatusList $record): array => FormEntryData::majorValues($record->data))
             ->map(fn ($value): string => trim((string) $value))
             ->filter()
             ->unique()

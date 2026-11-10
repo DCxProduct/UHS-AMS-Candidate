@@ -7,14 +7,17 @@ use App\Models\ClosingDate;
 use App\Models\DegreeLevel;
 use App\Support\FilamentActionPermissions;
 use App\Support\LocalizedDate;
+use App\Support\TableFilterOptions;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class ClosingDatesTable
 {
@@ -25,7 +28,7 @@ class ClosingDatesTable
             ->columns([
                 TextColumn::make('localized_name')
                     ->label(__('closing_dates.table_name'))
-                    ->searchable(),
+                    ->searchable(['name', 'name_kh']),
 
                 TextColumn::make('type')
                     ->label(__('closing_dates.student_application'))
@@ -77,19 +80,19 @@ class ClosingDatesTable
             ->filters([
                 SelectFilter::make('type')
                     ->label(__('closing_dates.student_application'))
-                    ->options(fn (): array => self::applicationFormFilterOptions())
+                    ->options(fn (HasTable $livewire): array => self::applicationFormFilterOptions(TableFilterOptions::query($livewire, 'type')))
                     ->searchable()
                     ->native(false),
 
                 SelectFilter::make('degree_level_id')
                     ->label(__('degree_levels.navigation_label'))
-                    ->options(fn (): array => self::degreeLevelFilterOptions())
+                    ->options(fn (HasTable $livewire): array => self::degreeLevelFilterOptions(TableFilterOptions::query($livewire, 'degree_level_id')))
                     ->searchable()
                     ->native(false),
 
                 SelectFilter::make('status')
                     ->label(__('closing_dates.status'))
-                    ->options(fn (): array => collect(self::filterValues('status'))
+                    ->options(fn (HasTable $livewire): array => collect(self::filterValues('status', TableFilterOptions::query($livewire, 'status')))
                         ->mapWithKeys(fn (string $status): array => [$status => __('closing_dates.statuses.'.$status)])
                         ->all())
                     ->native(false),
@@ -117,9 +120,10 @@ class ClosingDatesTable
             ->defaultSort('created_at', 'desc');
     }
 
-    private static function filterValues(string $column): array
+    private static function filterValues(string $column, ?Builder $query = null): array
     {
-        return ClosingDateResource::getEloquentQuery()
+        return ($query ?? ClosingDateResource::getEloquentQuery())
+            ->reorder()
             ->whereNotNull($column)
             ->orderBy($column)
             ->distinct()
@@ -129,9 +133,9 @@ class ClosingDatesTable
             ->all();
     }
 
-    private static function applicationFormFilterOptions(): array
+    private static function applicationFormFilterOptions(?Builder $query = null): array
     {
-        $types = self::filterValues('type');
+        $types = self::filterValues('type', $query);
         $formIds = [];
         foreach ($types as $type) {
             if (preg_match('/^custom_form[:_](\d+)$/', $type, $matches) === 1) {
@@ -149,10 +153,10 @@ class ClosingDatesTable
             ->all();
     }
 
-    private static function degreeLevelFilterOptions(): array
+    private static function degreeLevelFilterOptions(?Builder $query = null): array
     {
         return DegreeLevel::query()
-            ->whereKey(self::filterValues('degree_level_id'))
+            ->whereKey(self::filterValues('degree_level_id', $query))
             ->orderBy('sort_order')
             ->orderBy('id')
             ->get()

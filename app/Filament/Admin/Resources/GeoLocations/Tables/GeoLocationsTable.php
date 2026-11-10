@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Resources\GeoLocations\Tables;
 
 use App\Models\GeoLocation;
 use App\Support\LocalizedNumber;
+use App\Support\TableFilterOptions;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
@@ -11,6 +12,7 @@ use Filament\Forms\Components\Select;
 use Filament\Schemas\Components\Grid;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
@@ -86,19 +88,17 @@ class GeoLocationsTable
                                 Select::make('type')
                                     ->label(__('geo_locations.filters.show_by_type'))
                                     ->placeholder(__('geo_locations.filters.all_types'))
-                                    ->options([
-                                        'province' => __('geo_locations.types.province'),
-                                        'district' => __('geo_locations.types.district'),
-                                        'commune' => __('geo_locations.types.commune'),
-                                        'village' => __('geo_locations.types.village'),
-                                    ])
+                                    ->options(fn (HasTable $livewire): array => TableFilterOptions::query($livewire, 'geo_location_filter', 'type')
+                                        ->pluck('type')->unique()
+                                        ->mapWithKeys(fn (string $type): array => [$type => __('geo_locations.types.'.$type)])
+                                        ->all())
                                     ->native(false)
                                     ->columnSpan(1),
 
                                 Select::make('province_id')
                                     ->label(__('geo_locations.types.province'))
                                     ->placeholder(__('geo_locations.filters.select_province'))
-                                    ->options(fn (): array => self::locationOptions('province'))
+                                    ->options(fn (HasTable $livewire): array => self::locationOptions('province', query: TableFilterOptions::query($livewire, 'geo_location_filter', 'province_id')))
                                     ->searchable()
                                     ->preload()
                                     ->native(false)
@@ -113,7 +113,7 @@ class GeoLocationsTable
                                 Select::make('district_id')
                                     ->label(__('geo_locations.types.district'))
                                     ->placeholder(__('geo_locations.filters.select_district'))
-                                    ->options(fn (callable $get): array => self::locationOptions('district', $get('province_id')))
+                                    ->options(fn (callable $get, HasTable $livewire): array => self::locationOptions('district', $get('province_id'), TableFilterOptions::query($livewire, 'geo_location_filter', 'district_id')))
                                     ->searchable()
                                     ->preload()
                                     ->native(false)
@@ -127,7 +127,7 @@ class GeoLocationsTable
                                 Select::make('commune_id')
                                     ->label(__('geo_locations.types.commune'))
                                     ->placeholder(__('geo_locations.filters.select_commune'))
-                                    ->options(fn (callable $get): array => self::locationOptions('commune', $get('district_id')))
+                                    ->options(fn (callable $get, HasTable $livewire): array => self::locationOptions('commune', $get('district_id'), TableFilterOptions::query($livewire, 'geo_location_filter', 'commune_id')))
                                     ->searchable()
                                     ->preload()
                                     ->native(false)
@@ -140,7 +140,7 @@ class GeoLocationsTable
                                 Select::make('village_id')
                                     ->label(__('geo_locations.types.village'))
                                     ->placeholder(__('geo_locations.filters.select_village'))
-                                    ->options(fn (callable $get): array => self::locationOptions('village', $get('commune_id')))
+                                    ->options(fn (callable $get, HasTable $livewire): array => self::locationOptions('village', $get('commune_id'), TableFilterOptions::query($livewire, 'geo_location_filter', 'village_id')))
                                     ->searchable()
                                     ->preload()
                                     ->native(false)
@@ -194,11 +194,11 @@ class GeoLocationsTable
             ]);
     }
 
-    private static function locationOptions(string $type, mixed $parentId = null): array
+    private static function locationOptions(string $type, mixed $parentId = null, ?Builder $query = null): array
     {
         return GeoLocation::query()
             ->where('type', $type)
-            ->where('is_active', true)
+            ->when($query !== null, fn (Builder $locations): Builder => $locations->whereKey(self::representedLocationIds($query)))
             ->when(
                 filled($parentId),
                 fn (Builder $query): Builder => $query->where('parent_id', $parentId)
@@ -213,6 +213,22 @@ class GeoLocationsTable
                 return [$location->id => $name];
             })
             ->toArray();
+    }
+
+    /** Include ancestors: a province can filter visible villages without being a village row. */
+    private static function representedLocationIds(Builder $query): array
+    {
+        $locations = $query->get(['geo_locations.id', 'geo_locations.parent_id']);
+        $ids = $locations->modelKeys();
+        $parents = $locations->pluck('parent_id')->filter()->unique()->all();
+
+        for ($level = 0; $level < 4 && $parents !== []; $level++) {
+            $ancestors = GeoLocation::query()->whereKey($parents)->get(['id', 'parent_id']);
+            $ids = [...$ids, ...$ancestors->modelKeys()];
+            $parents = $ancestors->pluck('parent_id')->filter()->unique()->all();
+        }
+
+        return array_values(array_unique($ids));
     }
 
     private static function locationTreeIds(int $locationId): array
