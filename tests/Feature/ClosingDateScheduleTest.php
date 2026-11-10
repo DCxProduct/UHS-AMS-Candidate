@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Filament\Admin\Resources\ClosingDates\Pages\CreateClosingDate;
 use App\Filament\Admin\Resources\ClosingDates\Pages\EditClosingDate;
 use App\Models\ClosingDate;
+use App\Models\DegreeLevel;
 use App\Models\Major;
 use App\Models\Role;
 use App\Models\User;
@@ -39,15 +40,18 @@ class ClosingDateScheduleTest extends TestCase
 
     public function test_the_same_form_can_be_selected_and_created_again_without_replacing_its_previous_schedule(): void
     {
+        $degree = DegreeLevel::query()->create(['key' => 'bachelor', 'label_en' => 'Bachelor', 'is_active' => true]);
         $form = $this->form('Repeatable application');
         $profile = $this->form('Profile', 'profile');
         $inactive = $this->form('Inactive application');
         $inactive->update(['is_active' => false]);
         $type = ClosingDate::customFormTypeKey($form->id);
-        Livewire::test(CreateClosingDate::class)->fillForm([
+        $create = Livewire::test(CreateClosingDate::class)->fillForm([
             'name' => 'First intake', 'type' => [$type], 'status' => 'open',
             'start_date' => '2026-11-01', 'end_date' => '2026-11-10',
-        ])->call('create')->assertHasNoFormErrors();
+        ])->call('create')->assertHasFormErrors(['degree_level_id' => 'required']);
+        $this->assertDatabaseCount('closing_dates', 0);
+        $create->fillForm(['degree_level_id' => $degree->id])->call('create')->assertHasNoFormErrors();
         $original = ClosingDate::query()->sole();
 
         $options = ClosingDate::selectableTypeOptions();
@@ -56,6 +60,7 @@ class ClosingDateScheduleTest extends TestCase
         $this->assertArrayNotHasKey(ClosingDate::customFormTypeKey($inactive->id), $options);
         Livewire::test(CreateClosingDate::class)->fillForm([
             'name' => 'Second intake', 'type' => [$type], 'status' => 'open',
+            'degree_level_id' => $degree->id,
             'start_date' => '2026-11-05', 'end_date' => '2026-11-20',
         ])->call('create')->assertHasNoFormErrors();
 
@@ -67,16 +72,20 @@ class ClosingDateScheduleTest extends TestCase
 
     public function test_editing_can_reuse_a_form_already_selected_by_another_schedule(): void
     {
+        $degree = DegreeLevel::query()->create(['key' => 'bachelor', 'label_en' => 'Bachelor', 'is_active' => true]);
         $firstForm = $this->form('First application');
         $secondForm = $this->form('Second application');
         $first = $this->schedule($firstForm, '2026-11-01', '2026-11-10');
         $second = $this->schedule($secondForm, '2026-11-01', '2026-11-20');
         $type = ClosingDate::customFormTypeKey($firstForm->id);
 
-        Livewire::test(EditClosingDate::class, ['record' => $second->getRouteKey()])
-            ->set('data.type', $type)->call('save')->assertHasNoFormErrors();
+        $edit = Livewire::test(EditClosingDate::class, ['record' => $second->getRouteKey()])
+            ->set('data.type', $type)->call('save')->assertHasFormErrors(['degree_level_id' => 'required']);
+        $this->assertSame(ClosingDate::customFormTypeKey($secondForm->id), $second->fresh()->type);
+        $edit->fillForm(['degree_level_id' => $degree->id])->call('save')->assertHasNoFormErrors();
         $this->assertSame($type, $first->fresh()->type);
         $this->assertSame($type, $second->fresh()->type);
+        $this->assertSame($degree->id, $second->fresh()->degree_level_id);
         $this->assertSame(2, ClosingDate::query()->where('type', $type)->count());
     }
 

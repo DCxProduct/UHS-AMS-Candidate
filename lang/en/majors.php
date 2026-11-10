@@ -27,4 +27,5 @@ return [
         'name' => 'Name',
     ],
     'closing_date_field' => 'Majors',
+    'closing_date_help' => 'Leave empty to show all active majors for the selected degree level.',
 ];
