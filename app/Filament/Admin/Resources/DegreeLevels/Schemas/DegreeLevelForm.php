@@ -7,7 +7,6 @@ use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
-use Illuminate\Support\Str;
 
 class DegreeLevelForm
 {
@@ -22,22 +21,6 @@ class DegreeLevelForm
                             'default' => 2,
                             'lg' => 2,
                         ])->schema([
-                            TextInput::make('key')
-                                ->label(__('degree_levels.fields.key'))
-                                ->placeholder(__('degree_levels.placeholders.key'))
-                                ->required()
-                                ->maxLength(255)
-                                ->unique(column: 'key', ignoreRecord: true)
-                                ->dehydrateStateUsing(fn ($state): ?string => blank($state)
-                                    ? null
-                                    : Str::of((string) $state)
-                                        ->trim()
-                                        ->lower()
-                                        ->replaceMatches('/[^a-z0-9_-]+/', '_')
-                                        ->replaceMatches('/_+/', '_')
-                                        ->trim('_')
-                                        ->toString()),
-
                             TextInput::make('label_en')
                                 ->label(__('degree_levels.fields.label_en'))
                                 ->placeholder(__('degree_levels.placeholders.label_en'))
