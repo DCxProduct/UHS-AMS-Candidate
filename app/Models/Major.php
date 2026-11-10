@@ -120,7 +120,11 @@ class Major extends Model
             return [];
         }
 
-        $query = $closingDate->majors()
+        $query = $closingDate->majors()->exists()
+            ? $closingDate->majors()
+            : static::query();
+
+        $query = $query
             ->where('majors.is_active', true)
             ->when(
                 filled($closingDate->degree_level_id) && Schema::hasTable('degree_level_major'),

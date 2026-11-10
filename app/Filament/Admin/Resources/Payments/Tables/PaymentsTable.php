@@ -14,6 +14,7 @@ use App\Support\LocalizedNumber;
 use App\Support\OfficialReport;
 use App\Support\TablePdfExporter;
 use App\Support\WorkflowStageMessages;
+use App\Support\TableFilterOptions;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
@@ -22,6 +23,7 @@ use Filament\Forms\Components\ViewField;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
@@ -269,7 +271,7 @@ class PaymentsTable
                         Select::make('received_by')
                             ->label(__('payments.table.received_by'))
                             ->placeholder(__('payments.placeholders.received_by'))
-                            ->options(fn (): array => self::dynamicReceiverOptions())
+                            ->options(fn (HasTable $livewire): array => self::dynamicReceiverOptions(TableFilterOptions::query($livewire, 'payment_filters', 'received_by')))
                             ->default(fn (): ?string => auth()->check() ? (string) auth()->id() : null)
                             ->native(false)
                             ->searchable()
@@ -278,7 +280,7 @@ class PaymentsTable
                         Select::make('major')
                             ->label(__('payments.table.major'))
                             ->placeholder(__('payments.placeholders.major'))
-                            ->options(fn (): array => self::dynamicMajorOptions())
+                            ->options(fn (HasTable $livewire): array => self::dynamicMajorOptions(TableFilterOptions::query($livewire, 'payment_filters', 'major')))
                             ->native(false)
                             ->searchable()
                             ->live(),
@@ -286,7 +288,7 @@ class PaymentsTable
                         Select::make('form_id')
                             ->label(__('payments.table.form'))
                             ->placeholder(__('payments.placeholders.form'))
-                            ->options(fn (): array => self::dynamicFormOptions())
+                            ->options(fn (HasTable $livewire): array => self::dynamicFormOptions(TableFilterOptions::query($livewire, 'payment_filters', 'form_id')))
                             ->native(false)
                             ->searchable()
                             ->live(),
@@ -294,7 +296,7 @@ class PaymentsTable
                         Select::make('receipt_number')
                             ->label(__('payments.table.receipt_number'))
                             ->placeholder(__('payments.placeholders.receipt_number'))
-                            ->options(fn (): array => self::dynamicReceiptOptions())
+                            ->options(fn (HasTable $livewire): array => self::dynamicReceiptOptions(TableFilterOptions::query($livewire, 'payment_filters', 'receipt_number')))
                             ->native(false)
                             ->searchable()
                             ->live(),
@@ -523,17 +525,14 @@ class PaymentsTable
     /**
      * Cashiers who have recorded at least one payment.
      */
-    protected static function dynamicReceiverOptions(): array
+    protected static function dynamicReceiverOptions(?Builder $query = null): array
     {
-        $receiverIds = PaymentResource::getEloquentQuery()
+        $receiverIds = ($query ?? PaymentResource::getEloquentQuery())
             ->whereNotNull('received_by')
             ->pluck('received_by')
             ->map(fn (mixed $id): string => (string) $id)
             ->all();
 
-        if (auth()->check()) {
-            $receiverIds[] = (string) auth()->id();
-        }
 
         $cashiers = User::query()
             ->whereIn('id', array_unique($receiverIds))
@@ -545,9 +544,9 @@ class PaymentsTable
         return $cashiers;
     }
 
-    protected static function dynamicFormOptions(): array
+    protected static function dynamicFormOptions(?Builder $query = null): array
     {
-        return PaymentResource::getEloquentQuery()
+        return ($query ?? PaymentResource::getEloquentQuery())
             ->with('form:id,name')
             ->get()
             ->filter(fn (Payment $record): bool => filled($record->form_id) && $record->form !== null)
@@ -557,9 +556,9 @@ class PaymentsTable
             ->toArray();
     }
 
-    protected static function dynamicReceiptOptions(): array
+    protected static function dynamicReceiptOptions(?Builder $query = null): array
     {
-        return PaymentResource::getEloquentQuery()
+        return ($query ?? PaymentResource::getEloquentQuery())
             ->whereNotNull('receipt_number')
             ->pluck('receipt_number')
             ->map(fn (mixed $value): string => trim((string) $value))
@@ -570,9 +569,9 @@ class PaymentsTable
             ->toArray();
     }
 
-    protected static function dynamicMajorOptions(): array
+    protected static function dynamicMajorOptions(?Builder $query = null): array
     {
-        return PaymentResource::getEloquentQuery()
+        return ($query ?? PaymentResource::getEloquentQuery())
             ->get()
             ->map(fn (Payment $record): string => trim(self::majorKey($record)))
             ->filter(fn (string $value): bool => $value !== '' && $value !== '-')

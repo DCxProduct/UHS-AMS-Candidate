@@ -6,9 +6,11 @@ use App\Filament\Admin\Resources\AuditLogs\AuditLogResource;
 use App\Models\SystemUser;
 use App\Models\User;
 use App\Support\LocalizedDate;
+use App\Support\TableFilterOptions;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
@@ -58,7 +60,8 @@ class AuditLogsTable
                     ->schema([
                         Select::make('module')
                             ->label(__('audit_logs.fields.module'))
-                            ->options(fn (): array => collect(self::privilegedActivityQuery(self::scopedQuery())
+                            ->options(fn (HasTable $livewire): array => collect(TableFilterOptions::query($livewire, 'audit_log_filters', 'module')
+                                ->reorder()
                                 ->select('module')
                                 ->distinct()
                                 ->orderBy('module')
@@ -72,7 +75,8 @@ class AuditLogsTable
 
                         Select::make('action')
                             ->label(__('audit_logs.fields.action'))
-                            ->options(fn (): array => collect(self::privilegedActivityQuery(self::scopedQuery())
+                            ->options(fn (HasTable $livewire): array => collect(TableFilterOptions::query($livewire, 'audit_log_filters', 'action')
+                                ->reorder()
                                 ->select('action')
                                 ->distinct()
                                 ->orderBy('action')

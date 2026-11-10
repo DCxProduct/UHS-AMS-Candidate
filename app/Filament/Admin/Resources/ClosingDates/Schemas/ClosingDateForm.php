@@ -8,6 +8,7 @@ use App\Models\Major;
 use App\Support\DatePickerKeyboardInput;
 use Carbon\Carbon;
 use Closure;
+use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -65,6 +66,7 @@ class ClosingDateForm
                             ->label(__('degree_levels.navigation_label'))
                             ->placeholder(__('degree_levels.form.select_degree_level'))
                             ->options(fn (): array => DegreeLevel::selectOptions())
+                            ->required()
                             ->searchable()
                             ->preload()
                             ->live()
@@ -87,7 +89,23 @@ class ClosingDateForm
 
                         Select::make('major_ids')
                             ->label(__('majors.closing_date_field'))
+                            ->hintActions([
+                                Action::make('reset_all_majors')
+                                    ->label(__('majors.actions.reset_all'))
+                                    ->color('danger')
+                                    ->action(function (Select $component): void {
+                                        $component->state([]);
+                                        $component->callAfterStateUpdated();
+                                    }),
+                                Action::make('select_all_majors')
+                                    ->label(__('majors.actions.select_all'))
+                                    ->action(function (Select $component): void {
+                                        $component->state(array_keys($component->getOptions()));
+                                        $component->callAfterStateUpdated();
+                                    }),
+                            ])
                             ->placeholder(__('majors.search'))
+                            ->helperText(__('majors.closing_date_help'))
                             ->options(fn (Get $get): array => filled($get('degree_level_id'))
                                 ? Major::optionsForDegreeLevelId($get('degree_level_id'), includeAbbreviation: true)
                                 : Major::options(includeAbbreviation: true))

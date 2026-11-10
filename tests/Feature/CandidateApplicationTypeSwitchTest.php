@@ -48,7 +48,7 @@ class CandidateApplicationTypeSwitchTest extends TestCase
 
     private const ASSOCIATE = 'national_entrance_exam_application_associate';
 
-    private const MASTER = 'national_exit_exam_application_master_of_science';
+    private const MASTER = 'continuing_master_of_science';
 
     protected function setUp(): void
     {
@@ -257,7 +257,7 @@ class CandidateApplicationTypeSwitchTest extends TestCase
         $resolve = new ReflectionMethod(CustomFormEntryForm::class, 'profileSelectChoices');
         $this->assertSame(['high_school_diploma' => 'High school diploma'], $resolve->invoke(null, $field, $options, true));
 
-        CandidateApplicationLevels::switchTo($user, 'national_exit_exam_application_master_of_science');
+        CandidateApplicationLevels::switchTo($user, self::MASTER);
 
         $this->assertTrue($user->hasRole(self::BACHELOR));
         $this->assertSame($choices, $resolve->invoke(null, $field, $options, true));

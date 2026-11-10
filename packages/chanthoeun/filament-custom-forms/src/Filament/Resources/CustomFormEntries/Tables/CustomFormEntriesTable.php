@@ -23,6 +23,7 @@ use App\Support\FormEntryData;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
 use App\Support\MenuRecordVisibility;
+use App\Support\TableFilterOptions;
 use App\Support\WorkflowNotificationStageSummary;
 use App\Models\GeoLocation;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
@@ -501,7 +502,7 @@ class CustomFormEntriesTable
             TextColumn::make('data.phone_number')
                 ->label(__('app.custom_form_entry_ui.labels.phone_number'))
                 ->placeholder('-')
-                ->searchable()
+                ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::apply($query, 'data->phone_number', $search))
                 ->toggleable(isToggledHiddenByDefault: false),
 
             // 7. Academic Year
@@ -511,7 +512,7 @@ class CustomFormEntriesTable
                 ->formatStateUsing(fn (mixed $state): string => FormEntryData::academicYearLabel([
                     'academic_year' => $state,
                 ]))
-                ->searchable()
+                ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::apply($query, 'data->academic_year', $search))
                 ->toggleable(isToggledHiddenByDefault: false),
 
         ];
@@ -914,19 +915,19 @@ class CustomFormEntriesTable
                 ->schema([
                     Select::make('major')
                         ->label(__('payment_status_lists.columns.major'))
-                        ->options(fn (): array => self::dynamicMajorOptions($formId))
+                        ->options(fn ($livewire): array => self::dynamicMajorOptions($formId, TableFilterOptions::query($livewire, 'application_review_filters', 'major')))
                         ->native(false)
                         ->live(),
 
                     Select::make('review_status')
                         ->label(__('candidate_entrance_statistics.review_status'))
-                        ->options(fn (): array => self::dynamicReviewStatusOptions($formId))
+                        ->options(fn ($livewire): array => self::dynamicReviewStatusOptions($formId, TableFilterOptions::query($livewire, 'application_review_filters', 'review_status')))
                         ->native(false)
                         ->live(),
 
                     Select::make('reviewed_year')
                         ->label(__('candidate_entrance_statistics.reviewed_year'))
-                        ->options(fn (): array => self::dynamicRequestReviewedYears($formId))
+                        ->options(fn ($livewire): array => self::dynamicRequestReviewedYears($formId, TableFilterOptions::query($livewire, 'application_review_filters', 'reviewed_year')))
                         ->native(false)
                         ->live(),
                 ])
@@ -983,12 +984,14 @@ class CustomFormEntriesTable
         ];
     }
 
-    protected static function dynamicReviewStatusOptions(?string $formId): array
+    protected static function dynamicReviewStatusOptions(?string $formId, ?Builder $query = null): array
     {
-        return self::applyQueryConstraints(
+        $query ??= self::applyQueryConstraints(
             MenuRecordVisibility::visible(CustomFormEntryResource::getEloquentQuery(), CustomFormEntryResource::HIDDEN_FLAG),
             $formId,
-        )
+        );
+
+        return (clone $query)
             ->get()
             ->map(fn ($record): string => self::reviewStatusLabel($record))
             ->unique()
@@ -1003,11 +1006,13 @@ class CustomFormEntriesTable
             ->formatState(self::displayStatus($record));
     }
 
-    protected static function dynamicRequestReviewedYears(?string $formId): array
+    protected static function dynamicRequestReviewedYears(?string $formId, ?Builder $query = null): array
     {
-        $rows = \Chanthoeun\FilamentCustomForms\Models\CustomFormEntry::query()
-            ->when($formId, fn ($query) => $query->where('custom_form_id', $formId))
-            ->get(['created_at', 'reviewed_at']);
+        $query ??= self::applyQueryConstraints(
+            MenuRecordVisibility::visible(CustomFormEntryResource::getEloquentQuery(), CustomFormEntryResource::HIDDEN_FLAG),
+            $formId,
+        );
+        $rows = (clone $query)->get(['created_at', 'reviewed_at']);
 
         return $rows
             ->flatMap(function ($entry): array {
@@ -1030,14 +1035,16 @@ class CustomFormEntriesTable
             ->toArray();
     }
 
-    protected static function dynamicMajorOptions(?string $formId): array
+    protected static function dynamicMajorOptions(?string $formId, ?Builder $query = null): array
     {
-        return \Chanthoeun\FilamentCustomForms\Models\CustomFormEntry::query()
-            ->when($formId, fn ($query) => $query->where('custom_form_id', $formId))
+        $query ??= self::applyQueryConstraints(
+            MenuRecordVisibility::visible(CustomFormEntryResource::getEloquentQuery(), CustomFormEntryResource::HIDDEN_FLAG),
+            $formId,
+        );
+
+        return (clone $query)
             ->get(['data'])
-            ->map(function ($entry): string {
-                return trim((string) (FormEntryData::firstFilled($entry->data, FormEntryData::majorKeys(), '')));
-            })
+            ->flatMap(fn ($entry): array => FormEntryData::majorValues($entry->data))
             ->filter(fn (string $value): bool => $value !== '')
             ->unique()
             ->sort()

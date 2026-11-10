@@ -5,6 +5,10 @@ return [
     'resource_label' => 'Major',
     'resource_plural_label' => 'Majors',
     'search' => 'Search majors',
+    'actions' => [
+        'select_all' => 'Select all',
+        'reset_all' => 'Reset all',
+    ],
     'form' => [
         'section_title' => 'Major Information',
     ],
@@ -27,4 +31,5 @@ return [
         'name' => 'Name',
     ],
     'closing_date_field' => 'Majors',
+    'closing_date_help' => 'Leave empty to show all active majors for the selected degree level.',
 ];

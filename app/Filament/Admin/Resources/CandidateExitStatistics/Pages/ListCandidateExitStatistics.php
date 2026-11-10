@@ -4,11 +4,17 @@ namespace App\Filament\Admin\Resources\CandidateExitStatistics\Pages;
 
 use App\Filament\Admin\Resources\CandidateExitStatistics\CandidateExitStatisticResource;
 use App\Filament\Admin\Resources\CandidateExitStatistics\Tables\CandidateExitStatisticsTable;
+use App\Services\CandidateStatisticsImportService;
 use App\Support\AuditLogger;
+use App\Support\CandidateStatisticsImportForm;
 use App\Support\FilamentActionPermissions;
 use App\Support\MenuRecordVisibility;
+use App\Support\SpreadsheetRowReader;
 use Filament\Actions\Action;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Validation\ValidationException;
 
 class ListCandidateExitStatistics extends ListRecords
 {
@@ -17,6 +23,55 @@ class ListCandidateExitStatistics extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('import_excel')
+                ->label(__('candidate_statistics_import.action'))
+                ->visible(fn (): bool => FilamentActionPermissions::canAccessWorkflowActions(CandidateExitStatisticResource::class)
+                    && FilamentActionPermissions::canForResource(CandidateExitStatisticResource::class, 'import_excel'))
+                ->modalHeading(__('candidate_statistics_import.modal_title'))
+                ->modalSubmitActionLabel(__('candidate_statistics_import.submit'))
+                ->schema(CandidateStatisticsImportForm::schema(CandidateExitStatisticResource::class))
+                ->action(function (array $data): void {
+                    abort_unless(FilamentActionPermissions::canAccessWorkflowActions(CandidateExitStatisticResource::class), 403);
+                    FilamentActionPermissions::abortUnlessCanForResource(CandidateExitStatisticResource::class, 'import_excel');
+
+                    try {
+                        $file = $data['file'] ?? null;
+
+                        if (! $file instanceof UploadedFile) {
+                            throw ValidationException::withMessages([
+                                'file' => __('candidate_statistics_import.errors.cannot_read'),
+                            ]);
+                        }
+
+                        $result = app(CandidateStatisticsImportService::class)->import(
+                            $file,
+                            CandidateExitStatisticResource::class,
+                            SpreadsheetRowReader::AUTO_WORKSHEET,
+                            isset($data['validation_columns'])
+                                ? array_keys(array_filter($data['validation_columns'], fn ($enabled): bool => in_array($enabled, [true, 1, '1'], true)))
+                                : null,
+                            unique: (bool) ($data['unique'] ?? true),
+                        );
+                    } catch (ValidationException $exception) {
+                        $errors = $exception->errors();
+
+                        if (isset($errors['file'])) {
+                            $errors[$this->getMountedActionSchema()->getStatePath().'.file'] = $errors['file'];
+                            unset($errors['file']);
+                        }
+
+                        throw ValidationException::withMessages($errors);
+                    }
+
+                    $this->flushCachedTableRecords();
+                    $this->dispatch('$refresh');
+
+                    Notification::make()
+                        ->title(__('candidate_statistics_import.completed_title'))
+                        ->body(__('candidate_statistics_import.completed_body', $result))
+                        ->success()
+                        ->send();
+                }),
             Action::make('download_excel')
                 ->label(__('candidate_exit_statistics.download_excel'))
                 ->color('success')

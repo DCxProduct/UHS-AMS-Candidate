@@ -6,6 +6,7 @@ use App\Enums\WorkflowStageType;
 use App\Filament\Admin\Resources\CandidateExitStatistics\CandidateExitStatisticResource;
 use App\Filament\Admin\Resources\CandidateEntranceStatistics\Tables\CandidateEntranceStatisticsTable;
 use App\Models\CandidateExitStatistic;
+use App\Support\TableFilterOptions;
 use App\Support\AuditLogger;
 use App\Support\CandidateNumber;
 use App\Support\CandidateTypeResolver;
@@ -30,6 +31,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
+use Filament\Tables\Contracts\HasTable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
@@ -87,22 +89,28 @@ class CandidateExitStatisticsTable
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: false),
 
-                TextColumn::make('name_khmer')
-                    ->label(__('candidate_exit_statistics.fields.name_khmer'))
-                    ->getStateUsing(fn (CandidateExitStatistic $record): string => self::joinName($record->first_name_kh, $record->last_name_kh))
-                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyAny($query, [
-                        'first_name_kh',
-                        'last_name_kh',
-                    ], $search))
+                TextColumn::make('first_name_kh')
+                    ->label(__('exam_results.first_name_khmer'))
+                    ->placeholder('-')
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::apply($query, 'first_name_kh', $search))
                     ->toggleable(isToggledHiddenByDefault: false),
 
-                TextColumn::make('name_latin')
-                    ->label(__('candidate_exit_statistics.fields.name_latin'))
-                    ->getStateUsing(fn (CandidateExitStatistic $record): string => self::joinName($record->first_name_en, $record->last_name_en))
-                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyAny($query, [
-                        'first_name_en',
-                        'last_name_en',
-                    ], $search))
+                TextColumn::make('last_name_kh')
+                    ->label(__('exam_results.last_name_khmer'))
+                    ->placeholder('-')
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::apply($query, 'last_name_kh', $search))
+                    ->toggleable(isToggledHiddenByDefault: false),
+
+                TextColumn::make('first_name_en')
+                    ->label(__('exam_results.first_name_latin'))
+                    ->placeholder('-')
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::apply($query, 'first_name_en', $search))
+                    ->toggleable(isToggledHiddenByDefault: false),
+
+                TextColumn::make('last_name_en')
+                    ->label(__('exam_results.last_name_latin'))
+                    ->placeholder('-')
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::apply($query, 'last_name_en', $search))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('gender')
@@ -144,33 +152,33 @@ class CandidateExitStatisticsTable
                     ->schema([
                         Select::make('form_type')
                             ->label(__('candidate_exit_statistics.filters.form_type'))
-                            ->options(fn (): array => self::dynamicFormTypeOptions())
+                            ->options(fn (HasTable $livewire): array => self::dynamicFormTypeOptions(TableFilterOptions::query($livewire, 'candidate_exit_statistics_filters', 'form_type')))
                             ->native(false)
                             ->live(),
 
                         Select::make('candidate_status')
                             ->label(__('candidate_exit_statistics.filters.review_status'))
-                            ->options(fn (): array => self::dynamicReviewStatusOptions())
+                            ->options(fn (HasTable $livewire): array => self::dynamicReviewStatusOptions(TableFilterOptions::query($livewire, 'candidate_exit_statistics_filters', 'candidate_status')))
                             ->native(false)
                             ->live(),
 
                         Select::make('user_type')
                             ->label(__('candidate_exit_statistics.filters.user_type'))
-                            ->options(fn (): array => self::distinctOptions('user_type'))
+                            ->options(fn (HasTable $livewire): array => self::distinctOptions('user_type', TableFilterOptions::query($livewire, 'candidate_exit_statistics_filters', 'user_type')))
                             ->searchable()
                             ->native(false)
                             ->live(),
 
                         Select::make('major')
                             ->label(__('candidate_exit_statistics.filters.major'))
-                            ->options(fn (): array => self::distinctOptions('major'))
+                            ->options(fn (HasTable $livewire): array => self::distinctOptions('major', TableFilterOptions::query($livewire, 'candidate_exit_statistics_filters', 'major')))
                             ->searchable()
                             ->native(false)
                             ->live(),
 
                         Select::make('reviewed_year')
                             ->label(__('candidate_exit_statistics.filters.year'))
-                            ->options(fn (): array => self::reviewedYearOptions())
+                            ->options(fn (HasTable $livewire): array => self::reviewedYearOptions(TableFilterOptions::query($livewire, 'candidate_exit_statistics_filters', 'reviewed_year')))
                             ->native(false)
                             ->live(),
                     ])
@@ -329,7 +337,7 @@ class CandidateExitStatisticsTable
             ]);
     }
 
-    protected static function hasResultStatus(CandidateExitStatistic $record, bool $passed): bool
+    public static function hasResultStatus(CandidateExitStatistic $record, bool $passed): bool
     {
         $entry = $record->customFormEntry;
 
@@ -338,7 +346,7 @@ class CandidateExitStatisticsTable
             : strtolower((string) $record->candidate_status) === ($passed ? 'passed' : 'pending');
     }
 
-    protected static function canHandleResultAction(CandidateExitStatistic $record, string $action): bool
+    public static function canHandleResultAction(CandidateExitStatistic $record, string $action): bool
     {
         return FilamentActionPermissions::canForWorkflowStage(
             CandidateExitStatisticResource::class,
@@ -402,6 +410,12 @@ class CandidateExitStatisticsTable
 
             return true;
         });
+    }
+
+    /** Apply an imported result through the same authorization and locking as Bulk Passed. */
+    public static function markImportedPassed(CandidateExitStatistic $record): bool
+    {
+        return self::changeResult($record, 'bulk_passed', passed: true, skipUnauthorized: true);
     }
 
     public static function downloadExcel(iterable $records, ?array $columnKeys = null)
@@ -572,7 +586,7 @@ class CandidateExitStatisticsTable
         return $rows;
     }
 
-    protected static function exportColumnDefinitions(): array
+    public static function exportColumnDefinitions(): array
     {
         return [
             'row_number' => [
@@ -611,17 +625,29 @@ class CandidateExitStatisticsTable
                 'value' => fn (CandidateExitStatistic $record): string => (string) $record->seat_number,
                 'clean' => fn (CandidateExitStatistic $record): string => (string) $record->seat_number,
             ],
-            'name_khmer' => [
-                'label' => __('candidate_exit_statistics.fields.name_khmer'),
-                'field_key' => 'name_khmer',
-                'value' => fn (CandidateExitStatistic $record): string => self::joinName($record->first_name_kh, $record->last_name_kh),
-                'clean' => fn (CandidateExitStatistic $record): string => self::joinName($record->first_name_kh, $record->last_name_kh),
+            'first_name_kh' => [
+                'label' => __('exam_results.first_name_khmer'),
+                'field_key' => 'first_name_kh',
+                'value' => fn (CandidateExitStatistic $record): string => (string) ($record->first_name_kh ?? ''),
+                'clean' => fn (CandidateExitStatistic $record): string => (string) ($record->first_name_kh ?? ''),
             ],
-            'name_latin' => [
-                'label' => __('candidate_exit_statistics.fields.name_latin'),
-                'field_key' => 'name_latin',
-                'value' => fn (CandidateExitStatistic $record): string => self::joinName($record->first_name_en, $record->last_name_en),
-                'clean' => fn (CandidateExitStatistic $record): string => self::joinName($record->first_name_en, $record->last_name_en),
+            'last_name_kh' => [
+                'label' => __('exam_results.last_name_khmer'),
+                'field_key' => 'last_name_kh',
+                'value' => fn (CandidateExitStatistic $record): string => (string) ($record->last_name_kh ?? ''),
+                'clean' => fn (CandidateExitStatistic $record): string => (string) ($record->last_name_kh ?? ''),
+            ],
+            'first_name_en' => [
+                'label' => __('exam_results.first_name_latin'),
+                'field_key' => 'first_name_en',
+                'value' => fn (CandidateExitStatistic $record): string => (string) ($record->first_name_en ?? ''),
+                'clean' => fn (CandidateExitStatistic $record): string => (string) ($record->first_name_en ?? ''),
+            ],
+            'last_name_en' => [
+                'label' => __('exam_results.last_name_latin'),
+                'field_key' => 'last_name_en',
+                'value' => fn (CandidateExitStatistic $record): string => (string) ($record->last_name_en ?? ''),
+                'clean' => fn (CandidateExitStatistic $record): string => (string) ($record->last_name_en ?? ''),
             ],
             'gender' => [
                 'label' => __('candidate_exit_statistics.fields.gender'),
@@ -646,12 +672,6 @@ class CandidateExitStatisticsTable
                 'field_key' => 'candidate_status',
                 'value' => fn (CandidateExitStatistic $record): string => self::resultStatusLabel($record, $record->candidate_status),
                 'clean' => fn (CandidateExitStatistic $record): string => (string) $record->candidate_status,
-            ],
-            'candidate_reviewed_at' => [
-                'label' => __('candidate_exit_statistics.fields.candidate_reviewed_at'),
-                'field_key' => 'candidate_reviewed_at',
-                'value' => fn (CandidateExitStatistic $record): string => LocalizedDate::dayMonthYear($record->candidate_reviewed_at),
-                'clean' => fn (CandidateExitStatistic $record): string => (string) $record->candidate_reviewed_at,
             ],
         ];
     }
@@ -862,9 +882,9 @@ class CandidateExitStatisticsTable
         return $form?->display_name ?: self::optionLabel('form_type', $record->form_type);
     }
 
-    protected static function dynamicReviewStatusOptions(): array
+    protected static function dynamicReviewStatusOptions(?Builder $query = null): array
     {
-        return CandidateExitStatisticResource::getEloquentQuery()
+        return ($query ?? CandidateExitStatisticResource::getEloquentQuery())
             ->get()
             ->map(fn (CandidateExitStatistic $record): string => self::resultStatusLabel($record, $record->candidate_status ?: 'pending'))
             ->unique()
@@ -888,9 +908,9 @@ class CandidateExitStatisticsTable
         return $query->whereKey($ids);
     }
 
-    protected static function dynamicFormTypeOptions(): array
+    protected static function dynamicFormTypeOptions(?Builder $query = null): array
     {
-        $formIds = CandidateExitStatisticResource::getEloquentQuery()
+        $formIds = ($query ?? CandidateExitStatisticResource::getEloquentQuery())
             ->reorder()
             ->whereHas('customFormEntry')
             ->with('customFormEntry:id,custom_form_id')
@@ -933,9 +953,9 @@ class CandidateExitStatisticsTable
         return 'form:' . $formId;
     }
 
-    protected static function distinctOptions(string $column): array
+    protected static function distinctOptions(string $column, ?Builder $query = null): array
     {
-        $values = CandidateExitStatistic::query()
+        $values = ($query ?? CandidateExitStatisticResource::getEloquentQuery())
             ->whereNotNull($column)
             ->where($column, '!=', '')
             ->orderBy($column)
@@ -959,9 +979,9 @@ class CandidateExitStatisticsTable
             ->all();
     }
 
-    protected static function reviewedYearOptions(): array
+    protected static function reviewedYearOptions(?Builder $query = null): array
     {
-        return CandidateExitStatistic::query()
+        return ($query ?? CandidateExitStatisticResource::getEloquentQuery())
             ->whereNotNull('candidate_reviewed_at')
             ->pluck('candidate_reviewed_at')
             ->map(fn ($date): string => (string) Carbon::parse($date)->year)
