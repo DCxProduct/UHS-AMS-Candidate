@@ -15,6 +15,7 @@ use App\Filament\Admin\Resources\ExchangeRates\ExchangeRateResource;
 use App\Filament\Admin\Resources\ExitExamResults\ExitExamResultResource;
 use App\Filament\Admin\Resources\MefInvoiceCodes\MefInvoiceCodeResource;
 use App\Filament\Admin\Resources\MessagingSettings\MessagingSettingResource;
+use App\Filament\Admin\Resources\NewStudentAccounts\NewStudentAccountResource;
 use App\Filament\Admin\Resources\Payments\PaymentResource;
 use App\Filament\Admin\Resources\SystemUsers\SystemUserResource;
 use App\Filament\Admin\Resources\WorkflowButtons\WorkflowButtonResource;
@@ -34,6 +35,14 @@ class FilamentActionPermissions
     public static function resourceActions(): array
     {
         return [
+            NewStudentAccountResource::class => [
+                'view_any',
+                'view',
+                'create',
+                'update',
+                'delete',
+                'delete_any',
+            ],
             WorkflowButtonResource::class => [
                 'view_any',
                 'create',
