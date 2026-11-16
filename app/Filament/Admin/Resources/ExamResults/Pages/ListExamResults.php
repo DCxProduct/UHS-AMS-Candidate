@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Resources\ExamResults\Pages;
 
 use App\Filament\Admin\Resources\ExamResults\ExamResultResource;
 use App\Filament\Admin\Resources\ExamResults\Tables\ExamResultsTable;
+use App\Services\AmsSelectionResultSync;
 use App\Support\AuditLogger;
 use App\Support\FilamentActionPermissions;
 use App\Support\MenuRecordVisibility;
@@ -14,6 +15,10 @@ use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
+use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class ListExamResults extends ListRecords
 {
@@ -32,6 +37,8 @@ class ListExamResults extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            $this->confirmPassedAction('confirm_passed', notify: false),
+            $this->confirmPassedAction('confirm_passed_and_notify', notify: true),
             Action::make('notify_all_students')
                 ->label(__('exam_results.notify_all_students'))
                 ->icon('heroicon-o-bell-alert')
@@ -100,6 +107,113 @@ class ListExamResults extends ListRecords
                     $arguments['deselectedRecordKeys'] ?? [],
                 )),
         ];
+    }
+
+    protected function confirmPassedAction(string $name, bool $notify): Action
+    {
+        return Action::make($name)
+            ->label(__('exam_results.'.$name))
+            ->icon($notify ? 'heroicon-o-check-badge' : 'heroicon-o-check-circle')
+            ->color($notify ? 'primary' : 'success')
+            ->visible(fn (): bool => static::getResource() === ExamResultResource::class
+                && ExamResultsTable::canSendPassedNotifications())
+            ->alpineClickHandler(<<<JS
+                const table = document.querySelector('.fi-ta');
+                const tableData = table?._x_dataStack?.find((data) => data.selectedRecords instanceof Set);
+
+                \$wire.mountAction('{$name}', {
+                    selectedRecordKeys: tableData ? [...tableData.selectedRecords] : [],
+                    selectedRecordsCount: tableData ? tableData.getSelectedRecordsCount() : 0,
+                    isTrackingDeselectedRecords: tableData ? tableData.isTrackingDeselectedRecords : false,
+                    deselectedRecordKeys: tableData ? [...tableData.deselectedRecords] : [],
+                });
+            JS)
+            ->action(fn (array $arguments) => $this->confirmPassedFromTableSelection(
+                notify: $notify,
+                selectedRecordKeys: $arguments['selectedRecordKeys'] ?? [],
+                selectedRecordsCount: (int) ($arguments['selectedRecordsCount'] ?? 0),
+                isTrackingDeselectedRecords: (bool) ($arguments['isTrackingDeselectedRecords'] ?? false),
+                deselectedRecordKeys: $arguments['deselectedRecordKeys'] ?? [],
+            ));
+    }
+
+    public function confirmPassedFromTableSelection(
+        bool $notify = false,
+        array $selectedRecordKeys = [],
+        int $selectedRecordsCount = 0,
+        bool $isTrackingDeselectedRecords = false,
+        array $deselectedRecordKeys = [],
+    ): void {
+        abort_unless(static::getResource() === ExamResultResource::class
+            && FilamentActionPermissions::canAccessWorkflowActions(static::getResource()), 403);
+
+        $validKey = fn ($key): bool => (is_int($key) || is_string($key)) && ctype_digit((string) $key) && (int) $key > 0;
+        $selectedRecordKeys = array_values(array_filter($selectedRecordKeys, $validKey));
+        $deselectedRecordKeys = array_values(array_filter($deselectedRecordKeys, $validKey));
+
+        if ((! $isTrackingDeselectedRecords && blank($selectedRecordKeys))
+            || ($isTrackingDeselectedRecords && $selectedRecordsCount < 1)) {
+            Notification::make()->title(__('exam_results.no_selected_students'))->warning()->send();
+
+            return;
+        }
+
+        $records = $this->selectedOrFilteredQuery($selectedRecordKeys, $isTrackingDeselectedRecords, $deselectedRecordKeys)
+            ->with(['creator', 'customForm'])->get();
+        foreach ($records as $record) {
+            abort_unless(ExamResultsTable::canNotifyRecord($record, action: 'notify_all_students'), 403);
+        }
+        if ($records->isEmpty()) {
+            Notification::make()->title(__('exam_results.no_selected_students'))->warning()->send();
+
+            return;
+        }
+
+        $synced = 0;
+        $notified = 0;
+        $failed = [];
+        foreach ($records as $record) {
+            try {
+                $sent = app(AmsSelectionResultSync::class)->sync($record, $notify);
+                $synced++;
+                $notified += (int) $sent;
+            } catch (Throwable $exception) {
+                report($exception);
+                $reference = $record->candidate_id ?: (string) $record->getKey();
+                $reason = match (true) {
+                    $exception instanceof ValidationException => implode(' ', $exception->validator->errors()->all()),
+                    $exception instanceof ConnectionException => __('exam_results.ams_sync_connection_failed'),
+                    $exception instanceof RequestException && $exception->response->status() === 409 => __('exam_results.ams_sync_account_conflict'),
+                    $exception instanceof RequestException => __('exam_results.ams_sync_request_failed', ['status' => $exception->response->status()]),
+                    default => __('exam_results.ams_sync_unknown_error'),
+                };
+                $failed[] = $reference.': '.$reason;
+            }
+        }
+
+        AuditLogger::log(
+            action: 'synced',
+            description: 'Sent selected entrance exam results to AMS ('.$synced.' records, '.$notified.' notifications)',
+            metadata: ['module' => 'Exam Results', 'synced' => $synced, 'notified' => $notified, 'failed' => count($failed)],
+        );
+        $this->selectedTableRecords = [];
+        $this->deselectedTableRecords = [];
+        $this->isTrackingDeselectedTableRecords = false;
+        $this->flushCachedTableRecords();
+        $this->dispatch('$refresh');
+
+        $summary = __('exam_results.ams_sync_summary', ['count' => $synced]);
+        if ($notify) {
+            $summary .= ' '.__('exam_results.notifications_sent', ['count' => $notified]);
+        }
+        $notification = Notification::make()->title($summary);
+        if ($failed !== []) {
+            $notification->body(__('exam_results.ams_sync_failed', ['references' => implode(', ', array_slice($failed, 0, 10))]))
+                ->danger()->persistent();
+        } else {
+            $notification->success();
+        }
+        $notification->send();
     }
 
     protected function downloadExcel()
@@ -362,7 +476,7 @@ class ListExamResults extends ListRecords
 
         try {
             return Carbon::parse($state)->format('d-m-Y');
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return (string) $state;
         }
     }

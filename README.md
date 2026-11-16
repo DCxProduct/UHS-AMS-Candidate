@@ -219,3 +219,20 @@ docker compose exec app sh
 ```
 
 If your Laravel service is not named `app`, replace `app` in these commands with the actual service name from `docker-compose.yml`.
+
+## Passed results and AMS accounts
+
+The two confirm-passed buttons send only selected applications to AMS at
+`POST /api/external/candidate/selection-results`. Both buttons transfer the result
+and the candidate's login account. The combined button releases the configured
+Candidate notification after AMS acknowledges both records. Successfully transferred
+results leave the Candidate entrance-results list; the underlying applications remain.
+
+Set `AMS_ACCOUNT_ENCRYPTION_KEY` to the same independently generated secret as AMS
+`CANDIDATE_ACCOUNT_ENCRYPTION_KEY`. This secret must differ from the shared API token.
+Credentials contain the existing password hash inside authenticated encryption;
+plaintext passwords are neither available nor transferred. AMS reuses an existing
+student account when the source account is already linked or the email, phone, or
+username uniquely identifies it. Student data and status remain intact. Conflicting
+identifiers or an unavailable account cause HTTP 409 and keep the application
+available for retry without creating a duplicate account.
