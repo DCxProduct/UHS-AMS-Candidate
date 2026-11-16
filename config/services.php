@@ -6,6 +6,7 @@ return [
         'enabled' => env('AMS_INTEGRATION_ENABLED', false),
         'base_url' => env('AMS_API_BASE_URL'),
         'token' => env('AMS_API_TOKEN'),
+        'account_key' => env('AMS_ACCOUNT_ENCRYPTION_KEY'),
         'callback_token' => env('AMS_CALLBACK_TOKEN'),
         'timeout' => (int) env('AMS_API_TIMEOUT', 5),
     ],
