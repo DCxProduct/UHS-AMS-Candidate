@@ -10,6 +10,8 @@ return [
     'download_excel' => 'ទាញយក Excel',
     'confirm_passed' => 'បញ្ជាក់ជាប់',
     'confirm_passed_and_notify' => 'បញ្ជាក់ជាប់ & ជូនដំណឹងទៅបេក្ខជន',
+    'confirm_passed_confirm_description' => 'តើអ្នកចង់បញ្ជាក់លទ្ធផលជាប់ប្រឡងរបស់បេក្ខជនដែលបានជ្រើសរើសមែនទេ?',
+    'confirm_passed_and_notify_confirm_description' => 'តើអ្នកចង់បញ្ជាក់លទ្ធផលជាប់ប្រឡង និងផ្ញើការជូនដំណឹងទៅបេក្ខជនដែលបានជ្រើសរើសមែនទេ?',
     'ams_sync_summary' => 'បានផ្ញើលទ្ធផលបេក្ខជន :count នាក់ទៅ AMS។',
     'ams_sync_failed' => 'មិនអាចបញ្ចប់ការផ្ញើ៖ :references។ ការជូនដំណឹងត្រូវបានផ្ញើតែបន្ទាប់ពី AMS ទទួលលទ្ធផលប៉ុណ្ណោះ។',
     'ams_sync_connection_failed' => 'មិនអាចភ្ជាប់ទៅ AMS បានទេ។ សូមព្យាយាមម្ដងទៀត។',
