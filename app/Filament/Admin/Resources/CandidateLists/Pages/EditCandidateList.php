@@ -3,7 +3,6 @@
 namespace App\Filament\Admin\Resources\CandidateLists\Pages;
 
 use App\Filament\Admin\Resources\CandidateLists\CandidateListResource;
-use App\Models\User;
 use App\Support\CandidateLatinName;
 use App\Support\UserTypeOptions;
 use Filament\Actions;
@@ -14,6 +13,8 @@ class EditCandidateList extends EditRecord
 {
     protected static string $resource = CandidateListResource::class;
 
+    protected ?bool $hasDatabaseTransactions = true;
+
     protected ?string $selectedCandidateType = null;
 
     protected function getRedirectUrl(): string
@@ -21,7 +22,7 @@ class EditCandidateList extends EditRecord
         return CandidateListResource::getUrl('index');
     }
 
-    public function getMaxContentWidth(): Width | string | null
+    public function getMaxContentWidth(): Width|string|null
     {
         return Width::Full;
     }
@@ -37,7 +38,7 @@ class EditCandidateList extends EditRecord
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
-        $storedRoles = $this->record->roles;
+        $storedRoles = $this->record->candidate_roles ?: $this->record->getRoleNames()->all();
 
         if (is_string($storedRoles)) {
             $decoded = json_decode($storedRoles, true);
@@ -59,13 +60,13 @@ class EditCandidateList extends EditRecord
         $candidateType = UserTypeOptions::resolve($data['candidate_type'] ?? null);
         $this->selectedCandidateType = $candidateType;
 
-        $data['roles'] = UserTypeOptions::assignableUserRoles($candidateType);
+        $data['candidate_roles'] = UserTypeOptions::assignableUserRoles($candidateType);
 
-        unset($data['role_ids']);
+        unset($data['role_ids'], $data['roles'], $data['permissions']);
         unset($data['candidate_type']);
 
-
         $data['name'] = CandidateLatinName::join($data['first_name_en'] ?? null, $data['last_name_en'] ?? null) ?: 'Candidate';
+        $data['name_latin'] = $data['name'];
         unset($data['first_name_en'], $data['last_name_en'], $data['username']);
 
         $data['email'] = blank($data['email'] ?? null)
@@ -76,7 +77,7 @@ class EditCandidateList extends EditRecord
             ? null
             : preg_replace('/[^0-9]/', '', (string) $data['phone']);
 
-        $data['permissions'] = null;
+        unset($data['registration_type']);
         $data['is_active'] = (bool) ($data['is_active'] ?? true);
 
         return $data;
@@ -84,19 +85,8 @@ class EditCandidateList extends EditRecord
 
     protected function afterSave(): void
     {
-        if ($this->selectedCandidateType) {
-            $this->record->forceFill([
-                'roles' => UserTypeOptions::assignableUserRoles($this->selectedCandidateType),
-            ])->save();
-
-            $this->record->refresh();
-        }
-
-        $this->record->syncLoginUser();
-
-
-        if (filled($this->record->username)) {
-            User::query()->where('username', $this->record->username)->update(['name_latin' => $this->record->name]);
+        if ($this->selectedCandidateType !== null) {
+            $this->record->syncRoles(UserTypeOptions::assignableWebRoles($this->selectedCandidateType));
         }
     }
 }

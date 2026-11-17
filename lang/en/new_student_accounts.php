@@ -13,8 +13,8 @@ return [
         'student_id' => 'Student ID',
         'email' => 'Email Address',
         'phone' => 'Phone Number',
-        'first_name_latin' => 'Surname (Latin)',
-        'last_name_latin' => 'Given Name (Latin)',
+        'first_name_latin' => 'First Name (Latin)',
+        'last_name_latin' => 'Last Name (Latin)',
         'is_active' => 'Active Account',
         'created_at' => 'Created At',
         'updated_at' => 'Updated At',
@@ -22,7 +22,13 @@ return [
     'actions' => [
         'view' => 'View',
         'edit' => 'Edit',
+        'activate' => 'Activate Account',
+        'deactivate' => 'Deactivate Account',
         'delete' => 'Delete',
         'actions' => 'Actions',
+    ],
+    'notifications' => [
+        'activated' => 'Account activated successfully.',
+        'deactivated' => 'Account deactivated successfully.',
     ],
 ];

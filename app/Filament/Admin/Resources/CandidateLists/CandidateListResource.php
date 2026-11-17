@@ -9,14 +9,12 @@ use App\Filament\Admin\Resources\CandidateLists\Schemas\CandidateListForm;
 use App\Filament\Admin\Resources\CandidateLists\Tables\CandidateListsTable;
 use App\Filament\Concerns\AdminOnly;
 use App\Models\CandidateList;
-use App\Support\UserTypeOptions;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\DB;
 
 class CandidateListResource extends Resource
 {
@@ -24,7 +22,7 @@ class CandidateListResource extends Resource
 
     protected static ?string $model = CandidateList::class;
 
-    protected static string | BackedEnum | null $navigationIcon =
+    protected static string|BackedEnum|null $navigationIcon =
         Heroicon::OutlinedUserGroup;
 
     protected static ?string $recordTitleAttribute = 'name';
@@ -73,51 +71,7 @@ class CandidateListResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        $query = parent::getEloquentQuery();
-        $driver = DB::connection()->getDriverName();
-        $candidateRoles = UserTypeOptions::candidateManagedRoleKeys();
-
-        if ($candidateRoles === []) {
-            return $query;
-        }
-
-        if ($driver === 'pgsql') {
-            return $query->where(function (Builder $query) use ($candidateRoles): void {
-                foreach ($candidateRoles as $role) {
-                    $query->orWhereRaw("LOWER(COALESCE(roles::text, '')) LIKE ?", ['%"' . $role . '"%']);
-                }
-            })->whereNotExists(function ($subQuery): void {
-                $subQuery
-                    ->selectRaw('1')
-                    ->from('users')
-                    ->whereNull('users.deleted_at')
-                    ->where('users.registration_type', 'admin')
-                    ->where(function ($match): void {
-                        $match
-                            ->whereColumn('users.username', 'system_users.username')
-                            ->orWhereColumn('users.email', 'system_users.email')
-                            ->orWhereColumn('users.phone', 'system_users.phone');
-                    });
-            });
-        }
-
-        return $query->where(function (Builder $query) use ($candidateRoles): void {
-            foreach ($candidateRoles as $role) {
-                $query->orWhereRaw("LOWER(COALESCE(CAST(roles AS CHAR), '')) LIKE ?", ['%"' . $role . '"%']);
-            }
-        })->whereNotExists(function ($subQuery): void {
-            $subQuery
-                ->selectRaw('1')
-                ->from('users')
-                ->whereNull('users.deleted_at')
-                ->where('users.registration_type', 'admin')
-                ->where(function ($match): void {
-                    $match
-                        ->whereColumn('users.username', 'system_users.username')
-                        ->orWhereColumn('users.email', 'system_users.email')
-                        ->orWhereColumn('users.phone', 'system_users.phone');
-                });
-        });
+        return parent::getEloquentQuery()->where('registration_type', 'student');
     }
 
     public static function getPages(): array

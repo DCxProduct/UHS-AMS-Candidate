@@ -3,15 +3,14 @@
 namespace App\Filament\Admin\Resources\CandidateLists\Tables;
 
 use App\Filament\Admin\Resources\CandidateLists\CandidateListResource;
-use App\Models\SystemUser;
 use App\Models\User;
 use App\Support\CandidateLatinName;
 use App\Support\FilamentActionPermissions;
 use App\Support\LocalizedDate;
-use App\Support\NotificationLanguage;
 use App\Support\LocalizedNumber;
-use App\Support\UserTypeOptions;
+use App\Support\NotificationLanguage;
 use App\Support\TableFilterOptions;
+use App\Support\UserTypeOptions;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
@@ -54,20 +53,20 @@ class CandidateListsTable
 
                 TextColumn::make('first_name_latin')
                     ->label(__('app.first_name_latin'))
-                    ->state(fn (SystemUser $record): string => CandidateLatinName::split($record->name)[0])
+                    ->state(fn (User $record): string => CandidateLatinName::split($record->name_latin ?: $record->name)[0])
                     ->placeholder('-')
                     ->searchable(query: fn (Builder $query, string $search): Builder => static::searchName($query, $search))
                     ->sortable(query: fn (Builder $query, string $direction): Builder => $query->orderBy('name', $direction)),
 
                 TextColumn::make('last_name_latin')
                     ->label(__('app.last_name_latin'))
-                    ->state(fn (SystemUser $record): string => CandidateLatinName::split($record->name)[1])
+                    ->state(fn (User $record): string => CandidateLatinName::split($record->name_latin ?: $record->name)[1])
                     ->placeholder('-')
                     ->searchable(query: fn (Builder $query, string $search): Builder => static::searchName($query, $search)),
 
                 TextColumn::make('candidate_type')
                     ->label(__('candidate_lists.fields.candidate_type'))
-                    ->getStateUsing(function (SystemUser $record): string {
+                    ->getStateUsing(function (User $record): string {
                         $candidateRole = static::resolveCandidateRole($record);
 
                         if (! $candidateRole) {
@@ -81,12 +80,12 @@ class CandidateListsTable
                         $driver = DB::connection()->getDriverName();
 
                         if ($driver === 'pgsql') {
-                            return $query->orderByRaw("COALESCE(roles::text, '') {$direction}");
+                            return $query->orderByRaw("COALESCE(candidate_roles::text, '') {$direction}");
                         }
 
-                        return $query->orderByRaw("COALESCE(CAST(roles AS CHAR), '') {$direction}");
+                        return $query->orderByRaw("COALESCE(CAST(candidate_roles AS CHAR), '') {$direction}");
                     })
-                    ->color(function (SystemUser $record): string {
+                    ->color(function (User $record): string {
                         $candidateRole = static::resolveCandidateRole($record);
 
                         if (! $candidateRole) {
@@ -132,10 +131,10 @@ class CandidateListsTable
                         $driver = DB::connection()->getDriverName();
 
                         if ($driver === 'pgsql') {
-                            return $query->whereRaw('LOWER(COALESCE(roles::text, \'\')) LIKE ?', ['%"' . strtolower($value) . '"%']);
+                            return $query->whereRaw('LOWER(COALESCE(candidate_roles::text, \'\')) LIKE ?', ['%"'.strtolower($value).'"%']);
                         }
 
-                        return $query->whereRaw('LOWER(COALESCE(CAST(roles AS CHAR), \'\')) LIKE ?', ['%"' . strtolower($value) . '"%']);
+                        return $query->whereRaw('LOWER(COALESCE(CAST(candidate_roles AS CHAR), \'\')) LIKE ?', ['%"'.strtolower($value).'"%']);
                     }),
 
                 SelectFilter::make('is_active')
@@ -167,12 +166,12 @@ class CandidateListsTable
                         ->icon('heroicon-o-check-circle')
                         ->color('success')
                         ->requiresConfirmation()
-                        ->visible(fn (SystemUser $record): bool => FilamentActionPermissions::canForResource(CandidateListResource::class, 'activate_account')
+                        ->visible(fn (User $record): bool => FilamentActionPermissions::canForResource(CandidateListResource::class, 'activate_account')
                             && ! (bool) $record->is_active)
-                        ->action(function (SystemUser $record): void {
+                        ->action(function (User $record): void {
                             FilamentActionPermissions::abortUnlessCanForResource(CandidateListResource::class, 'activate_account');
 
-                            $record->activateAccount();
+                            $record->forceFill(['is_active' => true])->save();
 
                             Notification::make()
                                 ->title(NotificationLanguage::trans('candidate_lists.notifications.activated'))
@@ -185,12 +184,12 @@ class CandidateListsTable
                         ->icon('heroicon-o-x-circle')
                         ->color('danger')
                         ->requiresConfirmation()
-                        ->visible(fn (SystemUser $record): bool => FilamentActionPermissions::canForResource(CandidateListResource::class, 'deactivate_account')
+                        ->visible(fn (User $record): bool => FilamentActionPermissions::canForResource(CandidateListResource::class, 'deactivate_account')
                             && (bool) $record->is_active)
-                        ->action(function (SystemUser $record): void {
+                        ->action(function (User $record): void {
                             FilamentActionPermissions::abortUnlessCanForResource(CandidateListResource::class, 'deactivate_account');
 
-                            $record->deactivateAccount();
+                            $record->forceFill(['is_active' => false])->save();
 
                             Notification::make()
                                 ->title(NotificationLanguage::trans('candidate_lists.notifications.deactivated'))
@@ -202,7 +201,7 @@ class CandidateListsTable
                         ->label(__('candidate_lists.actions.delete'))
                         ->icon('heroicon-o-trash')
                         ->color('danger')
-                        ->action(fn (SystemUser $record) => $record->deleteWithLinkedLoginUsers()),
+                        ->action(fn (User $record) => $record->forceDelete()),
                 ])
                     ->label('')
                     ->icon('heroicon-m-ellipsis-vertical')
@@ -214,7 +213,7 @@ class CandidateListsTable
     protected static function roleFilterOptions(Builder $query): array
     {
         return $query->get()
-            ->map(fn (SystemUser $record): ?string => self::resolveCandidateRole($record))
+            ->map(fn (User $record): ?string => self::resolveCandidateRole($record))
             ->filter(fn ($role): bool => filled($role))
             ->unique()
             ->sort()
@@ -230,9 +229,9 @@ class CandidateListsTable
             ->all();
     }
 
-    protected static function resolveCandidateRole(SystemUser $record): ?string
+    protected static function resolveCandidateRole(User $record): ?string
     {
-        $roles = $record->roles;
+        $roles = $record->candidate_roles ?: $record->getRoleNames()->all();
 
         if (is_string($roles)) {
             $decoded = json_decode($roles, true);
@@ -253,18 +252,11 @@ class CandidateListsTable
             }
         }
 
-        $loginUser = static::findLinkedLoginUser($record);
-
-        if ($loginUser?->registration_type === 'student') {
+        if ($record->registration_type === 'student') {
             return UserTypeOptions::BASE_ROLE;
         }
 
         return null;
-    }
-
-    protected static function findLinkedLoginUser(SystemUser $record): ?User
-    {
-        return $record->findLinkedLoginUser();
     }
 
     /**
@@ -272,6 +264,8 @@ class CandidateListsTable
      */
     protected static function searchName(Builder $query, string $search): Builder
     {
-        return $query->whereRaw('LOWER(name) LIKE ?', ['%'.mb_strtolower(trim($search)).'%']);
+        return $query->where(fn (Builder $names): Builder => $names
+            ->whereRaw('LOWER(name) LIKE ?', ['%'.mb_strtolower(trim($search)).'%'])
+            ->orWhereRaw('LOWER(name_latin) LIKE ?', ['%'.mb_strtolower(trim($search)).'%']));
     }
 }

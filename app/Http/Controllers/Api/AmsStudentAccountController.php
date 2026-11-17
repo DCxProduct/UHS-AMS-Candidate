@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\NewStudentAccount;
+use App\Services\AmsStudentAccountTransfer;
+use DomainException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class AmsStudentAccountController extends Controller
 {
@@ -26,15 +26,11 @@ class AmsStudentAccountController extends Controller
         ]);
 
         try {
-            $account = DB::transaction(function () use ($data): NewStudentAccount {
-                // Student ID is the retry key; preserve locally managed account status.
-                $account = NewStudentAccount::query()->firstOrNew(['student_id' => $data['student_id']]);
-                $account->fill($data)->save();
-
-                return $account;
-            });
+            $account = app(AmsStudentAccountTransfer::class)->receive($data);
         } catch (UniqueConstraintViolationException) {
             return response()->json(['message' => 'Student ID or email conflicts with an existing account.'], 409);
+        } catch (DomainException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 409);
         }
 
         return response()->json([

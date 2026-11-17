@@ -5,8 +5,8 @@ namespace Tests\Feature;
 use App\Filament\Pages\Auth\Login;
 use App\Filament\Pages\Auth\Register;
 use App\Models\User;
-use App\Support\UserTypeOptions;
 use App\Support\CandidateDisplayName;
+use App\Support\UserTypeOptions;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
@@ -91,11 +91,11 @@ class AuthenticationAccessTest extends TestCase
             $loginSchema = $login->instance()->getSchema('form');
 
             $this->assertSame(
-                'Email or Phone number',
+                'Phone number or Email or Student ID',
                 $loginSchema?->getComponentByStatePath('login')?->getLabel(),
             );
             $this->assertSame(
-                'Enter email or phone number',
+                'Enter phone number or email or Student ID',
                 $loginSchema?->getComponentByStatePath('login')?->getPlaceholder(),
             );
         } finally {
@@ -179,13 +179,12 @@ class AuthenticationAccessTest extends TestCase
             'password' => 'password',
         ]);
 
-
         $this->assertSame('DARA SOK', $user->name);
         $this->assertSame('DARA SOK', $user->name_latin);
         $this->assertSame('dara-sok@example.test', $user->email);
         $this->assertSame('student_010123456', $user->username);
         $this->assertSame('DARA SOK', CandidateDisplayName::for($user->fresh()));
-        $this->assertSame('DARA SOK', $user->linkedSystemUser()?->name);
+        $this->assertNull($user->linkedSystemUser());
     }
 
     private function resetUserTypeOptionsCaches(): void

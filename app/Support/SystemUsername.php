@@ -2,8 +2,8 @@
 
 namespace App\Support;
 
+use App\Models\AccountUser;
 use App\Models\SystemUser;
-use App\Models\User;
 use Illuminate\Support\Str;
 
 /**
@@ -25,7 +25,7 @@ final class SystemUsername
         $suffix = 1;
 
         while (
-            User::withTrashed()->where('username', $username)->exists()
+            AccountUser::withTrashed()->where('username', $username)->exists()
             || SystemUser::withTrashed()->where('username', $username)->exists()
         ) {
             $username = $base.'_'.$suffix++;

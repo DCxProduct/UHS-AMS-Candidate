@@ -34,6 +34,8 @@ return [
     'enter_username_email_phone' => 'Enter username, email, or phone number',
     'email_or_phone' => 'Email or Phone number',
     'enter_email_or_phone' => 'Enter email or phone number',
+    'login_identifier' => 'Phone number or Email or Student ID',
+    'enter_login_identifier' => 'Enter phone number or email or Student ID',
 
     'username' => 'Username',
     'enter_username' => 'Enter username',

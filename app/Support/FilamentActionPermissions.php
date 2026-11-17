@@ -7,9 +7,8 @@ use App\Filament\Admin\Resources\AuditLogs\AuditLogResource;
 use App\Filament\Admin\Resources\CandidateEntranceStatistics\CandidateEntranceStatisticResource;
 use App\Filament\Admin\Resources\CandidateExitStatistics\CandidateExitStatisticResource;
 use App\Filament\Admin\Resources\CandidateLists\CandidateListResource;
-use App\Filament\Admin\Resources\ClosingDates\ClosingDateResource;
-use App\Filament\Admin\Resources\PaymentStatusLists\PaymentStatusListResource;
 use App\Filament\Admin\Resources\CandidateSubmitPopupSettings\CandidateSubmitPopupSettingResource;
+use App\Filament\Admin\Resources\ClosingDates\ClosingDateResource;
 use App\Filament\Admin\Resources\ExamResults\ExamResultResource;
 use App\Filament\Admin\Resources\ExchangeRates\ExchangeRateResource;
 use App\Filament\Admin\Resources\ExitExamResults\ExitExamResultResource;
@@ -17,6 +16,7 @@ use App\Filament\Admin\Resources\MefInvoiceCodes\MefInvoiceCodeResource;
 use App\Filament\Admin\Resources\MessagingSettings\MessagingSettingResource;
 use App\Filament\Admin\Resources\NewStudentAccounts\NewStudentAccountResource;
 use App\Filament\Admin\Resources\Payments\PaymentResource;
+use App\Filament\Admin\Resources\PaymentStatusLists\PaymentStatusListResource;
 use App\Filament\Admin\Resources\SystemUsers\SystemUserResource;
 use App\Filament\Admin\Resources\WorkflowButtons\WorkflowButtonResource;
 use App\Filament\Admin\Resources\WorkflowStageTypes\WorkflowStageTypeResource;
@@ -37,11 +37,11 @@ class FilamentActionPermissions
         return [
             NewStudentAccountResource::class => [
                 'view_any',
-                'view',
                 'create',
                 'update',
+                'activate_account',
+                'deactivate_account',
                 'delete',
-                'delete_any',
             ],
             WorkflowButtonResource::class => [
                 'view_any',
@@ -267,6 +267,10 @@ class FilamentActionPermissions
 
             // Retire this action's stored grants as well as its generated permission.
             foreach (Permission::query()->where('name', 'OriginalApplicationReceived:CustomFormEntry')->get() as $permission) {
+                $permission->delete();
+            }
+            foreach (Permission::query()->where('guard_name', $guardName)
+                ->whereIn('name', ['View:NewStudentAccount', 'DeleteAny:NewStudentAccount'])->get() as $permission) {
                 $permission->delete();
             }
 

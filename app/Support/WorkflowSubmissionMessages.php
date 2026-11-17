@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Enums\WorkflowStageType;
+use App\Models\AccountUser;
 use App\Models\Role;
 use App\Models\User;
 use App\Models\WorkflowNotification;
@@ -121,7 +122,7 @@ final class WorkflowSubmissionMessages
                 || blank(data_get($entry->data, 'submitted_at'))
                 || in_array(strtolower(trim((string) $entry->review_status)), ['draft', 'rejected', 'failed'], true)
                 || strtolower(trim((string) data_get($entry->data, 'registration_status'))) === 'draft'
-                || ! User::query()->whereKey($entry->created_by)->where('registration_type', 'student')->exists()) {
+                || ! AccountUser::query()->whereKey($entry->created_by)->where('registration_type', 'student')->exists()) {
                 return 0;
             }
 
@@ -224,7 +225,7 @@ final class WorkflowSubmissionMessages
                     && ! data_get($entry->data, 'workflow_progress.result_passed', false))
                 : strtolower(trim((string) $entry->review_status)) === 'pending')
             && strtolower(trim((string) data_get($entry->data, 'registration_status'))) !== 'draft'
-            && User::query()->whereKey($entry->created_by)->where('registration_type', 'student')->exists();
+            && AccountUser::query()->whereKey($entry->created_by)->where('registration_type', 'student')->exists();
     }
 
     private static function text(mixed $value): string

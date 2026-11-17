@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\AccountUser;
 use App\Models\User;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
@@ -209,7 +210,7 @@ final class StaticWorkflowMessages
 
         foreach (['created_by', 'user_id', 'created_by_id'] as $column) {
             if (Schema::hasColumn('custom_form_entries', $column) && filled($record->{$column})) {
-                return User::query()
+                return AccountUser::query()
                     ->whereKey($record->{$column})
                     ->where('registration_type', 'student')
                     ->first();

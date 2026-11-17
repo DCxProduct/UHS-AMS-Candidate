@@ -2,7 +2,7 @@
 
 namespace App\Support;
 
-use App\Models\User;
+use App\Models\AccountUser;
 use Carbon\Carbon;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
@@ -23,7 +23,7 @@ class DashboardMetrics
             return 0;
         }
 
-        return DB::table('users')
+        return DB::table(Schema::hasView('account_users') ? 'account_users' : 'users')
             ->where('registration_type', 'student')
             ->count();
     }
@@ -34,7 +34,7 @@ class DashboardMetrics
             return 0;
         }
 
-        $query = DB::table('users')
+        $query = DB::table(Schema::hasView('account_users') ? 'account_users' : 'users')
             ->where('registration_type', 'student');
 
         if (Schema::hasColumn('users', 'is_active')) {
@@ -53,7 +53,7 @@ class DashboardMetrics
             return 0;
         }
 
-        return DB::table('users')
+        return DB::table(Schema::hasView('account_users') ? 'account_users' : 'users')
             ->where('registration_type', 'student')
             ->where('is_active', false)
             ->count();
@@ -637,7 +637,7 @@ class DashboardMetrics
         $query = DB::table('custom_forms')
             ->whereNotNull('name');
 
-        $allowedFormIds = CustomFormRoleAccess::allowedFormIds(User::query()->find($userId));
+        $allowedFormIds = CustomFormRoleAccess::allowedFormIds(AccountUser::query()->find($userId));
         if ($allowedFormIds !== null) {
             $query->whereIn('id', $allowedFormIds);
         }
@@ -717,9 +717,10 @@ class DashboardMetrics
     private static function applyStudentOwnerFilter(Builder $query, int $userId): Builder
     {
         $ownerColumns = static::entryOwnerColumns();
-        $systemUserId = in_array('system_user_id', $ownerColumns, true)
-            ? User::find($userId)?->linkedSystemUser()?->getKey()
-            : null;
+        $owner = in_array('system_user_id', $ownerColumns, true) ? AccountUser::find($userId) : null;
+        $systemUserId = $owner?->source_candidate_id
+            ?? $owner?->linkedSystemUser()?->getKey()
+            ?? $owner?->linkedNewStudentAccount()?->source_candidate_id;
 
         return $query->where(function (Builder $owners) use ($ownerColumns, $userId, $systemUserId): void {
             // Each ownership column belongs to one ID domain. Never merge IDs.
@@ -845,7 +846,7 @@ class DashboardMetrics
 
     private static function studentDashboardRoleKeys(int $userId): array
     {
-        $user = User::query()->find($userId);
+        $user = AccountUser::query()->find($userId);
 
         if (! $user) {
             return ['student', 'candidate'];

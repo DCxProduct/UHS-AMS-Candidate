@@ -2,7 +2,19 @@
 
 namespace App\Models;
 
-class CandidateList extends SystemUser
+/** Candidate management and login use the same canonical users record. */
+class CandidateList extends User
 {
-    protected $table = 'system_users';
+    protected $table = 'users';
+
+    protected $attributes = [
+        'registration_type' => 'student',
+        'date_of_birth' => '2000-01-01',
+        'is_active' => true,
+    ];
+
+    public function getMorphClass(): string
+    {
+        return User::class;
+    }
 }

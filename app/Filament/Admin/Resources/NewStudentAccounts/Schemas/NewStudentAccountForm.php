@@ -2,7 +2,9 @@
 
 namespace App\Filament\Admin\Resources\NewStudentAccounts\Schemas;
 
+use App\Filament\Admin\Resources\NewStudentAccounts\NewStudentAccountResource;
 use App\Models\NewStudentAccount;
+use App\Support\UniqueAccountContact;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
@@ -36,6 +38,7 @@ class NewStudentAccountForm
                             ->maxLength(150)
                             ->mutateStateForValidationUsing($nullableTrim)
                             ->dehydrateStateUsing($nullableTrim)
+                            ->rules(fn (?NewStudentAccount $record): array => [new UniqueAccountContact('email', $record?->auth_id)])
                             ->unique(NewStudentAccount::class, 'email', ignoreRecord: true),
 
                         TextInput::make('phone')
@@ -44,7 +47,8 @@ class NewStudentAccountForm
                             ->nullable()
                             ->maxLength(30)
                             ->mutateStateForValidationUsing($nullableTrim)
-                            ->dehydrateStateUsing($nullableTrim),
+                            ->dehydrateStateUsing($nullableTrim)
+                            ->rules(fn (?NewStudentAccount $record): array => [new UniqueAccountContact('phone', $record?->auth_id)]),
 
                         TextInput::make('first_name_latin')
                             ->label(__('new_student_accounts.fields.first_name_latin'))
@@ -63,6 +67,8 @@ class NewStudentAccountForm
                         Toggle::make('is_active')
                             ->label(__('new_student_accounts.fields.is_active'))
                             ->default(true)
+                            ->disabled(fn (?NewStudentAccount $record): bool => $record !== null
+                                && ! NewStudentAccountResource::can($record->is_active ? 'deactivateAccount' : 'activateAccount', $record))
                             ->required(),
                     ]),
             ]);

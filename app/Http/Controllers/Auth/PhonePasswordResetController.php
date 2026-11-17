@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\AccountUser;
 use App\Models\MessagingSetting;
 use App\Models\User;
 use App\Support\PasswordResetOtpSms;
@@ -150,10 +151,11 @@ class PhonePasswordResetController extends Controller
             return null;
         }
 
-
-        return User::query()
+        $matches = AccountUser::query()
             ->whereIn('phone', ['0'.substr($international, 3), $international])
-            ->first();
+            ->limit(2)->get();
+
+        return $matches->count() === 1 ? $matches->first() : null;
     }
 
     private function backWithError(Request $request, string $field, string $message): RedirectResponse

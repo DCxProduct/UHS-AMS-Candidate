@@ -4,12 +4,14 @@ namespace App\Support;
 
 use App\Enums\WorkflowStageType;
 use App\Mail\WorkflowStageMail;
+use App\Models\AccountUser;
 use App\Models\AmsPaymentRequest;
 use App\Models\EmailTemplate;
-use App\Models\SmsTemplate;
 use App\Models\Payment;
+use App\Models\SmsTemplate;
 use App\Models\User;
 use App\Models\WorkflowNotification;
+use App\Services\AmsPaymentSync;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
@@ -361,8 +363,7 @@ final class WorkflowStageMessages
         CustomFormEntry $entry,
         string $action,
         ?string $reviewNote = null,
-    ): bool
-    {
+    ): bool {
         try {
             if (! self::hasConfiguredWorkflow($entry)) {
                 return false;
@@ -375,7 +376,7 @@ final class WorkflowStageMessages
                     WorkflowStageProgression::reviewed($entry);
                 } else {
                     WorkflowStageProgression::advance($entry);
-                    app(\App\Services\AmsPaymentSync::class)->sync($entry);
+                    app(AmsPaymentSync::class)->sync($entry);
                 }
             }
 
@@ -400,8 +401,6 @@ final class WorkflowStageMessages
             }
 
             $student = self::owner($entry);
-
-
 
             if ($student === null || ($action === 'accept' && self::hasSentReviewAction($entry, $action))) {
                 return false;
@@ -437,8 +436,6 @@ final class WorkflowStageMessages
         CustomFormEntry $entry,
         ?WorkflowStageType $stageType = null,
     ): int {
-
-
 
         return 0;
     }
@@ -567,8 +564,7 @@ final class WorkflowStageMessages
         CustomFormEntry $entry,
         WorkflowStageType $stageType,
         bool $replaceExisting = false,
-    ): bool
-    {
+    ): bool {
         try {
             $entry->refresh();
             $stage = self::configuredStage($entry, $stageType);
@@ -701,7 +697,6 @@ final class WorkflowStageMessages
             return null;
         }
 
-
         $types = $type === WorkflowStageType::Review
             ? [WorkflowStageType::Review->value, WorkflowStageType::Approval->value]
             : [$type->value];
@@ -730,8 +725,7 @@ final class WorkflowStageMessages
         User $student,
         ?string $workflowEvent = null,
         ?string $reviewNote = null,
-    ): bool
-    {
+    ): bool {
         $channels = self::channels($stage);
         $delivered = [];
 
@@ -772,14 +766,12 @@ final class WorkflowStageMessages
                 ),
             ]);
 
-
             $templateVariables = [
                 'form' => (string) ($entry->customForm?->display_name ?? ''),
                 'stage' => WorkflowNotificationStageSummary::localizedName($stage['stage_name'] ?? null, $stageType),
                 'message' => self::plainText($body),
                 'status' => (string) ($stage['status_message'] ?? ''),
             ];
-
 
             if (in_array('sms', $channels, true) && self::sendSms($student, $title, $body, $stage['sms_template_key'] ?? null, $templateVariables, $action ?? $stageType->value)) {
                 $delivered[] = 'sms';
@@ -942,8 +934,6 @@ final class WorkflowStageMessages
 
         $workflow = WorkflowNotification::forEntry($entry);
 
-
-
         return $workflow === null
             ? (bool) $entry->customForm?->requires_payment
             : $workflow->hasStageType(WorkflowStageType::Payment);
@@ -1062,7 +1052,7 @@ final class WorkflowStageMessages
             return null;
         }
 
-        return User::query()
+        return AccountUser::query()
             ->whereKey($entry->created_by)
             ->where('registration_type', 'student')
             ->first();

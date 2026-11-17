@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\AccountStorage;
 use App\Support\UserTypeOptions;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -38,7 +39,7 @@ class UserType extends Model
         });
 
         static::deleting(function (UserType $candidateType): void {
-            static::removeUserTypeFromSystemUsers($candidateType->key);
+            static::removeUserTypeFromAccounts($candidateType->key);
 
             Role::query()
                 ->where('guard_name', 'web')
@@ -96,13 +97,16 @@ class UserType extends Model
             ->title();
     }
 
-    protected static function removeUserTypeFromSystemUsers(string $candidateTypeKey): void
+    protected static function removeUserTypeFromAccounts(string $candidateTypeKey): void
     {
-        SystemUser::query()
-            ->whereNotNull('roles')
-            ->get()
-            ->each(function (SystemUser $systemUser) use ($candidateTypeKey): void {
-                $roles = $systemUser->roles;
+        $queries = [SystemUser::query()->whereNotNull('roles')];
+        if (AccountStorage::ready()) {
+            $queries[] = AccountUser::query()->whereNotNull('candidate_roles');
+        }
+        foreach ($queries as $query) {
+            foreach ($query->lazyById(200) as $account) {
+                $field = $account instanceof User ? 'candidate_roles' : 'roles';
+                $roles = $account->getAttribute($field);
 
                 if (is_string($roles)) {
                     $decoded = json_decode($roles, true);
@@ -110,7 +114,7 @@ class UserType extends Model
                 }
 
                 if (! is_array($roles)) {
-                    return;
+                    continue;
                 }
 
                 $updatedRoles = collect($roles)
@@ -120,13 +124,14 @@ class UserType extends Model
                     ->all();
 
                 if ($updatedRoles === $roles) {
-                    return;
+                    continue;
                 }
 
-                $systemUser->forceFill([
-                    'roles' => $updatedRoles,
+                $account->forceFill([
+                    $field => $updatedRoles,
                 ])->saveQuietly();
-            });
+            }
+        }
     }
 
     protected static function syncCandidatePermissionsToRole(Role $role): void

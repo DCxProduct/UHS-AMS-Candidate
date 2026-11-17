@@ -2,8 +2,8 @@
 
 namespace App\Filament\Admin\Resources\Payments\Schemas;
 
-use App\Filament\Admin\Resources\CandidateLists\CandidateListResource;
 use App\Filament\Admin\Resources\PaymentStatusLists\PaymentStatusListResource;
+use App\Models\AccountUser;
 use App\Models\ExchangeRate;
 use App\Models\MefInvoiceCode;
 use App\Models\Payment;
@@ -294,20 +294,10 @@ class PaymentForm
             return static::unpaidCandidateOptions();
         }
 
-        return CandidateListResource::getEloquentQuery()
+        return AccountUser::query()->where('registration_type', 'student')
             ->orderBy('name')
             ->get()
-            ->mapWithKeys(function (SystemUser $systemUser): array {
-                $loginUser = $systemUser->findLinkedLoginUser();
-
-                if (! $loginUser instanceof User || blank($loginUser->id)) {
-                    return [];
-                }
-
-                return [
-                    $loginUser->id => self::candidateDisplayName($loginUser, $systemUser),
-                ];
-            })
+            ->mapWithKeys(fn (User $user): array => [$user->getKey() => self::candidateDisplayName($user)])
             ->toArray();
     }
 
