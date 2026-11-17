@@ -117,6 +117,11 @@ class ListExamResults extends ListRecords
             ->color($notify ? 'primary' : 'success')
             ->visible(fn (): bool => static::getResource() === ExamResultResource::class
                 && ExamResultsTable::canSendPassedNotifications())
+            ->requiresConfirmation()
+            ->modalHeading(__('exam_results.'.$name))
+            ->modalDescription(__('exam_results.'.$name.'_confirm_description'))
+            ->modalSubmitActionLabel(__('exam_results.'.$name))
+            ->modalCancelActionLabel(__('app.cancel'))
             ->alpineClickHandler(<<<JS
                 const table = document.querySelector('.fi-ta');
                 const tableData = table?._x_dataStack?.find((data) => data.selectedRecords instanceof Set);
