@@ -524,3 +524,65 @@ Inspect AMS `candidate_student_account_deliveries.last_error` and `delivered_at`
 for delivery status. Initial pending deliveries retry their stored payload; correct
 source data and restage the delivery through the application when the payload is
 wrong. Existing historical enrollments are not automatically backfilled.
+
+## Candidate profile import for the Student portal
+
+The selection-results request now includes a versioned `profile` object containing
+whitelisted personal/contact/family/education/work-history fields and administrative
+location codes. Deploy the AMS receiver before the Candidate sender. Candidate
+only hides a confirmed result after AMS acknowledges `profile_synced` and a
+`profile_entry_id`, as well as the existing result/account acknowledgement.
+
+AMS stores the profile in `custom_form_entries` under the linked AMS user's ID and
+the form with slug `profile`. The Student portal must read the same database as
+AMS, as in the current local setup. Separate Student databases require another
+integration and are not automatically synchronized by this change.
+
+Ensure the `profile` form, `custom_form_fields`, and `custom_form_entries` exist
+before enabling the sender. No new token or migration is required for this profile
+extension: use the existing selection-results API token and independent account
+encryption key. The AMS-to-Candidate new-student-account token is a different flow.
+
+Repeated requests reuse the user's latest profile, fill missing fields and preserve
+existing student edits, completed/approved status, IDs, passwords and academic data.
+A complete imported profile has status `completed`; incomplete profiles remain
+`draft` with their available values prefilled. The Student portal still requires
+missing mandatory fields to be completed. Imports bypass form-submission observers,
+so profile import does not send notifications or generate a new enrollment review.
+
+Files/photos are not copied by this profile-data extension. Files already present
+in Student remain untouched; missing uploads and any Student-only required fields
+must be supplied there. Existing historical results are not automatically resent.
+Changes remain local until explicitly committed/pushed and deployed.
+### Dynamic Custom Form profile fields
+
+Profile sync now derives its allowed fields and repeater children from the Custom
+Form whose slug is `profile` in each application. There is no PHP field-name list
+to extend when adding a normal input. Create the matching field **name** in both
+Candidate and AMS/Student; changing only a translated label does not change mapping.
+The Student app continues reading the same AMS profile entry from the shared database.
+
+Sections/groups are traversed, repeater child names are validated recursively, and
+required fields/conditional `visible_when` rules determine whether the imported
+profile is completed or remains draft. Dates, numbers, booleans, multi-selects and
+configured choice keys are validated from the destination schema. New required
+Student-only inputs remain for the student to fill; completed/approved profiles
+and existing edited values are preserved on retry.
+
+Top-level geographic fields use `geo_location_type` and
+`geo_location_value_column` in their Custom Form options to translate source IDs
+to administrative codes and then to destination IDs. Geographic selectors nested
+inside repeaters are not transferred; they remain for completion in Student.
+File/image/signature inputs, hidden/display-only components and account-control
+names such as passwords, roles, account status and student IDs are excluded even
+if configured in a form. Unknown destination field names are rejected with 422.
+Deploy matching form definitions before enabling newly added source fields.
+Profile compatibility notes: section/group names may be Khmer; their child input
+names remain the API keys. The AMS receiver combines split Khmer/Latin name parts
+when the destination form stores a full name, converts Khmer digits for numeric
+inputs, and applies destination `integration_value_aliases` options. The default
+education alias `high_school_diploma` → `diploma` is configured under
+`services.candidate_integration.profile_value_aliases`. Unknown/protected input
+names still fail validation rather than being discarded. Candidate notifications
+show selected, successfully sent, and failed counts separately, with validation
+field names when AMS returns HTTP 422.

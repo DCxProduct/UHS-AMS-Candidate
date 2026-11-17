@@ -166,7 +166,15 @@ class ListExamResults extends ListRecords
         $records = $this->selectedOrFilteredQuery($selectedRecordKeys, $isTrackingDeselectedRecords, $deselectedRecordKeys)
             ->with(['creator', 'customForm'])->get();
         foreach ($records as $record) {
-            abort_unless(ExamResultsTable::canNotifyRecord($record, action: 'notify_all_students'), 403);
+            if (! ExamResultsTable::canNotifyRecord($record, action: 'notify_all_students')) {
+                Notification::make()
+                    ->title(__('exam_results.ams_sync_workflow_blocked'))
+                    ->body(__('exam_results.ams_sync_workflow_blocked_details', [
+                        'reference' => $record->candidate_id ?: (string) $record->getKey(),
+                    ]))
+                    ->danger()->persistent()->send();
+                return;
+            }
         }
         if ($records->isEmpty()) {
             Notification::make()->title(__('exam_results.no_selected_students'))->warning()->send();
@@ -189,6 +197,9 @@ class ListExamResults extends ListRecords
                     $exception instanceof ValidationException => implode(' ', $exception->validator->errors()->all()),
                     $exception instanceof ConnectionException => __('exam_results.ams_sync_connection_failed'),
                     $exception instanceof RequestException && $exception->response->status() === 409 => __('exam_results.ams_sync_account_conflict'),
+                    $exception instanceof RequestException && $exception->response->status() === 422 => __('exam_results.ams_sync_validation_failed', [
+                        'fields' => implode(', ', array_slice(array_keys($exception->response->json('errors') ?? []), 0, 8)),
+                    ]),
                     $exception instanceof RequestException => __('exam_results.ams_sync_request_failed', ['status' => $exception->response->status()]),
                     default => __('exam_results.ams_sync_unknown_error'),
                 };
@@ -207,7 +218,9 @@ class ListExamResults extends ListRecords
         $this->flushCachedTableRecords();
         $this->dispatch('$refresh');
 
-        $summary = __('exam_results.ams_sync_summary', ['count' => $synced]);
+        $summary = __('exam_results.ams_sync_selection_summary', [
+            'selected' => $records->count(), 'synced' => $synced, 'failed' => count($failed),
+        ]);
         if ($notify) {
             $summary .= ' '.__('exam_results.notifications_sent', ['count' => $notified]);
         }
