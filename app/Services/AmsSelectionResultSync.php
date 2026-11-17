@@ -7,6 +7,7 @@ use App\Filament\Admin\Resources\ExamResults\Tables\ExamResultsTable;
 use App\Models\User;
 use App\Support\CandidateApplicationLevels;
 use App\Support\CandidateLatinName;
+use App\Support\CandidateProfilePayload;
 use App\Support\CandidateTypeResolver;
 use App\Support\FormEntryData;
 use App\Support\MenuRecordVisibility;
@@ -68,6 +69,10 @@ class AmsSelectionResultSync
             throw new RuntimeException('AMS did not acknowledge both the selection result and candidate account.');
         }
 
+        if (($response['profile_synced'] ?? false) !== true || blank($response['profile_entry_id'] ?? null)) {
+            throw new RuntimeException('AMS did not acknowledge the candidate profile.');
+        }
+
         // Candidate notifications stay in Candidate and are released only after AMS acknowledges.
         $notified = $notify && ExamResultsTable::sendPassedNotification(
             $entry,
@@ -89,7 +94,8 @@ class AmsSelectionResultSync
         $owner = $entry->creator;
         $profile = CustomFormEntry::query()->where('created_by', $entry->created_by)
             ->whereHas('customForm', fn ($query) => $query->where('slug', 'profile'))->latest('id')->first();
-        $data = array_replace(is_array($profile?->data) ? $profile->data : [], is_array($entry->data) ? $entry->data : []);
+        $data = array_replace(is_array($profile?->data) ? $profile->data : [],
+            array_filter(is_array($entry->data) ? $entry->data : [], fn ($value) => filled($value)));
         $firstKh = self::text(FormEntryData::firstFilled($data, ['first_name_kh', 'first_name_khmer', 'surname_kh'], $owner?->first_name_kh));
         $lastKh = self::text(FormEntryData::firstFilled($data, ['last_name_kh', 'last_name_khmer', 'given_name_kh'], $owner?->last_name_kh));
         $firstEn = self::text(FormEntryData::firstFilled($data, ['first_name_en', 'first_name_latin'], $owner?->first_name_en));
@@ -103,6 +109,11 @@ class AmsSelectionResultSync
         return [
             'application_id' => (string) $entry->getKey(),
             'account' => $this->encryptedAccount($entry),
+            'profile' => CandidateProfilePayload::make($data, [
+                'name_khmer' => $owner?->name, 'name_latin' => $owner?->name_latin,
+                'email' => $owner?->email, 'phone_number' => $owner?->phone,
+                'date_of_birth' => self::date($owner?->date_of_birth),
+            ]),
             'result' => [
                 'name' => trim(($firstKh ?? '').' '.($lastKh ?? '')) ?: self::text(FormEntryData::firstFilled($data, ['name_khmer', 'full_name_kh', 'name_kh'], $owner?->name)),
                 'name_latin' => strtoupper(trim(($firstEn ?? '').' '.($lastEn ?? ''))),
