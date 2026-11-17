@@ -120,7 +120,7 @@ class ListExamResults extends ListRecords
             ->requiresConfirmation()
             ->modalHeading(__('exam_results.'.$name))
             ->modalDescription(__('exam_results.'.$name.'_confirm_description'))
-            ->modalSubmitActionLabel(__('exam_results.'.$name))
+            ->modalSubmitActionLabel(__('filament-actions::modal.actions.confirm.label'))
             ->modalCancelActionLabel(__('app.cancel'))
             ->alpineClickHandler(<<<JS
                 const table = document.querySelector('.fi-ta');
