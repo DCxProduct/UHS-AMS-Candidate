@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\PromotedStudentAccountGuard;
 use App\Support\UserTypeOptions;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Models\Contracts\HasAvatar;
@@ -66,6 +67,8 @@ class SystemUser extends Authenticatable implements CanResetPasswordContract, Fi
 
     protected static function booted(): void
     {
+        static::saving(fn (SystemUser $systemUser) => PromotedStudentAccountGuard::assertCanSave($systemUser));
+
         static::deleting(function (SystemUser $systemUser): void {
             $systemUser->deleteLinkedLoginUsers($systemUser->isForceDeleting());
         });
@@ -152,6 +155,8 @@ class SystemUser extends Authenticatable implements CanResetPasswordContract, Fi
 
     public function syncLoginUser(): void
     {
+        PromotedStudentAccountGuard::assertCanSave($this);
+
         $lookup = $this->getLoginUserLookup();
 
         if (empty($lookup)) {

@@ -465,6 +465,45 @@ ID and both Latin names are required. Email and phone may be null. AMS supports
 separate name fields and the full `name_latin` field (family name followed by given
 name). An incomplete name must be corrected before confirming the enrollment.
 
+Candidate Lists keeps canonical candidate accounts in `users`. Candidates sign in
+with phone or email. An authenticated AMS delivery matches a single candidate by
+normalized email or phone, copies its profile and existing password hash into
+`new_student_accounts`, and physically removes the `users` row in one transaction.
+New Student Accounts then supports phone, email and Student ID sign-in. No second
+profile or password is retained in `users`.
+
+The `account_identities` directory stores only a stable ID and its account store;
+`account_users` is a read-only view over the two stores. Existing application,
+payment, permission, notification and session ownership keeps the same logical
+ID, even when the student record has a different physical primary key. Candidate
+classification moves with the account. Ambiguous contacts, staff accounts and
+conflicting Student IDs return HTTP 409 without a partial transfer. Empty AMS
+contacts do not erase an existing login identifier, and retries do not reactivate
+an inactive account. Creating an unrelated New Student Account manually does not
+transfer a candidate; its password must be set through password reset.
+
+After deploying the canonical-storage migration, the auth provider must use
+`App\Models\AccountUser` (the default). Remove an old `AUTH_MODEL` override or set
+`AUTH_MODEL=App\Models\AccountUser`, then run `php artisan config:clear` and restart
+long-running workers. Canonicalize legacy candidate mirrors with a preview first:
+
+```bash
+php artisan accounts:canonicalize-candidates
+php artisan accounts:canonicalize-candidates --apply
+```
+
+For an AMS account delivered before this behavior was deployed, preview its
+reconciliation, then apply the reviewed Student ID:
+
+```bash
+php artisan ams:reconcile-student-account STUDENT_ID
+php artisan ams:reconcile-student-account STUDENT_ID --apply
+```
+
+Both previews roll back their transactions. Reconciliation preserves the existing
+student record, moves its matching candidate credentials and removes the old
+`users` row while retaining login and application history.
+
 ### Responses and troubleshooting
 
 | Response / symptom | Meaning and action |

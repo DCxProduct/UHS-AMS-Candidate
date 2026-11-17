@@ -2,8 +2,8 @@
 
 namespace App\Console\Commands;
 
+use App\Models\AccountUser;
 use App\Models\SystemUser;
-use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Hash;
 
@@ -35,10 +35,14 @@ class RotateDefaultPassword extends Command
 
         $counts = [];
 
-        foreach ([User::class, SystemUser::class] as $modelClass) {
+        foreach ([AccountUser::class, SystemUser::class] as $modelClass) {
             $matched = 0;
+            $query = $modelClass::query()->select(['id', 'password']);
+            if ($modelClass === AccountUser::class) {
+                $query->addSelect(['account_store', 'student_record_id']);
+            }
 
-            foreach ($modelClass::query()->select(['id', 'password'])->cursor() as $account) {
+            foreach ($query->cursor() as $account) {
                 if (! is_string($account->password) || ! Hash::check($from, $account->password)) {
                     continue;
                 }
@@ -61,7 +65,7 @@ class RotateDefaultPassword extends Command
 
         $this->info(sprintf(
             'Matched accounts: %d users; %d system users; %d total. %s.',
-            $counts[User::class],
+            $counts[AccountUser::class],
             $counts[SystemUser::class],
             $total,
             ucfirst($action),

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Filament\Pages\Auth\Register;
 use App\Models\SystemUser;
 use App\Models\User;
+use App\Support\UserTypeOptions;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -19,10 +20,11 @@ class RegisterLatinNameCapitalsTest extends TestCase
     {
         Filament::setCurrentPanel(Filament::getPanel('app'));
         $register = Livewire::test(Register::class)->instance();
+        $candidateType = array_key_first(UserTypeOptions::options());
 
         $method = new ReflectionMethod(Register::class, 'handleRegistration');
         $method->invoke($register, [
-            'student_role' => 'candidate',
+            'student_role' => $candidateType,
             'first_name_en' => 'sithan',
             'last_name_en' => ' manita ',
             'phone' => '010519102',
@@ -33,7 +35,8 @@ class RegisterLatinNameCapitalsTest extends TestCase
         $user = User::query()->where('phone', '010519102')->sole();
         $this->assertSame('SITHAN MANITA', $user->name);
         $this->assertSame('SITHAN MANITA', $user->name_latin);
-        $this->assertSame('SITHAN MANITA', SystemUser::query()->where('phone', '010519102')->sole()->name);
+        $this->assertSame([$candidateType], $user->candidate_roles);
+        $this->assertFalse(SystemUser::query()->where('phone', '010519102')->exists());
     }
 
     public function test_the_name_fields_show_capitals_while_typing(): void

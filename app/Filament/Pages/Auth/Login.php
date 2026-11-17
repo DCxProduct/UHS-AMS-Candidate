@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages\Auth;
 
+use App\Models\AccountUser;
 use App\Models\User;
 use DanHarrin\LivewireRateLimiting\Exceptions\TooManyRequestsException;
 use Filament\Actions\Action;
@@ -56,8 +57,8 @@ class Login extends BaseLogin
         return $schema
             ->components([
                 TextInput::make('login')
-                    ->label(__('app.email_or_phone'))
-                    ->placeholder(__('app.enter_email_or_phone'))
+                    ->label(__('app.login_identifier'))
+                    ->placeholder(__('app.enter_login_identifier'))
                     ->required()
                     ->autofocus()
                     ->autocomplete('username')
@@ -107,21 +108,29 @@ class Login extends BaseLogin
         $isPhoneLogin = preg_match('/^[+0-9\\s().-]+$/', $login) === 1
             && strlen($normalizedPhone) >= 9;
 
-        $user = User::query()
+        $matches = AccountUser::query()
             ->where(function ($query) use ($normalizedLogin, $normalizedPhone, $isPhoneLogin): void {
                 $query
                     ->whereRaw('LOWER(username) = ?', [$normalizedLogin])
                     ->orWhereRaw('LOWER(email) = ?', [$normalizedLogin]);
 
+                $query->orWhere(function ($student) use ($normalizedLogin): void {
+                    $student->where('account_store', 'student')
+                        ->whereRaw('LOWER(student_id) = ?', [$normalizedLogin]);
+                });
+
                 if ($isPhoneLogin) {
                     $query->orWhere('phone', $normalizedPhone);
                 }
             })
-            ->first();
+            ->limit(2)->get();
+        $user = $matches->count() === 1 ? $matches->first() : null;
 
         // Always perform one password check, including for unknown identifiers.
-        $passwordHash = $user?->password ?? '$2y$12$PlJMhRM2a9x9vkOCktrtWe4ekdqMUmlFQLr5kzG/3WR/nrr.rnTcS';
-        $validPassword = Hash::check($password, $passwordHash);
+        $storedHash = $user?->password;
+        $hasPassword = is_string($storedHash) && $storedHash !== '' && Hash::isHashed($storedHash);
+        $passwordHash = $hasPassword ? $storedHash : '$2y$12$PlJMhRM2a9x9vkOCktrtWe4ekdqMUmlFQLr5kzG/3WR/nrr.rnTcS';
+        $validPassword = Hash::check($password, $passwordHash) && $hasPassword;
 
         if (! $user || ! $validPassword) {
             throw ValidationException::withMessages([

@@ -2,8 +2,10 @@
 
 namespace App\Filament\Admin\Resources\CandidateLists\Schemas;
 
-use App\Models\SystemUser;
+use App\Models\AccountUser;
+use App\Models\User;
 use App\Support\CandidateLatinName;
+use App\Support\UniqueAccountContact;
 use App\Support\UserTypeOptions;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
@@ -13,6 +15,7 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Unique;
 
 class CandidateListForm
 {
@@ -45,7 +48,7 @@ class CandidateListForm
                                         'regex' => __('app.latin_name_regex'),
                                     ])
                                     ->afterStateHydrated(fn (TextInput $component, $record) => $component->state(
-                                        $record ? CandidateLatinName::split($record->name)[0] : null
+                                        $record ? CandidateLatinName::split($record->name_latin ?: $record->name)[0] : null
                                     ))
                                     ->dehydrateStateUsing(fn (?string $state): string => CandidateLatinName::normalize($state)),
 
@@ -65,7 +68,7 @@ class CandidateListForm
                                         'regex' => __('app.latin_name_regex'),
                                     ])
                                     ->afterStateHydrated(fn (TextInput $component, $record) => $component->state(
-                                        $record ? CandidateLatinName::split($record->name)[1] : null
+                                        $record ? CandidateLatinName::split($record->name_latin ?: $record->name)[1] : null
                                     ))
                                     ->dehydrateStateUsing(fn (?string $state): string => CandidateLatinName::normalize($state)),
 
@@ -74,9 +77,13 @@ class CandidateListForm
                                     ->email()
                                     ->nullable()
                                     ->maxLength(150)
-                                    ->unique(SystemUser::class, 'email', ignoreRecord: true)
+                                    ->mutateStateForValidationUsing(fn ($state): ?string => blank($state) ? null : mb_strtolower(trim((string) $state)))
+                                    ->unique(AccountUser::class, 'email', ignoreRecord: false, modifyRuleUsing: fn (Unique $rule, ?User $record): Unique => $record
+                                        ? $rule->ignore($record->getKey(), 'id')
+                                        : $rule)
+                                    ->rules(fn (?User $record): array => [new UniqueAccountContact('email', $record?->getKey())])
                                     ->placeholder(__('candidate_lists.placeholders.email'))
-                                    ->dehydrateStateUsing(fn ($state): ?string => blank($state) ? null : trim((string) $state)),
+                                    ->dehydrateStateUsing(fn ($state): ?string => blank($state) ? null : mb_strtolower(trim((string) $state))),
 
                                 TextInput::make('phone')
                                     ->label(__('candidate_lists.fields.phone'))
@@ -84,11 +91,14 @@ class CandidateListForm
                                     ->required()
                                     ->minLength(9)
                                     ->maxLength(10)
-                                    ->unique(SystemUser::class, 'phone', ignoreRecord: true)
+                                    ->unique(AccountUser::class, 'phone', ignoreRecord: false, modifyRuleUsing: fn (Unique $rule, ?User $record): Unique => $record
+                                        ? $rule->ignore($record->getKey(), 'id')
+                                        : $rule)
                                     ->placeholder(__('candidate_lists.placeholders.phone'))
-                                    ->rules([
+                                    ->rules(fn (?User $record): array => [
                                         'required',
                                         'regex:/^[0-9]{9,10}$/',
+                                        new UniqueAccountContact('phone', $record?->getKey()),
                                     ])
                                     ->validationMessages([
                                         'required' => __('candidate_lists.validation.phone_required'),

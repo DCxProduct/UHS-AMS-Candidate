@@ -73,12 +73,12 @@ class Payment extends Model
 
     public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'users_id');
+        return $this->belongsTo(AccountUser::class, 'users_id');
     }
 
     public function receivedBy(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'received_by');
+        return $this->belongsTo(AccountUser::class, 'received_by');
     }
 
     public function paidViaAms(): bool

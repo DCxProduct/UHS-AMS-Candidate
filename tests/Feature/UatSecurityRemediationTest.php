@@ -140,8 +140,7 @@ class UatSecurityRemediationTest extends TestCase
         $this->assertNull($unowned->fresh()->created_by);
         $this->assertSame($other->id, $owned->fresh()->created_by);
         $this->assertNull($user->email_verified_at);
-        $this->assertNull($user->linkedSystemUser()->email_verified_at);
-        $user->linkedSystemUser()->syncLoginUser();
+        $this->assertNull($user->linkedSystemUser());
         $this->assertNull($user->fresh()->email_verified_at);
     }
 

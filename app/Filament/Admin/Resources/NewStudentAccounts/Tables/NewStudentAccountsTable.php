@@ -2,13 +2,16 @@
 
 namespace App\Filament\Admin\Resources\NewStudentAccounts\Tables;
 
+use App\Filament\Admin\Resources\NewStudentAccounts\NewStudentAccountResource;
+use App\Models\NewStudentAccount;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
+use App\Support\NotificationLanguage;
+use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -20,6 +23,9 @@ class NewStudentAccountsTable
         return $table
             ->searchPlaceholder(__('new_student_accounts.search'))
             ->defaultSort('id', 'desc')
+            ->recordUrl(fn (NewStudentAccount $record): ?string => NewStudentAccountResource::canEdit($record)
+                ? NewStudentAccountResource::getUrl('edit', ['record' => $record])
+                : null)
             ->columns([
                 TextColumn::make('row_number')
                     ->label(__('new_student_accounts.fields.row_number'))
@@ -65,16 +71,44 @@ class NewStudentAccountsTable
             ])
             ->recordActions([
                 ActionGroup::make([
-                    ViewAction::make()->label(__('new_student_accounts.actions.view')),
                     EditAction::make()->label(__('new_student_accounts.actions.edit')),
+                    Action::make('activate_account')
+                        ->label(__('new_student_accounts.actions.activate'))
+                        ->icon('heroicon-o-check-circle')
+                        ->color('success')
+                        ->requiresConfirmation()
+                        ->authorize(fn (NewStudentAccount $record): bool => NewStudentAccountResource::can('activateAccount', $record))
+                        ->visible(fn (NewStudentAccount $record): bool => ! $record->is_active)
+                        ->action(function (NewStudentAccount $record): void {
+                            abort_unless(NewStudentAccountResource::can('activateAccount', $record), 403);
+                            $record->update(['is_active' => true]);
+
+                            Notification::make()
+                                ->title(NotificationLanguage::trans('new_student_accounts.notifications.activated'))
+                                ->success()
+                                ->send();
+                        }),
+                    Action::make('deactivate_account')
+                        ->label(__('new_student_accounts.actions.deactivate'))
+                        ->icon('heroicon-o-x-circle')
+                        ->color('danger')
+                        ->requiresConfirmation()
+                        ->authorize(fn (NewStudentAccount $record): bool => NewStudentAccountResource::can('deactivateAccount', $record))
+                        ->visible(fn (NewStudentAccount $record): bool => $record->is_active)
+                        ->action(function (NewStudentAccount $record): void {
+                            abort_unless(NewStudentAccountResource::can('deactivateAccount', $record), 403);
+                            $record->update(['is_active' => false]);
+
+                            Notification::make()
+                                ->title(NotificationLanguage::trans('new_student_accounts.notifications.deactivated'))
+                                ->success()
+                                ->send();
+                        }),
                     DeleteAction::make()->label(__('new_student_accounts.actions.delete')),
                 ])
                     ->label('')
                     ->icon('heroicon-m-ellipsis-vertical')
                     ->tooltip(__('new_student_accounts.actions.actions')),
-            ])
-            ->toolbarActions([
-                DeleteBulkAction::make()->authorizeIndividualRecords('delete'),
             ]);
     }
 }

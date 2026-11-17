@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\AccountContactUniqueness;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Models\Contracts\HasAvatar;
 use Filament\Models\Contracts\HasName;
@@ -12,15 +13,20 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
 {
+    use HasRoles;
     use Notifiable;
     use SoftDeletes;
-    use HasRoles;
+
+    protected $guard_name = 'web';
 
     protected $fillable = [
         'registration_type',
@@ -39,11 +45,16 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
         'is_active',
         'password',
         'remember_token',
+        'candidate_roles',
     ];
 
     protected $hidden = [
         'password',
         'remember_token',
+        'candidate_roles',
+        'source_candidate_id',
+        'auth_id',
+        'user_id',
     ];
 
     protected function casts(): array
@@ -53,7 +64,54 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
             'date_of_birth' => 'date',
             'is_active' => 'boolean',
             'password' => 'hashed',
+            'candidate_roles' => 'array',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::saving(function (User $user): void {
+            if (! $user instanceof AccountUser) {
+                AccountContactUniqueness::assertForAuth($user);
+            }
+        });
+
+        static::creating(function (User $user): void {
+            if ($user instanceof StudentLogin || $user instanceof AccountUser
+                || ! Schema::hasTable('account_identities')) {
+                return;
+            }
+
+            if ($user->getKey() !== null) {
+                $identity = AccountIdentity::query()->find($user->getKey());
+                if ($identity !== null && $identity->storage !== 'candidate') {
+                    throw ValidationException::withMessages(['id' => 'This account identity belongs to a student account.']);
+                }
+                AccountIdentity::query()->firstOrCreate(['id' => $user->getKey()], ['storage' => 'candidate']);
+
+                return;
+            }
+
+            $identity = AccountIdentity::query()->create(['storage' => 'candidate']);
+            $user->setAttribute($user->getKeyName(), $identity->getKey());
+        });
+
+        static::deleted(function (User $user): void {
+            if (! $user->isForceDeleting() || ! Schema::hasTable('account_identities')) {
+                return;
+            }
+
+            // Transfer uses a query-builder delete and deliberately keeps the
+            // shared identity. Normal account deletion keeps its old FK behavior.
+            DB::table('account_identities')->where('id', $user->getKey())
+                ->where('storage', $user instanceof StudentLogin ? 'student' : 'candidate')->delete();
+        });
+    }
+
+    public function save(array $options = [])
+    {
+        // Identity reservation and its credential row must commit together.
+        return $this->getConnection()->transaction(fn () => parent::save($options));
     }
 
     public function canAccessPanel(Panel $panel): bool
@@ -73,7 +131,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
             || in_array($this->registration_type, ['admin', 'student'], true);
     }
 
-    public function hasEffectiveRole(array | string $roles): bool
+    public function hasEffectiveRole(array|string $roles): bool
     {
         $roles = collect(is_array($roles) ? $roles : [$roles])
             ->map(fn ($role): string => Str::lower(trim((string) $role)))
@@ -102,8 +160,18 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
             ->filter(fn ($role): bool => filled($role))
             ->map(fn ($role): string => Str::lower(trim((string) $role)));
 
+        $studentRoles = collect($this->linkedNewStudentAccount()?->roles ?? [])
+            ->filter(fn ($role): bool => filled($role))
+            ->map(fn ($role): string => Str::lower(trim((string) $role)));
+
+        $candidateRoles = collect($this->candidate_roles ?? [])
+            ->filter(fn ($role): bool => filled($role))
+            ->map(fn ($role): string => Str::lower(trim((string) $role)));
+
         return $loginRoles
             ->merge($systemRoles)
+            ->merge($studentRoles)
+            ->merge($candidateRoles)
             ->unique()
             ->values();
     }
@@ -147,7 +215,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
 
     public function studentUser(): HasOne
     {
-        return $this->hasOne(\App\Models\SystemUser::class);
+        return $this->hasOne(SystemUser::class);
     }
 
     public function linkedSystemUser(): ?SystemUser
@@ -169,6 +237,22 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
                 }
             })
             ->first();
+    }
+
+    public function linkedNewStudentAccount(): ?NewStudentAccount
+    {
+        if (! $this->exists) {
+            return null;
+        }
+
+        if (Schema::hasColumn('new_student_accounts', 'auth_id')) {
+            return NewStudentAccount::query()->where('auth_id', $this->getAuthIdentifier())->first();
+        }
+        if (! Schema::hasColumn('new_student_accounts', 'user_id')) {
+            return null;
+        }
+
+        return NewStudentAccount::query()->where('user_id', $this->getKey())->first();
     }
 
     private function normalizeAvatarPath(mixed $avatar): ?string

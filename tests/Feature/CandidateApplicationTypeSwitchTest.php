@@ -290,7 +290,7 @@ class CandidateApplicationTypeSwitchTest extends TestCase
         }
     }
 
-    public function test_missing_or_inactive_linked_accounts_cannot_be_recreated_or_modified_by_switching(): void
+    public function test_missing_legacy_mirror_uses_canonical_candidate_storage_while_inactive_mirrors_are_rejected(): void
     {
         foreach (['missing', 'inactive'] as $kind) {
             $user = $this->candidate('unavailable-linked-'.$kind);
@@ -303,6 +303,17 @@ class CandidateApplicationTypeSwitchTest extends TestCase
             $loginBefore = $user->fresh()->getRawOriginal();
             $systemsBefore = DB::table('system_users')->orderBy('id')->get()->toArray();
             $rolesBefore = $user->getRoleNames()->all();
+            if ($kind === 'missing') {
+                CandidateApplicationLevels::switchTo($user, self::ASSOCIATE);
+                $this->assertSame(self::ASSOCIATE, CandidateApplicationLevels::currentType($user));
+                $after = $user->fresh()->getRawOriginal();
+                unset($loginBefore['candidate_roles'], $loginBefore['updated_at'], $after['candidate_roles'], $after['updated_at']);
+                $this->assertSame($loginBefore, $after);
+                $this->assertEquals($systemsBefore, DB::table('system_users')->orderBy('id')->get()->toArray());
+                $this->assertSame($rolesBefore, $user->fresh()->getRoleNames()->all());
+
+                continue;
+            }
             try {
                 CandidateApplicationLevels::switchTo($user, self::ASSOCIATE);
                 $this->fail('Switching requires the existing active linked account.');

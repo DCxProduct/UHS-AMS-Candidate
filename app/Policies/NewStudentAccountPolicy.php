@@ -15,11 +15,6 @@ class NewStudentAccountPolicy
         return $this->allows($authUser, 'ViewAny:NewStudentAccount');
     }
 
-    public function view(AuthUser $authUser, NewStudentAccount $newStudentAccount): bool
-    {
-        return $this->allows($authUser, 'View:NewStudentAccount');
-    }
-
     public function create(AuthUser $authUser): bool
     {
         return $this->allows($authUser, 'Create:NewStudentAccount');
@@ -30,6 +25,16 @@ class NewStudentAccountPolicy
         return $this->allows($authUser, 'Update:NewStudentAccount');
     }
 
+    public function activateAccount(AuthUser $authUser, NewStudentAccount $newStudentAccount): bool
+    {
+        return $this->allows($authUser, 'ActivateAccount:NewStudentAccount');
+    }
+
+    public function deactivateAccount(AuthUser $authUser, NewStudentAccount $newStudentAccount): bool
+    {
+        return $this->allows($authUser, 'DeactivateAccount:NewStudentAccount');
+    }
+
     public function delete(AuthUser $authUser, NewStudentAccount $newStudentAccount): bool
     {
         return $this->allows($authUser, 'Delete:NewStudentAccount');
@@ -37,7 +42,7 @@ class NewStudentAccountPolicy
 
     public function deleteAny(AuthUser $authUser): bool
     {
-        return $this->allows($authUser, 'DeleteAny:NewStudentAccount');
+        return false;
     }
 
     private function allows(AuthUser $authUser, string $permission): bool

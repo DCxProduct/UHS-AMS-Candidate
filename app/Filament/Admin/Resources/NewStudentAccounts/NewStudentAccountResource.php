@@ -5,9 +5,7 @@ namespace App\Filament\Admin\Resources\NewStudentAccounts;
 use App\Filament\Admin\Resources\NewStudentAccounts\Pages\CreateNewStudentAccount;
 use App\Filament\Admin\Resources\NewStudentAccounts\Pages\EditNewStudentAccount;
 use App\Filament\Admin\Resources\NewStudentAccounts\Pages\ListNewStudentAccounts;
-use App\Filament\Admin\Resources\NewStudentAccounts\Pages\ViewNewStudentAccount;
 use App\Filament\Admin\Resources\NewStudentAccounts\Schemas\NewStudentAccountForm;
-use App\Filament\Admin\Resources\NewStudentAccounts\Schemas\NewStudentAccountInfolist;
 use App\Filament\Admin\Resources\NewStudentAccounts\Tables\NewStudentAccountsTable;
 use App\Filament\Concerns\AdminOnly;
 use App\Models\NewStudentAccount;
@@ -40,7 +38,7 @@ class NewStudentAccountResource extends Resource
 
     public static function getAuthorizationResponse(string|UnitEnum $action, ?Model $record = null): Response
     {
-        if (auth()->user()?->registration_type !== 'admin') {
+        if ($action === 'deleteAny' || auth()->user()?->registration_type !== 'admin') {
             return Response::deny();
         }
 
@@ -72,11 +70,6 @@ class NewStudentAccountResource extends Resource
         return NewStudentAccountForm::configure($schema);
     }
 
-    public static function infolist(Schema $schema): Schema
-    {
-        return NewStudentAccountInfolist::configure($schema);
-    }
-
     public static function table(Table $table): Table
     {
         return NewStudentAccountsTable::configure($table);
@@ -87,7 +80,6 @@ class NewStudentAccountResource extends Resource
         return [
             'index' => ListNewStudentAccounts::route('/'),
             'create' => CreateNewStudentAccount::route('/create'),
-            'view' => ViewNewStudentAccount::route('/{record}'),
             'edit' => EditNewStudentAccount::route('/{record}/edit'),
         ];
     }

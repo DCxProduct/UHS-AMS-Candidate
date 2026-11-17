@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\WorkflowPaymentSource;
 use App\Enums\WorkflowStageType;
+use App\Models\AccountUser;
 use App\Models\AmsPaymentRequest;
 use App\Models\Payment;
 use App\Models\WorkflowNotification;
@@ -12,6 +13,7 @@ use App\Support\FormEntryData;
 use App\Support\WorkflowStageMessages;
 use App\Support\WorkflowStageProgression;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
 use RuntimeException;
@@ -31,7 +33,7 @@ class AmsPaymentSync
 
         if (! self::usesAms($entry)
             || (WorkflowStageProgression::enabled($entry)
-                ? ! WorkflowStageProgression::isCurrent($entry, \App\Enums\WorkflowStageType::Payment)
+                ? ! WorkflowStageProgression::isCurrent($entry, WorkflowStageType::Payment)
                 : ! in_array(strtolower((string) $entry->review_status), ['approved', 'accepted'], true))
             || ! WorkflowStageMessages::requiresPayment($entry)
             || blank($entry->created_by)) {
@@ -88,7 +90,7 @@ class AmsPaymentSync
     private function payload(CustomFormEntry $entry): array
     {
         $entry->loadMissing('customForm');
-        $owner = \App\Models\User::query()->find($entry->created_by);
+        $owner = AccountUser::query()->find($entry->created_by);
         $profile = CustomFormEntry::query()->where('created_by', $entry->created_by)
             ->whereHas('customForm', fn ($query) => $query->where('slug', 'profile'))->latest('id')->first();
         $data = array_replace(is_array($profile?->data) ? $profile->data : [], is_array($entry->data) ? $entry->data : []);
@@ -100,7 +102,7 @@ class AmsPaymentSync
         $nameEn = $nameEn ?: trim(implode(' ', array_filter([self::text($data['first_name_en'] ?? null), self::text($data['last_name_en'] ?? null)])));
         $dob = FormEntryData::firstFilled($data, ['date_of_birth', 'dob', 'birth_date'], $owner?->date_of_birth);
         try {
-            $dob = filled($dob) ? \Illuminate\Support\Carbon::parse($dob)->format('Y-m-d') : null;
+            $dob = filled($dob) ? Carbon::parse($dob)->format('Y-m-d') : null;
         } catch (Throwable) {
             $dob = null;
         }

@@ -134,7 +134,10 @@ class CandidateListLatinNameTest extends TestCase
             'username' => $username,
             'phone' => $phone,
             'password' => Hash::make('password'),
-            'roles' => ['candidate'],
+            'registration_type' => 'student',
+            'candidate_roles' => ['candidate'],
+            'name_latin' => $name,
+            'date_of_birth' => '2000-01-01',
             'is_active' => true,
         ]);
     }

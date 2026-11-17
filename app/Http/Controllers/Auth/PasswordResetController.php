@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\AccountUser;
 use App\Models\MessagingSetting;
 use App\Models\User;
 use Illuminate\Auth\Events\PasswordReset;
@@ -35,9 +36,10 @@ class PasswordResetController extends Controller
 
         $email = Str::lower(trim((string) $request->input('email')));
 
-        $user = User::query()
+        $matches = AccountUser::query()
             ->whereRaw('LOWER(email) = ?', [$email])
-            ->first();
+            ->limit(2)->get();
+        $user = $matches->count() === 1 ? $matches->first() : null;
 
         if (! $user) {
             return back()
@@ -51,7 +53,6 @@ class PasswordResetController extends Controller
             $status = Password::sendResetLink([
                 'email' => $email,
             ], function (User $user, string $token): void {
-
 
                 if (! app()->isProduction()) {
                     Log::info('Password reset link for '.$user->email.': '.route('student.password.reset', [

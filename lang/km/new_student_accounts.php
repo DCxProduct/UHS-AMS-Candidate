@@ -22,7 +22,13 @@ return [
     'actions' => [
         'view' => 'មើល',
         'edit' => 'កែប្រែ',
+        'activate' => 'បើកគណនី',
+        'deactivate' => 'បិទគណនី',
         'delete' => 'លុប',
         'actions' => 'សកម្មភាព',
+    ],
+    'notifications' => [
+        'activated' => 'បានបើកគណនីដោយជោគជ័យ។',
+        'deactivated' => 'បានបិទគណនីដោយជោគជ័យ។',
     ],
 ];

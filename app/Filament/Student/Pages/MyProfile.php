@@ -120,7 +120,7 @@ class MyProfile extends Page implements HasForms
                                 ->email()
                                 ->maxLength(255)
                                 ->rules([
-                                    fn () => Rule::unique('users', 'email')->ignore(Auth::id()),
+                                    fn () => Rule::unique('account_users', 'email')->ignore(Auth::id()),
                                 ])
                                 ->columnSpan(6),
 
@@ -129,7 +129,7 @@ class MyProfile extends Page implements HasForms
                                 ->tel()
                                 ->maxLength(255)
                                 ->rules([
-                                    fn () => Rule::unique('users', 'phone')->ignore(Auth::id()),
+                                    fn () => Rule::unique('account_users', 'phone')->ignore(Auth::id()),
                                 ])
                                 ->columnSpan(6),
 

@@ -2,8 +2,10 @@
 
 namespace App\Filament\Pages\Auth;
 
+use App\Models\AccountUser;
 use App\Models\SystemUser;
 use App\Models\User;
+use App\Support\UniqueAccountContact;
 use App\Support\UserTypeOptions;
 use Filament\Auth\Events\Registered;
 use Filament\Auth\Http\Responses\Contracts\RegistrationResponse;
@@ -130,7 +132,7 @@ class Register extends BaseRegister
                     ->rules([
                         'required',
                         'regex:/^[0-9]{9,10}$/',
-                        Rule::unique('system_users', 'phone'),
+                        new UniqueAccountContact('phone'),
                     ])
                     ->validationMessages([
                         'required' => __('app.phone_required'),
@@ -139,7 +141,7 @@ class Register extends BaseRegister
                         'max' => __('app.phone_max'),
                         'unique' => __('app.phone_unique'),
                     ])
-                    ->unique(User::class, 'phone')
+                    ->unique(AccountUser::class, 'phone')
                     ->prefixIcon('heroicon-o-phone')
                     ->extraInputAttributes([
                         'oninput' => "this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10)",
@@ -156,12 +158,13 @@ class Register extends BaseRegister
                     ->prefixIcon('heroicon-o-envelope')
                     ->email()
                     ->nullable()
-                    ->maxLength(255)
+                    ->maxLength(150)
+                    ->mutateStateForValidationUsing(fn (?string $state): ?string => filled($state) ? Str::lower(trim($state)) : null)
                     ->rules([
                         'nullable',
                         'email',
-                        Rule::unique('users', 'email'),
-                        Rule::unique('system_users', 'email'),
+                        Rule::unique('account_users', 'email'),
+                        new UniqueAccountContact('email'),
                     ])
                     ->dehydrateStateUsing(
                         fn (?string $state): ?string => filled($state)
@@ -362,6 +365,7 @@ class Register extends BaseRegister
             */
             $user = User::query()->create([
                 'registration_type' => 'student',
+                'candidate_roles' => UserTypeOptions::assignableUserRoles($studentRole),
                 'academic_year' => null,
                 'name' => $fullName,
                 'name_latin' => $fullName,
@@ -382,31 +386,6 @@ class Register extends BaseRegister
                 $user->syncRoles($webRoles);
             }
 
-            /*
-            |--------------------------------------------------------------------------
-            | Store student in system_users table
-            |--------------------------------------------------------------------------
-            */
-            $systemUserLookup = filled($username)
-                ? ['username' => $username]
-                : (filled($email)
-                    ? ['email' => $email]
-                    : ['phone' => $phone]);
-
-            SystemUser::query()->updateOrCreate($systemUserLookup, [
-                'name' => $fullName,
-                'username' => $username,
-                'email' => $email,
-                'phone' => $phone,
-                'password' => $hashedPassword,
-                'avatar' => null,
-                'roles' => UserTypeOptions::assignableUserRoles($studentRole),
-                'permissions' => null,
-                'is_active' => true,
-                'email_verified_at' => null,
-                'last_login_at' => null,
-            ]);
-
             // Ownership recovery requires separately verified proof. Registration
             // must never acquire existing applications from a supplied phone number.
 
@@ -421,7 +400,7 @@ class Register extends BaseRegister
         $suffix = 1;
 
         while (
-            User::withTrashed()->where('username', $username)->exists()
+            AccountUser::withTrashed()->where('username', $username)->exists()
             || SystemUser::withTrashed()->where('username', $username)->exists()
         ) {
             $username = $baseUsername.'_'.$suffix++;

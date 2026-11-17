@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Relations\AccountActorMorphTo;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
@@ -33,5 +35,10 @@ class AuditLog extends Model
     public function actor(): MorphTo
     {
         return $this->morphTo();
+    }
+
+    protected function newMorphTo(Builder $query, Model $parent, $foreignKey, $ownerKey, $type, $relation)
+    {
+        return new AccountActorMorphTo($query, $parent, $foreignKey, $ownerKey, $type, $relation);
     }
 }

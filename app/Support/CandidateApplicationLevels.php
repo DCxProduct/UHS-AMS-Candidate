@@ -2,7 +2,9 @@
 
 namespace App\Support;
 
+use App\Models\NewStudentAccount;
 use App\Models\Role;
+use App\Models\StudentLogin;
 use App\Models\SystemUser;
 use App\Models\User;
 use App\Models\UserType;
@@ -32,7 +34,7 @@ final class CandidateApplicationLevels
         $categories = self::categoryKeys();
         $linked = self::linkedAccount($user);
 
-        foreach ([self::roleValues($linked?->roles), $user->getRoleNames()->all()] as $roles) {
+        foreach ([self::roleValues($user->candidate_roles), self::accountRoles($linked), $user->getRoleNames()->all()] as $roles) {
             foreach ($roles as $role) {
                 if (is_string($role) && in_array(strtolower(trim($role)), $categories, true)) {
                     return strtolower(trim($role));
@@ -91,10 +93,10 @@ final class CandidateApplicationLevels
         ])->validate();
 
         DB::transaction(function () use ($user, $type): void {
-            $locked = User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
+            $locked = $user->newQuery()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
             abort_unless($locked->is_active && DashboardUserAccess::isCandidate($locked), 403);
             $linked = self::linkedAccount($locked, lock: true);
-            if (! $linked || ! $linked->isActiveAccount()) {
+            if (! $linked || ! ($linked instanceof User ? $linked->is_active : $linked->isActiveAccount())) {
                 throw ValidationException::withMessages(['type' => __('dashboard.application_levels.missing_account')]);
             }
 
@@ -106,22 +108,27 @@ final class CandidateApplicationLevels
             self::freezeHistory($locked, $linked);
 
             $categories = self::categoryKeys();
-            $roles = array_filter(self::roleValues($linked->roles), fn (mixed $role): bool => ! is_string($role)
+            $roles = array_filter(self::accountRoles($linked), fn (mixed $role): bool => ! is_string($role)
                 || ! in_array(strtolower(trim($role)), $categories, true));
-            $linked->forceFill(['roles' => [$type, ...array_values($roles)]])->saveQuietly();
+            $linked->forceFill([$linked instanceof User ? 'candidate_roles' : 'roles' => [$type, ...array_values($roles)]])->saveQuietly();
         }, 3);
 
         $user->refresh();
     }
 
-    private static function freezeHistory(User $user, SystemUser $linked): void
+    private static function freezeHistory(User $user, User|SystemUser|NewStudentAccount $linked): void
     {
         $model = new CustomFormEntry;
         $table = $model->getTable();
         $owners = [];
         foreach (['created_by', 'user_id', 'created_by_id', 'system_user_id'] as $column) {
             if (Schema::hasColumn($table, $column)) {
-                $owners[$column] = $column === 'system_user_id' ? $linked->getKey() : $user->getKey();
+                $ownerId = $column === 'system_user_id'
+                    ? ($user->source_candidate_id ?? ($linked instanceof SystemUser ? $linked->getKey() : $linked->source_candidate_id))
+                    : $user->getKey();
+                if ($ownerId !== null) {
+                    $owners[$column] = $ownerId;
+                }
             }
         }
 
@@ -159,15 +166,28 @@ final class CandidateApplicationLevels
         }
     }
 
-    private static function linkedAccount(User $user, bool $lock = false): ?SystemUser
+    private static function linkedAccount(User $user, bool $lock = false): User|SystemUser|NewStudentAccount|null
     {
+        $studentOwner = Schema::hasColumn('new_student_accounts', 'auth_id') ? 'auth_id' : 'user_id';
+        if (Schema::hasColumn('new_student_accounts', $studentOwner)) {
+            $studentAccount = NewStudentAccount::query()->where($studentOwner, $user->getKey())
+                ->when($lock, fn (Builder $query): Builder => $query->lockForUpdate())->first();
+            if ($studentAccount !== null) {
+                return $studentAccount;
+            }
+        }
+
+        if ($user instanceof StudentLogin || $user->candidate_roles !== null) {
+            return $user;
+        }
+
         $query = SystemUser::query();
         if (filled($user->username)) {
             $query->where('username', $user->username);
         } else {
             $identifiers = array_filter(['email' => $user->email, 'phone' => $user->phone], fn (mixed $value): bool => filled($value));
             if ($identifiers === []) {
-                return null;
+                return $user;
             }
             $query->where(function (Builder $query) use ($identifiers): void {
                 foreach ($identifiers as $column => $value) {
@@ -178,7 +198,16 @@ final class CandidateApplicationLevels
 
         $matches = $query->when($lock, fn (Builder $query): Builder => $query->lockForUpdate())->get();
 
-        return $matches->count() === 1 ? $matches->first() : null;
+        return match ($matches->count()) {
+            0 => $user,
+            1 => $matches->first(),
+            default => null,
+        };
+    }
+
+    private static function accountRoles(User|SystemUser|NewStudentAccount|null $account): array
+    {
+        return self::roleValues($account instanceof User ? $account->candidate_roles : $account?->roles);
     }
 
     private static function categoryKeys(): array
