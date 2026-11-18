@@ -152,7 +152,6 @@ class RoleResource extends Resource
             'update' => 'filament-actions::edit.single.label',
             'delete' => 'filament-actions::delete.single.label',
             'view' => 'candidate_entrance_statistics.actions.view_data',
-            'view_application_stage' => 'candidate_entrance_statistics.actions.view_workflow',
             'download_excel' => 'payments.actions.download_excel',
             'clear_data' => 'app.clear_data',
             'edit_review_note' => 'app.message',

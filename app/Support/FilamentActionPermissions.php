@@ -99,7 +99,6 @@ class FilamentActionPermissions
             ],
             CustomFormEntryResource::class => [
                 'view',
-                'view_application_stage',
                 'download_excel',
                 'clear_data',
                 'edit_review_note',
@@ -268,6 +267,10 @@ class FilamentActionPermissions
 
             // Retire this action's stored grants as well as its generated permission.
             foreach (Permission::query()->where('name', 'OriginalApplicationReceived:CustomFormEntry')->get() as $permission) {
+                $permission->delete();
+            }
+            foreach (Permission::query()->where('guard_name', 'web')
+                ->where('name', 'ViewApplicationStage:CustomFormEntry')->get() as $permission) {
                 $permission->delete();
             }
             foreach (Permission::query()->where('guard_name', $guardName)

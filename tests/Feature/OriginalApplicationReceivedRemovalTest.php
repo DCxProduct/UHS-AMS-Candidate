@@ -134,7 +134,8 @@ class OriginalApplicationReceivedRemovalTest extends TestCase
                 ->first(fn ($field): bool => $field instanceof CheckboxList && $field->getName() === CustomFormEntryResource::class);
             $this->assertNotNull($field);
             $this->assertArrayNotHasKey(self::REMOVED_PERMISSION, $field->getOptions());
-            $this->assertArrayHasKey('ViewApplicationStage:CustomFormEntry', $field->getOptions());
+            $this->assertArrayNotHasKey('ViewApplicationStage:CustomFormEntry', $field->getOptions());
+            $this->assertArrayHasKey('View:CustomFormEntry', $field->getOptions());
             $this->assertArrayHasKey('ViewPdf:CustomFormEntry', $field->getOptions());
         }
     }

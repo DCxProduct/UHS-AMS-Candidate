@@ -1227,28 +1227,6 @@ class CustomFormEntriesTable
                     && filled(self::reviewMessage($record))
                 ),
 
-            Action::make('view_application_stage')
-                ->label(__('candidate_entrance_statistics.actions.view_workflow'))
-                ->icon('heroicon-o-map')
-                ->color('info')
-                ->modalHeading(__('candidate_entrance_statistics.workflow_process'))
-                ->modalWidth('2xl')
-                ->modalSubmitAction(false)
-                ->modalCancelActionLabel(__('app.close'))
-                ->modalContent(function ($record): \Illuminate\Contracts\View\View {
-                    $stageData = self::applicationStageViewData($record);
-
-                    return view('filament.custom-form-entry.application-stage', [
-                        ...$stageData,
-                        'progress' => self::workflowProgressViewData($record, $stageData),
-                    ]);
-                })
-                ->visible(fn ($record): bool =>
-                    ! self::currentPanelIsAdmin()
-                    && FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'view_application_stage')
-                    && self::entryStatus($record) !== 'draft'
-                ),
-
             Action::make('view_submitted_form')
                 ->label(__('candidate_entrance_statistics.actions.view_data'))
                 ->icon('heroicon-o-eye')
