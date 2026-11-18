@@ -8,13 +8,11 @@ use App\Models\WorkflowStageType;
 use App\Support\CaseInsensitiveSearch;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
-use App\Support\WorkflowConfigurationUsage;
 use App\Support\WorkflowStageTypeSettings;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\ViewColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -59,18 +57,6 @@ class WorkflowStageTypesTable
                     ->badge()
                     ->placeholder('—')
                     ->wrap(),
-
-                ViewColumn::make('workflow_templates_usage')
-                    ->label(__('workflow_stage_types.table.workflow_templates'))
-                    ->searchable(query: fn (Builder $query, string $search): Builder => $query->whereKey(
-                        collect(WorkflowConfigurationUsage::load()['stage_workflows'])
-                            ->filter(fn (array $workflows): bool => str_contains(CaseInsensitiveSearch::normalize(implode(' ', array_column($workflows, 'name'))), CaseInsensitiveSearch::normalize($search)))
-                            ->keys()->all()
-                    ))
-                    ->getStateUsing(fn (WorkflowStageType $record): array => WorkflowConfigurationUsage::workflowsForStage($record))
-                    ->view('filament.admin.workflow-configuration-usage')
-                    ->viewData(['kind' => 'workflow'])
-                    ->disableClick(),
 
                 IconColumn::make('is_active')
                     ->label(__('workflow_stage_types.fields.is_active'))

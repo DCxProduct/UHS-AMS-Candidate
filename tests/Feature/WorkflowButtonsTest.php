@@ -89,7 +89,7 @@ class WorkflowButtonsTest extends TestCase
     {
         Livewire::test(CreateWorkflowButton::class)
             ->fillForm([
-                'label_en' => 'Check application',
+                'label_en' => 'Custom application check',
                 'label_km' => null,
                 'action_key' => 'accept',
                 'icon' => 'heroicon-o-check-circle',
@@ -98,7 +98,7 @@ class WorkflowButtonsTest extends TestCase
             ])
             ->call('create')->assertHasNoFormErrors();
         app()->setLocale('km');
-        $this->assertSame('Check application', WorkflowButton::query()->where('label_en', 'Check application')->sole()->label());
+        $this->assertSame('Custom application check', WorkflowButton::query()->where('label_en', 'Custom application check')->sole()->label());
     }
 
     public function test_staff_without_button_permissions_cannot_access_the_menu_or_direct_crud_urls(): void

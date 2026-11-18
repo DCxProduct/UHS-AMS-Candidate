@@ -181,7 +181,7 @@ return [
     'actions' => [
         'add_stage' => 'បន្ថែមដំណាក់កាល',
         'view' => 'មើល',
-        'duplicate' => 'ចម្លង',
+        'duplicate' => 'ចម្លងគំរូ',
         'close' => 'បិទ',
         'verify' => 'បានទទួលពាក្យស្នើសុំ',
     ],

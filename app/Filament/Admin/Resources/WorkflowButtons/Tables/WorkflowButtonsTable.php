@@ -7,12 +7,10 @@ use App\Models\WorkflowButton;
 use App\Support\CaseInsensitiveSearch;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
-use App\Support\WorkflowConfigurationUsage;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\ViewColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -22,7 +20,12 @@ class WorkflowButtonsTable
     {
         return $table
             ->searchPlaceholder(__('workflow_buttons.search'))
-            ->defaultSort('label_en')
+            ->defaultSort(fn (Builder $query): Builder => $query->orderByRaw(
+                'CASE '.$query->qualifyColumn('action_key')
+                    .' WHEN ? THEN 0 WHEN ? THEN 1 WHEN ? THEN 2 WHEN ? THEN 3'
+                    .' WHEN ? THEN 4 WHEN ? THEN 5 WHEN ? THEN 6 WHEN ? THEN 7 ELSE 8 END',
+                ['submitted', 'accept', 'send_back', 'reject', 'verify', 'paid', 'passed', 'notify'],
+            )->orderBy($query->qualifyColumn('id')))
             ->columns([
                 TextColumn::make('row_number')
                     ->label(__('workflow_buttons.table.no'))
@@ -46,22 +49,6 @@ class WorkflowButtonsTable
                     ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyMapped($query, 'action_key', $search, WorkflowButton::actionOptions()))
                     ->wrap(),
 
-                ViewColumn::make('stage_types_usage')
-                    ->label(__('workflow_buttons.table.stage_types'))
-                    ->searchable(query: fn (Builder $query, string $search): Builder => self::searchUsage($query, $search, 'button_stages'))
-                    ->getStateUsing(fn (WorkflowButton $record): array => WorkflowConfigurationUsage::stageTypesForButton($record))
-                    ->view('filament.admin.workflow-configuration-usage')
-                    ->viewData(['kind' => 'stage'])
-                    ->disableClick(),
-
-                ViewColumn::make('workflow_templates_usage')
-                    ->label(__('workflow_buttons.table.workflow_templates'))
-                    ->searchable(query: fn (Builder $query, string $search): Builder => self::searchUsage($query, $search, 'button_workflows'))
-                    ->getStateUsing(fn (WorkflowButton $record): array => WorkflowConfigurationUsage::workflowsForButton($record))
-                    ->view('filament.admin.workflow-configuration-usage')
-                    ->viewData(['kind' => 'workflow'])
-                    ->disableClick(),
-
                 IconColumn::make('is_active')
                     ->label(__('workflow_buttons.fields.is_active'))
                     ->boolean()
@@ -84,22 +71,5 @@ class WorkflowButtonsTable
             ->recordUrl(fn (WorkflowButton $record): ?string => WorkflowButtonResource::canEdit($record)
                 ? WorkflowButtonResource::getUrl('edit', ['record' => $record])
                 : null);
-    }
-
-    private static function searchUsage(Builder $query, string $search, string $kind): Builder
-    {
-        $index = WorkflowConfigurationUsage::load();
-        $term = CaseInsensitiveSearch::normalize($search);
-        $ids = [];
-        foreach ($index[$kind] as $buttonId => $references) {
-            $names = $kind === 'button_stages'
-                ? array_map(fn (int $stageId): string => $index['stage_types'][$stageId]->label(), $references)
-                : array_column($references, 'name');
-            if (str_contains(CaseInsensitiveSearch::normalize(implode(' ', $names)), $term)) {
-                $ids[] = $buttonId;
-            }
-        }
-
-        return $query->whereKey($ids);
     }
 }

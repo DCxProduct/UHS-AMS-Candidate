@@ -145,7 +145,7 @@ class WorkflowNotificationDuplicationTest extends TestCase
         $label = $component->instance()->getTable()->getAction('duplicate')->getLabel();
         $this->assertStringNotContainsString('workflow_notifications.', $label);
         if ($locale === 'en') {
-            $this->assertSame('Duplicate', $label);
+            $this->assertSame('Duplicate Template', $label);
         } else {
             $this->assertMatchesRegularExpression('/[\x{1780}-\x{17FF}]/u', $label);
         }
@@ -243,7 +243,7 @@ class WorkflowNotificationDuplicationTest extends TestCase
             $this->assertSame($locale === 'en' ? 'View' : 'មើល', (string) $options['View:WorkflowNotification']);
             $label = (string) $options['Duplicate:WorkflowNotification'];
             if ($locale === 'en') {
-                $this->assertSame('Duplicate', $label);
+                $this->assertSame('Duplicate Template', $label);
             } else {
                 $this->assertMatchesRegularExpression('/[\x{1780}-\x{17FF}]/u', $label);
             }

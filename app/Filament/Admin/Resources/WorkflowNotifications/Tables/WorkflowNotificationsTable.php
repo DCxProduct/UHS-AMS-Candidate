@@ -9,6 +9,7 @@ use App\Support\CaseInsensitiveSearch;
 use App\Support\LocalizedDate;
 use App\Support\WorkflowNotificationStageSummary;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -50,24 +51,10 @@ class WorkflowNotificationsTable
                     ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyDate($query, $query->getModel()->qualifyColumn('updated_at'), $search)),
             ])
             ->recordActions([
-                ViewAction::make()
-                    ->label(__('workflow_notifications.actions.view'))
-                    ->modal()
-                    ->modalHeading(fn (WorkflowNotification $record): string => $record->name)
-                    ->modalWidth('5xl')
-                    ->extraModalWindowAttributes(['class' => 'uhs-workflow-modal'])
-                    ->modalFooterActionsAlignment(Alignment::Start)
-                    ->modalCancelActionLabel(__('workflow_notifications.actions.close'))
-                    ->schema([])
-                    ->modalContent(fn (WorkflowNotification $record) => view(
-                        'filament.admin.workflow-notifications.stage-summary',
-                        ['stages' => WorkflowNotificationStageSummary::from($record->stages ?? [])],
-                    )),
-                EditAction::make(),
                 Action::make('duplicate')
                     ->label(__('workflow_notifications.actions.duplicate'))
                     ->icon('heroicon-o-document-duplicate')
-                    ->color('info')
+                    ->color('success')
                     ->authorize(fn (WorkflowNotification $record): bool => WorkflowNotificationResource::canAccess()
                         && WorkflowNotificationResource::canViewAny()
                         && WorkflowNotificationResource::can('duplicate', $record))
@@ -83,7 +70,23 @@ class WorkflowNotificationsTable
                             ? WorkflowNotificationResource::getUrl('edit', ['record' => $copy])
                             : WorkflowNotificationResource::getUrl('index'));
                     }),
-                DeleteAction::make(),
+                ActionGroup::make([
+                    ViewAction::make()
+                        ->label(__('workflow_notifications.actions.view'))
+                        ->modal()
+                        ->modalHeading(fn (WorkflowNotification $record): string => $record->name)
+                        ->modalWidth('5xl')
+                        ->extraModalWindowAttributes(['class' => 'uhs-workflow-modal'])
+                        ->modalFooterActionsAlignment(Alignment::Start)
+                        ->modalCancelActionLabel(__('workflow_notifications.actions.close'))
+                        ->schema([])
+                        ->modalContent(fn (WorkflowNotification $record) => view(
+                            'filament.admin.workflow-notifications.stage-summary',
+                            ['stages' => WorkflowNotificationStageSummary::from($record->stages ?? [])],
+                        )),
+                    EditAction::make(),
+                    DeleteAction::make(),
+                ]),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

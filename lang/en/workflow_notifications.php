@@ -181,7 +181,7 @@ return [
     'actions' => [
         'add_stage' => 'Add Stage',
         'view' => 'View',
-        'duplicate' => 'Duplicate',
+        'duplicate' => 'Duplicate Template',
         'close' => 'Close',
         'verify' => 'Application Received',
     ],
