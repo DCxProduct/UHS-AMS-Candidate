@@ -180,8 +180,14 @@ return [
 
     'actions' => [
         'add_stage' => 'Add Stage',
+        'view' => 'View',
+        'duplicate' => 'Duplicate Template',
         'close' => 'Close',
         'verify' => 'Application Received',
+    ],
+
+    'duplicate' => [
+        'copy_suffix' => 'Copy',
     ],
 
     'confirmations' => [
@@ -191,6 +197,7 @@ return [
     ],
 
     'notifications' => [
+        'duplicated' => 'Workflow template duplicated',
         'verification_success' => 'Application Received',
         'verification_candidate_id' => 'Candidate ID: :id',
         'verification_missing_major_title' => 'Could not confirm application receipt',

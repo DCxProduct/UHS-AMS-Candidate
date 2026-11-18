@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class MefInvoiceCode extends Model
 {
@@ -14,6 +15,11 @@ class MefInvoiceCode extends Model
     protected function casts(): array
     {
         return ['records_cleared_at' => 'datetime'];
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class, 'receipt_number', 'invoice_code');
     }
 
     public static function sanitizeInvoiceCode(mixed $value): string

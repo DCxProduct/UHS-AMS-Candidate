@@ -59,6 +59,7 @@ class ExamResultsTable
                 TextColumn::make('candidate_id')
                     ->label(__('candidate_entrance_statistics.student_id'))
                     ->getStateUsing(fn (CustomFormEntry $record): string => self::candidateId($record))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => self::applyCandidateIdSearch($query, $search))
                     ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: false),
 
@@ -71,49 +72,37 @@ class ExamResultsTable
                 TextColumn::make('first_name_khmer')
                     ->label(__('exam_results.first_name_khmer'))
                     ->getStateUsing(fn ($record): string => self::khmerNamePart($record, 'first_name_kh'))
-                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyAny($query, [
-                        'data->first_name_kh',
-                        'data->last_name_kh',
-                        'data->name_khmer',
-                    ], $search))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => FormEntryData::applyFieldSearch($query, ['first_name_kh', 'last_name_kh', 'name_khmer'], $search, ['name']))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('last_name_khmer')
                     ->label(__('exam_results.last_name_khmer'))
                     ->getStateUsing(fn ($record): string => self::khmerNamePart($record, 'last_name_kh'))
-                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyAny($query, [
-                        'data->first_name_kh',
-                        'data->last_name_kh',
-                        'data->name_khmer',
-                    ], $search))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => FormEntryData::applyFieldSearch($query, ['first_name_kh', 'last_name_kh', 'name_khmer'], $search, ['name']))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('first_name_latin')
                     ->label(__('exam_results.first_name_latin'))
                     ->getStateUsing(fn ($record): string => self::latinNamePart($record, 'first_name_en'))
-                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyAny($query, [
-                        'data->first_name_en',
-                        'data->last_name_en',
-                    ], $search))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => FormEntryData::applyFieldSearch($query, ['first_name_en', 'last_name_en', 'name_latin'], $search, ['name_latin']))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('last_name_latin')
                     ->label(__('exam_results.last_name_latin'))
                     ->getStateUsing(fn ($record): string => self::latinNamePart($record, 'last_name_en'))
-                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyAny($query, [
-                        'data->first_name_en',
-                        'data->last_name_en',
-                    ], $search))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => FormEntryData::applyFieldSearch($query, ['first_name_en', 'last_name_en', 'name_latin'], $search, ['name_latin']))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('gender')
                     ->label(__('exam_results.gender'))
                     ->getStateUsing(fn ($record): string => self::genderLabel(self::entryValue($record, 'gender')))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => FormEntryData::applyFieldSearch($query, ['gender'], $search, labels: ['male' => self::genderLabel('male'), 'female' => self::genderLabel('female')]))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('date_of_birth')
                     ->label(__('exam_results.date_of_birth'))
                     ->getStateUsing(fn ($record): string => LocalizedDate::dayMonthYear(self::entryValue($record, 'date_of_birth', $record->creator?->date_of_birth)))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => FormEntryData::applyFieldSearch($query, ['date_of_birth'], $search, ['date_of_birth'], date: true))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('academic_year')
@@ -121,23 +110,20 @@ class ExamResultsTable
                     ->getStateUsing(fn ($record): string => FormEntryData::academicYearLabel(
                         ['academic_year' => self::entryValue($record, 'academic_year', $record->creator?->academic_year)]
                     ))
-                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::apply($query, 'data->academic_year', $search))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => FormEntryData::applyFieldSearch($query, FormEntryData::academicYearKeys(), $search, ['academic_year']))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('exam_date')
                     ->label(__('exam_results.exam_date'))
                     ->getStateUsing(fn ($record): string => self::dateValue(self::entryValue($record, 'exam_date')))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyDate($query, 'data->exam_date', $search))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('degree_level')
                     ->label(__('exam_results.degree_level'))
                     ->badge()
                     ->getStateUsing(fn ($record): string => self::degreeLevelValue($record))
-                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyAny($query, [
-                        'data->degree_level',
-                        'data->selected_degree_level',
-                        'data->form_selection',
-                    ], $search))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => FormEntryData::applyJsonLikeFilter($query, ['degree_level', 'selected_degree_level', 'form_selection'], $search))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('major')
@@ -585,6 +571,32 @@ class ExamResultsTable
                 ),
             ],
         ];
+    }
+
+    protected static function applyCandidateIdSearch(Builder $query, string $search): Builder
+    {
+        $column = $query->getModel()->qualifyColumn('candidate_id');
+        $creator = $query->getModel()->creator()->getRelated();
+        $hasCreatorId = Schema::connection($creator->getConnection()->getName())
+            ->hasColumn($creator->getTable(), 'candidate_id');
+
+        return $query->where(function (Builder $query) use ($column, $search, $hasCreatorId): void {
+            CandidateNumber::applySearch($query, $column, $search);
+
+            if (! $hasCreatorId) {
+                return;
+            }
+
+            $query->orWhere(function (Builder $fallback) use ($column, $search): void {
+                $fallback
+                    ->where(fn (Builder $missing): Builder => $missing->whereNull($column)->orWhere($column, ''))
+                    ->whereHas('creator', fn (Builder $creator): Builder => CandidateNumber::applySearch(
+                        $creator,
+                        $creator->getModel()->qualifyColumn('candidate_id'),
+                        $search,
+                    ));
+            });
+        });
     }
 
     protected static function candidateId(CustomFormEntry $record): string

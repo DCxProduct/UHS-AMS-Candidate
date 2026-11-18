@@ -12,6 +12,11 @@ return [
     'fields' => [
         'mef_code' => 'កូដក្រសួង',
         'invoice_code' => 'លេខវិក្កយបត្រ',
+        'usage_status' => 'ស្ថានភាព',
+    ],
+    'statuses' => [
+        'used' => 'បានប្រើ',
+        'unused' => 'មិនទាន់ប្រើ',
     ],
     'validation' => [
         'invoice_code_symbols_only' => 'លេខកូដវិក្កយបត្រអាចបញ្ចូលតែលេខ និងនិមិត្តសញ្ញាប៉ុណ្ណោះ។',

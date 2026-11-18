@@ -2,12 +2,14 @@
 
 namespace App\Filament\Widgets;
 
+use App\Support\CaseInsensitiveSearch;
 use App\Support\DashboardMetrics;
 use App\Support\DashboardUserAccess;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget;
+use Illuminate\Database\Eloquent\Builder;
 
 class CandidateSidebarFormsTable extends TableWidget
 {
@@ -48,6 +50,10 @@ class CandidateSidebarFormsTable extends TableWidget
             ->columns([
                 TextColumn::make('name')
                     ->label(__('dashboard.form_name'))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyMapped(
+                        $query, 'name', $search, CustomForm::query()->pluck('name')
+                            ->mapWithKeys(fn ($name): array => [(string) $name => CustomForm::localeText($name)])->all(),
+                    ))
                     ->state(fn (CustomForm $record): string => $record->display_name)
                     ->description(fn (CustomForm $record): string => $this->formMeta($record))
                     ->weight('700')
@@ -59,6 +65,17 @@ class CandidateSidebarFormsTable extends TableWidget
 
                 TextColumn::make('application_count')
                     ->label(__('dashboard.form_entries_count'))
+                    ->searchable(query: function (Builder $query, string $search) use ($userId): Builder {
+                        $counts = CustomForm::query()->select('id')->selectSub(
+                            DashboardMetrics::studentEntriesQuery($userId)->selectRaw('COUNT(*)')
+                                ->whereColumn('custom_form_entries.custom_form_id', 'custom_forms.id'),
+                            'application_count',
+                        );
+                        $matches = CustomForm::query()->withoutGlobalScopes()->fromSub($counts->toBase(), 'form_entry_counts')->select('id');
+                        CaseInsensitiveSearch::applyCast($matches, 'application_count', $search);
+
+                        return $query->whereIn($query->getModel()->qualifyColumn('id'), $matches);
+                    })
                     ->state(fn (CustomForm $record): int => DashboardMetrics::studentSubmissionCountForFormTree($userId, (int) $record->id))
                     ->badge()
                     ->formatStateUsing(fn (mixed $state): string => number_format((int) $state))

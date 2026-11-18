@@ -21,6 +21,25 @@ class CandidateEntranceStatisticSearchTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->resetFormOptions();
+    }
+
+    protected function tearDown(): void
+    {
+        $this->resetFormOptions();
+        parent::tearDown();
+    }
+
+    private function resetFormOptions(): void
+    {
+        foreach (['fieldOptionCache', 'majorIdLabelCache'] as $property) {
+            (new \ReflectionProperty(\App\Support\FormEntryData::class, $property))->setValue(null, []);
+        }
+    }
+
     public function test_global_search_narrows_candidate_entrance_statistics_records(): void
     {
         $matching = $this->createEntry(
@@ -47,6 +66,53 @@ class CandidateEntranceStatisticSearchTest extends TestCase
         $this->createEntry(seatNumber: 'DEMO-087', nameEnglish: 'Sok Dara', nameKhmer: 'សុខ ដារា');
 
         $this->assertCount(0, $this->search('NO_SUCH_QA_927')->get());
+    }
+
+    public function test_search_finds_displayed_candidate_numbers_major_labels_gender_dates_and_configured_result_status(): void
+    {
+        $matching = $this->createEntry('SEAT-QA-001', 'Sok Dara', 'សុខ ដារា');
+        $other = $this->createEntry('SEAT-QA-002', 'Chan Lina', 'ចាន់ លីណា');
+        $major = \App\Models\Major::query()->create([
+            'key' => 'qa_medical', 'abbreviation' => 'QMED', 'name_en' => 'Clinical Medicine', 'name_kh' => 'វេជ្ជសាស្ត្រ', 'is_active' => true,
+        ]);
+        $matching->forceFill([
+            'candidate_id' => 'MED260002',
+            'data' => [...$matching->data, 'selected_major' => $major->id, 'gender' => 'male',
+                'date_of_birth' => '2000-11-18', 'candidate_status' => 'passed', 'candidate_reviewed_at' => '2026-11-18 16:07:00', 'academic_year' => '2026_2027'],
+            'workflow_snapshot' => ['schema_version' => 1, 'has_workflow' => true, 'stages' => [[
+                'data' => ['stage_type' => 'awaiting_results', 'status_message' => 'Qualified Clinical Candidate'],
+            ]]],
+        ])->saveQuietly();
+
+        foreach (['en', 'km'] as $locale) {
+            app()->setLocale($locale);
+            $majorText = $locale === 'en' ? 'cLiNiCaL mEdIcInE' : 'វេជ្ជសាស្ត្រ';
+            $genderText = $locale === 'en' ? 'mAlE' : 'ប្រុស';
+            foreach (['MED-0002', 'med-0002', 'mEd260002', $majorText, $genderText, '18-Nov-2000', '១៨-វិច្ឆិកា-២០០០', '18-Nov-2026', 'qualified clinical candidate', '2026-2027', '២០២៦-២០២៧'] as $term) {
+                $this->assertSame([$matching->id], $this->search($term)->whereKey([$matching->id, $other->id])->pluck('id')->all(), $locale.' '.$term);
+            }
+        }
+    }
+
+    public function test_exit_statistics_searches_its_related_visible_candidate_id_and_displayed_values_without_leaking_the_outer_scope(): void
+    {
+        $entry = $this->createEntry('EXIT-QA-001', 'Sok Dara', 'សុខ ដារា');
+        $entry->forceFill(['candidate_id' => 'MED260002'])->saveQuietly();
+        $matching = \App\Models\CandidateExitStatistic::query()->create([
+            'custom_form_entry_id' => $entry->id, 'form_type' => 'bachelor', 'academic_year' => '2026-2027', 'user_type' => 'candidate',
+            'gender' => 'male', 'date_of_birth' => '2000-11-18', 'candidate_status' => 'passed', 'candidate_reviewed_at' => '2026-11-18',
+        ]);
+        $outsideEntry = $this->createEntry('EXIT-QA-002', 'Chan Lina', 'ចាន់ លីណា');
+        $outsideEntry->forceFill(['candidate_id' => 'MED270002'])->saveQuietly();
+        \App\Models\CandidateExitStatistic::query()->create([
+            'custom_form_entry_id' => $outsideEntry->id, 'gender' => 'male', 'date_of_birth' => '2000-11-18', 'candidate_status' => 'passed',
+        ]);
+        app()->setLocale('km');
+        foreach (['MED-0002', 'med-0002', 'mEd260002', 'ប្រុស', '១៨-វិច្ឆិកា-២០០០', '18-Nov-2026'] as $term) {
+            $query = \App\Models\CandidateExitStatistic::query()->whereKey($matching->id);
+            (new ReflectionMethod(\App\Filament\Admin\Resources\CandidateExitStatistics\Tables\CandidateExitStatisticsTable::class, 'applyGlobalSearch'))->invoke(null, $query, $term);
+            $this->assertSame([$matching->id], $query->pluck('id')->all(), $term);
+        }
     }
 
     public function test_clearing_search_resets_the_livewire_search_state(): void

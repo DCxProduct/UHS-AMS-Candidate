@@ -6,12 +6,13 @@ use App\Filament\Admin\Resources\SystemUsers\SystemUserResource;
 use App\Models\Role;
 use App\Models\SystemUser;
 use App\Models\User;
+use App\Support\CaseInsensitiveSearch;
 use App\Support\FilamentActionPermissions;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
 use App\Support\NotificationLanguage;
-use App\Support\UserTypeOptions;
 use App\Support\TableFilterOptions;
+use App\Support\UserTypeOptions;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
@@ -60,11 +61,10 @@ class SystemUsersTable
                         $record->last_name_kh,
                     ])->filter(fn ($part): bool => filled($part))->implode(' '))
                     ->placeholder('-')
-                    ->searchable(query: fn ($query, string $search) => $query->where(function ($query) use ($search): void {
-                        $query
-                            ->where('first_name_kh', 'like', '%' . $search . '%')
-                            ->orWhere('last_name_kh', 'like', '%' . $search . '%');
-                    }))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyAny($query, [
+                        $query->getModel()->qualifyColumn('first_name_kh'),
+                        $query->getModel()->qualifyColumn('last_name_kh'),
+                    ], $search))
                     ->sortable(query: fn ($query, string $direction) => $query
                         ->orderBy('first_name_kh', $direction)
                         ->orderBy('last_name_kh', $direction)),
@@ -76,11 +76,10 @@ class SystemUsersTable
                         $record->last_name_latin,
                     ])->filter(fn ($part): bool => filled($part))->implode(' '))
                     ->placeholder('-')
-                    ->searchable(query: fn ($query, string $search) => $query->where(function ($query) use ($search): void {
-                        $query
-                            ->where('first_name_latin', 'like', '%' . $search . '%')
-                            ->orWhere('last_name_latin', 'like', '%' . $search . '%');
-                    }))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyAny($query, [
+                        $query->getModel()->qualifyColumn('first_name_latin'),
+                        $query->getModel()->qualifyColumn('last_name_latin'),
+                    ], $search))
                     ->sortable(query: fn ($query, string $direction) => $query
                         ->orderBy('first_name_latin', $direction)
                         ->orderBy('last_name_latin', $direction)),
@@ -100,6 +99,7 @@ class SystemUsersTable
 
                 TextColumn::make('candidate_type')
                     ->label(__('system_users.fields.candidate_type'))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => self::searchRoleLabels($query, $search))
                     ->getStateUsing(function (SystemUser $record): string {
                         $candidateRole = static::resolveCandidateRole($record);
 
@@ -138,11 +138,13 @@ class SystemUsersTable
                 TextColumn::make('created_at')
                     ->label(__('system_users.fields.created_at'))
                     ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyDate($query, $query->getModel()->qualifyColumn('created_at'), $search))
                     ->sortable(),
 
                 TextColumn::make('updated_at')
                     ->label(__('system_users.fields.updated_at'))
                     ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyDate($query, $query->getModel()->qualifyColumn('updated_at'), $search))
                     ->sortable(),
             ])
             ->filters([
@@ -243,6 +245,21 @@ class SystemUsersTable
                     ->color('warning')
                     ->tooltip(__('system_users.actions.actions')),
             ]);
+    }
+
+    private static function searchRoleLabels(Builder $query, string $search): Builder
+    {
+        $names = Role::query()->where('guard_name', 'web')->get()
+            ->filter(fn (Role $role): bool => mb_stripos($role->localized_name, $search) !== false)
+            ->pluck('name')->all();
+
+        return $query->where(function (Builder $query) use ($search, $names): void {
+            $column = $query->getModel()->qualifyColumn('roles');
+            CaseInsensitiveSearch::applyCast($query, $column, $search);
+            foreach ($names as $name) {
+                CaseInsensitiveSearch::applyCast($query, $column, '"'.$name.'"', or: true);
+            }
+        });
     }
 
     protected static function roleFilterOptions(Builder $query): array

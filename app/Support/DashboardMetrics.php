@@ -518,6 +518,11 @@ class DashboardMetrics
         return static::studentSubmissionCountForForms($userId, [$formId]);
     }
 
+    public static function studentEntriesQuery(int $userId): Builder
+    {
+        return static::applyStudentOwnerFilter(DB::table('custom_form_entries'), $userId);
+    }
+
     private static function studentSubmissionCountForForms(
         int $userId,
         array $formIds,

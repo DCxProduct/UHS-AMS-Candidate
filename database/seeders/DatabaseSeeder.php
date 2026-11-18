@@ -17,11 +17,12 @@ class DatabaseSeeder extends Seeder
         $this->call([
             AdminUserSeeder::class,
 //            StudentProfileSeeder::class,
-            GeoLocationsSeeder::class,
+//            GeoLocationsSeeder::class,
             RolesAndPermissionsSeeder::class,
             StaffRoleAccountsSeeder::class,
-            DegreeLevelSeeder::class,
-            CandidateTypeSeeder::class,
+//            DegreeLevelSeeder::class,
+//            CandidateTypeSeeder::class,
+            WorkflowButtonSeeder::class,
         ]);
     }
 }

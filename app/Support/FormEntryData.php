@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use Chanthoeun\FilamentCustomForms\Models\CustomFormField;
+use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use App\Models\Major;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -56,11 +57,149 @@ class FormEntryData
 
     public static function applyJsonLikeFilter(Builder $query, array $keys, string $search): Builder
     {
-        return CaseInsensitiveSearch::applyAny(
-            $query,
-            array_map(fn (string $key): string => "data->{$key}", $keys),
-            $search,
-        );
+        $majorOptions = array_intersect($keys, static::majorKeys()) !== [] ? static::majorSearchOptions() : [];
+        $term = CaseInsensitiveSearch::normalize($search);
+        $values = array_keys(array_filter($majorOptions, fn (string $label): bool => str_contains(CaseInsensitiveSearch::normalize($label), $term)));
+        foreach ($keys as $key) {
+            foreach (static::fieldChoices($key) as $value => $choice) {
+                if (is_array($choice) && array_key_exists('value', $choice)) {
+                    $value = $choice['value'];
+                    $choice = $choice['label'] ?? $value;
+                }
+                $label = static::localizedOptionLabel($choice, (string) $value);
+                if (str_contains(CaseInsensitiveSearch::normalize($label), $term)) {
+                    $values[] = $value;
+                }
+            }
+        }
+        $values = array_unique($values);
+
+        return $query->where(function (Builder $query) use ($keys, $search, $values): void {
+            CaseInsensitiveSearch::applyAny($query, array_map(fn (string $key): string => "data->{$key}", $keys), $search);
+            if (array_intersect($keys, static::academicYearKeys()) !== []) {
+                foreach ($keys as $key) {
+                    $query->orWhere(fn (Builder $year): Builder => CaseInsensitiveSearch::applyCast($year, "data->{$key}", $search));
+                }
+            }
+            foreach ($values as $value) {
+                $query->orWhere(fn (Builder $major): Builder => static::applyJsonExactFilter($major, $keys, (string) $value));
+            }
+        });
+    }
+
+    /** Small configuration lookup, shared by scalar and multi-select major searches. */
+    public static function majorSearchOptions(): array
+    {
+        $options = [];
+        foreach (Major::query()->get() as $major) {
+            $label = $major->localized_option_label;
+            $options[(string) $major->getKey()] = $label;
+            if (filled($major->key)) {
+                $options[(string) $major->key] = $label;
+            }
+        }
+
+        return $options;
+    }
+
+    /** Search an entry field and the same owner fallback used by its table cell. */
+    public static function applyFieldSearch(Builder $query, array $keys, string $search, array $creatorColumns = [], bool $date = false, array $labels = []): Builder
+    {
+        return $query->where(function (Builder $query) use ($keys, $search, $creatorColumns, $date, $labels): void {
+            if ($date || $labels !== []) {
+                foreach ($keys as $key) {
+                    $query->orWhere(fn (Builder $field): Builder => $date
+                        ? CaseInsensitiveSearch::applyDate($field, "data->{$key}", $search)
+                        : CaseInsensitiveSearch::applyMapped($field, "data->{$key}", $search, $labels));
+                }
+            } else {
+                static::applyJsonLikeFilter($query, $keys, $search);
+            }
+
+            if ($creatorColumns !== []) {
+                $query->orWhere(function (Builder $fallback) use ($keys, $search, $creatorColumns, $date): void {
+                    foreach ($keys as $key) {
+                        $fallback->where(fn (Builder $missing): Builder => $missing->whereNull("data->{$key}")->orWhere("data->{$key}", ''));
+                    }
+                    $fallback->whereHas('creator', function (Builder $creator) use ($search, $creatorColumns, $date): void {
+                        $creator->where(function (Builder $values) use ($search, $creatorColumns, $date): void {
+                            foreach ($creatorColumns as $column) {
+                                $values->orWhere(fn (Builder $value): Builder => $date
+                                    ? CaseInsensitiveSearch::applyDate($value, $column, $search)
+                                    : CaseInsensitiveSearch::applyCast($value, $column, $search));
+                            }
+                        });
+                    });
+                });
+            }
+        });
+    }
+
+    public static function applyResultStatusSearch(Builder $query, string $column, string $search, ?string $entryRelation = null): Builder
+    {
+        $labels = [
+            'pending' => __('candidate_entrance_statistics.statuses.pending'),
+            'passed' => __('candidate_entrance_statistics.statuses.passed'),
+        ];
+
+        return $query->where(function (Builder $query) use ($column, $search, $entryRelation, $labels): void {
+            CaseInsensitiveSearch::applyMapped($query, $column, $search, $labels);
+            if (str_contains(CaseInsensitiveSearch::normalize($labels['pending']), CaseInsensitiveSearch::normalize($search))) {
+                $query->orWhere(fn (Builder $pending): Builder => $pending->whereNull($column)->orWhere($column, ''));
+            }
+            foreach (['passed' => 'status_message', 'pending' => 'result_statuses.pending_status_message'] as $status => $field) {
+                $query->orWhere(function (Builder $state) use ($column, $search, $entryRelation, $status, $field): void {
+                    $state->where(fn (Builder $value): Builder => $status === 'pending'
+                        ? $value->whereNull($column)->orWhere($column, '')->orWhere($column, 'pending')
+                        : $value->where($column, $status));
+                    if ($entryRelation !== null) {
+                        $state->whereHas($entryRelation, fn (Builder $entry): Builder => WorkflowStatusSearch::applyStageText($entry, 'awaiting_results', $field, $search));
+                    } else {
+                        WorkflowStatusSearch::applyStageText($state, 'awaiting_results', $field, $search);
+                    }
+                });
+            }
+        });
+    }
+
+    public static function applyCandidateTypeSearch(Builder $query, string $search): Builder
+    {
+        $options = UserTypeOptions::allQuery()->get()->mapWithKeys(fn ($type): array => [(string) $type->key => UserTypeOptions::formatLabel((string) $type->key)])->all();
+        $context = 'data->'.CandidateApplicationContext::DATA_KEY;
+
+        return $query->where(function (Builder $query) use ($search, $options, $context): void {
+            CaseInsensitiveSearch::applyMapped($query, $context, $search, $options);
+            $query->orWhere(fn (Builder $type): Builder => CaseInsensitiveSearch::applyMapped($type, 'data->user_type', $search, $options));
+            $query->orWhere(function (Builder $legacy) use ($search, $options, $context): void {
+                $legacy->whereJsonDoesntContainKey($context)
+                    ->whereHas('creator', function (Builder $creator) use ($search, $options): void {
+                        $creator->where(function (Builder $roles) use ($search, $options): void {
+                            CaseInsensitiveSearch::applyCast($roles, 'candidate_roles', $search);
+                            $roles->orWhereHas('roles', fn (Builder $role): Builder => CaseInsensitiveSearch::applyMapped($role, 'name', $search, $options));
+                            foreach ($options as $key => $label) {
+                                if (str_contains(CaseInsensitiveSearch::normalize($label), CaseInsensitiveSearch::normalize($search))) {
+                                    $roles->orWhereJsonContains('candidate_roles', $key);
+                                }
+                            }
+                        });
+                    });
+            });
+        });
+    }
+
+    public static function applyFormNameSearch(Builder $query, string $search): Builder
+    {
+        $ids = CustomForm::query()->get()->filter(fn (CustomForm $form): bool => str_contains(
+            CaseInsensitiveSearch::normalize((string) $form->display_name),
+            CaseInsensitiveSearch::normalize($search),
+        ))->modelKeys();
+
+        return $query->where(function (Builder $query) use ($search, $ids): void {
+            CaseInsensitiveSearch::applyCast($query, 'name', $search);
+            if ($ids !== []) {
+                $query->orWhereKey($ids);
+            }
+        });
     }
 
     public static function applyJsonExactFilter(Builder $query, array $keys, mixed $value): Builder
@@ -71,7 +210,8 @@ class FormEntryData
                     $values->where("data->{$key}", $value)
                         ->orWhereJsonContains("data->{$key}", $value);
                     if (is_string($value) && ctype_digit($value)) {
-                        $values->orWhereJsonContains("data->{$key}", (int) $value);
+                        $values->orWhere("data->{$key}", (int) $value)
+                            ->orWhereJsonContains("data->{$key}", (int) $value);
                     }
                 });
             }

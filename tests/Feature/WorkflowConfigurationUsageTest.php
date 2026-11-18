@@ -113,28 +113,31 @@ class WorkflowConfigurationUsageTest extends TestCase
         $this->assertSame($snapshot, $entry->fresh()->workflow_snapshot);
     }
 
-    public function test_authorized_lists_render_related_configuration_names_with_links(): void
+    public function test_usage_columns_are_absent_from_button_and_stage_type_lists(): void
     {
         [$button, $type, $workflow] = $this->linkedConfiguration();
-        $buttons = Livewire::test(ListWorkflowButtons::class)
-            ->assertTableColumnVisible('stage_types_usage')
-            ->assertTableColumnVisible('workflow_templates_usage')
+        Livewire::test(ListWorkflowButtons::class)
+            ->assertCanSeeTableRecords([$button])
+            ->assertTableColumnDoesNotExist('stage_types_usage')
+            ->assertTableColumnDoesNotExist('workflow_templates_usage')
+            ->assertSee($button->label_en)
+            ->assertDontSee($type->label_en)
+            ->assertDontSee($workflow->name);
+        Livewire::test(ListWorkflowStageTypes::class)
+            ->assertCanSeeTableRecords([$type])
+            ->assertTableColumnDoesNotExist('workflow_templates_usage')
             ->assertSee($type->label_en)
-            ->assertSee($workflow->name);
-        $buttonLinks = $this->links($buttons->html());
-        $this->assertContains(WorkflowStageTypeResource::getUrl('edit', ['record' => $type]), $buttonLinks);
-        $this->assertWorkflowLink($workflow, $buttonLinks);
-
-        $types = Livewire::test(ListWorkflowStageTypes::class)
-            ->assertTableColumnVisible('workflow_templates_usage')
-            ->assertSee($workflow->name);
-        $this->assertWorkflowLink($workflow, $this->links($types->html()));
+            ->assertDontSee($workflow->name);
 
         app()->setLocale('km');
-        Livewire::test(ListWorkflowButtons::class)->assertSee($type->label_km)->assertSee($workflow->name);
+        Livewire::test(ListWorkflowButtons::class)
+            ->assertTableColumnDoesNotExist('stage_types_usage')
+            ->assertTableColumnDoesNotExist('workflow_templates_usage')
+            ->assertDontSee($type->label_km)
+            ->assertDontSee($workflow->name);
     }
 
-    public function test_read_only_viewers_see_usage_names_without_links_to_unauthorized_related_resources(): void
+    public function test_usage_column_removal_preserves_read_only_table_access_and_related_resource_permissions(): void
     {
         [$button, $type, $workflow] = $this->linkedConfiguration();
         $viewer = $this->user('usage-read-only');
@@ -146,8 +149,10 @@ class WorkflowConfigurationUsageTest extends TestCase
         $this->actingAs($viewer);
         $this->resetUsage();
 
-        $buttons = Livewire::test(ListWorkflowButtons::class)->assertSee($type->label_en)->assertSee($workflow->name);
-        $types = Livewire::test(ListWorkflowStageTypes::class)->assertSee($workflow->name);
+        $buttons = Livewire::test(ListWorkflowButtons::class)->assertCanSeeTableRecords([$button])
+            ->assertTableColumnDoesNotExist('stage_types_usage')->assertTableColumnDoesNotExist('workflow_templates_usage');
+        $types = Livewire::test(ListWorkflowStageTypes::class)->assertCanSeeTableRecords([$type])
+            ->assertTableColumnDoesNotExist('workflow_templates_usage');
         $links = array_merge($this->links($buttons->html()), $this->links($types->html()));
         $this->assertNotContains(WorkflowStageTypeResource::getUrl('edit', ['record' => $type]), $links);
         foreach (['view', 'edit'] as $page) {
@@ -155,23 +160,6 @@ class WorkflowConfigurationUsageTest extends TestCase
         }
         $this->get(WorkflowStageTypeResource::getUrl('edit', ['record' => $type]))->assertForbidden();
         $this->get(WorkflowNotificationResource::getUrl('view', ['record' => $workflow]))->assertForbidden();
-    }
-
-    public function test_unused_configuration_renders_a_visible_placeholder_in_each_usage_column(): void
-    {
-        $button = $this->button('Unused usage button');
-        $type = WorkflowStageType::query()->create(['label_en' => 'Unused usage stage', 'label_km' => 'ដំណាក់កាលមិនបានប្រើ', 'behavior' => 'review', 'enabled_actions' => ['accept']]);
-        $this->resetUsage();
-        $buttons = Livewire::test(ListWorkflowButtons::class);
-        $types = Livewire::test(ListWorkflowStageTypes::class);
-
-        foreach ([[$buttons, $button, 'stage_types_usage'], [$buttons, $button, 'workflow_templates_usage'], [$types, $type, 'workflow_templates_usage']] as [$component, $record, $name]) {
-            $column = $component->instance()->getTable()->getColumn($name);
-            $this->assertNotNull($column);
-            $html = $column->record($record)->toHtml();
-            $this->assertNotSame('', trim(html_entity_decode(strip_tags($html))));
-            $this->assertSame([], $this->links($html));
-        }
     }
 
     private function linkedConfiguration(): array
@@ -224,11 +212,5 @@ class WorkflowConfigurationUsageTest extends TestCase
         $document->loadHTML('<meta charset="UTF-8">'.$html, LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING);
 
         return array_map(fn ($link): string => $link->getAttribute('href'), iterator_to_array((new DOMXPath($document))->query('//a[@href]')));
-    }
-
-    private function assertWorkflowLink(WorkflowNotification $workflow, array $links): void
-    {
-        $allowed = array_map(fn (string $page): string => WorkflowNotificationResource::getUrl($page, ['record' => $workflow]), ['view', 'edit']);
-        $this->assertNotEmpty(array_intersect($allowed, $links));
     }
 }

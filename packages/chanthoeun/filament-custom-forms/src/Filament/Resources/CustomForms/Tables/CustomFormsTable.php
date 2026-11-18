@@ -4,6 +4,7 @@ namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomForms\Tables;
 
 use App\Filament\Admin\Resources\WorkflowNotifications\WorkflowNotificationResource;
 use App\Models\WorkflowNotification;
+use App\Support\CaseInsensitiveSearch;
 use App\Support\PassedResultMenuOptions;
 use App\Support\FilamentActionPermissions;
 use App\Support\LocalizedDate;
@@ -35,7 +36,10 @@ class CustomFormsTable
                 TextColumn::make('name')
                     ->label(__('filament-custom-forms::fcf.form.name'))
                     ->formatStateUsing(fn ($state): string => self::localeText($state))
-                    ->searchable(),
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyMapped(
+                        $query, 'name', $search, CustomForm::query()->pluck('name')
+                            ->mapWithKeys(fn ($name): array => [(string) $name => self::localeText($name)])->all(),
+                    )),
 
                 TextColumn::make('slug')
                     ->label(__('filament-custom-forms::fcf.form.slug'))
@@ -43,6 +47,7 @@ class CustomFormsTable
 
                 TextColumn::make('display_order')
                     ->label('#')
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyCast($query, 'display_order', $search))
                     ->numeric()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -65,6 +70,13 @@ class CustomFormsTable
 
                 TextColumn::make('workflow_notification')
                     ->label(__('workflow_notifications.custom_form_column'))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => $query->whereIn(
+                        $query->getModel()->qualifyColumn('id'),
+                        WorkflowNotification::query()
+                            ->select('workflow_notification_forms.custom_form_id')
+                            ->join('workflow_notification_forms', 'workflow_notification_forms.workflow_notification_id', '=', 'workflow_notifications.id')
+                            ->where(fn (Builder $workflow): Builder => CaseInsensitiveSearch::apply($workflow, 'workflow_notifications.name', $search)),
+                    ))
                     ->state(fn (Model $record): ?string => WorkflowNotification::forForm($record->getKey())?->name)
                     ->placeholder(__('workflow_notifications.not_assigned'))
                     ->badge()
@@ -92,18 +104,21 @@ class CustomFormsTable
 
                 TextColumn::make('created_at')
                     ->label(__('filament-custom-forms::fcf.general.created_at'))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyDate($query, 'created_at', $search))
                     ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('updated_at')
                     ->label(__('filament-custom-forms::fcf.general.updated_at'))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyDate($query, 'updated_at', $search))
                     ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('deleted_at')
                     ->label(__('filament-custom-forms::fcf.general.deleted_at'))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyDate($query, 'deleted_at', $search))
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),

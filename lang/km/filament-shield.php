@@ -7,8 +7,8 @@ return [
     'resource_permission_prefixes_labels' => [
         'view_any' => 'អាន',
         'view' => 'មើលទិន្នន័យ',
-        'view_application_stage' => 'មើល',
         'create' => 'បង្កើត',
+        'duplicate' => 'ចម្លង',
         'update' => 'កែប្រែ',
         'delete' => 'លុប',
         'view_slip' => 'មើលបង្កាន់ដៃ',

@@ -9,9 +9,8 @@ use Illuminate\Auth\Access\HandlesAuthorization;
 use Illuminate\Foundation\Auth\User as AuthUser;
 
 /**
- * Uses the four permissions Shield generates in this project (see
- * config/filament-shield.php): viewing a record follows ViewAny and bulk
- * delete follows Delete, so no permission is needed that Shield never creates.
+ * Uses Shield's CRUD permissions with separate View and Duplicate permissions.
+ * Bulk deletion follows Delete.
  */
 class WorkflowNotificationPolicy
 {
@@ -24,12 +23,17 @@ class WorkflowNotificationPolicy
 
     public function view(AuthUser $authUser, WorkflowNotification $workflowNotification): bool
     {
-        return $authUser->can('ViewAny:WorkflowNotification');
+        return $authUser->can('View:WorkflowNotification');
     }
 
     public function create(AuthUser $authUser): bool
     {
         return $authUser->can('Create:WorkflowNotification');
+    }
+
+    public function duplicate(AuthUser $authUser, WorkflowNotification $workflowNotification): bool
+    {
+        return $authUser->can('Duplicate:WorkflowNotification');
     }
 
     public function update(AuthUser $authUser, WorkflowNotification $workflowNotification): bool

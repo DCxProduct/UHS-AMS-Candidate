@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\GeoLocations\Tables;
 
 use App\Models\GeoLocation;
+use App\Support\CaseInsensitiveSearch;
 use App\Support\LocalizedNumber;
 use App\Support\TableFilterOptions;
 use Filament\Actions\ActionGroup;
@@ -48,6 +49,7 @@ class GeoLocationsTable
 
                 TextColumn::make('type')
                     ->label(__('geo_locations.table.type'))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyMapped($query, 'type', $search, __('geo_locations.types')))
                     ->badge()
                     ->formatStateUsing(fn (?string $state): string => match ($state) {
                         'province' => __('geo_locations.types.province'),
@@ -60,6 +62,10 @@ class GeoLocationsTable
 
                 TextColumn::make('parent_id')
                     ->label(__('geo_locations.table.parent'))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => $query->whereHas('parent', fn (Builder $parent): Builder => CaseInsensitiveSearch::applyAny($parent, [
+                        $parent->getModel()->qualifyColumn('name_en'),
+                        $parent->getModel()->qualifyColumn('name_kh'),
+                    ], $search)))
                     ->getStateUsing(function (GeoLocation $record): string {
                         if (! $record->parent) {
                             return '-';

@@ -22,6 +22,8 @@ use Illuminate\Validation\ValidationException;
  */
 class WorkflowNotification extends Model
 {
+    private bool $preserveCopiedStages = false;
+
     protected $fillable = [
         'name',
         'stages',
@@ -37,7 +39,12 @@ class WorkflowNotification extends Model
     protected static function booted(): void
     {
         static::saving(function (self $workflow): void {
-            $stages = self::normalizeStages($workflow->stages, applyTypeDefaults: ! $workflow->exists);
+            $originalStages = $workflow->stages;
+            $stages = self::normalizeStages(
+                $originalStages,
+                applyTypeDefaults: ! $workflow->exists,
+                preserveCatalogBindings: $workflow->preserveCopiedStages,
+            );
             $types = self::stageTypes($stages);
 
             if (in_array(WorkflowStageType::Verification->value, $types, true)) {
@@ -72,18 +79,34 @@ class WorkflowNotification extends Model
                 }
             }
 
-            $workflow->stages = $stages;
+            $workflow->stages = $workflow->preserveCopiedStages ? $originalStages : $stages;
         });
+    }
+
+    public function duplicateWithName(string $name): self
+    {
+        // Copy only template attributes, never loaded counts or form assignments.
+        $copy = new static;
+        $copy->fill(['name' => $name, 'stages' => $this->stages]);
+        $copy->preserveCopiedStages = true;
+
+        try {
+            $copy->save();
+        } finally {
+            $copy->preserveCopiedStages = false;
+        }
+
+        return $copy;
     }
 
     /**
      * Keep stage statuses, delivered notifications, and immediate action alerts
      * independent while normalizing the builder wrapper.
      */
-    public static function normalizeStages(?array $stages, bool $applyTypeDefaults = true): array
+    public static function normalizeStages(?array $stages, bool $applyTypeDefaults = true, bool $preserveCatalogBindings = false): array
     {
         return collect($stages ?? [])
-            ->map(function (mixed $stage) use ($applyTypeDefaults): mixed {
+            ->map(function (mixed $stage) use ($applyTypeDefaults, $preserveCatalogBindings): mixed {
                 if (! is_array($stage)) {
                     return $stage;
                 }
@@ -91,7 +114,7 @@ class WorkflowNotification extends Model
                 $hasDataWrapper = is_array($stage['data'] ?? null);
                 $data = $hasDataWrapper ? $stage['data'] : $stage;
 
-                if (array_key_exists('stage_type_id', $data)) {
+                if (! $preserveCatalogBindings && array_key_exists('stage_type_id', $data)) {
                     $data = \App\Models\WorkflowStageType::bindStage($data, $applyTypeDefaults);
                 }
 
