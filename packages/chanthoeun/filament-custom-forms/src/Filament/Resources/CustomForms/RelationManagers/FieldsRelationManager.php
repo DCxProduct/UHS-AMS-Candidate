@@ -540,14 +540,20 @@ class FieldsRelationManager extends RelationManager
                     ->label(app()->getLocale() === 'km' ? 'ស្លាក (EN)' : 'Label (EN)')
                     ->state(fn ($record): string => self::getLangValue($record->label, 'en'))
                     ->searchable(query: function (\Illuminate\Database\Eloquent\Builder $query, string $search): \Illuminate\Database\Eloquent\Builder {
-                        return \App\Support\CaseInsensitiveSearch::apply($query, 'label', $search);
+                        return \App\Support\CaseInsensitiveSearch::applyMapped($query, 'label', $search,
+                            \Chanthoeun\FilamentCustomForms\Models\CustomFormField::query()
+                                ->where('custom_form_id', $this->getOwnerRecord()->getKey())->pluck('label')
+                                ->mapWithKeys(fn ($label): array => [(string) $label => self::getLangValue($label, 'en')])->all());
                     }),
 
                 TextColumn::make('label_km')
                     ->label(app()->getLocale() === 'km' ? 'ស្លាក (KM)' : 'Label (KM)')
                     ->state(fn ($record): string => self::getLangValue($record->label, 'km'))
                     ->searchable(query: function (\Illuminate\Database\Eloquent\Builder $query, string $search): \Illuminate\Database\Eloquent\Builder {
-                        return \App\Support\CaseInsensitiveSearch::apply($query, 'label', $search);
+                        return \App\Support\CaseInsensitiveSearch::applyMapped($query, 'label', $search,
+                            \Chanthoeun\FilamentCustomForms\Models\CustomFormField::query()
+                                ->where('custom_form_id', $this->getOwnerRecord()->getKey())->pluck('label')
+                                ->mapWithKeys(fn ($label): array => [(string) $label => self::getLangValue($label, 'km')])->all());
                     }),
 
 
@@ -582,6 +588,16 @@ class FieldsRelationManager extends RelationManager
 
                 TextColumn::make('type')
                     ->label(__('filament-custom-forms::fcf.field.type', [], 'en'))
+                    ->searchable(query: function (\Illuminate\Database\Eloquent\Builder $query, string $search): \Illuminate\Database\Eloquent\Builder {
+                        $types = collect(self::fieldTypeOptions())->collapse()
+                            ->filter(fn (string $label): bool => str_contains(\App\Support\CaseInsensitiveSearch::normalize($label), \App\Support\CaseInsensitiveSearch::normalize($search)))
+                            ->keys()->all();
+
+                        return $query->where(function (\Illuminate\Database\Eloquent\Builder $query) use ($search, $types): void {
+                            \App\Support\CaseInsensitiveSearch::apply($query, 'type', $search);
+                            $query->orWhereIn('type', $types);
+                        });
+                    })
                     ->badge()
                     ->formatStateUsing(fn (string $state): string => collect(self::fieldTypeOptions())->collapse()->get($state, $state))
                     ->color(fn (string $state): string => match ($state) {
@@ -591,6 +607,11 @@ class FieldsRelationManager extends RelationManager
 
                 TextColumn::make('parent.label')
                     ->label(__('filament-custom-forms::fcf.admin.parent_container'))
+                    ->searchable(query: fn (\Illuminate\Database\Eloquent\Builder $query, string $search): \Illuminate\Database\Eloquent\Builder => $query->whereHas('parent',
+                        fn (\Illuminate\Database\Eloquent\Builder $parent): \Illuminate\Database\Eloquent\Builder => \App\Support\CaseInsensitiveSearch::applyMapped($parent, 'label', $search,
+                            \Chanthoeun\FilamentCustomForms\Models\CustomFormField::query()
+                                ->where('custom_form_id', $this->getOwnerRecord()->getKey())->pluck('label')
+                                ->mapWithKeys(fn ($label): array => [(string) $label => self::localeText($label)])->all())))
                     ->badge()
                     ->default('—')
                     ->formatStateUsing(fn ($state): string => self::localeText($state)),

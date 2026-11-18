@@ -3,6 +3,7 @@
 namespace Chanthoeun\FilamentDocumentBuilder\Resources\DocumentTemplateResource\Tables;
 
 use App\Support\LocalizedDate;
+use App\Support\CaseInsensitiveSearch;
 use App\Support\FilamentActionPermissions;
 use Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate;
 use Chanthoeun\FilamentDocumentBuilder\Resources\DocumentTemplateResource;
@@ -11,6 +12,7 @@ use Filament\Actions;
 use Filament\Notifications\Notification;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class DocumentTemplateTable
 {
@@ -21,7 +23,10 @@ class DocumentTemplateTable
                 Tables\Columns\TextColumn::make('name')
                     ->label(__('filament-document-builder::document-builder.labels.template_name'))
                     ->formatStateUsing(fn ($state): string => self::localeText($state))
-                    ->searchable()
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyMapped(
+                        $query, 'name', $search, DocumentTemplate::query()->pluck('name')
+                            ->mapWithKeys(fn ($name): array => [(string) $name => self::localeText($name)])->all(),
+                    ))
                     ->sortable()
                     ->weight('bold'),
 
@@ -40,12 +45,14 @@ class DocumentTemplateTable
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label(__('filament-document-builder::document-builder.labels.created_on'))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyDate($query, 'created_at', $search))
                     ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 Tables\Columns\TextColumn::make('updated_at')
                     ->label(__('filament-document-builder::document-builder.labels.last_updated'))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyDate($query, 'updated_at', $search))
                     ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),

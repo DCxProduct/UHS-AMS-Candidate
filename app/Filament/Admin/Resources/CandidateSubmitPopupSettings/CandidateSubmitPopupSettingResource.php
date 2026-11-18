@@ -8,8 +8,10 @@ use App\Filament\Admin\Resources\CandidateSubmitPopupSettings\Pages\ListCandidat
 use App\Filament\Admin\Resources\CandidateSubmitPopupSettings\Schemas\CandidateSubmitPopupSettingForm;
 use App\Filament\Concerns\AdminOnly;
 use App\Models\CandidateSubmitPopupSetting;
+use App\Support\CaseInsensitiveSearch;
 use App\Support\LocalizedDate;
 use BackedEnum;
+use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Resources\Resource;
@@ -18,6 +20,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
 
 class CandidateSubmitPopupSettingResource extends Resource
@@ -67,24 +70,36 @@ class CandidateSubmitPopupSettingResource extends Resource
             ->columns([
                 TextColumn::make('customForm.display_name')
                     ->label(__('candidate_submit_popup_settings.fields.form'))
-                    ->searchable(query: fn ($query, string $search) => $query->whereHas(
-                        'customForm',
-                        fn ($forms) => $forms->where('name', 'like', "%{$search}%")
-                    )),
+                    ->searchable(query: fn (Builder $query, string $search): Builder => self::searchFormNames($query, $search)),
                 IconColumn::make('is_active')
                     ->label(__('candidate_submit_popup_settings.fields.active'))
                     ->boolean(),
                 TextColumn::make('created_at')
                     ->label(__('candidate_submit_popup_settings.fields.created_at'))
-                    ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state)),
+                    ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyDate($query, $query->getModel()->qualifyColumn('created_at'), $search)),
                 TextColumn::make('updated_at')
                     ->label(__('candidate_submit_popup_settings.fields.updated_at'))
-                    ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state)),
+                    ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyDate($query, $query->getModel()->qualifyColumn('updated_at'), $search)),
             ])
             ->recordActions([
                 EditAction::make(),
                 DeleteAction::make(),
             ]);
+    }
+
+    private static function searchFormNames(Builder $query, string $search): Builder
+    {
+        $term = CaseInsensitiveSearch::normalize($search);
+        $ids = CustomForm::query()->get(['id', 'name'])
+            ->filter(fn (CustomForm $form): bool => str_contains(CaseInsensitiveSearch::normalize($form->display_name), $term))
+            ->modelKeys();
+
+        return $query->whereHas('customForm', fn (Builder $forms): Builder => $forms->where(function (Builder $forms) use ($search, $ids): void {
+            CaseInsensitiveSearch::applyCast($forms, $forms->getModel()->qualifyColumn('name'), $search);
+            $forms->orWhereKey($ids);
+        }));
     }
 
     public static function getRelations(): array

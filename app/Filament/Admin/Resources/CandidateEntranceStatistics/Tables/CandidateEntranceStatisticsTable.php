@@ -486,6 +486,16 @@ class CandidateEntranceStatisticsTable
             $query->orWhereHas('creator', function (Builder $creatorQuery) use ($search): void {
                 CaseInsensitiveSearch::applyAny($creatorQuery, ['seat_number', 'name', 'name_latin'], $search);
             });
+            $query->orWhere(fn (Builder $ids): Builder => CandidateNumber::applySearch($ids, 'candidate_id', $search));
+            $query->orWhereHas('customForm', fn (Builder $forms): Builder => FormEntryData::applyFormNameSearch($forms, $search));
+            $query->orWhere(fn (Builder $major): Builder => FormEntryData::applyJsonLikeFilter($major, FormEntryData::majorKeys(), $search));
+            $query->orWhere(fn (Builder $years): Builder => FormEntryData::applyFieldSearch($years, FormEntryData::academicYearKeys(), $search, ['academic_year']));
+            $query->orWhere(fn (Builder $dates): Builder => FormEntryData::applyFieldSearch($dates, ['date_of_birth'], $search, ['date_of_birth'], date: true));
+            $query->orWhere(fn (Builder $dates): Builder => $dates->where('data->candidate_status', 'passed')
+                ->where(fn (Builder $value): Builder => CaseInsensitiveSearch::applyDate($value, 'data->candidate_reviewed_at', $search)));
+            $query->orWhere(fn (Builder $gender): Builder => FormEntryData::applyFieldSearch($gender, ['gender'], $search, labels: ['male' => self::genderLabel('male'), 'female' => self::genderLabel('female')]));
+            $query->orWhere(fn (Builder $status): Builder => FormEntryData::applyResultStatusSearch($status, 'data->candidate_status', $search));
+            $query->orWhere(fn (Builder $types): Builder => FormEntryData::applyCandidateTypeSearch($types, $search));
         });
     }
 

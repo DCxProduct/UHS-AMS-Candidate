@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Resources\CandidateLists\Tables;
 use App\Filament\Admin\Resources\CandidateLists\CandidateListResource;
 use App\Models\User;
 use App\Support\CandidateLatinName;
+use App\Support\CaseInsensitiveSearch;
 use App\Support\FilamentActionPermissions;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
@@ -66,6 +67,7 @@ class CandidateListsTable
 
                 TextColumn::make('candidate_type')
                     ->label(__('candidate_lists.fields.candidate_type'))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => self::searchCandidateType($query, $search))
                     ->getStateUsing(function (User $record): string {
                         $candidateRole = static::resolveCandidateRole($record);
 
@@ -106,11 +108,13 @@ class CandidateListsTable
 
                 TextColumn::make('created_at')
                     ->label(__('candidate_lists.fields.created_at'))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyDate($query, 'created_at', $search))
                     ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
                     ->sortable(),
 
                 TextColumn::make('updated_at')
                     ->label(__('candidate_lists.fields.updated_at'))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyDate($query, 'updated_at', $search))
                     ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
                     ->sortable(),
             ])
@@ -262,6 +266,21 @@ class CandidateListsTable
     /**
      * First and last Latin names are stored together in "name".
      */
+    protected static function searchCandidateType(Builder $query, string $search): Builder
+    {
+        $options = UserTypeOptions::allQuery()->get()->mapWithKeys(fn ($type): array => [(string) $type->key => UserTypeOptions::formatLabel((string) $type->key)])->all();
+
+        return $query->where(function (Builder $query) use ($search, $options): void {
+            CaseInsensitiveSearch::applyCast($query, 'candidate_roles', $search);
+            $query->orWhereHas('roles', fn (Builder $roles): Builder => CaseInsensitiveSearch::applyMapped($roles, 'name', $search, $options));
+            foreach ($options as $key => $label) {
+                if (str_contains(CaseInsensitiveSearch::normalize($label), CaseInsensitiveSearch::normalize($search))) {
+                    $query->orWhereJsonContains('candidate_roles', $key);
+                }
+            }
+        });
+    }
+
     protected static function searchName(Builder $query, string $search): Builder
     {
         return $query->where(fn (Builder $names): Builder => $names

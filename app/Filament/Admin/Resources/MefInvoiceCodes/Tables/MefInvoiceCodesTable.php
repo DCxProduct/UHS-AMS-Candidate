@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\MefInvoiceCodes\Tables;
 
 use App\Filament\Admin\Resources\MefInvoiceCodes\MefInvoiceCodeResource;
+use App\Support\CaseInsensitiveSearch;
 use App\Support\FilamentActionPermissions;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
@@ -11,6 +12,7 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class MefInvoiceCodesTable
 {
@@ -38,10 +40,12 @@ class MefInvoiceCodesTable
                 TextColumn::make('created_at')
                     ->label(__('mef_invoice_codes.table.created_at'))
                     ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyDate($query, $query->getModel()->qualifyColumn('created_at'), $search))
                     ->sortable(),
                 TextColumn::make('updated_at')
                     ->label(__('mef_invoice_codes.table.updated_at'))
                     ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyDate($query, $query->getModel()->qualifyColumn('updated_at'), $search))
                     ->sortable(),
             ])
             ->recordActions([

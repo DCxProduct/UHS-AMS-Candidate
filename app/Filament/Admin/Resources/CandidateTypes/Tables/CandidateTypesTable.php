@@ -2,7 +2,9 @@
 
 namespace App\Filament\Admin\Resources\CandidateTypes\Tables;
 
+use App\Models\DegreeLevel;
 use App\Models\UserType;
+use App\Support\CaseInsensitiveSearch;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
 use App\Support\UserTypeOptions;
@@ -12,6 +14,7 @@ use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class CandidateTypesTable
 {
@@ -38,7 +41,8 @@ class CandidateTypesTable
                     ->label(__('candidate_types.table.group_name'))
                     ->formatStateUsing(fn (?string $state): string => UserTypeOptions::formatGroupLabel($state))
                     ->badge()
-                    ->searchable()
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyMapped($query, 'group_name', $search,
+                        DegreeLevel::query()->get()->mapWithKeys(fn (DegreeLevel $degree): array => [$degree->key => $degree->localized_label])->all()))
                     ->sortable(),
 
                 IconColumn::make('is_active')
@@ -48,11 +52,13 @@ class CandidateTypesTable
 
                 TextColumn::make('created_at')
                     ->label(__('candidate_types.table.created_at'))
-                    ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state)),
+                    ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyDate($query, $query->getModel()->qualifyColumn('created_at'), $search)),
 
                 TextColumn::make('updated_at')
                     ->label(__('candidate_types.table.updated_at'))
-                    ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state)),
+                    ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyDate($query, $query->getModel()->qualifyColumn('updated_at'), $search)),
             ])
             ->recordActions([
                 ActionGroup::make([

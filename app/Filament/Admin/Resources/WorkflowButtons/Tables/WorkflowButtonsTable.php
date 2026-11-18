@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Resources\WorkflowButtons\Tables;
 
 use App\Filament\Admin\Resources\WorkflowButtons\WorkflowButtonResource;
 use App\Models\WorkflowButton;
+use App\Support\CaseInsensitiveSearch;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
 use App\Support\WorkflowConfigurationUsage;
@@ -13,6 +14,7 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ViewColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class WorkflowButtonsTable
 {
@@ -41,10 +43,12 @@ class WorkflowButtonsTable
                 TextColumn::make('action_key')
                     ->label(__('workflow_buttons.fields.action_key'))
                     ->formatStateUsing(fn (string $state): string => WorkflowButton::actionOptions()[$state] ?? $state)
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyMapped($query, 'action_key', $search, WorkflowButton::actionOptions()))
                     ->wrap(),
 
                 ViewColumn::make('stage_types_usage')
                     ->label(__('workflow_buttons.table.stage_types'))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => self::searchUsage($query, $search, 'button_stages'))
                     ->getStateUsing(fn (WorkflowButton $record): array => WorkflowConfigurationUsage::stageTypesForButton($record))
                     ->view('filament.admin.workflow-configuration-usage')
                     ->viewData(['kind' => 'stage'])
@@ -52,6 +56,7 @@ class WorkflowButtonsTable
 
                 ViewColumn::make('workflow_templates_usage')
                     ->label(__('workflow_buttons.table.workflow_templates'))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => self::searchUsage($query, $search, 'button_workflows'))
                     ->getStateUsing(fn (WorkflowButton $record): array => WorkflowConfigurationUsage::workflowsForButton($record))
                     ->view('filament.admin.workflow-configuration-usage')
                     ->viewData(['kind' => 'workflow'])
@@ -64,11 +69,13 @@ class WorkflowButtonsTable
 
                 TextColumn::make('created_at')
                     ->label(__('workflow_buttons.table.created_at'))
-                    ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state)),
+                    ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyDate($query, $query->getModel()->qualifyColumn('created_at'), $search)),
 
                 TextColumn::make('updated_at')
                     ->label(__('workflow_buttons.table.updated_at'))
-                    ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state)),
+                    ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyDate($query, $query->getModel()->qualifyColumn('updated_at'), $search)),
             ])
             ->recordActions([
                 EditAction::make(),
@@ -77,5 +84,22 @@ class WorkflowButtonsTable
             ->recordUrl(fn (WorkflowButton $record): ?string => WorkflowButtonResource::canEdit($record)
                 ? WorkflowButtonResource::getUrl('edit', ['record' => $record])
                 : null);
+    }
+
+    private static function searchUsage(Builder $query, string $search, string $kind): Builder
+    {
+        $index = WorkflowConfigurationUsage::load();
+        $term = CaseInsensitiveSearch::normalize($search);
+        $ids = [];
+        foreach ($index[$kind] as $buttonId => $references) {
+            $names = $kind === 'button_stages'
+                ? array_map(fn (int $stageId): string => $index['stage_types'][$stageId]->label(), $references)
+                : array_column($references, 'name');
+            if (str_contains(CaseInsensitiveSearch::normalize(implode(' ', $names)), $term)) {
+                $ids[] = $buttonId;
+            }
+        }
+
+        return $query->whereKey($ids);
     }
 }

@@ -24,10 +24,12 @@ use App\Support\OfficialReport;
 use App\Support\PaymentValidation;
 use App\Support\TablePdfExporter;
 use App\Support\WorkflowStageMessages;
+use App\Support\WorkflowStatusSearch;
 use App\Support\WorkflowActionFeedback;
 use App\Support\TableFilterOptions;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormField;
+use Closure;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
@@ -175,6 +177,7 @@ class PaymentStatusListsTable
                 TextColumn::make('candidate_id')
                     ->label(__('candidate_entrance_statistics.student_id'))
                     ->formatStateUsing(fn (mixed $state): string => CandidateNumber::format($state))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CandidateNumber::applySearch($query, 'custom_form_entries.candidate_id', $search))
                     ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: false),
 
@@ -184,43 +187,38 @@ class PaymentStatusListsTable
                     ->getStateUsing(fn (PaymentStatusList $record): string => self::localizedFormName($record->customForm?->name))
                     ->searchable(query: fn (Builder $query, string $search): Builder => $query
                         ->whereHas('customForm', function (Builder $formQuery) use ($search): void {
-                            CaseInsensitiveSearch::apply($formQuery, 'name', $search);
+                            CaseInsensitiveSearch::applyCast($formQuery, 'name', $search);
                         }))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('name_khmer')
                     ->label(__('payment_status_lists.columns.name_khmer'))
                     ->getStateUsing(fn (PaymentStatusList $record): string => self::khmerName($record))
-                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyAny($query, [
-                        'data->first_name_kh',
-                        'data->last_name_kh',
-                        'data->full_name_kh',
-                    ], $search))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => PaymentsTable::applyEntryNameSearch($query, $search, false))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('name_latin')
                     ->label(__('payment_status_lists.columns.name_latin'))
                     ->getStateUsing(fn (PaymentStatusList $record): string => self::latinName($record))
-                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyAny($query, [
-                        'data->first_name_en',
-                        'data->last_name_en',
-                        'data->full_name_en',
-                    ], $search))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => PaymentsTable::applyEntryNameSearch($query, $search, true))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('gender')
                     ->label(__('payment_status_lists.columns.gender'))
                     ->getStateUsing(fn (PaymentStatusList $record): string => self::genderLabel(self::entryValue($record, 'gender')))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => PaymentsTable::applyEntryGenderSearch($query, $search))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('phone_number')
                     ->label(__('payment_status_lists.columns.phone_number'))
                     ->getStateUsing(fn (PaymentStatusList $record): string => self::entryValue($record, 'phone_number', $record->creator?->phone))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => FormEntryData::applyFieldSearch($query, ['phone_number'], $search, ['phone']))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('date_of_birth')
                     ->label(__('payment_status_lists.columns.date_of_birth'))
                     ->getStateUsing(fn (PaymentStatusList $record): string => self::dateOfBirth($record))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => FormEntryData::applyFieldSearch($query, ['date_of_birth'], $search, ['date_of_birth'], true))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('major')
@@ -234,6 +232,7 @@ class PaymentStatusListsTable
                     ->label(__('payment_status_lists.columns.payment_status'))
                     ->badge()
                     ->getStateUsing(fn (PaymentStatusList $record): string => self::paymentStatus($record))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => self::applyPaymentStatusSearch($query, $search))
                     ->formatStateUsing(fn (?string $state, PaymentStatusList $record): string => WorkflowStageMessages::paymentStatusLabel($record, (string) $state)
                         ?? (strtolower((string) $state) === 'paid'
                             ? __('payments.options.status_payt.paid')
@@ -247,16 +246,19 @@ class PaymentStatusListsTable
                 TextColumn::make('payment_source')
                     ->label(__('payments.table.payment_source'))
                     ->getStateUsing(fn (PaymentStatusList $record): string => self::latestPaymentRecord($record)?->paymentSourceLabel() ?? '-')
+                    ->searchable(query: fn (Builder $query, string $search): Builder => self::applyLatestPaymentSearch($query, fn (Builder $payment): Builder => PaymentsTable::applyPaymentSourceSearch($payment, $search)))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('receipt_number')
                     ->label(__('payments.table.receipt_number'))
                     ->getStateUsing(fn (PaymentStatusList $record): string => (string) (self::latestPaymentRecord($record)?->receipt_number ?: '-'))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => self::applyLatestPaymentSearch($query, fn (Builder $payment): Builder => CaseInsensitiveSearch::applyCast($payment, 'payments.receipt_number', $search)))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('datetime_pay')
                     ->label(__('payments.table.datetime_pay'))
                     ->getStateUsing(fn (PaymentStatusList $record): string => LocalizedDate::dayMonthYear(self::latestPaymentRecord($record)?->datetime_pay))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => self::applyLatestPaymentSearch($query, fn (Builder $payment): Builder => CaseInsensitiveSearch::applyDate($payment, 'payments.datetime_pay', $search)))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('received_by')
@@ -266,6 +268,7 @@ class PaymentStatusListsTable
 
                         return (string) ($receiver?->name ?: $receiver?->username ?: '-');
                     })
+                    ->searchable(query: fn (Builder $query, string $search): Builder => self::applyLatestPaymentSearch($query, fn (Builder $payment): Builder => PaymentsTable::applyReceiverSearch($payment, $search)))
                     ->toggleable(isToggledHiddenByDefault: false),
 
             ])
@@ -901,6 +904,34 @@ class PaymentStatusListsTable
         }
 
         return $query;
+    }
+
+    /** Search only the payment selected by latestPaymentRecord, never an older receipt. */
+    protected static function applyLatestPaymentSearch(Builder $query, Closure $search): Builder
+    {
+        $payment = Payment::query()->where('payments.id', self::latestPaymentQuery()->select('payments.id'));
+        $search($payment);
+
+        return $query->whereExists($payment->selectRaw('1')->toBase());
+    }
+
+    protected static function applyPaymentStatusSearch(Builder $query, string $search): Builder
+    {
+        return $query->where(function (Builder $statuses) use ($search): void {
+            $statuses->whereRaw('1 = 0');
+            foreach (['paid' => 'status_message', 'unpaid' => 'payment_statuses.unpaid_status_message'] as $state => $path) {
+                $statuses->orWhere(function (Builder $stateQuery) use ($state, $path, $search): void {
+                    self::applyPaymentStatusFilter($stateQuery, $state);
+                    $term = CaseInsensitiveSearch::normalize($search);
+                    $defaultMatches = collect(['en', 'km'])->contains(fn (string $locale): bool => str_contains(
+                        CaseInsensitiveSearch::normalize($state.' '.__('payments.options.status_payt.'.$state, [], $locale)), $term,
+                    ));
+                    if (! $defaultMatches) {
+                        WorkflowStatusSearch::applyStageText($stateQuery, 'payment', $path, $search);
+                    }
+                });
+            }
+        });
     }
 
     protected static function latestPaymentQuery(): Builder

@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\PaymentTypes\Tables;
 
 use App\Models\PaymentType;
+use App\Support\CaseInsensitiveSearch;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
 use Filament\Actions\ActionGroup;
@@ -11,6 +12,7 @@ use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class PaymentTypesTable
 {
@@ -41,6 +43,7 @@ class PaymentTypesTable
                 TextColumn::make('localized_method')
                     ->label(__('payment_types.table.method'))
                     ->getStateUsing(fn (PaymentType $record): string => $record->localized_method)
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyMapped($query, 'method', $search, __('payment_types.options.methods')))
                     ->badge()
                     ->color(fn (PaymentType $record): string => $record->method === 'bank' ? 'info' : 'success'),
 
@@ -61,11 +64,13 @@ class PaymentTypesTable
 
                 TextColumn::make('created_at')
                     ->label(__('payment_types.table.created_at'))
-                    ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state)),
+                    ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyDate($query, $query->getModel()->qualifyColumn('created_at'), $search)),
 
                 TextColumn::make('updated_at')
                     ->label(__('payment_types.table.updated_at'))
-                    ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state)),
+                    ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyDate($query, $query->getModel()->qualifyColumn('updated_at'), $search)),
             ])
             ->recordActions([
                 ActionGroup::make([

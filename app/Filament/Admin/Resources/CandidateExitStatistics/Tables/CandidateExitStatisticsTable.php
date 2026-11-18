@@ -9,6 +9,7 @@ use App\Models\CandidateExitStatistic;
 use App\Support\TableFilterOptions;
 use App\Support\AuditLogger;
 use App\Support\CandidateNumber;
+use App\Support\UserTypeOptions;
 use App\Support\CandidateTypeResolver;
 use App\Support\CandidateStatisticsSynchronizer;
 use App\Support\CaseInsensitiveSearch;
@@ -543,7 +544,8 @@ class CandidateExitStatisticsTable
 
     protected static function applyGlobalSearch(Builder $query, string $search): void
     {
-        CaseInsensitiveSearch::applyAny($query, [
+        $query->where(function (Builder $query) use ($search): void {
+            CaseInsensitiveSearch::applyAny($query, [
             'form_type',
             'academic_year',
             'user_type',
@@ -555,7 +557,17 @@ class CandidateExitStatisticsTable
             'gender',
             'major',
             'candidate_status',
-        ], $search);
+            ], $search);
+            $query->orWhereHas('customFormEntry', fn (Builder $entry): Builder => CandidateNumber::applySearch($entry, 'candidate_id', $search));
+            $query->orWhereHas('customFormEntry.customForm', fn (Builder $form): Builder => FormEntryData::applyFormNameSearch($form, $search));
+            $query->orWhere(fn (Builder $dates): Builder => CaseInsensitiveSearch::applyDate($dates, 'date_of_birth', $search));
+            $query->orWhere(fn (Builder $dates): Builder => CaseInsensitiveSearch::applyDate($dates, 'candidate_reviewed_at', $search));
+            $query->orWhere(fn (Builder $gender): Builder => CaseInsensitiveSearch::applyMapped($gender, 'gender', $search, (array) __('candidate_exit_statistics.options.gender')));
+            $query->orWhere(fn (Builder $major): Builder => CaseInsensitiveSearch::applyMapped($major, 'major', $search, FormEntryData::majorSearchOptions()));
+            $query->orWhere(fn (Builder $type): Builder => CaseInsensitiveSearch::applyMapped($type, 'user_type', $search, UserTypeOptions::options()));
+            $query->orWhere(fn (Builder $form): Builder => CaseInsensitiveSearch::applyMapped($form, 'form_type', $search, (array) __('candidate_exit_statistics.options.form_type')));
+            $query->orWhere(fn (Builder $status): Builder => FormEntryData::applyResultStatusSearch($status, 'candidate_status', $search, 'customFormEntry'));
+        });
     }
 
     protected static function excelRows(iterable $records, array $columnKeys): array

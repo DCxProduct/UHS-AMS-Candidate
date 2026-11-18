@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Resources\AuditLogs\Tables;
 use App\Filament\Admin\Resources\AuditLogs\AuditLogResource;
 use App\Models\SystemUser;
 use App\Models\User;
+use App\Support\CaseInsensitiveSearch;
 use App\Support\LocalizedDate;
 use App\Support\TableFilterOptions;
 use Filament\Forms\Components\DatePicker;
@@ -29,10 +30,12 @@ class AuditLogsTable
             ->columns([
                 TextColumn::make('module')
                     ->label(__('audit_logs.fields.module'))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyMapped($query, 'module', $search, __('audit_logs.values.modules')))
                     ->formatStateUsing(fn (?string $state): string => self::translateModule($state)),
 
                 TextColumn::make('action')
                     ->label(__('audit_logs.fields.action'))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyMapped($query, 'action', $search, __('audit_logs.values.actions')))
                     ->badge()
                     ->formatStateUsing(fn (?string $state): string => self::translateAction($state))
                     ->color(fn (?string $state): string => match ($state) {
@@ -47,12 +50,18 @@ class AuditLogsTable
                 TextColumn::make('actor_name')
                     ->label(__('audit_logs.fields.actor'))
                     ->placeholder(__('audit_logs.values.system'))
-                    ->searchable()
+                    ->searchable(query: fn (Builder $query, string $search): Builder => $query->where(function (Builder $query) use ($search): void {
+                        CaseInsensitiveSearch::apply($query, 'actor_name', $search);
+                        if (str_contains(CaseInsensitiveSearch::normalize(__('audit_logs.values.system')), CaseInsensitiveSearch::normalize($search))) {
+                            $query->orWhere(fn (Builder $missing): Builder => $missing->whereNull('actor_name')->orWhere('actor_name', ''));
+                        }
+                    }))
                     ->wrap(),
 
                 TextColumn::make('created_at')
                     ->label(__('audit_logs.fields.created_at'))
-                    ->formatStateUsing(fn ($state): string => LocalizedDate::auditDateTime($state)),
+                    ->formatStateUsing(fn ($state): string => LocalizedDate::auditDateTime($state))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyDate($query, $query->getModel()->qualifyColumn('created_at'), $search)),
             ])
             ->filters([
                 Filter::make('audit_log_filters')

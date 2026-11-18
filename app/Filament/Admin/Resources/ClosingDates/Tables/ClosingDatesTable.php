@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Resources\ClosingDates\Tables;
 use App\Filament\Admin\Resources\ClosingDates\ClosingDateResource;
 use App\Models\ClosingDate;
 use App\Models\DegreeLevel;
+use App\Support\CaseInsensitiveSearch;
 use App\Support\FilamentActionPermissions;
 use App\Support\LocalizedDate;
 use App\Support\TableFilterOptions;
@@ -35,16 +36,21 @@ class ClosingDatesTable
                     ->badge()
                     ->formatStateUsing(fn (?string $state): string => self::localeText(ClosingDate::typeOptions()[$state] ?? '-'))
                     ->color('warning')
-                    ->searchable(),
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyMapped($query, 'type', $search, ClosingDate::typeOptions())),
 
                 TextColumn::make('majors_count')
                     ->label(__('majors.closing_date_field'))
                     ->counts('majors')
+                    ->searchable(query: fn (Builder $query, string $search): Builder => self::searchMajorCount($query, $search))
                     ->numeric()
                     ->alignCenter(),
 
                 TextColumn::make('degreeLevel.localized_label')
                     ->label(__('degree_levels.navigation_label'))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => $query->whereHas('degreeLevel', fn (Builder $degrees): Builder => CaseInsensitiveSearch::applyAny($degrees, [
+                        $degrees->getModel()->qualifyColumn('label_en'),
+                        $degrees->getModel()->qualifyColumn('label_kh'),
+                    ], $search)))
                     ->placeholder('-'),
 
                 TextColumn::make('status')
@@ -57,24 +63,28 @@ class ClosingDatesTable
                         'closed' => 'danger',
                         default => 'gray',
                     })
-                    ->searchable(),
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyMapped($query, 'status', $search, __('closing_dates.statuses'))),
 
                 TextColumn::make('start_date')
                     ->label(__('closing_dates.start_date'))
-                    ->date('d-M-Y'),
+                    ->date('d-M-Y')
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyDate($query, $query->getModel()->qualifyColumn('start_date'), $search)),
 
                 TextColumn::make('end_date')
                     ->label(__('closing_dates.end_date'))
-                    ->date('d-M-Y'),
+                    ->date('d-M-Y')
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyDate($query, $query->getModel()->qualifyColumn('end_date'), $search)),
 
                 TextColumn::make('created_at')
                     ->label(__('closing_dates.created_at'))
                     ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyDate($query, $query->getModel()->qualifyColumn('created_at'), $search))
                     ->hidden(),
 
                 TextColumn::make('updated_at')
                     ->label(__('closing_dates.updated_at'))
                     ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyDate($query, $query->getModel()->qualifyColumn('updated_at'), $search))
                     ->hidden(),
             ])
             ->filters([
@@ -118,6 +128,17 @@ class ClosingDatesTable
                     ->tooltip(__('closing_dates.actions')),
             ])
             ->defaultSort('created_at', 'desc');
+    }
+
+    private static function searchMajorCount(Builder $query, string $search): Builder
+    {
+        $term = str_replace(',', '', CaseInsensitiveSearch::normalize($search));
+        if ($term === '' || ! ctype_digit($term)) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereKey(ClosingDate::query()->withCount('majors')->get(['id'])
+            ->filter(fn (ClosingDate $date): bool => str_contains((string) $date->majors_count, $term))->modelKeys());
     }
 
     private static function filterValues(string $column, ?Builder $query = null): array

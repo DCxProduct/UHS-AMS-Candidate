@@ -6,6 +6,7 @@ namespace BezhanSalleh\FilamentShield\Resources\Roles;
 
 use App\Models\RoleType;
 use App\Models\UserType;
+use App\Support\CaseInsensitiveSearch;
 use App\Support\FilamentActionPermissions;
 use App\Support\LocalizedDate;
 use App\Support\UserTypeOptions;
@@ -37,6 +38,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Validation\Rules\Unique;
 use Override;
 
@@ -241,6 +243,7 @@ class RoleResource extends Resource
                     ->searchable(['name', 'label_en', 'name_kh']),
                 TextColumn::make('role_type_key')
                     ->label(__('system_users.role_menu.type'))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => static::searchRoleTypes($query, $search))
                     ->state(fn ($record): string => $record->role_type_key ?: static::resolveRoleAudience($record->name))
                     ->formatStateUsing(fn (string $state): string => RoleType::options()[$state] ?? $state)
                     ->badge()
@@ -259,11 +262,13 @@ class RoleResource extends Resource
                     ->visible(fn (): bool => static::shield()->isCentralApp() && Utils::isTenancyEnabled()),
                 TextColumn::make('manageable_permissions_count')
                     ->badge()
+                    ->searchable(query: fn (Builder $query, string $search): Builder => static::searchPermissionCount($query, $search))
                     ->label(__('filament-shield::filament-shield.column.permissions'))
                     ->color('primary'),
                 TextColumn::make('updated_at')
                     ->label(__('filament-shield::filament-shield.column.updated_at'))
-                    ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state)),
+                    ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyDate($query, $query->getModel()->qualifyColumn('updated_at'), $search)),
             ])
             ->filters([
                 //
@@ -317,6 +322,35 @@ class RoleResource extends Resource
     public static function getEssentialsPlugin(): ?FilamentShieldPlugin
     {
         return FilamentShieldPlugin::get();
+    }
+
+    private static function searchRoleTypes(Builder $query, string $search): Builder
+    {
+        $model = static::getModel();
+        $labels = RoleType::options();
+        $term = CaseInsensitiveSearch::normalize($search);
+        $ids = $model::query()->get(['id', 'name', 'role_type_key'])
+            ->filter(function ($role) use ($labels, $term): bool {
+                $type = $role->role_type_key ?: static::resolveRoleAudience($role->name);
+
+                return str_contains(CaseInsensitiveSearch::normalize($labels[$type] ?? $type), $term);
+            })->modelKeys();
+
+        return $query->whereKey($ids);
+    }
+
+    private static function searchPermissionCount(Builder $query, string $search): Builder
+    {
+        $term = str_replace(',', '', CaseInsensitiveSearch::normalize($search));
+        if ($term === '' || ! ctype_digit($term)) {
+            return $query->whereRaw('1 = 0');
+        }
+        $model = static::getModel();
+        $ids = $model::query()->withCount([
+            'permissions as manageable_permissions_count' => fn (Builder $permissions): Builder => $permissions->whereIn('name', static::manageablePermissionNames()),
+        ])->get(['id'])->filter(fn ($role): bool => str_contains((string) $role->manageable_permissions_count, $term))->modelKeys();
+
+        return $query->whereKey($ids);
     }
 
     protected static function resolveRoleAudience(?string $roleName): string

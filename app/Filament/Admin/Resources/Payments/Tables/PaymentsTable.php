@@ -14,8 +14,10 @@ use App\Support\LocalizedNumber;
 use App\Support\OfficialReport;
 use App\Support\TablePdfExporter;
 use App\Support\WorkflowStageMessages;
+use App\Support\WorkflowStatusSearch;
 use App\Support\TableFilterOptions;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
+use Closure;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
@@ -78,6 +80,232 @@ class PaymentsTable
             : null;
     }
 
+    /** Select the displayed entry before searching, so an older application cannot match. */
+    protected static function matchedEntrySearchQuery(): Builder
+    {
+        $entry = CustomFormEntry::query();
+        $legacy = CustomFormEntry::query()->from('custom_form_entries as payment_search_entry')
+            ->select('payment_search_entry.id')
+            ->whereColumn('payment_search_entry.custom_form_id', 'payments.form_id')
+            ->where(function (Builder $owners): void {
+                $columns = array_filter(['created_by', 'user_id', 'created_by_id'], fn (string $column): bool => Schema::hasColumn('custom_form_entries', $column));
+                if ($columns === []) {
+                    $owners->whereRaw('1 = 0');
+                }
+                foreach ($columns as $column) {
+                    $owners->orWhereColumn('payment_search_entry.'.$column, 'payments.users_id');
+                }
+            })->orderByDesc('payment_search_entry.id')->limit(1);
+
+        return $entry->where(function (Builder $selected) use ($legacy): void {
+            if (Schema::hasColumn('payments', 'custom_form_entry_id')) {
+                $selected->whereColumn('custom_form_entries.id', 'payments.custom_form_entry_id')
+                    ->orWhere(fn (Builder $fallback): Builder => $fallback->whereNull('payments.custom_form_entry_id')
+                        ->where('custom_form_entries.id', $legacy));
+            } else {
+                $selected->where('custom_form_entries.id', $legacy);
+            }
+        });
+    }
+
+    protected static function applyMatchedEntrySearch(Builder $query, Closure $search): Builder
+    {
+        $entry = self::matchedEntrySearchQuery();
+        $search($entry);
+
+        return $query->whereExists($entry->selectRaw('1')->toBase());
+    }
+
+    protected static function applyMissingEntryFields(Builder $query, array $keys): Builder
+    {
+        $entry = self::matchedEntrySearchQuery()->where(function (Builder $present) use ($keys): void {
+            foreach ($keys as $key) {
+                $column = $present->getGrammar()->wrap('data->'.$key);
+                $present->orWhereRaw("TRIM(COALESCE({$column}, '')) <> ''");
+            }
+        });
+
+        return $query->whereNotExists($entry->selectRaw('1')->toBase());
+    }
+
+    public static function applyEntryNameSearch(Builder $query, string $search, bool $latin): Builder
+    {
+        $suffix = $latin ? 'en' : 'kh';
+        $first = 'data->first_name_'.$suffix;
+        $last = 'data->last_name_'.$suffix;
+        $full = 'data->full_name_'.$suffix;
+        $grammar = $query->getGrammar();
+        $firstSql = "COALESCE(".$grammar->wrap($first).", '')";
+        $lastSql = "COALESCE(".$grammar->wrap($last).", '')";
+        $join = in_array($query->getConnection()->getDriverName(), ['mysql', 'mariadb'], true)
+            ? "CONCAT({$firstSql}, ' ', {$lastSql})"
+            : "({$firstSql} || ' ' || {$lastSql})";
+
+        return $query->where(function (Builder $names) use ($search, $first, $last, $full, $firstSql, $lastSql, $join): void {
+            $names->where(function (Builder $split) use ($search, $first, $last, $join): void {
+                CaseInsensitiveSearch::applyAny($split, [$first, $last], $search);
+                $split->orWhereRaw("LOWER(TRIM({$join})) LIKE ?", ['%'.CaseInsensitiveSearch::normalize($search).'%']);
+            })->orWhere(function (Builder $fallback) use ($search, $full, $firstSql, $lastSql): void {
+                $fallback->whereRaw("TRIM({$firstSql}) = ''")->whereRaw("TRIM({$lastSql}) = ''");
+                CaseInsensitiveSearch::applyCast($fallback, $full, $search);
+            });
+        });
+    }
+
+    protected static function applyNameSearch(Builder $query, string $search, bool $latin): Builder
+    {
+        $suffix = $latin ? 'en' : 'kh';
+
+        return $query->where(function (Builder $names) use ($search, $latin, $suffix): void {
+            self::applyMatchedEntrySearch($names, fn (Builder $entry): Builder => self::applyEntryNameSearch($entry, $search, $latin));
+            $names->orWhere(function (Builder $fallback) use ($search, $latin, $suffix): void {
+                self::applyMissingEntryFields($fallback, ['first_name_'.$suffix, 'last_name_'.$suffix, 'full_name_'.$suffix]);
+                $fallback->whereHas('user', function (Builder $owner) use ($search, $latin): void {
+                    if (! $latin) {
+                        CaseInsensitiveSearch::applyCast($owner, 'name', $search);
+
+                        return;
+                    }
+                    $owner->where(function (Builder $names) use ($search): void {
+                        CaseInsensitiveSearch::applyCast($names, 'name_latin', $search);
+                        $names->orWhere(function (Builder $name) use ($search): void {
+                            $name->where(fn (Builder $blank): Builder => $blank->whereNull('name_latin')->orWhere('name_latin', ''));
+                            CaseInsensitiveSearch::applyCast($name, 'name', $search);
+                        });
+                    });
+                });
+            });
+        });
+    }
+
+    protected static function applyEntryFieldSearch(Builder $query, string $key, string $search, string $ownerColumn, bool $date = false): Builder
+    {
+        return $query->where(function (Builder $fields) use ($key, $search, $ownerColumn, $date): void {
+            self::applyMatchedEntrySearch($fields, fn (Builder $entry): Builder => $date
+                ? CaseInsensitiveSearch::applyDate($entry, 'data->'.$key, $search)
+                : FormEntryData::applyJsonLikeFilter($entry, [$key], $search));
+            $fields->orWhere(function (Builder $fallback) use ($key, $search, $ownerColumn, $date): void {
+                self::applyMissingEntryFields($fallback, [$key]);
+                $fallback->whereHas('user', fn (Builder $owner): Builder => $date
+                    ? CaseInsensitiveSearch::applyDate($owner, $ownerColumn, $search)
+                    : CaseInsensitiveSearch::applyCast($owner, $ownerColumn, $search));
+            });
+        });
+    }
+
+    public static function applyEntryGenderSearch(Builder $query, string $search): Builder
+    {
+        return FormEntryData::applyFieldSearch($query, ['gender'], $search, labels: [
+            'male' => ['Male', 'ប្រុស'], 'female' => ['Female', 'ស្រី'],
+        ]);
+    }
+
+    public static function applyReceiverSearch(Builder $query, string $search): Builder
+    {
+        return $query->whereHas('receivedBy', function (Builder $receiver) use ($search): void {
+            $receiver->where(function (Builder $name) use ($search): void {
+                CaseInsensitiveSearch::applyCast($name, 'name', $search);
+                $name->orWhere(function (Builder $fallback) use ($search): void {
+                    $fallback->where(fn (Builder $blank): Builder => $blank->whereNull('name')->orWhere('name', ''));
+                    CaseInsensitiveSearch::applyCast($fallback, 'username', $search);
+                });
+            });
+        });
+    }
+
+    public static function applyPaymentSourceSearch(Builder $query, string $search): Builder
+    {
+        $term = CaseInsensitiveSearch::normalize($search);
+        $sources = array_filter(['candidate', 'ams'], fn (string $source): bool => collect(['en', 'km'])
+            ->contains(fn (string $locale): bool => str_contains(CaseInsensitiveSearch::normalize($source.' '.__('payments.payment_sources.'.$source, [], $locale)), $term)));
+
+        return $query->whereRaw("LOWER(COALESCE(payments.status_payt, '')) = 'paid'")
+            ->where(function (Builder $matches) use ($sources): void {
+                $matches->whereRaw('1 = 0');
+                foreach ($sources as $source) {
+                    if (! Schema::hasColumn('payments', 'integration_source')) {
+                        if ($source === 'candidate') {
+                            $matches->orWhereRaw('1 = 1');
+                        }
+                    } else {
+                        $matches->orWhereRaw("LOWER(COALESCE(payments.integration_source, '')) ".($source === 'ams' ? '=' : '<>')." 'ams'");
+                    }
+                }
+            });
+    }
+
+    protected static function applyMoneySearch(Builder $query, string $column, string $search, string $currency): Builder
+    {
+        // Filament splits a formatted amount and its currency suffix into separate terms.
+        if (trim($search) === $currency) {
+            return $query->whereNotNull($column);
+        }
+
+        return CaseInsensitiveSearch::applyCast($query, $column, $search);
+    }
+
+    protected static function applyPaymentMethodSearch(Builder $query, string $search): Builder
+    {
+        $labels = [];
+        foreach (PaymentType::query()->get(['key', 'method']) as $type) {
+            $labels[$type->key] = array_map(fn (string $locale): string => __('payment_types.options.methods.'.($type->method ?: 'cash'), [], $locale), ['en', 'km']);
+        }
+        foreach (['cash', 'aba', 'wing', 'acleda', 'other', 'bank'] as $key) {
+            $labels[$key] ??= array_map(fn (string $locale): string => __('payment_types.options.methods.'.($key === 'cash' ? 'cash' : 'bank'), [], $locale), ['en', 'km']);
+        }
+
+        return $query->where(function (Builder $methods) use ($search, $labels): void {
+            CaseInsensitiveSearch::applyMapped($methods, 'payments.type_payment', $search, $labels);
+            $term = CaseInsensitiveSearch::normalize($search);
+            if (collect(['en', 'km'])->contains(fn (string $locale): bool => str_contains(CaseInsensitiveSearch::normalize(__('payment_types.options.methods.bank', [], $locale)), $term))) {
+                $known = PaymentType::query()->pluck('key')->map(fn ($key): string => CaseInsensitiveSearch::normalize($key))->all();
+                $methods->orWhere(function (Builder $unknown) use ($known): void {
+                    $unknown->whereNotNull('payments.type_payment')->where('payments.type_payment', '<>', '');
+                    $unknown->whereRaw('LOWER(payments.type_payment) NOT IN ('.implode(', ', array_fill(0, count($known) + 1, '?')).')', [...$known, 'cash']);
+                });
+            }
+        });
+    }
+
+    protected static function applyBankSearch(Builder $query, string $search): Builder
+    {
+        $labels = [];
+        foreach (PaymentType::query()->get(['key', 'method', 'abbreviation', 'name_en', 'name_kh']) as $type) {
+            if ($type->method !== 'cash') {
+                $labels[$type->key] = $type->abbreviation ?: [$type->name_en, $type->name_kh];
+            }
+        }
+        foreach (['aba', 'wing', 'acleda', 'other'] as $key) {
+            $labels[$key] ??= array_map(fn (string $locale): string => __('payments.options.type_payment.'.$key, [], $locale), ['en', 'km']);
+        }
+
+        return $query->where(function (Builder $banks) use ($search, $labels): void {
+            $banks->whereRaw("LOWER(COALESCE(payments.type_payment, '')) <> 'cash'")
+                ->whereDoesntHave('paymentType', fn (Builder $type): Builder => $type->where('method', 'cash'));
+            CaseInsensitiveSearch::applyMapped($banks, 'payments.type_payment', $search, $labels);
+        });
+    }
+
+    protected static function applyPaymentStatusSearch(Builder $query, string $search): Builder
+    {
+        $labels = [];
+        foreach (['paid', 'unpaid', 'pending', 'return'] as $state) {
+            $labels[$state] = array_map(fn (string $locale): string => __('payments.options.status_payt.'.$state, [], $locale), ['en', 'km']);
+        }
+
+        return $query->where(function (Builder $statuses) use ($search, $labels): void {
+            CaseInsensitiveSearch::applyMapped($statuses, 'payments.status_payt', $search, $labels);
+            if (Schema::hasColumn('payments', 'custom_form_entry_id')) {
+                foreach (['paid' => 'status_message', 'unpaid' => 'payment_statuses.unpaid_status_message'] as $state => $path) {
+                    $statuses->orWhere(function (Builder $stateQuery) use ($state, $path, $search): void {
+                        $stateQuery->whereRaw('LOWER(payments.status_payt) = ?', [$state])
+                            ->whereHas('customFormEntry', fn (Builder $entry): Builder => WorkflowStatusSearch::applyStageText($entry, 'payment', $path, $search));
+                    });
+                }
+            }
+        });
+    }
+
     public static function configure(Table $table): Table
     {
         return $table
@@ -100,30 +328,26 @@ class PaymentsTable
                 TextColumn::make('candidate_id')
                     ->label(__('candidate_entrance_statistics.student_id'))
                     ->getStateUsing(fn (Payment $record): string => self::candidateId($record))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => self::applyMatchedEntrySearch($query, fn (Builder $entry): Builder => CandidateNumber::applySearch($entry, 'custom_form_entries.candidate_id', $search)))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('form.display_name')
                     ->label(__('payments.table.form'))
                     ->badge()
                     ->getStateUsing(fn (Payment $record): string => $record->form?->display_name ?: $record->form?->name ?: '-')
+                    ->searchable(query: fn (Builder $query, string $search): Builder => $query->whereHas('form', fn (Builder $form): Builder => CaseInsensitiveSearch::applyCast($form, 'name', $search)))
                     ->toggleable(),
 
                 TextColumn::make('name_khmer')
                     ->label(__('payments.table.name_khmer'))
                     ->getStateUsing(fn (Payment $record): string => self::khmerName($record))
-                    ->searchable(query: fn (Builder $query, string $search): Builder => $query
-                        ->whereHas('user', function (Builder $userQuery) use ($search): void {
-                            CaseInsensitiveSearch::apply($userQuery, 'name', $search);
-                        }))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => self::applyNameSearch($query, $search, false))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('name_latin')
                     ->label(__('payments.table.name_latin'))
                     ->getStateUsing(fn (Payment $record): string => self::latinName($record))
-                    ->searchable(query: fn (Builder $query, string $search): Builder => $query
-                        ->whereHas('user', function (Builder $userQuery) use ($search): void {
-                            CaseInsensitiveSearch::apply($userQuery, 'name_latin', $search);
-                        }))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => self::applyNameSearch($query, $search, true))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('gender')
@@ -131,31 +355,36 @@ class PaymentsTable
                     ->badge()
                     ->alignCenter()
                     ->getStateUsing(fn (Payment $record): string => self::genderLabel(self::entryValue($record, 'gender')))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => self::applyMatchedEntrySearch($query, fn (Builder $entry): Builder => self::applyEntryGenderSearch($entry, $search)))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('phone_number')
                     ->label(__('payments.table.phone_number'))
                     ->getStateUsing(fn (Payment $record): string => self::entryValue($record, 'phone_number', $record->user?->phone))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => self::applyEntryFieldSearch($query, 'phone_number', $search, 'phone'))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('date_of_birth')
                     ->label(__('payments.table.date_of_birth'))
                     ->getStateUsing(fn (Payment $record): string => self::dateOfBirth($record))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => self::applyEntryFieldSearch($query, 'date_of_birth', $search, 'date_of_birth', true))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('major')
                     ->label(__('payments.table.major'))
                     ->badge()
                     ->getStateUsing(fn (Payment $record): string => self::major($record))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => self::applyMatchedEntrySearch($query, fn (Builder $entry): Builder => FormEntryData::applyJsonLikeFilter($entry, FormEntryData::majorKeys(), $search)))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('receipt_number')
                     ->label(__('payments.table.receipt_number'))
-                    ->searchable()
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyCast($query, 'payments.receipt_number', $search))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('exchange_rate')
                     ->label(__('payments.table.exchange_rate'))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => self::applyMoneySearch($query, 'payments.exchange_rate', $search, '៛'))
                     ->badge()
                     ->formatStateUsing(fn ($state): string => blank($state) ? '-' : number_format((float) $state, 2).' ៛')
                     ->toggleable(isToggledHiddenByDefault: false),
@@ -164,16 +393,19 @@ class PaymentsTable
                     ->label(__('payments.table.type_payment'))
                     ->alignCenter()
                     ->getStateUsing(fn (Payment $record): string => $record->payment_method_label)
+                    ->searchable(query: fn (Builder $query, string $search): Builder => self::applyPaymentMethodSearch($query, $search))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('bank_name')
                     ->label(__('payments.table.bank'))
                     ->getStateUsing(fn (Payment $record): string => $record->bank_name)
+                    ->searchable(query: fn (Builder $query, string $search): Builder => self::applyBankSearch($query, $search))
                     ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('amount_usd')
                     ->label(__('payments.table.amount_usd'))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => self::applyMoneySearch($query, 'payments.amount_usd', $search, '$'))
                     ->formatStateUsing(fn ($state): string => blank($state) ? '-' : number_format((float) $state, 2).'$')
                     ->summarize(
                         Sum::make('amount_usd_total')
@@ -187,6 +419,7 @@ class PaymentsTable
 
                 TextColumn::make('amount_kh')
                     ->label(__('payments.table.amount_kh'))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => self::applyMoneySearch($query, 'payments.amount_kh', $search, '៛'))
                     ->formatStateUsing(fn ($state): string => blank($state) ? '-' : number_format((float) $state, 2).' ៛')
                     ->summarize(
                         Sum::make('amount_khr_total')
@@ -203,6 +436,7 @@ class PaymentsTable
                     ->badge()
                     ->alignCenter()
                     ->formatStateUsing(fn (?string $state, Payment $record): string => self::paymentStatusLabel($record, $state))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => self::applyPaymentStatusSearch($query, $search))
                     ->color(fn (?string $state): string => match (strtolower((string) $state)) {
                         'paid' => 'success',
                         'return' => 'danger',
@@ -215,17 +449,20 @@ class PaymentsTable
                     ->badge()
                     ->alignCenter()
                     ->getStateUsing(fn (Payment $record): string => $record->paymentSourceLabel())
+                    ->searchable(query: fn (Builder $query, string $search): Builder => self::applyPaymentSourceSearch($query, $search))
                     ->color(fn (Payment $record): string => $record->paidViaAms() ? 'info' : 'gray')
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('datetime_pay')
                     ->label(__('payments.table.datetime_pay'))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyDate($query, 'payments.datetime_pay', $search))
                     ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('received_by')
                     ->label(__('payments.table.received_by'))
                     ->getStateUsing(fn (Payment $record): string => self::receiverName($record))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => self::applyReceiverSearch($query, $search))
                     ->toggleable(isToggledHiddenByDefault: false),
 
             ])

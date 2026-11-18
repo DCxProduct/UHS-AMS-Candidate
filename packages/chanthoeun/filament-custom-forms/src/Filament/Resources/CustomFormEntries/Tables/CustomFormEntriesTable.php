@@ -3,6 +3,7 @@
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Tables;
 
 use App\Support\WorkflowStageMessages;
+use App\Support\WorkflowStatusSearch;
 use App\Support\WorkflowActionFeedback;
 use App\Support\WorkflowButtons;
 use App\Support\WorkflowStageProgression;
@@ -398,6 +399,9 @@ class CustomFormEntriesTable
 
                 $column = TextColumn::make("data.{$key}")
                     ->label($label)
+                    ->searchable(query: fn (Builder $query, string $search): Builder => self::applyFieldSearch(
+                        $query, $key, $search, (string) $field->type, (array) ($field->options ?? []),
+                    ))
                     ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: true)
                     ->wrap();
@@ -490,6 +494,10 @@ class CustomFormEntriesTable
             // 5. Gender
             TextColumn::make('data.gender')
                 ->label(__('app.custom_form_entry_ui.labels.gender'))
+                ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyMapped($query, 'data->gender', $search, [
+                    'male' => __('app.custom_form_entry_ui.options.gender.male'),
+                    'female' => __('app.custom_form_entry_ui.options.gender.female'),
+                ]))
                 ->placeholder('-')
                 ->formatStateUsing(fn (?string $state): string => match ($state) {
                     'male' => __('app.custom_form_entry_ui.options.gender.male'),
@@ -512,7 +520,7 @@ class CustomFormEntriesTable
                 ->formatStateUsing(fn (mixed $state): string => FormEntryData::academicYearLabel([
                     'academic_year' => $state,
                 ]))
-                ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::apply($query, 'data->academic_year', $search))
+                ->searchable(query: fn (Builder $query, string $search): Builder => self::applyFieldSearch($query, 'academic_year', $search, formId: $formId))
                 ->toggleable(isToggledHiddenByDefault: false),
 
         ];
@@ -525,6 +533,15 @@ class CustomFormEntriesTable
 
         $columns[] = TextColumn::make('created_at')
             ->label(__('candidate_entrance_statistics.request_at'))
+            ->searchable(query: fn (Builder $query, string $search): Builder => $query->where(function (Builder $dates) use ($search): void {
+                $dates->where(function (Builder $submitted) use ($search): void {
+                    $submitted->whereNotNull('data->submitted_at')->where('data->submitted_at', '!=', '');
+                    CaseInsensitiveSearch::applyDate($submitted, 'data->submitted_at', $search);
+                })->orWhere(function (Builder $created) use ($search): void {
+                    $created->where(fn (Builder $empty): Builder => $empty->whereNull('data->submitted_at')->orWhere('data->submitted_at', ''));
+                    CaseInsensitiveSearch::applyDate($created, 'created_at', $search);
+                });
+            }))
             ->formatStateUsing(fn ($state, $record): string => LocalizedDate::dayMonthYear(
                 data_get($record->data, 'submitted_at') ?: $state
             ))
@@ -533,6 +550,7 @@ class CustomFormEntriesTable
 
         $columns[] = TextColumn::make('updated_at')
             ->label(__('app.updated_at'))
+            ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyDate($query, 'updated_at', $search))
             ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
             ->color('gray')
             ->toggleable(isToggledHiddenByDefault: false);
@@ -582,10 +600,68 @@ class CustomFormEntriesTable
         return $columns;
     }
 
+    protected static function applyFieldSearch(Builder $query, string $key, string $search, string $type = '', array $options = [], ?string $formId = null): Builder
+    {
+        return $query->where(function (Builder $values) use ($key, $search, $type, $options, $formId): void {
+            if ($key === 'date_of_birth' || in_array($type, ['date_picker', 'date_time_picker'], true)) {
+                CaseInsensitiveSearch::applyDate($values, "data->{$key}", $search);
+            } else {
+                CaseInsensitiveSearch::applyCast($values, "data->{$key}", $search);
+            }
+
+            if (self::isGeoColumn($key)) {
+                $locationIds = GeoLocation::query()
+                    ->where(fn (Builder $locations): Builder => CaseInsensitiveSearch::applyAny($locations, ['name_en', 'name_kh'], $search))
+                    ->pluck('id')->map(fn ($id): string => (string) $id)->all();
+                foreach ($locationIds as $locationId) {
+                    $values->orWhere(fn (Builder $location): Builder => FormEntryData::applyJsonExactFilter($location, [$key], $locationId));
+                }
+
+                return;
+            }
+
+            $fieldOptions = [$options];
+            if ($options === []) {
+                $fieldOptions = \Chanthoeun\FilamentCustomForms\Models\CustomFormField::query()
+                    ->where('name', $key)
+                    ->when($formId, fn (Builder $fields): Builder => $fields->where('custom_form_id', $formId))
+                    ->get(['custom_form_id', 'options']);
+            }
+
+            foreach ($fieldOptions as $fieldOptionsItem) {
+                $field = is_array($fieldOptionsItem) ? null : $fieldOptionsItem;
+                $choices = $field ? ($field->options['choices'] ?? []) : ($fieldOptionsItem['choices'] ?? []);
+                if (! is_array($choices)) {
+                    continue;
+                }
+                foreach ($choices as $value => $label) {
+                    if (is_array($label) && array_key_exists('value', $label)) {
+                        $value = $label['value'];
+                        $label = $label['label'] ?? $value;
+                    }
+                    if (! str_contains(CaseInsensitiveSearch::normalize(self::transText($label)), CaseInsensitiveSearch::normalize($search))) {
+                        continue;
+                    }
+                    $values->orWhere(function (Builder $choice) use ($key, $value, $field): void {
+                        if ($field !== null) {
+                            $choice->where('custom_form_id', $field->custom_form_id);
+                        }
+                        FormEntryData::applyJsonExactFilter($choice, [$key], (string) $value);
+                    });
+                }
+            }
+
+            if ($key === 'academic_year' && str_contains($search, '-')) {
+                CaseInsensitiveSearch::applyCast($values, "data->{$key}", str_replace('-', '_', $search), or: true);
+            }
+        });
+    }
+
     protected static function reviewStatusColumn(): TextColumn
     {
         return TextColumn::make('review_status')
             ->label(__('candidate_entrance_statistics.review_status'))
+            ->searchable(query: fn (Builder $query, string $search): Builder => WorkflowStatusSearch::applyReview($query, $search))
             ->badge()
             ->getStateUsing(fn ($record): string => self::displayStatus($record))
             ->formatStateUsing(function ($state, $record): string {
@@ -880,13 +956,13 @@ class CustomFormEntriesTable
     protected static function getProfileColumns(): array
     {
         return [
-            TextColumn::make('data.first_name_kh')->label('First Name (Khmer)')->placeholder('-'),
-            TextColumn::make('data.last_name_kh')->label('Last Name (Khmer)')->placeholder('-'),
-            TextColumn::make('data.date_of_birth')->label('Date of Birth')->formatStateUsing(fn (mixed $state): string => LocalizedDate::dayMonthYear($state))->placeholder('-'),
-            TextColumn::make('data.exam_period')->label('Exam Date')->formatStateUsing(fn (mixed $state): string => self::formatProfileDate($state))->placeholder('-'),
-            TextColumn::make('data.exam_center')->label('Exam Center')->placeholder('-'),
-            TextColumn::make('data.current_occupation')->label('Current Occupation')->placeholder('-'),
-            TextColumn::make('data.place_of_work')->label('Place of Work / Organization')->placeholder('-')->wrap(),
+            TextColumn::make('data.first_name_kh')->label('First Name (Khmer)')->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyCast($query, 'data->first_name_kh', $search))->placeholder('-'),
+            TextColumn::make('data.last_name_kh')->label('Last Name (Khmer)')->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyCast($query, 'data->last_name_kh', $search))->placeholder('-'),
+            TextColumn::make('data.date_of_birth')->label('Date of Birth')->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyDate($query, 'data->date_of_birth', $search))->formatStateUsing(fn (mixed $state): string => LocalizedDate::dayMonthYear($state))->placeholder('-'),
+            TextColumn::make('data.exam_period')->label('Exam Date')->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyDate($query, 'data->exam_period', $search))->formatStateUsing(fn (mixed $state): string => self::formatProfileDate($state))->placeholder('-'),
+            TextColumn::make('data.exam_center')->label('Exam Center')->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyCast($query, 'data->exam_center', $search))->placeholder('-'),
+            TextColumn::make('data.current_occupation')->label('Current Occupation')->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyCast($query, 'data->current_occupation', $search))->placeholder('-'),
+            TextColumn::make('data.place_of_work')->label('Place of Work / Organization')->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyCast($query, 'data->place_of_work', $search))->placeholder('-')->wrap(),
         ];
     }
 

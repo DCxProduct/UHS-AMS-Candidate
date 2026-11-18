@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Resources\NewStudentAccounts\Tables;
 
 use App\Filament\Admin\Resources\NewStudentAccounts\NewStudentAccountResource;
 use App\Models\NewStudentAccount;
+use App\Support\CaseInsensitiveSearch;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
 use App\Support\NotificationLanguage;
@@ -15,6 +16,7 @@ use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class NewStudentAccountsTable
 {
@@ -65,10 +67,12 @@ class NewStudentAccountsTable
                 TextColumn::make('created_at')
                     ->label(__('new_student_accounts.fields.created_at'))
                     ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyDate($query, $query->getModel()->qualifyColumn('created_at'), $search))
                     ->sortable(),
                 TextColumn::make('updated_at')
                     ->label(__('new_student_accounts.fields.updated_at'))
                     ->formatStateUsing(fn ($state): string => LocalizedDate::dayMonthYear($state))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyDate($query, $query->getModel()->qualifyColumn('updated_at'), $search))
                     ->sortable(),
             ])
             ->recordActions([
