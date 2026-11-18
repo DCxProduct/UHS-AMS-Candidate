@@ -12,6 +12,11 @@ return [
     'fields' => [
         'mef_code' => 'MEF Code',
         'invoice_code' => 'Invoice Code',
+        'usage_status' => 'Status',
+    ],
+    'statuses' => [
+        'used' => 'Used',
+        'unused' => 'Unused',
     ],
     'validation' => [
         'invoice_code_symbols_only' => 'Invoice Code can contain numbers and symbols only.',

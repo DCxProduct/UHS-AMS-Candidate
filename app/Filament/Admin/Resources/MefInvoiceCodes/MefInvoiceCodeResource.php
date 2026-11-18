@@ -61,6 +61,7 @@ class MefInvoiceCodeResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
+            ->withExists('payments as is_used')
             ->when(
                 MenuRecordVisibility::excludesCleared() && SchemaFacade::hasColumn('mef_invoice_codes', 'records_cleared_at'),
                 fn (Builder $query): Builder => $query->whereNull('mef_invoice_codes.records_cleared_at'),
