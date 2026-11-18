@@ -4,14 +4,17 @@ namespace App\Filament\Admin\Resources\WorkflowNotifications\Tables;
 
 use App\Filament\Admin\Resources\WorkflowNotifications\WorkflowNotificationResource;
 use App\Models\WorkflowNotification;
+use App\Services\WorkflowNotificationDuplicator;
 use App\Support\CaseInsensitiveSearch;
 use App\Support\LocalizedDate;
 use App\Support\WorkflowNotificationStageSummary;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
+use Filament\Notifications\Notification;
 use Filament\Support\Enums\Alignment;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables\Columns\TextColumn;
@@ -48,6 +51,7 @@ class WorkflowNotificationsTable
             ])
             ->recordActions([
                 ViewAction::make()
+                    ->label(__('workflow_notifications.actions.view'))
                     ->modal()
                     ->modalHeading(fn (WorkflowNotification $record): string => $record->name)
                     ->modalWidth('5xl')
@@ -60,6 +64,25 @@ class WorkflowNotificationsTable
                         ['stages' => WorkflowNotificationStageSummary::from($record->stages ?? [])],
                     )),
                 EditAction::make(),
+                Action::make('duplicate')
+                    ->label(__('workflow_notifications.actions.duplicate'))
+                    ->icon('heroicon-o-document-duplicate')
+                    ->color('info')
+                    ->authorize(fn (WorkflowNotification $record): bool => WorkflowNotificationResource::canAccess()
+                        && WorkflowNotificationResource::canViewAny()
+                        && WorkflowNotificationResource::can('duplicate', $record))
+                    ->action(function (WorkflowNotification $record, Action $action): void {
+                        $copy = app(WorkflowNotificationDuplicator::class)->duplicate($record);
+
+                        Notification::make()
+                            ->title(__('workflow_notifications.notifications.duplicated'))
+                            ->success()
+                            ->send();
+
+                        $action->redirect(WorkflowNotificationResource::canEdit($copy)
+                            ? WorkflowNotificationResource::getUrl('edit', ['record' => $copy])
+                            : WorkflowNotificationResource::getUrl('index'));
+                    }),
                 DeleteAction::make(),
             ])
             ->toolbarActions([

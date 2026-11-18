@@ -8,6 +8,7 @@ return [
         'view_any' => 'អាន',
         'view' => 'មើលទិន្នន័យ',
         'create' => 'បង្កើត',
+        'duplicate' => 'ចម្លង',
         'update' => 'កែប្រែ',
         'delete' => 'លុប',
         'view_slip' => 'មើលបង្កាន់ដៃ',

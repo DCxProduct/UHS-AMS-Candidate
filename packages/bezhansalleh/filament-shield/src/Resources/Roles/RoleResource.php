@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BezhanSalleh\FilamentShield\Resources\Roles;
 
+use App\Filament\Admin\Resources\WorkflowNotifications\WorkflowNotificationResource;
 use App\Models\RoleType;
 use App\Models\UserType;
 use App\Support\CaseInsensitiveSearch;
@@ -141,12 +142,15 @@ class RoleResource extends Resource
         $resource = $entity['resourceFqcn'];
         $options = FilamentShield::getResourcePermissionsWithLabels($resource) ?? [];
 
-        if ($resource !== CustomFormEntryResource::class) {
+        if (! in_array($resource, [CustomFormEntryResource::class, WorkflowNotificationResource::class], true)) {
             return $options;
         }
 
         // Share the action labels so role permissions follow the buttons candidates and staff see.
-        $labels = [
+        $labels = $resource === WorkflowNotificationResource::class ? [
+            'view' => 'workflow_notifications.actions.view',
+            'duplicate' => 'workflow_notifications.actions.duplicate',
+        ] : [
             'view_any' => 'filament-shield.custom_form_entry_permissions.view_any',
             'create' => 'filament-custom-forms::fcf.entry.action.create',
             'update' => 'filament-actions::edit.single.label',

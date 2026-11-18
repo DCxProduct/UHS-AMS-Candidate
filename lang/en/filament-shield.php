@@ -8,6 +8,7 @@ return [
         'view_any' => 'Read',
         'view' => 'View Data',
         'create' => 'Create',
+        'duplicate' => 'Duplicate',
         'update' => 'Update',
         'delete' => 'Delete',
         'view_slip' => 'View Receipt',

@@ -91,6 +91,7 @@ class CandidateViewProcessRemovalTest extends TestCase
                 ->first(fn ($field): bool => $field instanceof CheckboxList && $field->getName() === CustomFormEntryResource::class);
             $this->assertNotNull($field);
             $this->assertArrayNotHasKey(self::REMOVED_PERMISSION, $field->getOptions());
+            $this->assertSame(__('candidate_entrance_statistics.actions.view_data'), (string) $field->getOptions()['View:CustomFormEntry']);
             foreach (['ViewAny', 'View', 'ViewPdf', 'Create', 'Update'] as $action) {
                 $this->assertArrayHasKey($action.':CustomFormEntry', $field->getOptions());
             }

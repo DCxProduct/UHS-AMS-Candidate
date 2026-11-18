@@ -180,8 +180,14 @@ return [
 
     'actions' => [
         'add_stage' => 'បន្ថែមដំណាក់កាល',
+        'view' => 'មើល',
+        'duplicate' => 'ចម្លង',
         'close' => 'បិទ',
         'verify' => 'បានទទួលពាក្យស្នើសុំ',
+    ],
+
+    'duplicate' => [
+        'copy_suffix' => 'ចម្លង',
     ],
 
     'confirmations' => [
@@ -191,6 +197,7 @@ return [
     ],
 
     'notifications' => [
+        'duplicated' => 'បានចម្លងគំរូលំហូរការងាររួចរាល់',
         'verification_success' => 'បានទទួលពាក្យស្នើសុំ',
         'verification_candidate_id' => 'លេខបេក្ខជន៖ :id',
         'verification_missing_major_title' => 'មិនអាចបញ្ជាក់ការទទួលពាក្យស្នើសុំបានទេ',

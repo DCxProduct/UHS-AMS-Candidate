@@ -19,6 +19,7 @@ use App\Filament\Admin\Resources\Payments\PaymentResource;
 use App\Filament\Admin\Resources\PaymentStatusLists\PaymentStatusListResource;
 use App\Filament\Admin\Resources\SystemUsers\SystemUserResource;
 use App\Filament\Admin\Resources\WorkflowButtons\WorkflowButtonResource;
+use App\Filament\Admin\Resources\WorkflowNotifications\WorkflowNotificationResource;
 use App\Filament\Admin\Resources\WorkflowStageTypes\WorkflowStageTypeResource;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
 use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomForms\CustomFormResource;
@@ -55,6 +56,10 @@ class FilamentActionPermissions
                 'create',
                 'update',
                 'delete',
+            ],
+            WorkflowNotificationResource::class => [
+                'view',
+                'duplicate',
             ],
             ClosingDateResource::class => [
                 'clear_data',
