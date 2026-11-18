@@ -68,7 +68,8 @@ class NewStudentAccountForm
                             ->label(__('new_student_accounts.fields.is_active'))
                             ->default(true)
                             ->disabled(fn (?NewStudentAccount $record): bool => $record !== null
-                                && ! NewStudentAccountResource::can($record->is_active ? 'deactivateAccount' : 'activateAccount', $record))
+                                && ($record->archived_at !== null
+                                    || ! NewStudentAccountResource::can($record->is_active ? 'deactivateAccount' : 'activateAccount', $record)))
                             ->required(),
                     ]),
             ]);

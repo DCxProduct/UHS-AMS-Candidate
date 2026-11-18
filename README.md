@@ -472,6 +472,20 @@ normalized email or phone, copies its profile and existing password hash into
 New Student Accounts then supports phone, email and Student ID sign-in. No second
 profile or password is retained in `users`.
 
+New Student Accounts retain their Student ID, login contacts and history.
+The Current tab shows active and inactive accounts that have not been archived.
+Archive Account disables Candidate login and moves the account to the Archived
+Accounts tab. Restore Account returns an archived account to Current and enables
+login using its original Student ID and password. Archive and Restore require
+their own role permissions; ordinary activation cannot bypass an archive.
+These actions do not change AMS account state or earlier application/payment
+history. Inactive and archived email/phone identifiers remain reserved, so the
+student reuses the existing account rather than registering again. Password
+reset changes credentials but does not restore or reactivate an archived account.
+The archive migration adds a nullable timestamp and a list index without changing
+existing account states. Lists use bounded pagination; archival retains database
+records rather than freeing their storage.
+
 The `account_identities` directory stores only a stable ID and its account store;
 `account_users` is a read-only view over the two stores. Existing application,
 payment, permission, notification and session ownership keeps the same logical

@@ -29,6 +29,10 @@ final class AccountStorage
         $student[] = "'student' AS account_store";
         $student[] = 'n.id AS student_record_id';
         $student[] = 'n.student_id AS student_id';
+        if (Schema::hasColumn('new_student_accounts', 'archived_at')) {
+            $candidate[] = 'NULL AS archived_at';
+            $student[] = 'n.archived_at AS archived_at';
+        }
 
         DB::statement('CREATE VIEW account_users AS SELECT '.implode(', ', $candidate)
             ." FROM users u JOIN account_identities a ON a.id = u.id AND a.storage = 'candidate' UNION ALL SELECT "

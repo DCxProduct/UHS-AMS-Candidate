@@ -24,7 +24,9 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
 {
     use HasRoles;
     use Notifiable;
-    use SoftDeletes;
+    use SoftDeletes {
+        forceDelete as private forceDeleteUserRecord;
+    }
 
     protected $guard_name = 'web';
 
@@ -66,6 +68,33 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
             'password' => 'hashed',
             'candidate_roles' => 'array',
         ];
+    }
+
+    public function delete()
+    {
+        $this->ensureAccountCanBeDeleted();
+
+        return parent::delete();
+    }
+
+    public function forceDelete()
+    {
+        $this->ensureAccountCanBeDeleted();
+
+        return $this->forceDeleteUserRecord();
+    }
+
+    protected function ensureAccountCanBeDeleted(): void
+    {
+        // An object loaded before AMS promotion still carries the same auth ID.
+        // Protect it before deletion events can detach that student's roles.
+        if ($this->linkedNewStudentAccount() !== null
+            || ($this->getKey() !== null && Schema::hasTable('account_identities')
+                && AccountIdentity::query()->whereKey($this->getKey())->where('storage', 'student')->exists())) {
+            throw ValidationException::withMessages([
+                'account' => __('new_student_accounts.notifications.deletion_blocked'),
+            ]);
+        }
     }
 
     protected static function booted(): void
