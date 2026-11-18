@@ -590,11 +590,13 @@ class CustomFormEntriesTable
         }
 
         if (! self::currentPanelIsAdmin()) {
-            $columns[] = ViewColumn::make('workflow_progress')
-                ->label(__('candidate_entrance_statistics.workflow_progress'))
-                ->getStateUsing(fn ($record): array => self::workflowProgressViewData($record))
-                ->view('filament.custom-form-entry.workflow-progress')
-                ->toggleable(isToggledHiddenByDefault: false);
+            array_splice($columns, 1, 0, [
+                ViewColumn::make('workflow_progress')
+                    ->label(__('candidate_entrance_statistics.workflow_progress'))
+                    ->getStateUsing(fn ($record): array => self::workflowProgressViewData($record))
+                    ->view('filament.custom-form-entry.workflow-progress')
+                    ->toggleable(isToggledHiddenByDefault: false),
+            ]);
         }
 
         return $columns;

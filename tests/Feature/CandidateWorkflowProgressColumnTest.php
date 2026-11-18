@@ -60,7 +60,7 @@ class CandidateWorkflowProgressColumnTest extends TestCase
         $this->workflow->forms()->attach($this->form);
     }
 
-    public function test_progress_column_is_shown_after_uploaded_files_for_candidates_and_hidden_from_managers(): void
+    public function test_progress_column_is_shown_between_row_number_and_candidate_id_for_candidates_and_hidden_from_managers(): void
     {
         $this->form->fields()->create(['name' => 'document', 'label' => 'File', 'type' => 'file_upload']);
         $columns = $this->columns();
@@ -69,7 +69,7 @@ class CandidateWorkflowProgressColumnTest extends TestCase
 
         $this->assertInstanceOf(ViewColumn::class, $column);
         $this->assertSame(__('candidate_entrance_statistics.workflow_progress'), $column->getLabel());
-        $this->assertSame(array_search('uploaded_files', $names, true) + 1, array_search('workflow_progress', $names, true));
+        $this->assertSame(['row_number', 'workflow_progress', 'candidate_id'], array_slice($names, 0, 3));
 
         $admin = $this->user('workflow-progress-admin', 'admin');
         $admin->assignRole(Role::findOrCreate('admin', 'web'));
