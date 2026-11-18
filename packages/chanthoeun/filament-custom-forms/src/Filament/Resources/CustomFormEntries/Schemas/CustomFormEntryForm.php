@@ -157,7 +157,7 @@ class CustomFormEntryForm
             Wizard::make($steps)
                 ->key('profile-wizard')
                 ->persistStepInQueryString()
-                ->skippable(false)
+                ->skippable()
                 ->columnSpanFull(),
         ];
     }
@@ -238,7 +238,7 @@ class CustomFormEntryForm
                 }
 
                 $component = Wizard::make($steps)
-                    ->skippable($isProfileForm ? false : (bool) ($options['skippable'] ?? false));
+                    ->skippable($isProfileForm || (bool) ($options['skippable'] ?? false));
             } elseif ($type === 'repeater') {
                 $children = self::getFields(self::uniqueFieldsForRender($fieldModel->children()->orderBy('sort')->get()), $isLocked, $hiddenFieldNames, $isProfileForm);
 
