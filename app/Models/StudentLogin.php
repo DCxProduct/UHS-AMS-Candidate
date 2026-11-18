@@ -2,14 +2,32 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\PreventsStudentAccountDeletion;
 use App\Support\CandidateLatinName;
+use App\Support\StudentAccountArchive;
 
 /** Authentication/profile access to a canonical New Student Account record. */
 class StudentLogin extends User
 {
+    use PreventsStudentAccountDeletion;
+
     protected $table = 'new_student_accounts';
 
     protected $primaryKey = 'auth_id';
+
+    protected function casts(): array
+    {
+        return [...parent::casts(), 'archived_at' => 'datetime'];
+    }
+
+    public function save(array $options = [])
+    {
+        return $this->getConnection()->transaction(function () use ($options) {
+            StudentAccountArchive::protectState($this);
+
+            return parent::save($options);
+        });
+    }
 
     public function getIdAttribute(): ?int
     {

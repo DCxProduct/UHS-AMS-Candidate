@@ -6,7 +6,7 @@ return [
     'welcome' => 'Welcome, :name',
 
     'application_levels' => [
-        'switch' => 'Switch education level',
+        'switch' => 'Switch Degree Levels',
         'description' => 'Choose the education level you want to apply for.',
         'history_note' => 'Keep your account, profile and previous applications.',
         'current' => 'Current education level',

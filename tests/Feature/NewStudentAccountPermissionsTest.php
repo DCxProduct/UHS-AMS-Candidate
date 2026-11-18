@@ -23,7 +23,7 @@ class NewStudentAccountPermissionsTest extends TestCase
     private const PERMISSIONS = [
         'ViewAny:NewStudentAccount', 'Create:NewStudentAccount', 'Update:NewStudentAccount',
         'ActivateAccount:NewStudentAccount', 'DeactivateAccount:NewStudentAccount',
-        'Delete:NewStudentAccount',
+        'ArchiveAccount:NewStudentAccount', 'RestoreAccount:NewStudentAccount',
     ];
 
     protected function setUp(): void
@@ -41,7 +41,7 @@ class NewStudentAccountPermissionsTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_sync_retires_view_and_bulk_delete_without_changing_remaining_grants_or_other_guards(): void
+    public function test_sync_retires_view_delete_and_recovery_grants_without_changing_current_grants_or_other_guards(): void
     {
         $role = Role::findOrCreate('new-student-legacy-updater', 'web');
         $role->givePermissionTo([
@@ -49,21 +49,22 @@ class NewStudentAccountPermissionsTest extends TestCase
             Permission::findOrCreate('DeleteAny:NewStudentAccount', 'web'),
             Permission::findOrCreate('Update:NewStudentAccount', 'web'),
             Permission::findOrCreate('Delete:NewStudentAccount', 'web'),
+            Permission::findOrCreate('RestoreDeletedAccount:NewStudentAccount', 'web'),
         ]);
-        foreach (['View:NewStudentAccount', 'DeleteAny:NewStudentAccount'] as $permission) {
+        foreach (['View:NewStudentAccount', 'Delete:NewStudentAccount', 'DeleteAny:NewStudentAccount', 'RestoreDeletedAccount:NewStudentAccount'] as $permission) {
             Permission::findOrCreate($permission, 'api');
         }
 
         FilamentActionPermissions::sync();
         FilamentActionPermissions::sync();
 
-        foreach (['View:NewStudentAccount', 'DeleteAny:NewStudentAccount'] as $permission) {
+        foreach (['View:NewStudentAccount', 'Delete:NewStudentAccount', 'DeleteAny:NewStudentAccount', 'RestoreDeletedAccount:NewStudentAccount'] as $permission) {
             $this->assertDatabaseMissing('permissions', ['name' => $permission, 'guard_name' => 'web']);
             $this->assertDatabaseHas('permissions', ['name' => $permission, 'guard_name' => 'api']);
         }
         $this->assertEqualsCanonicalizing(self::PERMISSIONS, Permission::query()
             ->where('guard_name', 'web')->where('name', 'like', '%:NewStudentAccount')->pluck('name')->all());
-        $this->assertEqualsCanonicalizing(['Update:NewStudentAccount', 'Delete:NewStudentAccount'], $role->fresh()->permissions->pluck('name')->all());
+        $this->assertSame(['Update:NewStudentAccount'], $role->fresh()->permissions->pluck('name')->all());
     }
 
     public function test_role_form_shows_current_actions_in_both_languages_and_saves_only_selected_status_permissions(): void

@@ -7,9 +7,9 @@ use App\Models\NewStudentAccount;
 use App\Support\LocalizedDate;
 use App\Support\LocalizedNumber;
 use App\Support\NotificationLanguage;
+use App\Support\StudentAccountArchive;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
-use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
@@ -23,7 +23,9 @@ class NewStudentAccountsTable
         return $table
             ->searchPlaceholder(__('new_student_accounts.search'))
             ->defaultSort('id', 'desc')
-            ->recordUrl(fn (NewStudentAccount $record): ?string => NewStudentAccountResource::canEdit($record)
+            ->paginated([10, 25, 50, 100])
+            ->defaultPaginationPageOption(25)
+            ->recordUrl(fn (NewStudentAccount $record): ?string => $record->archived_at === null && NewStudentAccountResource::canEdit($record)
                 ? NewStudentAccountResource::getUrl('edit', ['record' => $record])
                 : null)
             ->columns([
@@ -71,17 +73,19 @@ class NewStudentAccountsTable
             ])
             ->recordActions([
                 ActionGroup::make([
-                    EditAction::make()->label(__('new_student_accounts.actions.edit')),
+                    EditAction::make()
+                        ->label(__('new_student_accounts.actions.edit'))
+                        ->visible(fn (NewStudentAccount $record): bool => $record->archived_at === null),
                     Action::make('activate_account')
                         ->label(__('new_student_accounts.actions.activate'))
                         ->icon('heroicon-o-check-circle')
                         ->color('success')
                         ->requiresConfirmation()
                         ->authorize(fn (NewStudentAccount $record): bool => NewStudentAccountResource::can('activateAccount', $record))
-                        ->visible(fn (NewStudentAccount $record): bool => ! $record->is_active)
+                        ->visible(fn (NewStudentAccount $record): bool => $record->archived_at === null && ! $record->is_active)
                         ->action(function (NewStudentAccount $record): void {
                             abort_unless(NewStudentAccountResource::can('activateAccount', $record), 403);
-                            $record->update(['is_active' => true]);
+                            StudentAccountArchive::setActive($record, true);
 
                             Notification::make()
                                 ->title(NotificationLanguage::trans('new_student_accounts.notifications.activated'))
@@ -94,21 +98,59 @@ class NewStudentAccountsTable
                         ->color('danger')
                         ->requiresConfirmation()
                         ->authorize(fn (NewStudentAccount $record): bool => NewStudentAccountResource::can('deactivateAccount', $record))
-                        ->visible(fn (NewStudentAccount $record): bool => $record->is_active)
+                        ->visible(fn (NewStudentAccount $record): bool => $record->archived_at === null && $record->is_active)
                         ->action(function (NewStudentAccount $record): void {
                             abort_unless(NewStudentAccountResource::can('deactivateAccount', $record), 403);
-                            $record->update(['is_active' => false]);
+                            StudentAccountArchive::setActive($record, false);
 
                             Notification::make()
                                 ->title(NotificationLanguage::trans('new_student_accounts.notifications.deactivated'))
                                 ->success()
                                 ->send();
                         }),
-                    DeleteAction::make()->label(__('new_student_accounts.actions.delete')),
+                    Action::make('archive_account')
+                        ->label(__('new_student_accounts.actions.archive'))
+                        ->icon('heroicon-o-archive-box')
+                        ->color('warning')
+                        ->requiresConfirmation()
+                        ->modalHeading(__('new_student_accounts.confirmations.archive_heading'))
+                        ->modalDescription(__('new_student_accounts.confirmations.archive_description'))
+                        ->modalSubmitActionLabel(__('new_student_accounts.actions.archive'))
+                        ->authorize(fn (NewStudentAccount $record): bool => NewStudentAccountResource::can('archiveAccount', $record))
+                        ->visible(fn (NewStudentAccount $record): bool => $record->archived_at === null)
+                        ->action(function (NewStudentAccount $record): void {
+                            abort_unless(NewStudentAccountResource::can('archiveAccount', $record), 403);
+                            StudentAccountArchive::archive($record);
+
+                            Notification::make()
+                                ->title(NotificationLanguage::trans('new_student_accounts.notifications.archived'))
+                                ->success()
+                                ->send();
+                        }),
                 ])
                     ->label('')
                     ->icon('heroicon-m-ellipsis-vertical')
-                    ->tooltip(__('new_student_accounts.actions.actions')),
+                    ->tooltip(__('new_student_accounts.actions.actions'))
+                    ->visible(fn (NewStudentAccount $record): bool => $record->archived_at === null),
+                Action::make('restore_account')
+                    ->label(__('new_student_accounts.actions.restore'))
+                    ->icon('heroicon-o-arrow-uturn-left')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->modalHeading(__('new_student_accounts.confirmations.restore_heading'))
+                    ->modalDescription(__('new_student_accounts.confirmations.restore_description'))
+                    ->modalSubmitActionLabel(__('new_student_accounts.actions.restore'))
+                    ->authorize(fn (NewStudentAccount $record): bool => NewStudentAccountResource::can('restoreAccount', $record))
+                    ->visible(fn (NewStudentAccount $record): bool => $record->archived_at !== null)
+                    ->action(function (NewStudentAccount $record): void {
+                        abort_unless(NewStudentAccountResource::can('restoreAccount', $record), 403);
+                        StudentAccountArchive::restore($record);
+
+                        Notification::make()
+                            ->title(NotificationLanguage::trans('new_student_accounts.notifications.restored'))
+                            ->success()
+                            ->send();
+                    }),
             ]);
     }
 }

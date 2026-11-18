@@ -41,7 +41,8 @@ class FilamentActionPermissions
                 'update',
                 'activate_account',
                 'deactivate_account',
-                'delete',
+                'archive_account',
+                'restore_account',
             ],
             WorkflowButtonResource::class => [
                 'view_any',
@@ -270,7 +271,7 @@ class FilamentActionPermissions
                 $permission->delete();
             }
             foreach (Permission::query()->where('guard_name', $guardName)
-                ->whereIn('name', ['View:NewStudentAccount', 'DeleteAny:NewStudentAccount'])->get() as $permission) {
+                ->whereIn('name', ['View:NewStudentAccount', 'Delete:NewStudentAccount', 'DeleteAny:NewStudentAccount', 'RestoreDeletedAccount:NewStudentAccount'])->get() as $permission) {
                 $permission->delete();
             }
 
@@ -295,6 +296,7 @@ class FilamentActionPermissions
     protected static function resourcePermissions(): array
     {
         return [
+            NewStudentAccountResource::class => self::resourceActions()[NewStudentAccountResource::class],
             PaymentStatusListResource::class => [
                 'viewAny',
                 'pay',

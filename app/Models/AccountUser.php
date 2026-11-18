@@ -33,7 +33,7 @@ class AccountUser extends User
             $attributes['id'] = $studentRecordId;
             $model = (new StudentLogin)->newInstance([], true);
         } else {
-            unset($attributes['student_id'], $attributes['auth_id']);
+            unset($attributes['student_id'], $attributes['auth_id'], $attributes['archived_at']);
             $model = (new User)->newInstance([], true);
         }
 

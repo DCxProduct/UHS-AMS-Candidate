@@ -32,7 +32,7 @@ class NewStudentAccountResourceTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const PERMISSIONS = ['ViewAny', 'Create', 'Update', 'ActivateAccount', 'DeactivateAccount', 'Delete'];
+    private const PERMISSIONS = ['ViewAny', 'Create', 'Update', 'ActivateAccount', 'DeactivateAccount'];
 
     private User $operator;
 
@@ -57,7 +57,7 @@ class NewStudentAccountResourceTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_authorized_staff_can_create_edit_and_delete_a_student_record_with_direct_edit_row_links(): void
+    public function test_authorized_staff_can_create_and_edit_a_retained_student_record_with_direct_edit_row_links(): void
     {
         $this->grant(...self::PERMISSIONS);
         $users = User::query()->count();
@@ -77,7 +77,7 @@ class NewStudentAccountResourceTest extends TestCase
             ->assertActionVisible('create')
             ->assertTableActionDoesNotExist('view', record: $record)
             ->assertTableActionVisible('edit', $record)
-            ->assertTableActionVisible('delete', $record);
+            ->assertTableActionDoesNotExist('delete', record: $record);
         foreach (['row_number', 'student_id', 'email', 'phone', 'first_name_latin', 'last_name_latin', 'is_active', 'created_at', 'updated_at'] as $column) {
             $list->assertTableColumnExists($column);
         }
@@ -87,14 +87,14 @@ class NewStudentAccountResourceTest extends TestCase
 
         Livewire::test(EditNewStudentAccount::class, ['record' => $record->getRouteKey()])
             ->assertActionDoesNotExist('view')
+            ->assertActionDoesNotExist('delete')
             ->fillForm(['last_name_latin' => 'VIREAK', 'is_active' => false])
             ->call('save')
             ->assertHasNoFormErrors();
         $this->assertSame('VIREAK', $record->fresh()->last_name_latin);
         $this->assertFalse($record->fresh()->is_active);
 
-        Livewire::test(ListNewStudentAccounts::class)->callTableAction('delete', $record);
-        $this->assertModelMissing($record);
+        $this->assertModelExists($record);
         $this->assertSame($users, User::query()->count());
         $this->assertSame($systemUsers, SystemUser::query()->count());
         Http::assertNothingSent();
@@ -114,7 +114,7 @@ class NewStudentAccountResourceTest extends TestCase
             ->assertActionHidden('create')
             ->assertTableActionDoesNotExist('view', record: $record)
             ->assertTableActionHidden('edit', $record)
-            ->assertTableActionHidden('delete', $record)
+            ->assertTableActionDoesNotExist('delete', record: $record)
             ->mountTableAction('delete', $record)
             ->callMountedTableAction();
         $this->assertModelExists($record);
@@ -133,7 +133,7 @@ class NewStudentAccountResourceTest extends TestCase
         $this->assertFalse(NewStudentAccountResource::can('deactivateAccount', $record));
     }
 
-    public function test_update_and_delete_permissions_are_independent(): void
+    public function test_update_permission_preserves_editing_but_legacy_delete_grants_never_enable_deletion(): void
     {
         $this->grant('ViewAny', 'Update');
         $record = NewStudentAccount::query()->create($this->data());
@@ -146,16 +146,19 @@ class NewStudentAccountResourceTest extends TestCase
         $this->assertFalse(NewStudentAccountResource::canDelete($record));
         Livewire::test(EditNewStudentAccount::class, ['record' => $record->getRouteKey()])
             ->assertActionDoesNotExist('view')
-            ->assertActionHidden('delete')
+            ->assertActionDoesNotExist('delete')
             ->call('mountAction', 'delete')
             ->call('callMountedAction');
         $this->assertModelExists($record);
 
         $this->grant('Delete');
-        $this->assertTrue(NewStudentAccountResource::canDelete($record));
+        $this->assertFalse(NewStudentAccountResource::canDelete($record));
         $this->assertFalse(NewStudentAccountResource::canDeleteAny());
         $this->grant('DeleteAny');
         $this->assertFalse(NewStudentAccountResource::canDeleteAny());
+        $this->assertFalse(NewStudentAccountResource::canForceDelete($record));
+        $this->assertFalse(NewStudentAccountResource::canForceDeleteAny());
+        $this->assertModelExists($record);
     }
 
     public function test_student_accounts_cannot_access_the_resource_even_when_crud_permissions_are_granted(): void
@@ -178,9 +181,9 @@ class NewStudentAccountResourceTest extends TestCase
         $this->get(NewStudentAccountResource::getUrl('index').'/'.$record->getRouteKey())->assertNotFound();
     }
 
-    public function test_bulk_delete_and_record_selection_are_removed_even_with_legacy_grants_while_single_delete_remains(): void
+    public function test_all_delete_actions_and_record_selection_are_removed_even_with_legacy_grants_and_admin_role(): void
     {
-        $this->grant('ViewAny', 'Delete', 'DeleteAny');
+        $this->grant('ViewAny', 'Update', 'Delete', 'DeleteAny', 'ForceDelete', 'ForceDeleteAny');
         $first = NewStudentAccount::query()->create($this->data());
         $second = NewStudentAccount::query()->create($this->data(['student_id' => 'STU-0002', 'email' => 'second-student@example.test', 'phone' => '098111222']));
 
@@ -189,10 +192,19 @@ class NewStudentAccountResourceTest extends TestCase
                 $this->operator->assignRole(Role::findOrCreate('admin', 'web'));
             }
             $this->assertTrue($this->operator->can('DeleteAny:NewStudentAccount'));
+            $this->assertFalse(NewStudentAccountResource::canDelete($first));
             $this->assertFalse(NewStudentAccountResource::canDeleteAny());
+            $this->assertFalse(NewStudentAccountResource::canForceDelete($first));
+            $this->assertFalse(NewStudentAccountResource::canForceDeleteAny());
             $list = Livewire::test(ListNewStudentAccounts::class)
                 ->assertCanSeeTableRecords([$first, $second])
-                ->assertTableActionVisible('delete', $first);
+                ->assertTableActionDoesNotExist('delete', record: $first)
+                ->mountTableAction('delete', $first)
+                ->callMountedTableAction();
+            Livewire::test(EditNewStudentAccount::class, ['record' => $first->getRouteKey()])
+                ->assertActionDoesNotExist('delete')
+                ->call('mountAction', 'delete')
+                ->call('callMountedAction');
             $this->assertNull($list->instance()->getTable()->getBulkAction('delete'));
             $this->assertFalse($list->instance()->getTable()->isSelectionEnabled());
             $this->assertSame([], $list->instance()->getTable()->getFlatBulkActions());
@@ -200,9 +212,9 @@ class NewStudentAccountResourceTest extends TestCase
             $this->assertModelExists($second);
         }
 
-        Livewire::test(ListNewStudentAccounts::class)->callTableAction('delete', $first);
-        $this->assertModelMissing($first);
+        $this->assertModelExists($first);
         $this->assertModelExists($second);
+        $this->assertSame(2, NewStudentAccount::query()->count());
     }
 
     public function test_student_identifiers_and_emails_are_validated_without_rejecting_unchanged_edit_values(): void

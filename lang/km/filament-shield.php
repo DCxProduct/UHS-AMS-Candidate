@@ -18,6 +18,8 @@ return [
         'pay' => 'បង់ប្រាក់',
         'activate_account' => 'បើកដំណើរការគណនី',
         'deactivate_account' => 'បិទដំណើរការគណនី',
+        'archive_account' => 'ទុកគណនីក្នុងបណ្ណសារ',
+        'restore_account' => 'ស្ដារគណនីពីបណ្ណសារ',
         'passed' => 'ជាប់',
         'edit_result' => 'កែប្រែលទ្ធផល',
         'pending' => 'កំពុងរង់ចាំ',

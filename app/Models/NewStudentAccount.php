@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\PreventsStudentAccountDeletion;
 use App\Support\AccountContacts;
 use App\Support\AccountContactUniqueness;
 use App\Support\AccountStorage;
+use App\Support\StudentAccountArchive;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -12,6 +14,8 @@ use Illuminate\Support\Str;
 
 class NewStudentAccount extends Model
 {
+    use PreventsStudentAccountDeletion;
+
     protected $fillable = [
         'student_id',
         'email',
@@ -42,6 +46,7 @@ class NewStudentAccount extends Model
             'password' => 'hashed',
             'email_verified_at' => 'datetime',
             'date_of_birth' => 'date',
+            'archived_at' => 'datetime',
         ];
     }
 
@@ -72,20 +77,17 @@ class NewStudentAccount extends Model
             ]);
         });
         static::saving(fn (self $account) => AccountContactUniqueness::assertForAuth($account));
-        static::deleted(function (self $account): void {
-            if ($account->auth_id === null || ! AccountStorage::ready()) {
-                return;
-            }
-            // Canonical account deletion uses the same stable ownership key.
-            DB::table('account_identities')->where('id', $account->auth_id)->where('storage', 'student')->delete();
-        });
     }
 
     public function save(array $options = [])
     {
         // Provisioning the stable identity must roll back if validation or the
         // account insert fails, including creates from the management resource.
-        return DB::transaction(fn () => parent::save($options));
+        return DB::transaction(function () use ($options) {
+            StudentAccountArchive::protectState($this);
+
+            return parent::save($options);
+        });
     }
 
     /** Preserve the account classification after its candidate row is moved. */
