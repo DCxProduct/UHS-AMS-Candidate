@@ -3,7 +3,6 @@
 namespace App\Filament\Admin\Resources\WorkflowNotifications\Pages;
 
 use App\Filament\Admin\Resources\WorkflowNotifications\WorkflowNotificationResource;
-use App\Filament\Admin\Resources\WorkflowStageTypes\WorkflowStageTypeResource;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Support\Enums\Width;
@@ -12,11 +11,6 @@ use Illuminate\Validation\ValidationException;
 class CreateWorkflowNotification extends CreateRecord
 {
     protected static string $resource = WorkflowNotificationResource::class;
-
-    protected function getHeaderActions(): array
-    {
-        return [WorkflowStageTypeResource::manageAction()];
-    }
 
     protected function getRedirectUrl(): string
     {

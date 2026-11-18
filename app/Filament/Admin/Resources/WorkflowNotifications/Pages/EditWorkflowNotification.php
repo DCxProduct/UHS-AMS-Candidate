@@ -3,7 +3,6 @@
 namespace App\Filament\Admin\Resources\WorkflowNotifications\Pages;
 
 use App\Filament\Admin\Resources\WorkflowNotifications\WorkflowNotificationResource;
-use App\Filament\Admin\Resources\WorkflowStageTypes\WorkflowStageTypeResource;
 use App\Models\WorkflowNotification;
 use Filament\Actions\DeleteAction;
 use Filament\Notifications\Notification;
@@ -49,7 +48,6 @@ class EditWorkflowNotification extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            WorkflowStageTypeResource::manageAction(),
             DeleteAction::make(),
         ];
     }
