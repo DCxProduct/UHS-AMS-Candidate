@@ -508,7 +508,7 @@ class WorkflowNotificationForm
                             Textarea::make('submission_messages.staff_notification_message')
                                 ->label(__('workflow_notifications.fields.staff_notification_message'))
                                 ->placeholder(__('workflow_notifications.placeholders.submission_staff_notification'))
-                                ->helperText(__('workflow_notifications.helpers.staff_message_placeholders'))
+                                ->helperText(self::staffMessageHelp('submission_staff_notification'))
                                 ->rows(1)
                                 ->autosize()
                                 ->maxLength(1000),
@@ -543,7 +543,7 @@ class WorkflowNotificationForm
                         Textarea::make('submission_messages.resubmission_staff.message')
                             ->label(__('workflow_notifications.fields.resubmission_staff_message'))
                             ->placeholder(__('workflow_notifications.placeholders.resubmission_staff_message'))
-                            ->helperText(__('workflow_notifications.helpers.staff_message_placeholders'))
+                            ->helperText(self::staffMessageHelp('resubmission_staff_message'))
                             ->rows(2)
                             ->autosize()
                             ->maxLength(1000),
@@ -609,7 +609,7 @@ class WorkflowNotificationForm
                             Textarea::make('audience_messages.staff_notification_message')
                                 ->label(__('workflow_notifications.fields.staff_notification_message'))
                                 ->placeholder(fn (Get $get): string => __('workflow_notifications.placeholders.stage_audiences.'.$get('stage_type').'.staff_notification_message'))
-                                ->helperText(__('workflow_notifications.helpers.staff_message_placeholders'))
+                                ->helperText(fn (Get $get): string => self::staffMessageHelp('stage_audiences.'.$get('stage_type').'.staff_notification_message'))
                                 ->rows(2)
                                 ->autosize()
                                 ->maxLength(1000),
@@ -743,7 +743,7 @@ class WorkflowNotificationForm
                             Textarea::make('review_actions.'.$action.'.staff_notification_message')
                                 ->label(__('workflow_notifications.fields.staff_notification_message'))
                                 ->placeholder(__('workflow_notifications.placeholders.review_actions.'.$action.'.staff_notification_message'))
-                                ->helperText(__('workflow_notifications.helpers.staff_message_placeholders'))
+                                ->helperText(self::staffMessageHelp('review_actions.'.$action.'.staff_notification_message'))
                                 ->rows(2)
                                 ->autosize()
                                 ->maxLength(1000),
@@ -761,6 +761,12 @@ class WorkflowNotificationForm
                         ])->columnSpan(1),
                     ]),
             ]);
+    }
+
+    private static function staffMessageHelp(string $exampleKey): string
+    {
+        return __('workflow_notifications.helpers.staff_message_placeholders').' '
+            .__('workflow_notifications.placeholders.'.$exampleKey);
     }
 
     private static function isAmsPayment(Get $get): bool

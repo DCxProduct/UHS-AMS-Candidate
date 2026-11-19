@@ -333,8 +333,8 @@ class WorkflowNotificationResourceTest extends TestCase
         $this->assertSame('សារស្ថានភាពសម្រាប់បេក្ខជន (ជាជម្រើស)', __('workflow_notifications.fields.status_message', [], 'km'));
         $this->assertSame('Candidate Notification Message (Optional)', __('workflow_notifications.fields.notification_message', [], 'en'));
         $this->assertSame('សារជូនដំណឹងសម្រាប់បេក្ខជន (ជាជម្រើស)', __('workflow_notifications.fields.notification_message', [], 'km'));
-        $this->assertSame('Example: Candidate Admission', __('workflow_notifications.placeholders.name', [], 'en'));
-        $this->assertSame('ឧទាហរណ៍៖ ការចុះឈ្មោះបេក្ខជន', __('workflow_notifications.placeholders.name', [], 'km'));
+        $this->assertSame('Candidate Admission', __('workflow_notifications.placeholders.name', [], 'en'));
+        $this->assertSame('ការចុះឈ្មោះបេក្ខជន', __('workflow_notifications.placeholders.name', [], 'km'));
     }
 
     public function test_access_follows_role_permissions(): void
