@@ -4,7 +4,6 @@ namespace App\Filament\Admin\Resources\WorkflowNotifications\Schemas;
 
 use App\Enums\WorkflowPaymentSource;
 use App\Enums\WorkflowStageType;
-use App\Filament\Admin\Resources\WorkflowStageTypes\WorkflowStageTypeResource;
 use App\Models\EmailTemplate;
 use App\Models\SmsTemplate;
 use App\Models\WorkflowNotification;
@@ -363,14 +362,6 @@ class WorkflowNotificationForm
                             self::applyStageTypeDefaults($definition, $get, $set);
                         }
                     })
-                    ->suffixAction(
-                        Action::make('manageStageTypes')
-                            ->label(__('workflow_stage_types.navigation_label'))
-                            ->icon('heroicon-o-cog-6-tooth')
-                            ->url(fn (): string => WorkflowStageTypeResource::getUrl('index'))
-                            ->openUrlInNewTab()
-                            ->visible(fn (): bool => WorkflowStageTypeResource::canViewAny()),
-                    )
                     ->native(false),
 
                 Hidden::make('enabled_actions')

@@ -2,12 +2,10 @@
 
 namespace App\Filament\Admin\Resources\WorkflowStageTypes\Schemas;
 
-use App\Filament\Admin\Resources\WorkflowButtons\WorkflowButtonResource;
 use App\Models\WorkflowButton;
 use App\Models\WorkflowStageType;
 use App\Support\WorkflowStageTypeSettings;
 use Closure;
-use Filament\Actions\Action;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -90,12 +88,6 @@ class WorkflowStageTypeForm
                         }
                     },
                 ])
-                ->suffixAction(Action::make('manageWorkflowButtons')
-                    ->label(__('workflow_buttons.navigation_label'))
-                    ->icon('heroicon-o-plus-circle')
-                    ->url(fn (): string => WorkflowButtonResource::getUrl('index'))
-                    ->openUrlInNewTab()
-                    ->visible(fn (): bool => WorkflowButtonResource::canViewAny()))
                 ->columnSpanFull(),
 
             Hidden::make('behavior')
