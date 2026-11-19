@@ -21,7 +21,6 @@ use App\Support\WorkflowStageMessages;
 use App\Support\WorkflowButtons;
 use App\Support\WorkflowStageProgression;
 use App\Support\WorkflowActionFeedback;
-use Carbon\Carbon;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Actions\Action;
@@ -177,9 +176,9 @@ class CandidateExitStatisticsTable
                             ->native(false)
                             ->live(),
 
-                        Select::make('reviewed_year')
-                            ->label(__('candidate_exit_statistics.filters.year'))
-                            ->options(fn (HasTable $livewire): array => self::reviewedYearOptions(TableFilterOptions::query($livewire, 'candidate_exit_statistics_filters', 'reviewed_year')))
+                        Select::make('academic_year')
+                            ->label(__('candidate_exit_statistics.fields.academic_year'))
+                            ->options(fn (HasTable $livewire): array => self::academicYearOptions(TableFilterOptions::query($livewire, 'candidate_exit_statistics_filters', 'academic_year')))
                             ->native(false)
                             ->live(),
                     ])
@@ -194,7 +193,7 @@ class CandidateExitStatisticsTable
                             ->when(filled($data['candidate_status'] ?? null), fn (Builder $query): Builder => self::applyReviewStatusFilter($query, (string) $data['candidate_status']))
                             ->when(filled($data['user_type'] ?? null), fn (Builder $query): Builder => $query->where('user_type', $data['user_type']))
                             ->when(filled($data['major'] ?? null), fn (Builder $query): Builder => $query->where('major', $data['major']))
-                            ->when(filled($data['reviewed_year'] ?? null), fn (Builder $query): Builder => $query->whereYear('candidate_reviewed_at', $data['reviewed_year']));
+                            ->when(filled($data['academic_year'] ?? null), fn (Builder $query): Builder => $query->where('academic_year', $data['academic_year']));
                     }),
             ], layout: FiltersLayout::AboveContent)
             ->deferFilters(false)
@@ -991,15 +990,11 @@ class CandidateExitStatisticsTable
             ->all();
     }
 
-    protected static function reviewedYearOptions(?Builder $query = null): array
+    protected static function academicYearOptions(?Builder $query = null): array
     {
-        return ($query ?? CandidateExitStatisticResource::getEloquentQuery())
-            ->whereNotNull('candidate_reviewed_at')
-            ->pluck('candidate_reviewed_at')
-            ->map(fn ($date): string => (string) Carbon::parse($date)->year)
-            ->unique()
-            ->sortDesc()
-            ->mapWithKeys(fn (string $year): array => [$year => $year])
+        return collect(self::distinctOptions('academic_year', $query))
+            ->filter(fn ($year): bool => filled($year) && trim((string) $year) !== '-')
+            ->sortDesc(SORT_NATURAL)
             ->all();
     }
 }
