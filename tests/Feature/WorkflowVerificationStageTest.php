@@ -10,6 +10,7 @@ use App\Filament\Admin\Resources\WorkflowNotifications\Pages\EditWorkflowNotific
 use App\Filament\Admin\Resources\WorkflowStageTypes\Pages\CreateWorkflowStageType;
 use App\Filament\Admin\Resources\WorkflowStageTypes\Pages\EditWorkflowStageType;
 use App\Filament\Admin\Resources\WorkflowStageTypes\Pages\ListWorkflowStageTypes;
+use App\Models\AmsPaymentRequest;
 use App\Models\Major;
 use App\Models\Role;
 use App\Models\User;
@@ -333,6 +334,92 @@ class WorkflowVerificationStageTest extends TestCase
         Mail::assertNothingSent();
     }
 
+    public static function paymentSources(): array
+    {
+        return [['system'], ['ams']];
+    }
+
+    #[DataProvider('paymentSources')]
+    public function test_confirmed_receipt_after_payment_supersedes_paid_status_until_an_exam_result_is_recorded(string $source): void
+    {
+        [$form, $workflow] = $this->paymentReceiptWorkflow($source);
+        $entry = $this->entry($form);
+        $this->review($entry);
+        $this->completePayment($entry, $source);
+        $this->assertSame(WorkflowStageType::Verification, WorkflowStageProgression::currentType($entry));
+        $this->assertSame('បានបង់ប្រាក់រួចរាល់', WorkflowStageMessages::statusText($entry));
+        $this->assertNull($entry->candidate_id);
+        $snapshot = $entry->getRawOriginal('workflow_snapshot');
+
+        // Receipt and payment wording remain frozen for an application already in progress.
+        $stages = $workflow->stages;
+        $stages[2]['data']['status_message'] = 'Changed live paid label';
+        $stages[3]['data']['status_message'] = 'Changed live receipt label';
+        $workflow->update(['stages' => $stages]);
+        $component = Livewire::test(ListCustomFormEntries::class)
+            ->assertTableActionVisible('verify', $entry)
+            ->callTableAction('verify', $entry)
+            ->assertHasNoTableActionErrors();
+        $entry->refresh();
+
+        $this->assertSame('BNM-0001', $entry->candidate_id);
+        $this->assertTrue(data_get($entry->data, 'workflow_progress.payment_completed'));
+        $this->assertTrue(data_get($entry->data, 'workflow_progress.verification_completed'));
+        $this->assertNotNull(WorkflowStageProgression::completedAt($entry, 2));
+        $this->assertNotNull(WorkflowStageProgression::completedAt($entry, 3));
+        $this->assertSame(WorkflowStageType::AwaitingResults, WorkflowStageProgression::currentType($entry));
+        $this->assertSame($snapshot, $entry->getRawOriginal('workflow_snapshot'));
+        $this->assertSame('Original answer', $entry->data['answer']);
+        $this->assertStatusForCandidateAndStaff($component, $entry, 'បានទទួលពាក្យស្នើសុំ');
+        $this->assertDatabaseHas('candidate_id_sequences', ['custom_form_id' => $form->id, 'last_sequence' => 1]);
+        $this->assertDatabaseCount('candidate_account_ids', 1);
+
+        $this->assertTrue(WorkflowStageProgression::passed($entry));
+        $this->assertSame('Exam passed', WorkflowStageMessages::statusText($entry));
+        $this->assertTrue(WorkflowStageMessages::notifyConfiguredStage($entry, WorkflowStageType::Completed));
+        $this->assertSame('Certification released', WorkflowStageMessages::statusText($entry));
+        $this->assertSame('BNM-0001', $entry->candidate_id);
+        $this->assertSame($snapshot, $entry->fresh()->getRawOriginal('workflow_snapshot'));
+    }
+
+    #[DataProvider('paymentSources')]
+    public function test_confirmed_receipt_with_a_blank_label_uses_the_receipt_default_instead_of_an_earlier_paid_label(string $source): void
+    {
+        [$form] = $this->paymentReceiptWorkflow($source, receiptStatus: ' ');
+        $entry = $this->entry($form);
+        $this->review($entry);
+        $this->completePayment($entry, $source);
+        $component = Livewire::test(ListCustomFormEntries::class)
+            ->callTableAction('verify', $entry)
+            ->assertHasNoTableActionErrors();
+        $entry->refresh();
+
+        $this->assertSame(WorkflowStageType::AwaitingResults, WorkflowStageProgression::currentType($entry));
+        $this->assertTrue(data_get($entry->data, 'workflow_progress.verification_completed'));
+        $this->assertStatusForCandidateAndStaff($component, $entry, __('workflow_notifications.status_defaults.verified'));
+    }
+
+    #[DataProvider('paymentSources')]
+    public function test_payment_after_confirmed_receipt_supersedes_the_earlier_receipt_label(string $source): void
+    {
+        [$form] = $this->paymentReceiptWorkflow($source, receiptFirst: true);
+        $entry = $this->entry($form);
+        $this->review($entry);
+        $component = Livewire::test(ListCustomFormEntries::class)
+            ->callTableAction('verify', $entry)
+            ->assertHasNoTableActionErrors();
+        $entry->refresh();
+        $this->assertSame(WorkflowStageType::Payment, WorkflowStageProgression::currentType($entry));
+        $this->assertSame('បានទទួលពាក្យស្នើសុំ', WorkflowStageMessages::statusText($entry));
+
+        $this->completePayment($entry, $source);
+
+        $this->assertSame(WorkflowStageType::AwaitingResults, WorkflowStageProgression::currentType($entry));
+        $this->assertNotNull(WorkflowStageProgression::completedAt($entry, 2));
+        $this->assertNotNull(WorkflowStageProgression::completedAt($entry, 3));
+        $this->assertStatusForCandidateAndStaff($component, $entry, 'បានបង់ប្រាក់រួចរាល់');
+    }
+
     public function test_workflow_receipt_rechecks_view_manager_responsible_role_owner_actor_and_fresh_stage_after_mount(): void
     {
         [$form] = $this->workflow();
@@ -545,6 +632,63 @@ class WorkflowVerificationStageTest extends TestCase
         $this->assertSame($snapshot, $entry->getRawOriginal('workflow_snapshot'));
         $this->assertDatabaseHas('candidate_id_sequences', ['custom_form_id' => $form->id, 'last_sequence' => 1]);
         $this->assertDatabaseCount('candidate_account_ids', 1);
+    }
+
+    private function paymentReceiptWorkflow(string $source, bool $receiptFirst = false, string $receiptStatus = 'បានទទួលពាក្យស្នើសុំ'): array
+    {
+        // Outbound delivery is unrelated to the confirmed payment state being exercised here.
+        config()->set('services.ams.enabled', false);
+        [$form, $workflow] = $this->workflow();
+        $stages = $this->stages();
+        $stages[1]['data']['status_message'] = $receiptStatus;
+        $stages[2]['data']['payment_source'] = $source;
+        $stages[2]['data']['status_message'] = 'បានបង់ប្រាក់រួចរាល់';
+        $stages[3]['data']['status_message'] = 'Exam passed';
+        $stages[4]['data']['status_message'] = 'Certification released';
+        $stages[4]['data']['notification_message'] = 'Your final certificate result is available.';
+        $stages[4]['data']['notification_channels'] = ['system'];
+        $submission = ['type' => 'stage', 'data' => [
+            'stage_type' => 'form_submission', 'stage_name' => 'Submit form',
+            'submission_messages' => ['candidate_status_message' => 'Application submitted'],
+        ]];
+        $workflow->update(['stages' => [
+            $submission, $stages[0], ...($receiptFirst ? [$stages[1], $stages[2]] : [$stages[2], $stages[1]]),
+            $stages[3], $stages[4],
+        ]]);
+
+        return [$form, $workflow];
+    }
+
+    private function completePayment(CustomFormEntry $entry, string $source): void
+    {
+        if ($source === 'ams') {
+            AmsPaymentRequest::query()->updateOrCreate(['custom_form_entry_id' => $entry->id], [
+                'payment_status' => 'paid',
+                'external_payment_id' => 'receipt-status-'.$entry->id,
+            ]);
+            $this->assertTrue(WorkflowStageProgression::paid($entry));
+        } else {
+            app(CandidatePaymentRecorder::class)->record([
+                'custom_form_entry_id' => $entry->id, 'receipt_number' => 'RECEIPT-STATUS-'.$entry->id,
+                'amount_usd' => 10, 'datetime_pay' => now(),
+            ]);
+        }
+        $entry->refresh();
+    }
+
+    private function assertStatusForCandidateAndStaff($component, CustomFormEntry $entry, string $expected): void
+    {
+        $before = $this->row($entry);
+        foreach ([$this->staff, $this->candidate] as $viewer) {
+            $this->actingAs($viewer);
+            $column = clone $component->instance()->getTable()->getColumn('review_status');
+            $column->record($entry);
+            $column->clearCachedState();
+            $this->assertSame($expected, $column->formatState($column->getState()));
+            $this->assertSame($expected, WorkflowStageMessages::statusText($entry));
+        }
+        $this->actingAs($this->staff);
+        $this->assertSame($before, $this->row($entry));
     }
 
     private function workflow(bool $verification = true): array
