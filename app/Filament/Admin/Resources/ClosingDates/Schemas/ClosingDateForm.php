@@ -136,7 +136,6 @@ class ClosingDateForm
                             ->format('Y-m-d')
                             ->required()
                             ->live()
-                            ->maxDate(fn (Get $get) => $get('end_date') ?: null)
                             ->rules([
                                 'required',
                                 'date',
@@ -166,7 +165,6 @@ class ClosingDateForm
                             ->format('Y-m-d')
                             ->required()
                             ->live()
-                            ->minDate(fn (Get $get) => $get('start_date') ?: null)
                             ->rules([
                                 'required',
                                 'date',
