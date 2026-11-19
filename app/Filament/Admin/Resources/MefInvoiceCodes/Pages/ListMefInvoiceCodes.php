@@ -3,17 +3,19 @@
 namespace App\Filament\Admin\Resources\MefInvoiceCodes\Pages;
 
 use App\Filament\Admin\Resources\MefInvoiceCodes\MefInvoiceCodeResource;
+use App\Services\MefInvoiceCodeExportService;
 use App\Services\MefInvoiceCodeImportService;
 use App\Support\AuditLogger;
 use App\Support\FilamentActionPermissions;
-use App\Support\MenuRecordVisibility;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Forms\Components\FileUpload;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ListMefInvoiceCodes extends ListRecords
 {
@@ -58,32 +60,40 @@ class ListMefInvoiceCodes extends ListRecords
                         ->success()
                         ->send();
                 }),
+            Action::make('download_template')
+                ->label(__('mef_invoice_codes.actions.download_template'))
+                ->color('success')
+                ->authorize(fn (): bool => MefInvoiceCodeResource::canAccess()
+                    && FilamentActionPermissions::canForResource(MefInvoiceCodeResource::class, 'import_excel'))
+                ->alpineClickHandler(self::tableSelectionClickHandler('download_template'))
+                ->action(function (array $arguments = []): BinaryFileResponse {
+                    abort_unless(MefInvoiceCodeResource::canAccess(), 403);
+                    FilamentActionPermissions::abortUnlessCanForResource(MefInvoiceCodeResource::class, 'import_excel');
+
+                    $records = $this->selectedOrCurrentPageQuery(...$this->tableSelectionArguments($arguments))->get();
+
+                    return app(MefInvoiceCodeExportService::class)->download($records);
+                }),
             CreateAction::make()
                 ->label(__('mef_invoice_codes.actions.create')),
             Action::make('clear_data')
                 ->label(__('app.clear_data'))
                 ->color('danger')
                 ->visible(fn (): bool => FilamentActionPermissions::canForResource(MefInvoiceCodeResource::class, 'clear_data'))
+                ->authorize(fn (): bool => MefInvoiceCodeResource::canAccess()
+                    && FilamentActionPermissions::canForResource(MefInvoiceCodeResource::class, 'clear_data'))
                 ->requiresConfirmation()
                 ->modalHeading(__('app.clear_data'))
-                ->modalDescription(__('mef_invoice_codes.messages.clear_confirm'))
+                ->modalDescription(fn (array $arguments): string => __(
+                    $this->hasTableSelection($arguments)
+                        ? 'mef_invoice_codes.messages.clear_confirm'
+                        : 'mef_invoice_codes.messages.clear_page_confirm',
+                    ['count' => $this->selectedOrCurrentPageQuery(...$this->tableSelectionArguments($arguments))->count()],
+                ))
                 ->modalSubmitActionLabel(__('app.clear_data'))
                 ->modalCancelActionLabel(__('app.cancel'))
-                ->alpineClickHandler(<<<'JS'
-                    const table = document.querySelector('.fi-ta');
-                    const tableData = table?._x_dataStack?.find((data) => data.selectedRecords instanceof Set);
-
-                    $wire.mountAction('clear_data', {
-                        selectedRecordKeys: tableData ? [...tableData.selectedRecords] : [],
-                        isTrackingDeselectedRecords: tableData ? tableData.isTrackingDeselectedRecords : false,
-                        deselectedRecordKeys: tableData ? [...tableData.deselectedRecords] : [],
-                    });
-                JS)
-                ->action(fn (array $arguments) => $this->clearDataFromTableSelection(
-                    $arguments['selectedRecordKeys'] ?? [],
-                    (bool) ($arguments['isTrackingDeselectedRecords'] ?? false),
-                    $arguments['deselectedRecordKeys'] ?? [],
-                )),
+                ->alpineClickHandler(self::tableSelectionClickHandler('clear_data'))
+                ->action(fn (array $arguments) => $this->clearDataFromTableSelection(...$this->tableSelectionArguments($arguments))),
         ];
     }
 
@@ -92,17 +102,10 @@ class ListMefInvoiceCodes extends ListRecords
         bool $isTrackingDeselectedRecords = false,
         array $deselectedRecordKeys = [],
     ): void {
+        abort_unless(MefInvoiceCodeResource::canAccess(), 403);
         FilamentActionPermissions::abortUnlessCanForResource(MefInvoiceCodeResource::class, 'clear_data');
 
-        $query = MenuRecordVisibility::includingCleared(fn () => $this->getFilteredTableQuery());
-
-        if ($isTrackingDeselectedRecords) {
-            if (filled($deselectedRecordKeys)) {
-                $query->whereKeyNot($deselectedRecordKeys);
-            }
-        } elseif (filled($selectedRecordKeys)) {
-            $query->whereKey($selectedRecordKeys);
-        }
+        $query = $this->selectedOrCurrentPageQuery($selectedRecordKeys, $isTrackingDeselectedRecords, $deselectedRecordKeys);
 
         $count = $query->toBase()->delete();
 
@@ -116,6 +119,66 @@ class ListMefInvoiceCodes extends ListRecords
         $this->deselectedTableRecords = [];
         $this->isTrackingDeselectedTableRecords = false;
         $this->flushCachedTableRecords();
+        $this->deselectAllTableRecords();
         $this->dispatch('$refresh');
+    }
+
+    private function selectedOrCurrentPageQuery(
+        array $selectedRecordKeys,
+        bool $isTrackingDeselectedRecords,
+        array $deselectedRecordKeys,
+    ): Builder {
+        $query = $this->getFilteredSortedTableQuery();
+
+        if ($isTrackingDeselectedRecords) {
+            return $query->whereKeyNot(self::validRecordKeys($deselectedRecordKeys));
+        }
+
+        if ($selectedRecordKeys !== []) {
+            return $query->whereKey(self::validRecordKeys($selectedRecordKeys));
+        }
+
+        $visibleKeys = [];
+        foreach ($this->getTableRecords() as $record) {
+            $visibleKeys[] = $record->getKey();
+        }
+
+        return $query->whereKey($visibleKeys);
+    }
+
+    private function tableSelectionArguments(array $arguments): array
+    {
+        return [
+            $arguments['selectedRecordKeys'] ?? $this->selectedTableRecords,
+            (bool) ($arguments['isTrackingDeselectedRecords'] ?? $this->isTrackingDeselectedTableRecords),
+            $arguments['deselectedRecordKeys'] ?? $this->deselectedTableRecords,
+        ];
+    }
+
+    private function hasTableSelection(array $arguments): bool
+    {
+        [$selected, $tracking] = $this->tableSelectionArguments($arguments);
+
+        return $tracking || $selected !== [];
+    }
+
+    private static function validRecordKeys(array $keys): array
+    {
+        return array_values(array_filter($keys, fn (mixed $key): bool => (is_int($key) || is_string($key))
+            && ctype_digit((string) $key) && (int) $key > 0));
+    }
+
+    private static function tableSelectionClickHandler(string $action): string
+    {
+        return str_replace('__ACTION__', $action, <<<'JS'
+            const table = $el.closest('[wire\\:id]')?.querySelector('.fi-ta');
+            const tableData = table?._x_dataStack?.find((data) => data.selectedRecords instanceof Set);
+
+            $wire.mountAction('__ACTION__', {
+                selectedRecordKeys: tableData ? [...tableData.selectedRecords] : [],
+                isTrackingDeselectedRecords: tableData ? tableData.isTrackingDeselectedRecords : false,
+                deselectedRecordKeys: tableData ? [...tableData.deselectedRecords] : [],
+            });
+        JS);
     }
 }

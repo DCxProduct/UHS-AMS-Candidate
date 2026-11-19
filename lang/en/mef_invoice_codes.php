@@ -22,7 +22,8 @@ return [
         'invoice_code_symbols_only' => 'Invoice Code can contain numbers and symbols only.',
     ],
     'messages' => [
-        'clear_confirm' => 'This will permanently delete the selected records, or all filtered records when none are selected, including previously cleared records. Deleted data cannot be restored.',
+        'clear_confirm' => 'Permanently delete the :count selected rows? Deleted data cannot be restored.',
+        'clear_page_confirm' => 'No rows selected. Permanently delete the :count rows on the current page? Deleted data cannot be restored.',
     ],
     'table' => [
         'no' => 'No',
@@ -35,6 +36,7 @@ return [
         'delete' => 'Delete',
         'actions' => 'Actions',
         'import_excel' => 'Import Excel',
+        'download_template' => 'Download Excel Template',
         'export_excel' => 'Export Excel',
     ],
     'import' => [

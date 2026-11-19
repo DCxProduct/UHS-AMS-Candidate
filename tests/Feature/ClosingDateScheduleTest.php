@@ -89,6 +89,64 @@ class ClosingDateScheduleTest extends TestCase
         $this->assertSame(2, ClosingDate::query()->where('type', $type)->count());
     }
 
+    public static function dateRangeEditingOrders(): array
+    {
+        return [
+            'later start first' => ['2026-10-20', '2026-10-31', 'start_date', '2026-11-11', '2026-11-30'],
+            'earlier end first' => ['2026-11-20', '2026-11-30', 'end_date', '2026-11-10', '2026-11-01'],
+        ];
+    }
+
+    #[DataProvider('dateRangeEditingOrders')]
+    public function test_either_date_can_be_edited_first_without_changing_the_other_date_or_saving_an_invalid_range(
+        string $originalStart,
+        string $originalEnd,
+        string $firstField,
+        string $firstValue,
+        string $otherValue,
+    ): void {
+        $degree = DegreeLevel::query()->create(['key' => 'editing-range', 'label_en' => 'Editing range degree', 'is_active' => true]);
+        $schedule = $this->schedule($this->form('Editable date range'), $originalStart, $originalEnd);
+        $schedule->update(['degree_level_id' => $degree->id]);
+        $before = $schedule->fresh()->getRawOriginal();
+        $otherField = $firstField === 'start_date' ? 'end_date' : 'start_date';
+        $edit = Livewire::test(EditClosingDate::class, ['record' => $schedule->getRouteKey()]);
+        $originalOther = $edit->get('data.'.$otherField);
+        $fields = $edit->instance()->form->getFlatFields(withHidden: true);
+        $this->assertNull($fields['start_date']->getMaxDate());
+        $this->assertNull($fields['end_date']->getMinDate());
+
+        $edit->set('data.'.$firstField, $firstValue)
+            ->assertSet('data.'.$firstField, $firstValue)
+            ->assertSet('data.'.$otherField, $originalOther);
+        $this->assertSame($before, $schedule->fresh()->getRawOriginal());
+        $edit->call('save')->assertHasFormErrors(['start_date', 'end_date']);
+        $this->assertSame($before, $schedule->fresh()->getRawOriginal());
+
+        $edit->set('data.'.$otherField, $otherValue)->call('save')->assertHasNoFormErrors();
+        $saved = $schedule->fresh();
+        $this->assertSame($firstValue, $saved->{$firstField}->toDateString());
+        $this->assertSame($otherValue, $saved->{$otherField}->toDateString());
+        $this->assertSame($degree->id, $saved->degree_level_id);
+        $this->assertDatabaseCount('closing_dates', 1);
+    }
+
+    public function test_creating_a_same_day_schedule_still_requires_the_end_date(): void
+    {
+        $degree = DegreeLevel::query()->create(['key' => 'same-day', 'label_en' => 'Same day degree', 'is_active' => true]);
+        $form = $this->form('Same day schedule');
+        $create = Livewire::test(CreateClosingDate::class)->fillForm([
+            'name' => 'One day intake', 'type' => [ClosingDate::customFormTypeKey($form->id)],
+            'degree_level_id' => $degree->id, 'status' => 'open', 'start_date' => '2026-11-11', 'end_date' => null,
+        ])->call('create')->assertHasFormErrors(['end_date' => 'required']);
+        $this->assertDatabaseCount('closing_dates', 0);
+
+        $create->fillForm(['end_date' => '2026-11-11'])->call('create')->assertHasNoFormErrors();
+        $schedule = ClosingDate::query()->sole();
+        $this->assertSame('2026-11-11', $schedule->start_date->toDateString());
+        $this->assertSame('2026-11-11', $schedule->end_date->toDateString());
+    }
+
     public function test_an_expired_schedule_can_be_followed_by_a_new_open_schedule_for_the_same_form(): void
     {
         $form = $this->form('Renewed application');
