@@ -10,7 +10,6 @@ use App\Support\LocalizedDate;
 use App\Support\WorkflowNotificationStageSummary;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
-use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -89,9 +88,7 @@ class WorkflowNotificationsTable
                 ]),
             ])
             ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
+                DeleteBulkAction::make()->button(),
             ]);
     }
 
