@@ -180,10 +180,27 @@ final class WorkflowStatusSearch
                 $states->where(function (Builder $finished) use ($search): void {
                     $finished->where('data->workflow_progress->finished', true);
                     self::firstText($finished, $search, [['verification', 'status_message']], __('workflow_notifications.status_defaults.verified'));
+                })->orWhere(function (Builder $pending) use ($search): void {
+                    self::notTrue($pending, 'data->workflow_progress->finished');
+                    $pending->where(function (Builder $labels) use ($search): void {
+                        $labels->where(function (Builder $paid) use ($search): void {
+                            self::stageCompleted($paid, 'payment');
+                            self::paid($paid);
+                            self::firstText($paid, $search, [['payment', 'status_message']], __('workflow_notifications.status_defaults.verification'));
+                        });
+                        if (self::contains(__('workflow_notifications.status_defaults.verification'), $search)) {
+                            $labels->orWhere(function (Builder $unpaid): void {
+                                // Missing JSON keys must retain the pending label;
+                                // negating their SQL NULL predicates would hide it.
+                                $paid = $unpaid->getModel()->newQueryWithoutScopes();
+                                self::stageCompleted($paid, 'payment');
+                                self::paid($paid);
+                                $key = $unpaid->getModel()->getQualifiedKeyName();
+                                $unpaid->whereNotIn($key, $paid->select($key));
+                            });
+                        }
+                    });
                 });
-                if (self::contains(__('workflow_notifications.status_defaults.verification'), $search)) {
-                    $states->orWhere(fn (Builder $pending): Builder => self::notTrue($pending, 'data->workflow_progress->finished'));
-                }
             });
         } elseif ($type === 'payment') {
             $query->where(function (Builder $states) use ($search): void {
@@ -202,16 +219,28 @@ final class WorkflowStatusSearch
                 })->orWhere(function (Builder $waiting) use ($search): void {
                     self::notTrue($waiting, 'data->workflow_progress->result_passed');
                     $waiting->where(function (Builder $labels) use ($search): void {
-                        $labels->where(function (Builder $paid) use ($search): void {
-                            self::stageCompleted($paid, 'payment');
-                            self::paid($paid);
-                            self::firstText($paid, $search, [['payment', 'status_message'], ['awaiting_results', 'result_statuses.pending_status_message']], __('candidate_entrance_statistics.statuses.pending'));
-                        })->orWhere(function (Builder $unpaid) use ($search): void {
-                            $unpaid->whereNot(function (Builder $paid): void {
-                                self::stageCompleted($paid, 'payment');
-                                self::paid($paid);
+                        $labels->where(function (Builder $received) use ($search): void {
+                            self::receiptStatusApplies($received);
+                            self::firstText($received, $search, [['verification', 'status_message']], __('workflow_notifications.status_defaults.verified'));
+                        })->orWhere(function (Builder $other) use ($search): void {
+                            $received = $other->getModel()->newQueryWithoutScopes();
+                            self::receiptStatusApplies($received);
+                            $key = $other->getModel()->getQualifiedKeyName();
+                            $other->whereNotIn($key, $received->select($key));
+                            $other->where(function (Builder $paymentLabels) use ($search): void {
+                                $paymentLabels->where(function (Builder $paid) use ($search): void {
+                                    self::stageCompleted($paid, 'payment');
+                                    self::paid($paid);
+                                    self::firstText($paid, $search, [['payment', 'status_message'], ['awaiting_results', 'result_statuses.pending_status_message']], __('candidate_entrance_statistics.statuses.pending'));
+                                })->orWhere(function (Builder $unpaid) use ($search): void {
+                                    $paid = $unpaid->getModel()->newQueryWithoutScopes();
+                                    self::stageCompleted($paid, 'payment');
+                                    self::paid($paid);
+                                    $key = $unpaid->getModel()->getQualifiedKeyName();
+                                    $unpaid->whereNotIn($key, $paid->select($key));
+                                    self::firstText($unpaid, $search, [['awaiting_results', 'result_statuses.pending_status_message']], __('candidate_entrance_statistics.statuses.pending'));
+                                });
                             });
-                            self::firstText($unpaid, $search, [['awaiting_results', 'result_statuses.pending_status_message']], __('candidate_entrance_statistics.statuses.pending'));
                         });
                     });
                 });
@@ -238,6 +267,66 @@ final class WorkflowStatusSearch
                 });
             });
         }
+    }
+
+    /** Keep the receipt label when receipt is the later completed action. */
+    private static function receiptStatusApplies(Builder $query): Builder
+    {
+        self::stageCompleted($query, 'verification');
+        $paid = $query->getModel()->newQueryWithoutScopes();
+        self::stageCompleted($paid, 'payment');
+        self::paid($paid);
+        $key = $query->getModel()->getQualifiedKeyName();
+        $orderPairs = self::receiptAfterPaymentPositions();
+
+        return $query->where(function (Builder $states) use ($paid, $key, $orderPairs): void {
+            $states->whereNotIn($key, $paid->select($key))
+                ->orWhere(function (Builder $order) use ($orderPairs): void {
+                    $order->whereRaw('1 = 0');
+                    foreach ($orderPairs as [$receiptIndex, $paymentIndex]) {
+                        $order->orWhere(function (Builder $receipt) use ($receiptIndex, $paymentIndex): void {
+                            self::stageTypeAt($receipt, $receiptIndex, 'verification');
+                            self::stageTypeAt($receipt, $paymentIndex, 'payment');
+                        });
+                    }
+                });
+        });
+    }
+
+    /** Use actual frozen/template orders to avoid planning every possible pair. */
+    private static function receiptAfterPaymentPositions(): array
+    {
+        $pairs = [];
+        $stageLimit = count(WorkflowStageType::cases());
+        if (self::$reviewStageSets === null) {
+            for ($receiptIndex = 1; $receiptIndex < $stageLimit; $receiptIndex++) {
+                for ($paymentIndex = 0; $paymentIndex < $receiptIndex; $paymentIndex++) {
+                    $pairs[] = [$receiptIndex, $paymentIndex];
+                }
+            }
+
+            return $pairs;
+        }
+
+        foreach (self::$reviewStageSets as $stages) {
+            $paymentPositions = [];
+            for ($index = 0; $index < $stageLimit; $index++) {
+                $stage = $stages[$index] ?? null;
+                $stage = is_array($stage) && is_array($stage['data'] ?? null) ? $stage['data'] : $stage;
+                if (! is_array($stage)) {
+                    continue;
+                }
+                if (($stage['stage_type'] ?? null) === 'payment') {
+                    $paymentPositions[] = $index;
+                } elseif (($stage['stage_type'] ?? null) === 'verification') {
+                    foreach ($paymentPositions as $paymentIndex) {
+                        $pairs[$index.':'.$paymentIndex] = [$index, $paymentIndex];
+                    }
+                }
+            }
+        }
+
+        return array_values($pairs);
     }
 
     private static function sharedOrderedReview(Builder $query): Builder

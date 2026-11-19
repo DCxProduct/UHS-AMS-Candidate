@@ -149,6 +149,95 @@ class WorkflowOrderedStagesTest extends TestCase
         $this->assertNull($this->completedAt($ams->fresh(), WorkflowStageType::Payment));
     }
 
+    #[DataProvider('paymentSources')]
+    public function test_paid_label_stays_visible_to_candidate_and_staff_until_the_later_receipt_is_confirmed(string $source): void
+    {
+        [$entry, $workflow] = $this->paidAwaitingVerificationEntry($source, 'បានបង់ប្រាក់រួចរាល់');
+        $before = $entry->getRawOriginal('data');
+        $snapshot = $entry->getRawOriginal('workflow_snapshot');
+        $table = Livewire::test(ListCustomFormEntries::class)->instance()->getTable();
+
+        foreach ([$this->admin, $this->candidate] as $viewer) {
+            $this->actingAs($viewer);
+            $column = clone $table->getColumn('review_status');
+            $column->record($entry);
+            $column->clearCachedState();
+            $this->assertSame('បានបង់ប្រាក់រួចរាល់', $column->formatState($column->getState()));
+        }
+        $this->assertSame(WorkflowStageType::Verification, WorkflowStageProgression::currentType($entry));
+        $this->assertNotNull($this->completedAt($entry, WorkflowStageType::Payment));
+        $this->assertNull($this->completedAt($entry, WorkflowStageType::Verification));
+        $this->assertNull($entry->candidate_id);
+        $this->assertFalse(WorkflowStageProgression::finished($entry));
+        $this->assertSame($before, $entry->fresh()->getRawOriginal('data'));
+        $this->assertSame($snapshot, $entry->fresh()->getRawOriginal('workflow_snapshot'));
+        $this->assertDatabaseCount('payments', $source === 'ams' ? 0 : 1);
+
+        $stages = $workflow->stages;
+        $stages[2]['data']['status_message'] = 'Changed payment wording';
+        $stages[3]['data']['status_message'] = 'Changed receipt wording';
+        $workflow->update(['stages' => $stages]);
+        $this->assertSame('បានបង់ប្រាក់រួចរាល់', WorkflowStageMessages::statusText($entry->fresh()));
+
+        $this->actingAs($this->admin);
+        DB::table('custom_form_entries')->where('id', $entry->id)->update(['candidate_id' => 'RECEIPT-'.$entry->id]);
+        $entry->refresh();
+        $this->assertTrue(WorkflowStageProgression::verified($entry));
+        $this->assertTrue(WorkflowStageProgression::finished($entry));
+        $this->assertSame('Application received', WorkflowStageMessages::statusText($entry));
+        $this->assertSame($snapshot, $entry->fresh()->getRawOriginal('workflow_snapshot'));
+    }
+
+    #[DataProvider('paymentSources')]
+    public function test_receipt_after_payment_keeps_the_waiting_default_when_the_paid_label_is_blank(string $source): void
+    {
+        [$entry] = $this->paidAwaitingVerificationEntry($source, ' ');
+
+        $this->assertSame(WorkflowStageType::Verification, WorkflowStageProgression::currentType($entry));
+        $this->assertSame(__('workflow_notifications.status_defaults.verification'), WorkflowStageMessages::statusText($entry));
+        $this->assertNull($this->completedAt($entry, WorkflowStageType::Verification));
+    }
+
+    public function test_reversed_ams_payment_removes_the_paid_label_while_application_receipt_is_still_waiting(): void
+    {
+        [$entry] = $this->paidAwaitingVerificationEntry('ams', 'បានបង់ប្រាក់រួចរាល់');
+        AmsPaymentRequest::query()->where('custom_form_entry_id', $entry->id)->update(['payment_status' => 'unpaid']);
+
+        $this->assertTrue(WorkflowStageProgression::rollbackUnpaidAutoCompletion($entry));
+        $this->assertSame(WorkflowStageType::Payment, WorkflowStageProgression::currentType($entry));
+        $this->assertNull($this->completedAt($entry, WorkflowStageType::Payment));
+        $this->assertNull($this->completedAt($entry, WorkflowStageType::Verification));
+        $this->assertSame('Checked', WorkflowStageMessages::statusText($entry));
+    }
+
+    #[DataProvider('paymentSources')]
+    public function test_receipt_before_payment_does_not_display_a_future_paid_label_from_an_existing_payment_record(string $source): void
+    {
+        [$form, $workflow] = $this->workflow([
+            WorkflowStageType::FormSubmission, WorkflowStageType::Review,
+            WorkflowStageType::Verification, WorkflowStageType::Payment,
+        ]);
+        $stages = $workflow->stages;
+        $stages[3]['data']['payment_source'] = $source;
+        $stages[3]['data']['status_message'] = 'បានបង់ប្រាក់រួចរាល់';
+        $workflow->update(['stages' => $stages]);
+        $entry = $this->entry($form);
+        WorkflowStageProgression::submitted($entry);
+        $this->performEngineEvent($entry, WorkflowStageType::Review);
+        if ($source === 'ams') {
+            AmsPaymentRequest::query()->create(['custom_form_entry_id' => $entry->id, 'payment_status' => 'paid']);
+        } else {
+            $this->payment($entry);
+        }
+        $entry->refresh();
+        $before = $entry->getRawOriginal('data');
+
+        $this->assertSame(WorkflowStageType::Verification, WorkflowStageProgression::currentType($entry));
+        $this->assertNull($this->completedAt($entry, WorkflowStageType::Payment));
+        $this->assertSame(__('workflow_notifications.status_defaults.verification'), WorkflowStageMessages::statusText($entry));
+        $this->assertSame($before, $entry->fresh()->getRawOriginal('data'));
+    }
+
     public function test_results_before_payment_cannot_display_a_paid_label_before_the_payment_checkpoint_completes(): void
     {
         [$form, $workflow] = $this->workflow([
@@ -728,6 +817,41 @@ class WorkflowOrderedStagesTest extends TestCase
         if ($source === 'ams') {
             AmsPaymentRequest::query()->updateOrCreate(['custom_form_entry_id' => $entry->id], [
                 'payment_status' => 'paid', 'external_payment_id' => 'external-'.$entry->id,
+            ]);
+        } else {
+            $this->payment($entry);
+        }
+        WorkflowStageProgression::paid($entry);
+
+        return [$entry->fresh(), $workflow];
+    }
+
+    private function paidAwaitingVerificationEntry(string $source, string $paidLabel): array
+    {
+        config()->set('services.ams', [
+            'enabled' => true, 'base_url' => 'https://ams.example.test', 'token' => 'outbound-secret',
+            'callback_token' => 'callback-secret', 'timeout' => 5,
+        ]);
+        Http::swap(new HttpFactory);
+        Http::fake(fn ($request) => Http::response([
+            'application_id' => $request['application_id'],
+            'ams_request_id' => 'receipt-after-payment-'.$request['application_id'], 'payment_status' => 'unpaid',
+        ], 201));
+        [$form, $workflow] = $this->workflow([
+            WorkflowStageType::FormSubmission, WorkflowStageType::Review,
+            WorkflowStageType::Payment, WorkflowStageType::Verification,
+        ]);
+        $stages = $workflow->stages;
+        $stages[2]['data']['payment_source'] = $source;
+        $stages[2]['data']['status_message'] = $paidLabel;
+        $stages[3]['data']['status_message'] = 'Application received';
+        $workflow->update(['stages' => $stages]);
+        $entry = $this->entry($form);
+        WorkflowStageProgression::submitted($entry);
+        $this->performEngineEvent($entry, WorkflowStageType::Review);
+        if ($source === 'ams') {
+            AmsPaymentRequest::query()->updateOrCreate(['custom_form_entry_id' => $entry->id], [
+                'payment_status' => 'paid', 'external_payment_id' => 'external-receipt-'.$entry->id,
             ]);
         } else {
             $this->payment($entry);
