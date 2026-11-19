@@ -9,6 +9,7 @@ use App\Support\WorkflowActionFeedback;
 use App\Support\StaticWorkflowMessages;
 use App\Enums\WorkflowStageType;
 use App\Filament\Admin\Resources\CandidateEntranceStatistics\CandidateEntranceStatisticResource;
+use App\Models\AccountUser;
 use App\Support\AuditLogger;
 use App\Support\CandidateNumber;
 use App\Support\CandidateTypeResolver;
@@ -21,7 +22,6 @@ use App\Support\LocalizedNumber;
 use App\Support\NotificationLanguage;
 use App\Support\UserTypeOptions;
 use App\Support\TableFilterOptions;
-use Carbon\Carbon;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Actions\Action;
@@ -219,9 +219,9 @@ class CandidateEntranceStatisticsTable
                             ->searchable()
                             ->live(),
 
-                        Select::make('reviewed_year')
-                            ->label(__('candidate_entrance_statistics.reviewed_year'))
-                            ->options(fn (HasTable $livewire): array => self::dynamicRequestReviewedYears(TableFilterOptions::query($livewire, 'application_review_filters', 'reviewed_year')))
+                        Select::make('academic_year')
+                            ->label(__('exam_results.academic_year'))
+                            ->options(fn (HasTable $livewire): array => self::dynamicAcademicYearOptions(TableFilterOptions::query($livewire, 'application_review_filters', 'academic_year')))
                             ->native(false)
                             ->live(),
                     ])
@@ -252,21 +252,8 @@ class CandidateEntranceStatisticsTable
                                 fn (Builder $query): Builder => FormEntryData::applyJsonExactFilter($query, FormEntryData::majorKeys(), $data['major'])
                             )
                             ->when(
-                                filled($data['reviewed_year'] ?? null),
-                                function (Builder $query) use ($data): Builder {
-                                    return $query->where(function (Builder $query) use ($data): void {
-                                        $query->whereYear('created_at', $data['reviewed_year'])
-                                            ->orWhereYear('reviewed_at', $data['reviewed_year']);
-                                        if ($query->getConnection()->getDriverName() === 'pgsql') {
-                                            $query->orWhereRaw(
-                                                "EXTRACT(YEAR FROM NULLIF(data->>'candidate_reviewed_at', '')::timestamp) = ?",
-                                                [$data['reviewed_year']],
-                                            );
-                                        } else {
-                                            $query->orWhereYear('data->candidate_reviewed_at', $data['reviewed_year']);
-                                        }
-                                    });
-                                }
+                                filled($data['academic_year'] ?? null),
+                                fn (Builder $query): Builder => self::applyAcademicYearFilter($query, (string) $data['academic_year'])
                             )
                             ->when(
                                 filled($data['reviewed_month'] ?? null),
@@ -770,34 +757,63 @@ class CandidateEntranceStatisticsTable
         return $xml . '</Relationships>';
     }
 
-    protected static function dynamicRequestReviewedYears(?Builder $query = null): array
+    protected static function dynamicAcademicYearOptions(?Builder $query = null): array
     {
-        return ($query ?? CandidateEntranceStatisticResource::getEloquentQuery())
-            ->get(['created_at', 'reviewed_at', 'data'])
-            ->flatMap(function (CustomFormEntry $entry): array {
-                $years = [];
+        $values = self::academicYearValues($query ?? CandidateEntranceStatisticResource::getEloquentQuery());
 
-                if ($entry->created_at) {
-                    $years[] = Carbon::parse($entry->created_at)->format('Y');
-                }
-
-                if ($entry->reviewed_at) {
-                    $years[] = Carbon::parse($entry->reviewed_at)->format('Y');
-                }
-
-                $candidateReviewedAt = data_get($entry->data, 'candidate_reviewed_at');
-
-                if ($candidateReviewedAt) {
-                    $years[] = Carbon::parse($candidateReviewedAt)->format('Y');
-                }
-
-                return $years;
-            })
-            ->filter()
+        return collect([...$values['entry'], ...$values['creator']])
+            ->map(fn (mixed $value): string => self::displayedAcademicYear($value))
+            ->filter(fn (string $year): bool => filled($year) && $year !== '-')
             ->unique()
-            ->sort()
-            ->mapWithKeys(fn ($year): array => [(string) $year => (string) $year])
-            ->toArray();
+            ->sortDesc(SORT_NATURAL)
+            ->mapWithKeys(fn (string $year): array => [$year => $year])
+            ->all();
+    }
+
+    protected static function applyAcademicYearFilter(Builder $query, string $year): Builder
+    {
+        $values = self::academicYearValues($query);
+        $year = self::displayedAcademicYear($year);
+        $entryValues = array_values(array_filter($values['entry'], fn (mixed $value): bool => filled($value) && self::displayedAcademicYear($value) === $year));
+        $creatorValues = array_values(array_filter($values['creator'], fn (mixed $value): bool => filled($value) && self::displayedAcademicYear($value) === $year));
+        $column = $query->getModel()->qualifyColumn('data').'->academic_year';
+
+        return $query->where(function (Builder $years) use ($column, $entryValues, $creatorValues): void {
+            $years->whereIn($column, $entryValues)
+                ->orWhere(function (Builder $fallback) use ($creatorValues): void {
+                    self::whereMissingAcademicYear($fallback)
+                        ->whereHas('creator', fn (Builder $creator): Builder => $creator->whereIn('academic_year', $creatorValues));
+                });
+        });
+    }
+
+    protected static function displayedAcademicYear(mixed $value): string
+    {
+        return FormEntryData::academicYearLabel(['academic_year' => $value]);
+    }
+
+    protected static function academicYearValues(Builder $query): array
+    {
+        $column = $query->getModel()->qualifyColumn('data').'->academic_year';
+        $wrapped = $query->getQuery()->getGrammar()->wrap($column);
+        $entryValues = (clone $query)->reorder()->select([])->selectRaw($wrapped.' as academic_year_value')
+            ->distinct()->toBase()->pluck('academic_year_value')->all();
+        $missing = self::whereMissingAcademicYear((clone $query)->reorder())
+            ->select($query->getModel()->qualifyColumn('created_by'));
+        $creatorValues = AccountUser::query()->whereIn('id', $missing)
+            ->select('academic_year')->distinct()->toBase()->pluck('academic_year')->all();
+
+        return ['entry' => $entryValues, 'creator' => $creatorValues];
+    }
+
+    protected static function whereMissingAcademicYear(Builder $query): Builder
+    {
+        $column = $query->getModel()->qualifyColumn('data').'->academic_year';
+        $wrapped = $query->getQuery()->getGrammar()->wrap($column);
+
+        return $query->where(fn (Builder $missing): Builder => $missing
+            ->whereNull($column)
+            ->orWhereRaw("TRIM({$wrapped}) = ''"));
     }
 
     protected static function dynamicUserTypeOptions(?Builder $query = null): array
