@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources\CandidateEntranceStatistics\Tables;
 
+use App\Filament\Actions\WorkflowCustomStageActions;
 use App\Support\WorkflowStageMessages;
 use App\Support\WorkflowButtons;
 use App\Support\WorkflowStageProgression;
@@ -308,6 +309,7 @@ class CandidateEntranceStatisticsTable
                         );
                     }),
             ])
+            ->pushRecordActions([WorkflowCustomStageActions::make(CandidateEntranceStatisticResource::class)])
             ->toolbarActions([
                 BulkAction::make('bulk_passed')
                     ->label(__('candidate_entrance_statistics.statuses.passed'))

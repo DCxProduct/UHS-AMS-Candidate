@@ -100,13 +100,15 @@ class WorkflowStageTypeSelectedActionsTest extends TestCase
                 ? ['payment_statuses' => ['unpaid_status_message' => 'Retained unpaid wording'], 'status_message' => 'Retained paid wording']
                 : ['result_statuses' => ['pending_status_message' => 'Retained pending wording'], 'status_message' => 'Retained passed wording'];
             $legacy = $this->type('Legacy button selection '.$index, $behavior, $selection, ['stage_settings' => $settings]);
+            $beforeLegacy = $legacy->fresh()->getRawOriginal();
             $selectionBefore = $legacy->getRawOriginal('enabled_actions');
             $settingsBefore = $legacy->getRawOriginal('stage_settings');
             $component = Livewire::test(EditWorkflowStageType::class, ['record' => $legacy->getRouteKey()]);
             $this->assertInstanceOf(Hidden::class, $component->instance()->form->getFlatFields(withHidden: true)['enabled_actions']);
             $component->assertSet('data.enabled_actions', $selection)
                 ->set('data.label_en', 'Renamed legacy selection '.$index)
-                ->call('save')->assertHasNoFormErrors();
+                ->call('save')->assertHasFormErrors(['workflow_button_ids']);
+            $this->assertSame($beforeLegacy, $legacy->fresh()->getRawOriginal());
             $this->assertSame($selectionBefore, $legacy->fresh()->getRawOriginal('enabled_actions'));
             $this->assertSame($settingsBefore, $legacy->fresh()->getRawOriginal('stage_settings'));
 
@@ -115,7 +117,8 @@ class WorkflowStageTypeSelectedActionsTest extends TestCase
                 Livewire::test(EditWorkflowStageType::class, ['record' => $legacy->getRouteKey()])
                     ->set('data.enabled_actions', $forgedSelection)
                     ->set('data.behavior', 'review')
-                    ->call('save')->assertHasNoFormErrors();
+                    ->call('save')->assertHasFormErrors(['workflow_button_ids']);
+                $this->assertSame($beforeLegacy, $legacy->fresh()->getRawOriginal());
                 $this->assertSame($selectionBefore, $legacy->fresh()->getRawOriginal('enabled_actions'));
                 $this->assertSame($settingsBefore, $legacy->fresh()->getRawOriginal('stage_settings'));
                 $this->assertSame($behavior, $legacy->fresh()->behavior);

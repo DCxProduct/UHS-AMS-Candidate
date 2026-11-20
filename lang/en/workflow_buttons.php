@@ -29,11 +29,12 @@ return [
         'color' => 'Choose a color for this button.',
         'icon' => 'Search and choose an icon for this button.',
         'label_km' => 'Uses the English label when left blank.',
-        'action_key' => 'Choose what happens when this button is clicked.',
+        'action_key' => 'Optional. Without a built-in action, the button uses its workflow stage’s status and notification settings.',
         'action_locked' => 'The action is locked because a stage type uses this button. Create a new button to use a different action.',
     ],
     'states' => [
         'inactive' => 'Inactive',
+        'no_action' => 'No action',
     ],
     'validation' => [
         'action_in_use' => 'This button is used by a stage type. Create a new button to use a different action.',

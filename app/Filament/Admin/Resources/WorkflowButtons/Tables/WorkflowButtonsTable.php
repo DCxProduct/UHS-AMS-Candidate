@@ -41,6 +41,7 @@ class WorkflowButtonsTable
 
                 TextColumn::make('action_key')
                     ->label(__('workflow_buttons.fields.action_key'))
+                    ->placeholder(__('workflow_buttons.states.no_action'))
                     ->formatStateUsing(fn (string $state): string => WorkflowButton::actionOptions()[$state] ?? $state)
                     ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyMapped($query, 'action_key', $search, WorkflowButton::actionOptions()))
                     ->wrap(),

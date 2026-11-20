@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources\ExamResults\Tables;
 
+use App\Filament\Actions\WorkflowCustomStageActions;
 use App\Enums\WorkflowStageType;
 use App\Filament\Admin\Resources\CandidateEntranceStatistics\Tables\CandidateEntranceStatisticsTable;
 use App\Filament\Admin\Resources\ExamResults\ExamResultResource;
@@ -224,6 +225,7 @@ class ExamResultsTable
                     }),
 
             ])
+            ->pushRecordActions([WorkflowCustomStageActions::make(self::notificationResourceForResultMenu($resultMenu))])
             ->defaultSort('id', 'desc');
     }
 

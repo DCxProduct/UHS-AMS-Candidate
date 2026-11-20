@@ -70,8 +70,9 @@ final class WorkflowNotificationStageSummary
                     'name' => self::localizedName($stage['stage_name'] ?? null, $type),
                     'type_label' => StageTypeCatalog::labelForStage($stage, false),
                     'responsible_label' => $responsibleLabel,
-                    'status_message' => $stage['status_message'] ?? null,
-                    'notification_message' => $stage['notification_message'] ?? null,
+                    'status_message' => $type === WorkflowStageType::Custom ? data_get($stage, 'submission_messages.candidate_status_message') : ($stage['status_message'] ?? null),
+                    'notification_message' => $type === WorkflowStageType::Custom ? data_get($stage, 'submission_messages.candidate_notification_message') : ($stage['notification_message'] ?? null),
+                    'buttons' => array_values(array_filter(is_array($stage['buttons'] ?? null) ? $stage['buttons'] : [], 'is_array')),
                 ];
 
                 if ($type === WorkflowStageType::Payment) {
@@ -102,6 +103,7 @@ final class WorkflowNotificationStageSummary
             WorkflowStageType::Review => ['review', 'application review', 'registrar review', 'ការពិនិត្យ'],
             WorkflowStageType::Verification => ['verification', 'verify', 'registrar verification', 'ការផ្ទៀងផ្ទាត់ដោយការិយាល័យចុះឈ្មោះ', 'ផ្ទៀងផ្ទាត់'],
             WorkflowStageType::Approval => ['approval', 'approve', 'registrar approval'],
+            WorkflowStageType::Custom => [],
             WorkflowStageType::Payment => ['payment'],
             WorkflowStageType::AwaitingResults => ['awaiting result', 'awaiting results', 'results'],
             WorkflowStageType::Completed => [

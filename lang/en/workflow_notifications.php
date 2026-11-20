@@ -168,6 +168,7 @@ return [
     ],
 
     'stage_types' => [
+        'custom' => 'Custom Stage',
         'form_submission' => 'Form Submission',
         'review' => 'Review',
         'verification' => 'Application Received',

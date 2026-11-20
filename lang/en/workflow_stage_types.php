@@ -22,7 +22,7 @@ return [
     ],
     'form' => [
         'section_title' => 'Stage Type Details',
-        'workflow_buttons_help' => 'Select buttons created in Workflow Buttons, using the same action group. Existing stages keep their saved actions until you select workflow buttons.',
+        'workflow_buttons_help' => 'Select at least one workflow button. Built-in actions must belong to the same group. Buttons without a built-in action use the workflow stage’s own status and notification settings.',
         'enabled_actions_create_help' => 'Select related buttons for this stage.',
         'enabled_actions_edit_help' => 'Stage group: :group.',
     ],

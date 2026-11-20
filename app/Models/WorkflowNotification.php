@@ -61,6 +61,9 @@ class WorkflowNotification extends Model
                 $seen = [];
                 foreach ($canonical as $type) {
                     $behavior = WorkflowStageType::tryFrom($type);
+                    if ($behavior === WorkflowStageType::Custom) {
+                        continue;
+                    }
                     if ($behavior === null || $behavior === WorkflowStageType::Rejected || isset($seen[$type])) {
                         throw ValidationException::withMessages([
                             'stages' => isset($seen[$type])
@@ -76,6 +79,9 @@ class WorkflowNotification extends Model
                 $seen = [];
                 foreach ($types as $type) {
                     $behavior = WorkflowStageType::tryFrom($type);
+                    if ($behavior === WorkflowStageType::Custom) {
+                        continue;
+                    }
                     $key = $behavior === WorkflowStageType::Approval ? WorkflowStageType::Review->value : $type;
                     if ($behavior === null || isset($seen[$key])) {
                         throw ValidationException::withMessages([
@@ -130,7 +136,10 @@ class WorkflowNotification extends Model
                 $stageType = $data['stage_type'] ?? null;
                 if ($stageType === null || (is_string($stageType) && trim($stageType) === '')) {
                     $data['stage_type'] = null;
-                    unset($data['enabled_actions'], $data['stage_type_labels'], $data['buttons']);
+                    unset($data['enabled_actions']);
+                    if (! filled($data['buttons'] ?? null)) {
+                        unset($data['stage_type_labels'], $data['buttons']);
+                    }
                 }
 
                 if (array_key_exists('buttons', $data) && $data['buttons'] !== null) {
@@ -142,19 +151,19 @@ class WorkflowNotification extends Model
                         'buttons.*.id' => ['required', 'integer', 'min:1', 'distinct'],
                         'buttons.*.label_en' => ['required', 'string', 'max:255'],
                         'buttons.*.label_km' => ['nullable', 'string', 'max:255'],
-                        'buttons.*.action_key' => ['required', 'string', 'distinct:strict', Rule::in(array_keys(array_intersect_key(WorkflowStageTypeSettings::actions($behavior), WorkflowStageTypeSettings::buttonActions())))],
+                        'buttons.*.action_key' => ['present', 'nullable', 'string', Rule::in(array_keys(array_intersect_key(WorkflowStageTypeSettings::actions($behavior), WorkflowStageTypeSettings::buttonActions())))],
                         'buttons.*.icon' => ['required', 'string', Rule::in(array_keys(WorkflowButton::iconOptions()))],
                         'buttons.*.color' => ['required', 'string', Rule::in(array_keys(WorkflowButton::colorOptions()))],
                     ])->validate();
                     $data['buttons'] = array_values($data['buttons']);
-                    $data['enabled_actions'] = array_column($data['buttons'], 'action_key');
+                    $data['enabled_actions'] = WorkflowButton::actionKeys($data['buttons']);
                 }
 
                 if (array_key_exists('enabled_actions', $data)) {
                     $behavior = ($data['stage_type'] ?? null) === WorkflowStageType::Approval->value
                         ? WorkflowStageType::Review->value : (string) ($data['stage_type'] ?? '');
                     Validator::make($data, [
-                        'enabled_actions' => ['nullable', 'array', 'min:1'],
+                        'enabled_actions' => ['nullable', 'array', ...((($data['stage_type'] ?? null) === null || $data['stage_type'] === WorkflowStageType::Custom->value) && filled($data['buttons'] ?? null) ? [] : ['min:1'])],
                         'enabled_actions.*' => ['required', 'string', 'distinct:strict', Rule::in(array_keys(WorkflowStageTypeSettings::actions($behavior)))],
                     ])->validate();
                     if ($data['enabled_actions'] !== null) {

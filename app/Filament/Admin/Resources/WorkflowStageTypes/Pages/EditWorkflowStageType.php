@@ -17,7 +17,7 @@ class EditWorkflowStageType extends EditRecord
         unset($data['review_actions'], $data['stage_settings'], $data['enabled_actions'], $data['behavior']);
 
         $record = $this->getRecord();
-        if ($record->workflow_button_ids !== null && blank($data['workflow_button_ids'] ?? null)) {
+        if (blank($data['workflow_button_ids'] ?? null)) {
             throw ValidationException::withMessages([
                 'data.workflow_button_ids' => __('workflow_stage_types.validation.workflow_buttons_required'),
             ]);

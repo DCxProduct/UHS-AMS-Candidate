@@ -2,6 +2,7 @@
 
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Tables;
 
+use App\Filament\Actions\WorkflowCustomStageActions;
 use App\Support\WorkflowStageMessages;
 use App\Support\WorkflowStatusSearch;
 use App\Support\WorkflowActionFeedback;
@@ -1588,6 +1589,8 @@ class CustomFormEntriesTable
                     );
                 });
         }
+
+        $actions[] = WorkflowCustomStageActions::make(CustomFormEntryResource::class);
 
         if (class_exists(\Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate::class)) {
             $actions[] = \Chanthoeun\FilamentDocumentBuilder\Tables\Actions\DownloadPdfAction::make('download_pdf')

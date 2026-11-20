@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources\CandidateExitStatistics\Tables;
 
+use App\Filament\Actions\WorkflowCustomStageActions;
 use App\Enums\WorkflowStageType;
 use App\Filament\Admin\Resources\CandidateExitStatistics\CandidateExitStatisticResource;
 use App\Filament\Admin\Resources\CandidateEntranceStatistics\Tables\CandidateEntranceStatisticsTable;
@@ -255,6 +256,7 @@ class CandidateExitStatisticsTable
                     }),
 
             ])
+            ->pushRecordActions([WorkflowCustomStageActions::make(CandidateExitStatisticResource::class)])
             ->toolbarActions([
                 BulkAction::make('bulk_passed')
                     ->label(__('candidate_exit_statistics.statuses.passed'))

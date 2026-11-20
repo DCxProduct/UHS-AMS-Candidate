@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
-/** A reusable button presentation backed by an existing workflow action. */
+/** A reusable button presentation with an optional existing workflow action. */
 class WorkflowButton extends Model
 {
     protected $fillable = ['label_en', 'label_km', 'action_key', 'icon', 'color', 'is_active', 'sort_order'];
@@ -29,6 +29,9 @@ class WorkflowButton extends Model
 
     protected static function booted(): void
     {
+        static::saved(fn (): mixed => WorkflowButtonColors::clearCachedColors());
+        static::deleted(fn (): mixed => WorkflowButtonColors::clearCachedColors());
+
         static::creating(function (self $button): void {
             if ($button->sort_order === null && Schema::hasColumn($button->getTable(), 'sort_order')) {
                 $button->sort_order = ((int) static::query()->max('sort_order')) + 1;
@@ -38,6 +41,9 @@ class WorkflowButton extends Model
         static::saving(function (self $button): void {
             $button->label_en = trim((string) $button->label_en);
             $button->label_km = filled($button->label_km) ? trim((string) $button->label_km) : null;
+            if ($button->action_key === '') {
+                $button->action_key = null;
+            }
 
             if ($button->exists && $button->isDirty('action_key') && $button->inUse()) {
                 throw ValidationException::withMessages([
@@ -48,7 +54,7 @@ class WorkflowButton extends Model
             Validator::make($button->getAttributes(), [
                 'label_en' => ['required', 'string', 'max:255'],
                 'label_km' => ['nullable', 'string', 'max:255'],
-                'action_key' => ['required', 'string', Rule::in(array_keys(self::actionOptions()))],
+                'action_key' => ['nullable', 'string', Rule::in(array_keys(self::actionOptions()))],
                 'icon' => ['required', 'string', Rule::in(array_keys(self::iconOptions()))],
                 'color' => ['required', 'string', Rule::in(array_keys(self::colorOptions()))],
                 'is_active' => ['required', 'boolean'],
@@ -96,14 +102,14 @@ class WorkflowButton extends Model
         return ! $this->inUse();
     }
 
-    /** Copy these values into a stage so later button edits cannot change an application. */
+    /** Freeze stage settings; custom colors may use the latest catalog color when rendered. */
     public function toDefinition(): array
     {
         return [
             'id' => (int) $this->getKey(),
             'label_en' => (string) $this->label_en,
             'label_km' => $this->label_km,
-            'action_key' => (string) $this->action_key,
+            'action_key' => $this->action_key,
             'icon' => (string) $this->icon,
             'color' => (string) $this->color,
         ];
@@ -112,6 +118,12 @@ class WorkflowButton extends Model
     public static function actionOptions(): array
     {
         return array_map(fn (array $action): string => $action['label'], WorkflowStageTypeSettings::buttonActions());
+    }
+
+    /** Display-only buttons never contribute an executable action. */
+    public static function actionKeys(array $definitions): array
+    {
+        return array_values(array_filter(array_column($definitions, 'action_key'), fn ($key): bool => $key !== null));
     }
 
     public static function iconOptions(): array
@@ -232,7 +244,7 @@ class WorkflowButton extends Model
         return array_combine($colors, array_map(fn (string $color): string => __('workflow_buttons.colors.'.$color), $colors));
     }
 
-    /** Keep inactive selections visible when reopening an existing stage. */
+    /** Include display-only buttons and retain existing inactive selections. */
     public static function selectOptions(mixed $selected = []): array
     {
         if (! Schema::hasTable('workflow_buttons')) {

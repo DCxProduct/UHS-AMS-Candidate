@@ -12,6 +12,7 @@ use App\Models\SmsTemplate;
 use App\Models\User;
 use App\Models\WorkflowNotification;
 use App\Services\AmsPaymentSync;
+use App\Services\WorkflowCustomButtonService;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
@@ -122,6 +123,12 @@ final class WorkflowStageMessages
     public static function statusText(CustomFormEntry $entry): ?string
     {
         try {
+            $customStatus = app(WorkflowCustomButtonService::class)->statusText($entry);
+            if (filled($customStatus) && is_scalar($customStatus)
+                && ! in_array(strtolower((string) $entry->review_status), ['draft', 'rejected', 'failed'], true)
+                && ! in_array(strtolower((string) data_get($entry->data, 'registration_status')), ['draft', 'rejected', 'failed'], true)) {
+                return (string) $customStatus;
+            }
             if (WorkflowStageProgression::enabled($entry)) {
                 return self::orderedStatusText($entry);
             }
@@ -625,6 +632,64 @@ final class WorkflowStageMessages
         }
     }
 
+    /** Send a generic click's frozen messages using its exact stage and button identity. */
+    public static function notifyCustomButton(CustomFormEntry $entry, array $stage, int $stageIndex, int $buttonId): void
+    {
+        try {
+            $entry->refresh();
+            $type = WorkflowStageType::tryFrom((string) ($stage['stage_type'] ?? ''));
+            if ($type === null) {
+                return;
+            }
+            $event = 'custom_stage:'.$stageIndex.':button:'.$buttonId;
+            $messages = $type === WorkflowStageType::Custom
+                ? (array) ($stage['submission_messages'] ?? [])
+                : (array) ($stage['audience_messages'] ?? []);
+            $body = $type === WorkflowStageType::Custom
+                ? ($messages['candidate_notification_message'] ?? null)
+                : ($stage['notification_message'] ?? null);
+            $body = is_scalar($body) ? trim((string) $body) : '';
+            $student = self::owner($entry);
+            $viewData = ['workflow_stage_index' => $stageIndex, 'workflow_button_id' => $buttonId, 'workflow_origin_stage_type' => $type->value];
+            if ($student !== null && $body !== '' && ! self::hasDelivery($entry, $student, 'workflow_event', $event.':candidate')
+                && ! $student->notifications()->where('data->viewData->workflow_entry_id', (string) $entry->getKey())
+                    ->where('data->viewData->workflow_event', $event.':candidate')->exists()) {
+                $candidateStage = $stage;
+                if ($type === WorkflowStageType::Custom) {
+                    $candidateStage['status_message'] = $messages['candidate_status_message'] ?? null;
+                }
+                self::sendStageNotification($entry, $candidateStage, $type, $student, $event.':candidate', null, false, $viewData, WorkflowMessagePlaceholders::render($body, $entry), WorkflowStageType::Custom);
+            }
+
+            $staffBody = is_scalar($messages['staff_notification_message'] ?? null)
+                ? trim((string) $messages['staff_notification_message']) : '';
+            if ($staffBody === '') {
+                return;
+            }
+            foreach (WorkflowStaffRecipients::resolve($messages, $entry->created_by) as $recipient) {
+                if ($recipient->notifications()->where('data->viewData->workflow_entry_id', (string) $entry->getKey())
+                    ->where('data->viewData->workflow_event', $event.':staff')->exists()) {
+                    continue;
+                }
+                (new self)->withLocale(NotificationLanguage::localeForUser($recipient), function () use ($entry, $stage, $type, $recipient, $staffBody, $viewData, $event): void {
+                    Notification::make()
+                        ->title(__('workflow_notifications.staff_notification_title', [
+                            'form' => (string) ($entry->customForm?->display_name ?? ''),
+                            'stage' => WorkflowNotificationStageSummary::localizedName($stage['stage_name'] ?? null, $type),
+                        ]))
+                        ->body(WorkflowMessagePlaceholders::render($staffBody, $entry))
+                        ->info()
+                        ->viewData([
+                            'workflow_entry_id' => (string) $entry->getKey(), 'workflow_stage_type' => WorkflowStageType::Custom->value,
+                            'workflow_event' => $event.':staff', ...$viewData,
+                        ])->sendToDatabase($recipient);
+                });
+            }
+        } catch (Throwable $exception) {
+            report($exception);
+        }
+    }
+
     /**
      * Send the result-stage notification once after staff marks an exam passed.
      */
@@ -745,14 +810,21 @@ final class WorkflowStageMessages
         User $student,
         ?string $workflowEvent = null,
         ?string $reviewNote = null,
+        bool $updateProgress = true,
+        array $extraViewData = [],
+        ?string $notificationBody = null,
+        ?WorkflowStageType $deliveryStageType = null,
     ): bool {
+        // Generic button messages must not satisfy a built-in stage's delivery gate.
+        $deliveryStageType ??= $stageType;
         $channels = self::channels($stage);
         $delivered = [];
 
-        (new self)->withLocale(NotificationLanguage::localeForUser($student), function () use ($entry, $stage, $stageType, $student, $workflowEvent, $reviewNote, $channels, &$delivered): void {
+        (new self)->withLocale(NotificationLanguage::localeForUser($student), function () use ($entry, $stage, $stageType, $deliveryStageType, $student, $workflowEvent, $reviewNote, $channels, $extraViewData, $notificationBody, &$delivered): void {
             $viewData = [
                 'workflow_entry_id' => (string) $entry->getKey(),
-                'workflow_stage_type' => $stageType->value,
+                'workflow_stage_type' => $deliveryStageType->value,
+                ...$extraViewData,
             ];
 
             $action = str_starts_with((string) $workflowEvent, 'review_action:')
@@ -768,7 +840,7 @@ final class WorkflowStageMessages
                 $viewData['workflow_event'] = $workflowEvent;
             }
 
-            $body = trim((string) self::notificationMessage($stage));
+            $body = trim((string) ($notificationBody ?? self::notificationMessage($stage)));
             $reviewNote = trim((string) $reviewNote);
 
             if ($reviewNote !== '') {
@@ -825,8 +897,8 @@ final class WorkflowStageMessages
             return false;
         }
 
-        self::recordDelivery($entry, $student, $stageType, $workflowEvent, $delivered);
-        if (WorkflowStageProgression::enabled($entry)) {
+        self::recordDelivery($entry, $student, $deliveryStageType, $workflowEvent, $delivered);
+        if ($updateProgress && WorkflowStageProgression::enabled($entry)) {
             WorkflowStageProgression::notified($entry, $stageType);
         }
 

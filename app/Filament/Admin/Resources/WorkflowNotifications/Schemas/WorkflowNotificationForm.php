@@ -130,6 +130,10 @@ class WorkflowNotificationForm
                     return;
                 }
 
+                if ($stageType === WorkflowStageType::Custom) {
+                    continue;
+                }
+
                 $behavior = $stageType === WorkflowStageType::Approval ? WorkflowStageType::Review->value : $type;
 
                 if (isset($seen[$behavior])) {
@@ -159,7 +163,7 @@ class WorkflowNotificationForm
                 $definition = StageTypeCatalog::selected($selection);
 
                 if ($definition !== null) {
-                    return $definition->behavior;
+                    return $definition->workflowType()?->value;
                 }
 
                 if ($selection !== 'legacy:'.$canonical || ! in_array($canonical, ['approval', 'rejected'], true)) {
@@ -198,7 +202,7 @@ class WorkflowNotificationForm
     {
         $type = WorkflowStageType::tryFrom((string) $state);
 
-        if ($type !== null && blank($get('stage_name')) && ($defaultName !== null || blank($old))) {
+        if (($type !== null || $defaultName !== null) && blank($get('stage_name')) && ($defaultName !== null || blank($old))) {
             $set('stage_name', $defaultName ?? $type->label());
         }
 
@@ -253,13 +257,16 @@ class WorkflowNotificationForm
         $isPaymentStage = fn (Get $get): bool => WorkflowStageType::tryFrom((string) $get('stage_type')) === WorkflowStageType::Payment;
         $isAwaitingResultsStage = fn (Get $get): bool => WorkflowStageType::tryFrom((string) $get('stage_type')) === WorkflowStageType::AwaitingResults;
         $isSubmissionStage = fn (Get $get): bool => WorkflowStageType::tryFrom((string) $get('stage_type')) === WorkflowStageType::FormSubmission;
+        $isCustomStage = fn (Get $get): bool => $get('stage_type') === WorkflowStageType::Custom->value;
+        $isUntypedStage = fn (Get $get): bool => blank($get('stage_type'));
+        $usesSubmissionMessageLayout = fn (Get $get): bool => $isSubmissionStage($get) || $isUntypedStage($get) || $isCustomStage($get);
         $usesStageAudienceLayout = fn (Get $get): bool => in_array(WorkflowStageType::tryFrom((string) $get('stage_type')), [
             WorkflowStageType::Verification,
             WorkflowStageType::Payment,
             WorkflowStageType::AwaitingResults,
             WorkflowStageType::Completed,
         ], true);
-        $supportsNotificationChannels = fn (Get $get): bool => $handledByStaff($get) || $isSubmissionStage($get);
+        $supportsNotificationChannels = fn (Get $get): bool => $handledByStaff($get) || $usesSubmissionMessageLayout($get);
 
         return [
             Grid::make(2)->schema([
@@ -336,9 +343,9 @@ class WorkflowNotificationForm
                         }
 
                         $definition = StageTypeCatalog::selected($state);
-                        $behavior = $definition?->behavior;
+                        $behavior = $definition?->workflowType()?->value;
 
-                        if ($definition === null || $behavior === null) {
+                        if ($definition === null) {
                             return;
                         }
 
@@ -371,22 +378,20 @@ class WorkflowNotificationForm
                 Hidden::make('buttons')
                     ->dehydrated(fn (mixed $state): bool => $state !== null),
 
-                Text::make(fn (Get $get): string => __('workflow_stage_types.fields.workflow_buttons').': '.implode(', ', array_map(
-                    fn (array $button): string => in_array(app()->getLocale(), ['km', 'kh'], true) ? ($button['label_km'] ?: $button['label_en']) : $button['label_en'],
-                    (array) $get('buttons'),
-                )))
+                View::make('components.workflow-button-preview')
+                    ->viewData(fn (Get $get): array => ['buttons' => (array) $get('buttons')])
                     ->visible(fn (Get $get): bool => filled($get('buttons')))
                     ->columnSpanFull(),
 
                 Select::make('stage_type')
                     ->label(__('workflow_notifications.fields.stage_type'))
-                    ->options(fn (): array => WorkflowStageType::options())
+                    ->options(fn (): array => [...WorkflowStageType::options(), WorkflowStageType::Custom->value => WorkflowStageType::Custom->label()])
                     ->nullable()
                     ->hidden()
                     ->dehydratedWhenHidden()
                     ->live()
                     ->afterStateUpdated(function (?string $state, ?string $old, Get $get, Set $set): void {
-                        if (StageTypeCatalog::selected($get('stage_type_id'))?->behavior !== $state) {
+                        if (StageTypeCatalog::selected($get('stage_type_id'))?->workflowType()?->value !== $state) {
                             $set('stage_type_id', StageTypeCatalog::selectionForBehavior($state));
                         }
 
@@ -442,7 +447,7 @@ class WorkflowNotificationForm
                     ->label(__('workflow_notifications.fields.shared_status_message'))
                     ->placeholder(__('workflow_notifications.placeholders.submission_status'))
                     ->maxLength(255)
-                    ->visible($isSubmissionStage)
+                    ->visible($usesSubmissionMessageLayout)
                     ->columnSpan(1),
 
                 TextInput::make('status_message')
@@ -462,7 +467,7 @@ class WorkflowNotificationForm
                             ? __('workflow_notifications.status_defaults.'.$get('stage_type'))
                             : __('workflow_notifications.placeholders.status_message')))
                     ->maxLength(255)
-                    ->visible(fn (Get $get): bool => $handledByStaff($get) && ! $isReviewStage($get))
+                    ->visible(fn (Get $get): bool => $handledByStaff($get) && ! $isReviewStage($get) && ! $isCustomStage($get))
                     ->columnSpan(1),
 
                 TextInput::make('alert_message')
@@ -470,7 +475,7 @@ class WorkflowNotificationForm
                     ->helperText(fn (Get $get): ?string => self::isAmsPayment($get) ? __('workflow_notifications.helpers.ams_alert') : null)
                     ->placeholder(__('workflow_notifications.placeholders.alert_message'))
                     ->maxLength(255)
-                    ->visible(fn (Get $get): bool => filled($get('stage_type')) && ! $isReviewStage($get))
+                    ->visible(fn (Get $get): bool => $isUntypedStage($get) || (filled($get('stage_type')) && ! $isReviewStage($get)))
                     ->columnSpan(1),
 
                 Select::make('responsible_role')
@@ -525,7 +530,7 @@ class WorkflowNotificationForm
                                 ->native(false),
                         ])->columnSpan(1),
                     ])
-                    ->visible($isSubmissionStage)
+                    ->visible($usesSubmissionMessageLayout)
                     ->columnSpanFull(),
 
                 Section::make(__('workflow_notifications.sections.resubmission_staff'))
@@ -627,7 +632,7 @@ class WorkflowNotificationForm
                                 ->native(false),
                         ])->visible($usesStageAudienceLayout)->columnSpan(1),
                     ])
-                    ->visible(fn (Get $get): bool => $handledByStaff($get) && ! $isReviewStage($get))
+                    ->visible(fn (Get $get): bool => $handledByStaff($get) && ! $isReviewStage($get) && ! $isCustomStage($get))
                     ->columnSpanFull(),
 
                 Section::make(__('workflow_notifications.sections.review_outcomes'))

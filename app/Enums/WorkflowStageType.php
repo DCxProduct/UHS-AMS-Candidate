@@ -10,6 +10,7 @@ enum WorkflowStageType: string
     case Payment = 'payment';
     case AwaitingResults = 'awaiting_results';
     case Completed = 'completed';
+    case Custom = 'custom';
     case Rejected = 'rejected';
 
     /**
