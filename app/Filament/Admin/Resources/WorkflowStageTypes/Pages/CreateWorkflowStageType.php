@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\WorkflowStageTypes\Pages;
 
 use App\Filament\Admin\Resources\WorkflowStageTypes\WorkflowStageTypeResource;
+use App\Models\WorkflowButton;
 use App\Models\WorkflowStageType;
 use App\Support\WorkflowStageTypeSettings;
 use Filament\Resources\Pages\CreateRecord;
@@ -22,7 +23,7 @@ class CreateWorkflowStageType extends CreateRecord
             ]);
         }
 
-        $data['enabled_actions'] = array_column((new WorkflowStageType($data))->buttonDefinitions(), 'action_key');
+        $data['enabled_actions'] = WorkflowButton::actionKeys((new WorkflowStageType($data))->buttonDefinitions());
         $data['behavior'] = WorkflowStageTypeSettings::behaviorForSelection($data['enabled_actions']);
 
         return $data;

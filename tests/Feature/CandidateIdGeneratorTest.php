@@ -3,10 +3,13 @@
 namespace Tests\Feature;
 
 use App\Models\Major;
+use App\Models\WorkflowNotification;
 use App\Services\CandidateIdGenerator;
+use App\Support\WorkflowEntrySnapshot;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class CandidateIdGeneratorTest extends TestCase
@@ -55,7 +58,7 @@ class CandidateIdGeneratorTest extends TestCase
         $this->assertSame('BBN-0001', app(CandidateIdGenerator::class)->next('BBN-Bachelor Degree of Science in Nursing', 2026, $formId));
     }
 
-    public function test_candidate_id_is_assigned_on_check_and_reused_per_account_major_and_year(): void
+    public function test_explicit_candidate_id_assignment_reuses_the_account_major_and_year_mapping(): void
     {
         $major = Major::query()->create([
             'key' => 'nurse_midwifery',
@@ -78,17 +81,10 @@ class CandidateIdGeneratorTest extends TestCase
             'created_at' => $now,
             'updated_at' => $now,
         ]);
-        $formId = DB::table('custom_forms')->insertGetId([
-            'name' => 'Candidate application',
-            'slug' => 'candidate-application-test',
-            'schema' => json_encode([]),
-            'is_active' => true,
-            'display_order' => 1,
-            'created_at' => $now,
-            'updated_at' => $now,
-        ]);
+        $formId = $this->createForm('candidate-application-test');
         $entryId = DB::table('custom_form_entries')->insertGetId([
             'custom_form_id' => $formId,
+            'workflow_snapshot' => json_encode(WorkflowEntrySnapshot::forForm($formId)),
             'data' => json_encode(['major' => (string) $major->getKey()]),
             'created_by' => $userId,
             'review_status' => 'pending',
@@ -97,6 +93,7 @@ class CandidateIdGeneratorTest extends TestCase
         ]);
         $otherEntryId = DB::table('custom_form_entries')->insertGetId([
             'custom_form_id' => $formId,
+            'workflow_snapshot' => json_encode(WorkflowEntrySnapshot::forForm($formId)),
             'data' => json_encode(['major' => (string) $otherMajor->getKey()]),
             'created_by' => $userId,
             'review_status' => 'pending',
@@ -105,6 +102,7 @@ class CandidateIdGeneratorTest extends TestCase
         ]);
         $sameMajorEntryId = DB::table('custom_form_entries')->insertGetId([
             'custom_form_id' => $formId,
+            'workflow_snapshot' => json_encode(WorkflowEntrySnapshot::forForm($formId)),
             'data' => json_encode(['major' => (string) $major->getKey()]),
             'created_by' => $userId,
             'review_status' => 'pending',
@@ -166,6 +164,7 @@ class CandidateIdGeneratorTest extends TestCase
         ]);
         $entryId = DB::table('custom_form_entries')->insertGetId([
             'custom_form_id' => $formId,
+            'workflow_snapshot' => json_encode(WorkflowEntrySnapshot::forForm($formId)),
             'data' => json_encode(['major' => (string) $major->getKey()]),
             'created_by' => $userId,
             'review_status' => 'pending',
@@ -179,6 +178,7 @@ class CandidateIdGeneratorTest extends TestCase
 
         $newEntryId = DB::table('custom_form_entries')->insertGetId([
             'custom_form_id' => $formId,
+            'workflow_snapshot' => json_encode(WorkflowEntrySnapshot::forForm($formId)),
             'data' => json_encode(['major' => (string) $major->getKey()]),
             'created_by' => $userId,
             'review_status' => 'pending',
@@ -320,6 +320,114 @@ class CandidateIdGeneratorTest extends TestCase
         $this->assertDatabaseCount('candidate_id_sequences', 0);
     }
 
+    public static function missingGenerationModes(): array
+    {
+        return [
+            'static without ID' => ['static', null],
+            'custom only without ID' => ['custom', null],
+            'review only without ID' => ['review', null],
+            'static preserves existing ID' => ['static', 'KEEP-0007'],
+            'custom only preserves existing ID' => ['custom', 'KEEP-0007'],
+            'review only preserves existing ID' => ['review', 'KEEP-0007'],
+        ];
+    }
+
+    #[DataProvider('missingGenerationModes')]
+    public function test_assigning_without_a_generation_stage_is_read_only_and_never_creates_a_mapping(string $mode, ?string $existingId): void
+    {
+        $major = $this->createMajor();
+        $form = $this->createForm('missing-generation-'.$mode, generation: false);
+        if ($mode !== 'static') {
+            WorkflowNotification::query()->create(['name' => 'No generation '.$mode, 'stages' => [['type' => 'stage', 'data' => [
+                'stage_type' => $mode, 'stage_name' => 'No candidate ID action', 'notification_channels' => [],
+            ]]]])->forms()->attach($form);
+        }
+        $entry = $this->createEntry($form, $major->id, $this->createUser(), [
+            'review_status' => 'approved', 'candidate_id' => $existingId, 'candidate_id_year' => $existingId === null ? null : 2024,
+        ]);
+        $before = $entry->getRawOriginal();
+
+        $this->assertNull(app(CandidateIdGenerator::class)->assignToEntry($entry));
+
+        $this->assertSame($before, $entry->fresh()->getRawOriginal());
+        $this->assertSame($existingId, $entry->fresh()->candidate_id);
+        $this->assertDatabaseCount('candidate_account_ids', 0);
+        $this->assertDatabaseCount('candidate_id_sequences', 0);
+    }
+
+    public static function inactiveGenerationModes(): array
+    {
+        return [['before generation'], ['completed generation'], ['legacy unordered snapshot']];
+    }
+
+    #[DataProvider('inactiveGenerationModes')]
+    public function test_a_generation_definition_does_not_authorize_allocation_outside_its_ordered_current_checkpoint(string $mode): void
+    {
+        $major = $this->createMajor();
+        $form = $this->createForm('inactive-generation-'.str_replace(' ', '-', $mode));
+        $attributes = [];
+        if ($mode === 'before generation') {
+            WorkflowNotification::forForm($form)->update(['stages' => [
+                ['type' => 'stage', 'data' => ['stage_type' => 'review', 'stage_name' => 'Review first']], ...$this->generationStages(),
+            ]]);
+        } elseif ($mode === 'completed generation') {
+            $attributes = ['candidate_id' => 'KEEP-0007', 'candidate_id_year' => now()->year,
+                'data' => json_encode(['major' => (string) $major->id, 'workflow_progress' => [
+                    'version' => 1, 'submitted' => true, 'finished' => true, 'current_type' => null, 'candidate_id_generated' => true,
+                ]])];
+        } else {
+            $attributes['workflow_snapshot'] = json_encode([...WorkflowEntrySnapshot::forForm($form), 'schema_version' => 1]);
+        }
+        $entry = $this->createEntry($form, $major->id, $this->createUser(), $attributes);
+        $before = $entry->getRawOriginal();
+
+        $this->assertNull(app(CandidateIdGenerator::class)->assignToEntry($entry));
+
+        $this->assertSame($before, $entry->fresh()->getRawOriginal());
+        $this->assertDatabaseCount('candidate_account_ids', 0);
+        $this->assertDatabaseCount('candidate_id_sequences', 0);
+    }
+
+    public static function frozenGenerationModes(): array
+    {
+        return ['new live stage cannot opt an old application in' => [false], 'removing live stage cannot opt an old application out' => [true]];
+    }
+
+    #[DataProvider('frozenGenerationModes')]
+    public function test_allocation_uses_the_fresh_stored_snapshot_instead_of_live_or_stale_in_memory_configuration(bool $originalGeneration): void
+    {
+        $major = $this->createMajor();
+        $form = $this->createForm('frozen-generation', generation: false);
+        $review = [['type' => 'stage', 'data' => ['stage_type' => 'review', 'stage_name' => 'Review without ID generation']]];
+        $workflow = WorkflowNotification::query()->create(['name' => 'Frozen allocation authority', 'stages' => $originalGeneration ? $this->generationStages() : $review]);
+        $workflow->forms()->attach($form);
+        $owner = $this->createUser();
+        $entry = $this->createEntry($form, $major->id, $owner);
+        $snapshot = $entry->getRawOriginal('workflow_snapshot');
+        $before = $entry->getRawOriginal();
+        $workflow->update(['stages' => $originalGeneration ? $review : $this->generationStages()]);
+        $entry->workflow_snapshot = WorkflowEntrySnapshot::forForm($form);
+        $generator = app(CandidateIdGenerator::class);
+
+        $this->assertSame($originalGeneration ? 'BNM-0001' : null, $generator->assignToEntry($entry));
+
+        $this->assertSame($snapshot, $entry->fresh()->getRawOriginal('workflow_snapshot'));
+        if (! $originalGeneration) {
+            $this->assertSame($before, $entry->fresh()->getRawOriginal());
+        }
+        $new = $this->createEntry($form, $major->id, $owner);
+        $newBefore = $new->getRawOriginal();
+        $this->assertSame($originalGeneration ? null : 'BNM-0001', $generator->assignToEntry($new));
+        if ($originalGeneration) {
+            $this->assertSame($newBefore, $new->fresh()->getRawOriginal());
+        } else {
+            $this->assertSame($before, $entry->fresh()->getRawOriginal());
+        }
+        $this->assertDatabaseCount('candidate_account_ids', 1);
+        $this->assertDatabaseCount('candidate_id_sequences', 1);
+        $this->assertDatabaseHas('candidate_id_sequences', ['custom_form_id' => $form, 'last_sequence' => 1]);
+    }
+
     private function createMajor(): Major
     {
         return Major::query()->create([
@@ -340,6 +448,7 @@ class CandidateIdGeneratorTest extends TestCase
     {
         $id = DB::table('custom_form_entries')->insertGetId([
             'custom_form_id' => $form, 'created_by' => $user,
+            'workflow_snapshot' => json_encode(WorkflowEntrySnapshot::forForm($form)),
             'data' => json_encode(['major' => (string) $major]), 'review_status' => 'pending',
             'created_at' => now(), 'updated_at' => now(), ...$attributes,
         ]);
@@ -347,11 +456,11 @@ class CandidateIdGeneratorTest extends TestCase
         return CustomFormEntry::query()->findOrFail($id);
     }
 
-    private function createForm(string $slug): int
+    private function createForm(string $slug, bool $generation = true): int
     {
         $now = now();
 
-        return (int) DB::table('custom_forms')->insertGetId([
+        $id = (int) DB::table('custom_forms')->insertGetId([
             'name' => $slug,
             'slug' => $slug,
             'schema' => json_encode([]),
@@ -360,5 +469,15 @@ class CandidateIdGeneratorTest extends TestCase
             'created_at' => $now,
             'updated_at' => $now,
         ]);
+        if ($generation) {
+            WorkflowNotification::query()->create(['name' => 'Generation '.$slug, 'stages' => $this->generationStages()])->forms()->attach($id);
+        }
+
+        return $id;
+    }
+
+    private function generationStages(): array
+    {
+        return [['type' => 'stage', 'data' => ['stage_type' => 'candidate_id_generation', 'stage_name' => 'Generate candidate ID', 'notification_channels' => []]]];
     }
 }

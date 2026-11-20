@@ -2,6 +2,8 @@
 
 namespace App\Filament\Admin\Resources\CandidateEntranceStatistics\Tables;
 
+use App\Filament\Actions\WorkflowCustomStageActions;
+use App\Filament\Actions\WorkflowCandidateIdActions;
 use App\Support\WorkflowStageMessages;
 use App\Support\WorkflowButtons;
 use App\Support\WorkflowStageProgression;
@@ -307,6 +309,10 @@ class CandidateEntranceStatisticsTable
                             WorkflowActionFeedback::title($record, 'pending', NotificationLanguage::trans('candidate_entrance_statistics.actions.edit_result')),
                         );
                     }),
+            ])
+            ->pushRecordActions([
+                WorkflowCandidateIdActions::make(CandidateEntranceStatisticResource::class),
+                WorkflowCustomStageActions::make(CandidateEntranceStatisticResource::class),
             ])
             ->toolbarActions([
                 BulkAction::make('bulk_passed')

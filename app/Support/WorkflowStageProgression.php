@@ -42,6 +42,11 @@ final class WorkflowStageProgression
         return self::change($entry, 'verified');
     }
 
+    public static function candidateIdGenerated(CustomFormEntry $entry): bool
+    {
+        return self::change($entry, 'candidate_id_generated');
+    }
+
     public static function paid(CustomFormEntry $entry): bool
     {
         return self::change($entry, 'paid');
@@ -55,6 +60,58 @@ final class WorkflowStageProgression
     public static function notified(CustomFormEntry $entry, WorkflowStageType $type): bool
     {
         return self::change($entry, 'notified', $type);
+    }
+
+    /** Record this generic checkpoint and settle already-known facts without changing business fields. */
+    public static function completeCustomStage(CustomFormEntry $entry, int $stageIndex): bool
+    {
+        if (! $entry->exists || ! self::enabled($entry)) {
+            return false;
+        }
+
+        $changed = DB::transaction(function () use ($entry, $stageIndex): bool {
+            $locked = CustomFormEntry::query()->lockForUpdate()->find($entry->getKey());
+            if ($locked === null || self::currentType($locked) !== WorkflowStageType::Custom) {
+                return false;
+            }
+            $state = self::state($locked);
+            if (($state['current_index'] ?? null) !== $stageIndex || isset($state['completed_at'][$stageIndex])) {
+                return false;
+            }
+
+            $stages = self::stages($locked);
+            $previousType = $state['current_type'] ?? null;
+            $previousCompleted = array_keys($state['completed_at']);
+            $state['completed_at'][$stageIndex] = now()->toIso8601String();
+            $state = self::settle($state, $stages);
+            $data = is_array($locked->data) ? $locked->data : [];
+            $data['workflow_progress'] = $state;
+            DB::table($locked->getTable())->where($locked->getKeyName(), $locked->getKey())->update([
+                'data' => json_encode($data, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
+                'updated_at' => now(),
+            ]);
+            foreach (array_diff(array_keys($state['completed_at']), $previousCompleted) as $completedIndex) {
+                if (($stages[$completedIndex]['stage_type'] ?? null) === WorkflowStageType::FormSubmission->value) {
+                    DB::afterCommit(fn () => WorkflowSubmissionMessages::notifyCheckpoint($locked));
+                }
+            }
+            if ($state['submitted']
+                && $state['current_type'] === WorkflowStageType::Payment->value
+                && $previousType !== WorkflowStageType::Payment->value) {
+                DB::afterCommit(function () use ($locked): void {
+                    try {
+                        app(AmsPaymentSync::class)->sync($locked);
+                    } catch (\Throwable $exception) {
+                        report($exception);
+                    }
+                });
+            }
+
+            return true;
+        });
+        $entry->refresh();
+
+        return $changed;
     }
 
     public static function currentType(CustomFormEntry $entry): ?WorkflowStageType
@@ -146,6 +203,7 @@ final class WorkflowStageProgression
             'submitted' => $status !== 'draft' && strtolower((string) data_get($entry->data, 'registration_status')) !== 'draft',
             'reviewed' => in_array($status, ['approved', 'accepted', 'passed', 'completed'], true),
             ...(in_array(WorkflowStageType::Verification->value, $types, true) ? ['verification_completed' => false] : []),
+            ...(in_array(WorkflowStageType::CandidateIdGeneration->value, $types, true) ? ['candidate_id_generated' => false] : []),
             'result_passed' => strtolower((string) data_get($entry->data, 'candidate_status')) === 'passed'
                 || in_array($status, ['passed', 'completed'], true),
             'payment_completed' => $entry->exists && self::latestPaymentIsPaid($entry),
@@ -196,9 +254,11 @@ final class WorkflowStageProgression
                 WorkflowStageType::FormSubmission => $state['submitted'],
                 WorkflowStageType::Review, WorkflowStageType::Approval => $state['reviewed'],
                 WorkflowStageType::Verification => $state['verification_completed'] ?? false,
+                WorkflowStageType::CandidateIdGeneration => $state['candidate_id_generated'] ?? false,
                 WorkflowStageType::Payment => $state['payment_completed'],
                 WorkflowStageType::AwaitingResults => $state['result_passed'],
                 WorkflowStageType::Completed => true,
+                WorkflowStageType::Custom => false,
                 WorkflowStageType::Rejected => false,
             }) {
                 return $state;
@@ -210,7 +270,11 @@ final class WorkflowStageProgression
         $state['current_index'] = null;
         $state['current_type'] = null;
         $state['finished'] = true;
-        $state['ready_for_final'] = true;
+        $state['ready_for_final'] = ! in_array($stages[array_key_last($stages)]['stage_type'] ?? null, [
+            WorkflowStageType::Custom->value,
+            WorkflowStageType::CandidateIdGeneration->value,
+            WorkflowStageType::Verification->value,
+        ], true);
 
         return $state;
     }
@@ -233,10 +297,11 @@ final class WorkflowStageProgression
             }
             $previous = data_get($locked->data, 'workflow_progress');
             $state = self::state($locked);
-            if (! is_array($previous) && in_array($event, ['reviewed', 'verified', 'paid', 'passed'], true)) {
+            if (! is_array($previous) && in_array($event, ['reviewed', 'verified', 'candidate_id_generated', 'paid', 'passed'], true)) {
                 $state[match ($event) {
                     'reviewed' => 'reviewed',
                     'verified' => 'verification_completed',
+                    'candidate_id_generated' => 'candidate_id_generated',
                     'paid' => 'payment_completed',
                     'passed' => 'result_passed',
                 }] = false;
@@ -249,7 +314,8 @@ final class WorkflowStageProgression
                 'initialize' => ! is_array($previous),
                 'submitted' => strtolower((string) $locked->review_status) !== 'draft',
                 'reviewed' => ! $blocked && in_array($current, [WorkflowStageType::Review, WorkflowStageType::Approval], true),
-                'verified' => ! $blocked && $current === WorkflowStageType::Verification
+                'verified' => ! $blocked && $current === WorkflowStageType::Verification,
+                'candidate_id_generated' => ! $blocked && $current === WorkflowStageType::CandidateIdGeneration
                     && filled($locked->candidate_id),
                 'paid' => ! $blocked && $current === WorkflowStageType::Payment && self::latestPaymentIsPaid($locked),
                 'passed' => ! $blocked && $current === WorkflowStageType::AwaitingResults,
@@ -271,6 +337,8 @@ final class WorkflowStageProgression
                 $state['reviewed'] = true;
             } elseif ($event === 'verified') {
                 $state['verification_completed'] = true;
+            } elseif ($event === 'candidate_id_generated') {
+                $state['candidate_id_generated'] = true;
             } elseif ($event === 'paid') {
                 $state['payment_completed'] = true;
             } elseif ($event === 'passed') {
@@ -321,9 +389,20 @@ final class WorkflowStageProgression
     private static function storeProgress(CustomFormEntry $entry, array $state, string $action): void
     {
         $data = is_array($entry->data) ? $entry->data : [];
+        if ($action !== 'workflow_stage_initialize') {
+            unset($data['workflow_custom_status']);
+        }
         $data['workflow_progress'] = $state;
         $status = (string) $entry->review_status;
-        if ($state['submitted'] && ! in_array(strtolower($status), ['rejected', 'failed'], true)) {
+        $messageOnlyBoundaryTypes = [WorkflowStageType::Custom, WorkflowStageType::CandidateIdGeneration, WorkflowStageType::Verification];
+        $customBoundary = in_array(WorkflowStageType::tryFrom((string) ($state['current_type'] ?? '')), $messageOnlyBoundaryTypes, true)
+            || (($state['finished'] ?? false) && in_array(self::finalStageType($entry), $messageOnlyBoundaryTypes, true));
+        $preserveStatus = $customBoundary || in_array($action, ['workflow_stage_verified', 'workflow_stage_candidate_id_generated'], true);
+        // Recording a real exam result must persist its result even when the next step only records a message or ID.
+        if ($action === 'workflow_stage_passed') {
+            $preserveStatus = false;
+        }
+        if ($state['submitted'] && ! $preserveStatus && ! in_array(strtolower($status), ['rejected', 'failed'], true)) {
             $final = $state['ready_for_final'];
             $status = $final ? 'passed' : (($state['reviewed'] || ! $state['has_review']) ? 'approved' : 'pending');
             $data['registration_status'] = $status;
@@ -456,12 +535,27 @@ final class WorkflowStageProgression
             if ($verificationIndex !== false && $verificationIndex > $index) {
                 $state['verification_completed'] = false;
             }
+            $generationIndex = array_search(WorkflowStageType::CandidateIdGeneration->value, array_column($stages, 'stage_type'), true);
+            if ($generationIndex !== false && $generationIndex > $index) {
+                $state['candidate_id_generated'] = false;
+            }
             if ($resultIndex !== false && $resultIndex > $index) {
                 $state['result_passed'] = false;
             }
             $completedIndex = array_search('completed', array_column($stages, 'stage_type'), true);
             if ($completedIndex !== false && $completedIndex >= $index) {
                 $state['completion_notified_at'] = null;
+            }
+            $data = is_array($locked->data) ? $locked->data : [];
+            if (is_array($data['workflow_custom_button_events'] ?? null)) {
+                // Reopen invalidated buttons without deleting their notification or audit history.
+                foreach (array_keys($data['workflow_custom_button_events']) as $eventKey) {
+                    if (preg_match('/^(\d+):\d+$/D', (string) $eventKey, $matches) === 1
+                        && (int) $matches[1] >= $index && isset($stages[(int) $matches[1]])) {
+                        unset($data['workflow_custom_button_events'][$eventKey]);
+                    }
+                }
+                $locked->data = $data;
             }
             self::storeProgress($locked, self::settle($state, $stages), 'workflow_payment_reversed');
             if ($completedIndex !== false && $completedIndex >= $index) {

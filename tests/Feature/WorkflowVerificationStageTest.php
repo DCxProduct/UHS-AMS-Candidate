@@ -17,7 +17,9 @@ use App\Models\User;
 use App\Models\WorkflowButton;
 use App\Models\WorkflowNotification;
 use App\Models\WorkflowStageType as StageTypeCatalog;
+use App\Services\CandidateIdGenerator;
 use App\Services\CandidatePaymentRecorder;
+use App\Services\WorkflowCandidateIdGenerator;
 use App\Services\WorkflowCandidateVerifier;
 use App\Support\PassedResultMenuOptions;
 use App\Support\StatisticsMenuOptions;
@@ -217,12 +219,12 @@ class WorkflowVerificationStageTest extends TestCase
         }
     }
 
-    public function test_catalog_and_workflow_picker_display_review_second_and_received_third_without_reordering_saved_applications(): void
+    public function test_catalog_and_workflow_picker_use_default_order_without_reordering_saved_applications(): void
     {
         $this->staff->assignRole(Role::findOrCreate('admin', 'web'));
         $builtins = DB::table('workflow_stage_types')->where('is_system', true)->get()->keyBy('behavior');
         DB::table('workflow_stage_types')->where('is_system', true)->delete();
-        foreach (['form_submission', 'review', 'payment', 'awaiting_results', 'completed', 'verification'] as $index => $behavior) {
+        foreach (['form_submission', 'review', 'payment', 'awaiting_results', 'completed', 'verification', 'candidate_id_generation'] as $index => $behavior) {
             DB::table('workflow_stage_types')->insert(array_replace((array) $builtins[$behavior], ['id' => $index + 1]));
         }
         $firstCustom = StageTypeCatalog::query()->create([
@@ -231,11 +233,13 @@ class WorkflowVerificationStageTest extends TestCase
         $secondCustom = StageTypeCatalog::query()->create([
             'label_en' => 'Custom submission', 'label_km' => 'ការដាក់ស្នើផ្ទាល់ខ្លួន', 'behavior' => 'form_submission', 'is_active' => true,
         ]);
-        $expected = StageTypeCatalog::query()->whereIn('id', [1, 2, 6, 3, 4, 5])->get()->keyBy('id');
-        $expected = collect([1, 2, 6, 3, 4, 5])->map(fn (int $id) => $expected[$id])->push($firstCustom, $secondCustom);
+        $expected = StageTypeCatalog::query()->whereIn('id', [1, 2, 3, 7, 6, 4, 5])->get()->keyBy('id');
+        $expected = collect([1, 2, 3, 7, 6, 4, 5])->map(fn (int $id) => $expected[$id])->push($firstCustom, $secondCustom);
         $expectedIds = $expected->pluck('id')->all();
         $this->assertSame('review', $expected[1]->behavior);
-        $this->assertSame('verification', $expected[2]->behavior);
+        $this->assertSame('payment', $expected[2]->behavior);
+        $this->assertSame('candidate_id_generation', $expected[3]->behavior);
+        $this->assertSame('verification', $expected[4]->behavior);
         $form = $this->form();
         $stages = $this->stages();
         $workflow = WorkflowNotification::query()->create([
@@ -271,7 +275,7 @@ class WorkflowVerificationStageTest extends TestCase
     }
 
     #[DataProvider('reviewPaths')]
-    public function test_checked_application_waits_for_confirmed_verification_before_id_and_payment_and_notifies_once(string $path): void
+    public function test_checked_application_waits_for_receipt_before_payment_without_issuing_an_id_and_notifies_once(string $path): void
     {
         [$form, $workflow] = $this->workflow();
         $entry = $this->entry($form);
@@ -288,7 +292,7 @@ class WorkflowVerificationStageTest extends TestCase
         $stages[1]['data']['notification_message'] = 'Changed live verification notice';
         $workflow->update(['stages' => $stages]);
         $before = $this->row($entry);
-        $this->assertFalse(WorkflowStageProgression::verified($entry));
+        $this->assertFalse(WorkflowStageProgression::paid($entry));
         $this->assertSame($before, $this->row($entry));
         $component = Livewire::test(ListCustomFormEntries::class)->assertTableActionVisible('verify', $entry)
             ->mountTableAction('verify', $entry);
@@ -304,7 +308,7 @@ class WorkflowVerificationStageTest extends TestCase
 
         $component->mountTableAction('verify', $entry)->callMountedTableAction()->assertHasNoTableActionErrors();
         $entry->refresh();
-        $this->assertSame('BNM-0001', $entry->candidate_id);
+        $this->assertNull($entry->candidate_id);
         $this->assertTrue(data_get($entry->data, 'workflow_progress.verification_completed'));
         $this->assertSame(WorkflowStageType::Payment, WorkflowStageProgression::currentType($entry));
         $this->assertNotNull(WorkflowStageProgression::completedAt($entry, 1));
@@ -318,10 +322,11 @@ class WorkflowVerificationStageTest extends TestCase
         $this->assertSame(['Frozen verification notice'], $this->candidate->notifications()->get()->pluck('data.body')->all());
         $this->assertTrue(PaymentStatusListResource::getEloquentQuery()->whereKey($entry->id)->exists());
         $after = $this->row($entry);
-        $this->assertSame('BNM-0001', app(WorkflowCandidateVerifier::class)->verify($entry));
+        $this->assertTrue(app(WorkflowCandidateVerifier::class)->verify($entry));
         $this->assertSame($after, $this->row($entry));
         $this->assertSame(1, $this->candidate->notifications()->count());
-        $this->assertDatabaseHas('candidate_id_sequences', ['custom_form_id' => $form->id, 'last_sequence' => 1]);
+        $this->assertDatabaseCount('candidate_id_sequences', 0);
+        $this->assertDatabaseCount('candidate_account_ids', 0);
         $component->call('$refresh')->assertTableActionHidden('verify', $entry);
 
         app(CandidatePaymentRecorder::class)->record([
@@ -362,7 +367,7 @@ class WorkflowVerificationStageTest extends TestCase
             ->assertHasNoTableActionErrors();
         $entry->refresh();
 
-        $this->assertSame('BNM-0001', $entry->candidate_id);
+        $this->assertNull($entry->candidate_id);
         $this->assertTrue(data_get($entry->data, 'workflow_progress.payment_completed'));
         $this->assertTrue(data_get($entry->data, 'workflow_progress.verification_completed'));
         $this->assertNotNull(WorkflowStageProgression::completedAt($entry, 2));
@@ -371,14 +376,14 @@ class WorkflowVerificationStageTest extends TestCase
         $this->assertSame($snapshot, $entry->getRawOriginal('workflow_snapshot'));
         $this->assertSame('Original answer', $entry->data['answer']);
         $this->assertStatusForCandidateAndStaff($component, $entry, 'បានទទួលពាក្យស្នើសុំ');
-        $this->assertDatabaseHas('candidate_id_sequences', ['custom_form_id' => $form->id, 'last_sequence' => 1]);
-        $this->assertDatabaseCount('candidate_account_ids', 1);
+        $this->assertDatabaseCount('candidate_id_sequences', 0);
+        $this->assertDatabaseCount('candidate_account_ids', 0);
 
         $this->assertTrue(WorkflowStageProgression::passed($entry));
         $this->assertSame('Exam passed', WorkflowStageMessages::statusText($entry));
         $this->assertTrue(WorkflowStageMessages::notifyConfiguredStage($entry, WorkflowStageType::Completed));
         $this->assertSame('Certification released', WorkflowStageMessages::statusText($entry));
-        $this->assertSame('BNM-0001', $entry->candidate_id);
+        $this->assertNull($entry->candidate_id);
         $this->assertSame($snapshot, $entry->fresh()->getRawOriginal('workflow_snapshot'));
     }
 
@@ -492,25 +497,26 @@ class WorkflowVerificationStageTest extends TestCase
         Livewire::test(ListCustomFormEntries::class)->assertTableActionVisible('verify', $native)
             ->assertTableActionVisible('verify', $direct)->assertTableActionHidden('verify', $changedRole)
             ->callTableAction('verify', $native)->assertHasNoTableActionErrors();
-        $this->assertSame('BNM-0001', $native->refresh()->candidate_id);
-        $this->assertSame('BNM-0001', app(WorkflowCandidateVerifier::class)->verify($direct));
+        $this->assertNull($native->refresh()->candidate_id);
+        $this->assertTrue(app(WorkflowCandidateVerifier::class)->verify($direct));
         $this->assertBlocked(fn () => app(WorkflowCandidateVerifier::class)->verify($changedRole), 403);
         $this->assertSame($beforeChangedRole, $this->row($changedRole));
         foreach ([$native, $direct] as $index => $entry) {
             $this->assertTrue(data_get($entry->refresh()->data, 'workflow_progress.verification_completed'));
             $this->assertSame(WorkflowStageType::Payment, WorkflowStageProgression::currentType($entry));
             $this->assertSame($snapshots[$index], $entry->getRawOriginal('workflow_snapshot'));
+            $this->assertNull($entry->candidate_id);
         }
         $after = $this->row($direct);
-        $this->assertSame('BNM-0001', app(WorkflowCandidateVerifier::class)->verify($direct));
+        $this->assertTrue(app(WorkflowCandidateVerifier::class)->verify($direct));
         $this->assertSame($after, $this->row($direct));
-        $this->assertDatabaseCount('candidate_account_ids', 1);
-        $this->assertDatabaseHas('candidate_id_sequences', ['custom_form_id' => $form->id, 'last_sequence' => 1]);
+        $this->assertDatabaseCount('candidate_account_ids', 0);
+        $this->assertDatabaseCount('candidate_id_sequences', 0);
         Http::assertNothingSent();
         Mail::assertNothingSent();
     }
 
-    public function test_no_other_event_or_missing_major_can_complete_verification(): void
+    public function test_unrelated_events_cannot_complete_receipt_and_receipt_does_not_require_a_major(): void
     {
         [$form] = $this->workflow();
         $entry = $this->entry($form, data: ['major' => 'unknown major']);
@@ -520,45 +526,69 @@ class WorkflowVerificationStageTest extends TestCase
         $this->assertFalse(WorkflowStageProgression::paid($entry));
         $this->assertFalse(WorkflowStageProgression::passed($entry));
         $this->assertFalse(WorkflowStageProgression::notified($entry, WorkflowStageType::Completed));
-        $this->assertNull(app(WorkflowCandidateVerifier::class)->verify($entry));
         $this->assertSame($before, $this->row($entry));
         $this->assertNull(WorkflowStageProgression::completedAt($entry->fresh(), 1));
         $this->assertDatabaseCount('candidate_id_sequences', 0);
         $this->assertDatabaseCount('candidate_account_ids', 0);
         $this->assertDatabaseCount('notifications', 0);
 
-        $data = $entry->fresh()->data;
-        $data['major'] = (string) $this->major->id;
-        DB::table('custom_form_entries')->where('id', $entry->id)->update(['data' => json_encode($data)]);
-        $this->assertSame('BNM-0001', app(WorkflowCandidateVerifier::class)->verify($entry));
+        $this->assertTrue(app(WorkflowCandidateVerifier::class)->verify($entry));
+        $this->assertNull($entry->candidate_id);
+        $this->assertSame('unknown major', $entry->data['major']);
+        $this->assertTrue(data_get($entry->data, 'workflow_progress.verification_completed'));
+        $this->assertNotNull(WorkflowStageProgression::completedAt($entry, 1));
         $this->assertSame(WorkflowStageType::Payment, WorkflowStageProgression::currentType($entry->fresh()));
+        $this->assertDatabaseCount('candidate_id_sequences', 0);
+        $this->assertDatabaseCount('candidate_account_ids', 0);
+        $this->assertSame(1, $this->candidate->notifications()->count());
+        $received = $this->row($entry);
+        $this->assertTrue(app(WorkflowCandidateVerifier::class)->verify($entry));
+        $this->assertSame($received, $this->row($entry));
+        $this->assertSame(1, $this->candidate->notifications()->count());
     }
 
-    public function test_static_receipt_is_deferred_while_workflows_without_verification_keep_review_ids_and_frozen_old_applications(): void
+    #[DataProvider('reviewPaths')]
+    public function test_review_and_receipt_never_allocate_ids_without_a_generation_stage_and_keep_frozen_applications(string $path): void
     {
-        foreach (['row', 'modal'] as $path) {
-            $static = $this->entry($this->form());
-            $this->review($static, $path);
-            $this->assertNull($static->fresh()->candidate_id);
-            $this->assertTrue(app(WorkflowCandidateVerifier::class)->canVerify($static->fresh()));
-            Livewire::test(ListCustomFormEntries::class)->assertTableActionVisible('verify', $static);
+        $static = $this->entry($this->form(), data: ['major' => null]);
+        $this->review($static, $path);
+        $this->assertNull($static->fresh()->candidate_id);
+        $this->assertSame('approved', $static->review_status);
+        $this->assertSame('Original answer', $static->data['answer']);
+        $this->assertTrue(app(WorkflowCandidateVerifier::class)->canVerify($static->fresh()));
+        Livewire::test(ListCustomFormEntries::class)->assertTableActionVisible('verify', $static)
+            ->callTableAction('verify', $static)->assertHasNoTableActionErrors();
+        $this->assertNull($static->refresh()->candidate_id);
+        $this->assertNotNull(data_get($static->data, 'application_received_at'));
+        $received = $this->row($static);
+        $this->assertTrue(app(WorkflowCandidateVerifier::class)->verify($static));
+        $this->assertSame($received, $this->row($static));
 
-            [$form, $workflow] = $this->workflow(false);
-            $old = $this->entry($form);
-            $snapshot = $old->fresh()->getRawOriginal('workflow_snapshot');
-            $this->assertArrayNotHasKey('verification_completed', data_get($old->data, 'workflow_progress'));
-            $workflow->update(['stages' => $this->stages()]);
-            $new = $this->entry($form, owner: $this->user('student'));
-            $this->review($old, $path);
-            $this->assertSame('BNM-0001', $old->fresh()->candidate_id);
-            $this->assertSame(WorkflowStageType::Payment, WorkflowStageProgression::currentType($old->fresh()));
-            $this->assertSame($snapshot, $old->fresh()->getRawOriginal('workflow_snapshot'));
-            $this->review($new, $path);
-            $this->assertNull($new->fresh()->candidate_id);
-            $this->assertSame(WorkflowStageType::Verification, WorkflowStageProgression::currentType($new->fresh()));
-            Livewire::test(ListCustomFormEntries::class)->assertTableActionHidden('verify', $old)
-                ->assertTableActionVisible('verify', $new);
-        }
+        [$form, $workflow] = $this->workflow(false);
+        $old = $this->entry($form);
+        $preserved = $this->entry($form);
+        $preserved->forceFill(['candidate_id' => 'HISTORICAL-0042', 'candidate_id_year' => 2024])->saveQuietly();
+        $snapshot = $old->fresh()->getRawOriginal('workflow_snapshot');
+        $preservedSnapshot = $preserved->fresh()->getRawOriginal('workflow_snapshot');
+        $this->assertArrayNotHasKey('verification_completed', data_get($old->data, 'workflow_progress'));
+        $workflow->update(['stages' => $this->stages()]);
+        $new = $this->entry($form, owner: $this->user('student'));
+        $this->review($old, $path);
+        $this->assertNull($old->fresh()->candidate_id);
+        $this->assertSame('approved', $old->review_status);
+        $this->assertSame('Original answer', $old->data['answer']);
+        $this->assertSame(WorkflowStageType::Payment, WorkflowStageProgression::currentType($old->fresh()));
+        $this->assertSame($snapshot, $old->fresh()->getRawOriginal('workflow_snapshot'));
+        $this->review($preserved, $path);
+        $this->assertSame('HISTORICAL-0042', $preserved->fresh()->candidate_id);
+        $this->assertSame(2024, $preserved->candidate_id_year);
+        $this->assertSame('approved', $preserved->review_status);
+        $this->assertSame($preservedSnapshot, $preserved->getRawOriginal('workflow_snapshot'));
+        $this->review($new, $path);
+        $this->assertNull($new->fresh()->candidate_id);
+        $this->assertSame(WorkflowStageType::Verification, WorkflowStageProgression::currentType($new->fresh()));
+        Livewire::test(ListCustomFormEntries::class)->assertTableActionHidden('verify', $old)
+            ->assertTableActionVisible('verify', $new);
 
         [$form, $workflow] = $this->workflow(false);
         $legacyStages = $workflow->stages;
@@ -568,35 +598,82 @@ class WorkflowVerificationStageTest extends TestCase
         $snapshot = $legacy->getRawOriginal('workflow_snapshot');
         $this->assertSame(1, $legacy->workflow_snapshot['schema_version']);
         $workflow->refresh()->update(['stages' => $this->stages()]);
-        $this->review($legacy);
-        $this->assertSame('BNM-0001', $legacy->fresh()->candidate_id);
+        $this->review($legacy, $path);
+        $this->assertNull($legacy->fresh()->candidate_id);
+        $this->assertSame('approved', $legacy->review_status);
+        $this->assertSame('Original answer', $legacy->data['answer']);
         $this->assertSame($snapshot, $legacy->fresh()->getRawOriginal('workflow_snapshot'));
         $this->assertFalse(app(WorkflowCandidateVerifier::class)->canVerify($legacy->fresh()));
+        $this->assertDatabaseCount('candidate_id_sequences', 0);
+        $this->assertDatabaseCount('candidate_account_ids', 0);
+        Http::assertNothingSent();
+        Mail::assertNothingSent();
     }
 
-    public function test_older_sibling_review_cannot_preassign_id_to_an_unverified_application_but_verify_reuses_it(): void
+    public function test_live_generation_stage_cannot_assign_an_id_to_a_sibling_whose_frozen_workflow_has_no_generation_stage(): void
     {
         [$form, $workflow] = $this->workflow(false);
         $old = $this->entry($form);
-        $workflow->update(['stages' => $this->stages()]);
+        $snapshot = $old->getRawOriginal('workflow_snapshot');
+        $stages = $this->stages();
+        array_splice($stages, 1, 0, [['type' => 'stage', 'data' => [
+            'stage_type' => 'candidate_id_generation', 'stage_name' => 'Generate candidate ID',
+            'responsible_role' => ['registrar_officer'], 'notification_channels' => [],
+        ]]]);
+        $workflow->update(['stages' => $stages]);
         $new = $this->entry($form);
+        $this->assertFalse(WorkflowNotification::forEntry($old)->hasStageType(WorkflowStageType::CandidateIdGeneration));
+        $this->assertTrue(WorkflowNotification::forForm($form->id)->hasStageType(WorkflowStageType::CandidateIdGeneration));
+        $this->assertTrue(WorkflowNotification::forEntry($new)->hasStageType(WorkflowStageType::CandidateIdGeneration));
         $this->review($old);
-        $this->assertSame('BNM-0001', $old->fresh()->candidate_id);
+        $this->assertNull($old->fresh()->candidate_id);
+        $this->assertSame('approved', $old->review_status);
         $this->assertNull($new->fresh()->candidate_id);
         $this->review($new);
         $this->assertNull($new->fresh()->candidate_id);
-        $this->assertSame('BNM-0001', app(WorkflowCandidateVerifier::class)->verify($new));
-        $this->assertSame('BNM-0001', $old->fresh()->candidate_id);
+        $this->assertSame(WorkflowStageType::CandidateIdGeneration, WorkflowStageProgression::currentType($new));
+        $this->assertDatabaseCount('candidate_account_ids', 0);
+        $this->assertDatabaseCount('candidate_id_sequences', 0);
+        $this->assertSame('BNM-0001', app(WorkflowCandidateIdGenerator::class)->generate($new));
+        $this->assertNull($old->fresh()->candidate_id);
+        $beforeOldAttempt = $this->row($old);
+        $this->assertNull(app(CandidateIdGenerator::class)->assignToEntry($old));
+        $this->assertSame($beforeOldAttempt, $this->row($old));
+        $this->assertTrue(app(WorkflowCandidateVerifier::class)->verify($new));
+        $this->assertSame('BNM-0001', $new->candidate_id);
+        $this->assertNull($old->fresh()->candidate_id);
+        $this->assertSame($snapshot, $old->getRawOriginal('workflow_snapshot'));
+        $this->assertSame('Original answer', $old->data['answer']);
         $this->assertDatabaseCount('candidate_account_ids', 1);
         $this->assertDatabaseHas('candidate_id_sequences', ['custom_form_id' => $form->id, 'last_sequence' => 1]);
     }
 
-    public function test_reversing_an_earlier_payment_resets_review_and_verification_and_reuses_the_existing_id_after_reconfirmation(): void
+    public function test_static_receipt_preserves_an_existing_candidate_id_without_a_major_or_new_allocation(): void
+    {
+        $entry = $this->entry($this->form(), data: ['major' => null]);
+        $entry->forceFill(['candidate_id' => 'HISTORICAL-0042', 'candidate_id_year' => 2024])->saveQuietly();
+        $this->review($entry);
+
+        $this->assertTrue(app(WorkflowCandidateVerifier::class)->verify($entry));
+
+        $this->assertSame('HISTORICAL-0042', $entry->candidate_id);
+        $this->assertSame(2024, $entry->candidate_id_year);
+        $this->assertNotNull(data_get($entry->data, 'application_received_at'));
+        $this->assertSame($this->staff->id, data_get($entry->data, 'application_received_by'));
+        $this->assertDatabaseCount('candidate_id_sequences', 0);
+        $this->assertDatabaseCount('candidate_account_ids', 0);
+        $received = $this->row($entry);
+        $this->assertTrue(app(WorkflowCandidateVerifier::class)->verify($entry));
+        $this->assertSame($received, $this->row($entry));
+    }
+
+    public function test_reversing_an_earlier_payment_resets_review_and_receipt_and_preserves_an_existing_id_after_reconfirmation(): void
     {
         [$form, $workflow] = $this->workflow();
         $stages = $this->stages();
         $workflow->update(['stages' => [$stages[2], $stages[0], $stages[1], $stages[3], $stages[4]]]);
         $entry = $this->entry($form);
+        $entry->forceFill(['candidate_id' => 'BNM-0001', 'candidate_id_year' => now()->year])->saveQuietly();
         $this->assertSame(WorkflowStageType::Payment, WorkflowStageProgression::currentType($entry));
         $payment = app(CandidatePaymentRecorder::class)->record([
             'custom_form_entry_id' => $entry->id, 'receipt_number' => 'VERIFY-REWIND-'.$entry->id,
@@ -604,7 +681,7 @@ class WorkflowVerificationStageTest extends TestCase
         ]);
         $this->assertSame(WorkflowStageType::Review, WorkflowStageProgression::currentType($entry->fresh()));
         $this->review($entry);
-        $this->assertSame('BNM-0001', app(WorkflowCandidateVerifier::class)->verify($entry));
+        $this->assertTrue(app(WorkflowCandidateVerifier::class)->verify($entry));
         $this->assertTrue(data_get($entry->fresh()->data, 'workflow_progress.verification_completed'));
         $snapshot = $entry->getRawOriginal('workflow_snapshot');
 
@@ -630,8 +707,8 @@ class WorkflowVerificationStageTest extends TestCase
         $this->assertSame(WorkflowStageType::AwaitingResults, WorkflowStageProgression::currentType($entry));
         $this->assertSame('BNM-0001', $entry->candidate_id);
         $this->assertSame($snapshot, $entry->getRawOriginal('workflow_snapshot'));
-        $this->assertDatabaseHas('candidate_id_sequences', ['custom_form_id' => $form->id, 'last_sequence' => 1]);
-        $this->assertDatabaseCount('candidate_account_ids', 1);
+        $this->assertDatabaseCount('candidate_id_sequences', 0);
+        $this->assertDatabaseCount('candidate_account_ids', 0);
     }
 
     private function paymentReceiptWorkflow(string $source, bool $receiptFirst = false, string $receiptStatus = 'បានទទួលពាក្យស្នើសុំ'): array

@@ -4,13 +4,16 @@ namespace App\Filament\Admin\Resources\WorkflowButtons\Schemas;
 
 use App\Models\WorkflowButton;
 use App\Support\WorkflowStageTypeSettings;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Arr;
 
 class WorkflowButtonForm
 {
@@ -34,19 +37,38 @@ class WorkflowButtonForm
                             ->helperText(__('workflow_buttons.helpers.label_km'))
                             ->maxLength(255),
 
+                        Hidden::make('action_key_changed')
+                            ->default(false)
+                            ->dehydrated(false),
+
                         Select::make('action_key')
                             ->label(__('workflow_buttons.fields.action_key'))
                             ->placeholder(__('workflow_buttons.placeholders.action_key'))
-                            ->helperText(fn (?Model $record): string => $record instanceof WorkflowButton && $record->inUse()
-                                ? __('workflow_buttons.helpers.action_locked')
-                                : __('workflow_buttons.helpers.action_key'))
-                            ->options(fn (): array => WorkflowButton::actionOptions())
-                            ->in(fn (): array => array_keys(WorkflowButton::actionOptions()))
-                            ->required()
+                            ->formatStateUsing(fn (?string $state): ?string => $state === 'verify' ? null : $state)
+                            ->helperText(fn (?Model $record, Get $get): ?string => $record instanceof WorkflowButton && $record->action_key === 'verify' && ! $get('action_key_changed')
+                                ? null
+                                : ($record instanceof WorkflowButton && $record->inUse()
+                                    ? __('workflow_buttons.helpers.action_locked')
+                                    : __($get('action_key') === 'generate_candidate_id'
+                                        ? 'workflow_buttons.helpers.candidate_id_generation'
+                                        : 'workflow_buttons.helpers.action_key')))
+                            ->options(fn (): array => Arr::except(WorkflowButton::actionOptions(), ['verify']))
+                            ->in(fn (): array => array_keys(Arr::except(WorkflowButton::actionOptions(), ['verify'])))
+                            ->nullable()
+                            ->dehydrateStateUsing(function (?string $state, ?Model $record, Get $get): ?string {
+                                if (filled($state)) {
+                                    return $state;
+                                }
+
+                                return $record instanceof WorkflowButton && $record->action_key === 'verify' && ! $get('action_key_changed')
+                                    ? 'verify'
+                                    : null;
+                            })
                             ->disabled(fn (?Model $record): bool => $record instanceof WorkflowButton && $record->inUse())
                             ->native(false)
                             ->live()
                             ->afterStateUpdated(function (?string $state, Set $set): void {
+                                $set('action_key_changed', true);
                                 $action = WorkflowStageTypeSettings::buttonActions()[$state] ?? null;
                                 if ($action !== null) {
                                     $set('icon', $action['icon']);

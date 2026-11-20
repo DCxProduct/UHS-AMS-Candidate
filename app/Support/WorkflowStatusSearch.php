@@ -50,6 +50,7 @@ final class WorkflowStatusSearch
                 __('candidate_entrance_statistics.statuses.pending'), __('candidate_entrance_statistics.statuses.passed'),
                 __('student_profile.save_as_draft'), __('workflow_notifications.status_defaults.verified'),
                 __('workflow_notifications.status_defaults.verification'), __('workflow_notifications.status_defaults.notification_pending'),
+                __('workflow_notifications.status_defaults.candidate_id_generation'), __('workflow_notifications.status_defaults.candidate_id_generated'),
                 __('payments.options.status_payt.paid'), __('payments.options.status_payt.unpaid'),
             ]);
             $possible = $defaults->contains(fn (string $label): bool => self::contains($label, $search))
@@ -106,6 +107,61 @@ final class WorkflowStatusSearch
 
     private static function orderedReview(Builder $query, string $search): void
     {
+        $generated = $query->getModel()->newQueryWithoutScopes();
+        self::precedingGenerationStatusApplies($generated);
+        $key = $query->getModel()->getQualifiedKeyName();
+
+        $query->where(function (Builder $labels) use ($search, $generated, $key): void {
+            $labels->where(function (Builder $generation) use ($search, $generated, $key): void {
+                $generation->whereIn($key, (clone $generated)->select($key));
+                self::firstText($generation, $search, [['candidate_id_generation', 'status_message']], __('workflow_notifications.status_defaults.candidate_id_generated'));
+            })->orWhere(function (Builder $other) use ($search, $generated, $key): void {
+                $other->whereNotIn($key, (clone $generated)->select($key));
+                self::orderedReviewLabels($other, $search);
+            });
+        });
+    }
+
+    /** A completed generation checkpoint supplies the label while the next action is pending. */
+    private static function precedingGenerationStatusApplies(Builder $query): void
+    {
+        self::notTrue($query, 'data->workflow_progress->finished');
+        $query->where('data->workflow_progress->submitted', true)
+            ->whereIn('data->workflow_progress->current_type', array_column(WorkflowStageType::cases(), 'value'));
+        self::statusIn($query, 'review_status', ['draft', 'rejected', 'failed'], not: true);
+        self::statusIn($query, 'data->registration_status', ['draft', 'rejected', 'failed'], not: true);
+        $pairs = [];
+        foreach (self::$reviewStageSets ?? [] as $items) {
+            $stages = collect($items)
+                ->map(fn (mixed $item): array => is_array($item) ? ($item['data'] ?? $item) : [])
+                ->filter(fn (array $stage): bool => WorkflowStageType::tryFrom((string) ($stage['stage_type'] ?? '')) !== null)
+                ->values()->all();
+            foreach ($stages as $index => $stage) {
+                if ($index > 0 && ($stages[$index - 1]['stage_type'] ?? null) === 'candidate_id_generation'
+                    && ($stage['stage_type'] ?? null) !== 'completed') {
+                    $pairs[$index.':'.$stage['stage_type']] = [$index, $stage['stage_type']];
+                }
+            }
+        }
+        $query->where(function (Builder $positions) use ($pairs): void {
+            $positions->whereRaw('1 = 0');
+            foreach ($pairs as [$index, $type]) {
+                $positions->orWhere(function (Builder $position) use ($index, $type): void {
+                    self::stageTypeAt($position, $index - 1, 'candidate_id_generation');
+                    self::stageTypeAt($position, $index, $type);
+                    $position->where(fn (Builder $cursor): Builder => $cursor
+                        ->where('data->workflow_progress->current_index', $index)
+                        ->orWhere('data->workflow_progress->current_index', (string) $index));
+                    $position->where(fn (Builder $time): Builder => $time
+                        ->whereNotNull('data->workflow_progress->completed_at['.($index - 1).']')
+                        ->orWhereNotNull('data->workflow_progress->completed_at->'.($index - 1)));
+                });
+            }
+        });
+    }
+
+    private static function orderedReviewLabels(Builder $query, string $search): void
+    {
         $query->where(function (Builder $matches) use ($search): void {
             foreach (['failed' => 'reject', 'rejected' => 'send_back'] as $status => $action) {
                 $matches->orWhere(function (Builder $review) use ($search, $status, $action): void {
@@ -137,7 +193,7 @@ final class WorkflowStatusSearch
                     $visibility->where(function (Builder $active) use ($search): void {
                         self::orderedActive($active);
                         $active->where(function (Builder $current) use ($search): void {
-                            foreach (['form_submission', 'review', 'verification', 'payment', 'awaiting_results', 'completed'] as $type) {
+                            foreach (['form_submission', 'review', 'verification', 'payment', 'awaiting_results', 'completed', 'candidate_id_generation', 'custom'] as $type) {
                                 $current->orWhere(function (Builder $stage) use ($type, $search): void {
                                     self::currentStage($stage, $type);
                                     self::orderedStageText($stage, $type, $search);
@@ -175,20 +231,22 @@ final class WorkflowStatusSearch
                     });
                 });
             });
-        } elseif ($type === 'verification') {
-            $query->where(function (Builder $states) use ($search): void {
-                $states->where(function (Builder $finished) use ($search): void {
+        } elseif (in_array($type, ['verification', 'candidate_id_generation'], true)) {
+            $pendingLabel = __('workflow_notifications.status_defaults.'.$type);
+            $finishedLabel = __('workflow_notifications.status_defaults.'.($type === 'verification' ? 'verified' : 'candidate_id_generated'));
+            $query->where(function (Builder $states) use ($type, $search, $pendingLabel, $finishedLabel): void {
+                $states->where(function (Builder $finished) use ($type, $search, $finishedLabel): void {
                     $finished->where('data->workflow_progress->finished', true);
-                    self::firstText($finished, $search, [['verification', 'status_message']], __('workflow_notifications.status_defaults.verified'));
-                })->orWhere(function (Builder $pending) use ($search): void {
+                    self::firstText($finished, $search, [[$type, 'status_message']], $finishedLabel);
+                })->orWhere(function (Builder $pending) use ($search, $pendingLabel): void {
                     self::notTrue($pending, 'data->workflow_progress->finished');
-                    $pending->where(function (Builder $labels) use ($search): void {
-                        $labels->where(function (Builder $paid) use ($search): void {
+                    $pending->where(function (Builder $labels) use ($search, $pendingLabel): void {
+                        $labels->where(function (Builder $paid) use ($search, $pendingLabel): void {
                             self::stageCompleted($paid, 'payment');
                             self::paid($paid);
-                            self::firstText($paid, $search, [['payment', 'status_message']], __('workflow_notifications.status_defaults.verification'));
+                            self::firstText($paid, $search, [['payment', 'status_message']], $pendingLabel);
                         });
-                        if (self::contains(__('workflow_notifications.status_defaults.verification'), $search)) {
+                        if (self::contains($pendingLabel, $search)) {
                             $labels->orWhere(function (Builder $unpaid): void {
                                 // Missing JSON keys must retain the pending label;
                                 // negating their SQL NULL predicates would hide it.
@@ -202,6 +260,8 @@ final class WorkflowStatusSearch
                     });
                 });
             });
+        } elseif ($type === 'custom') {
+            self::generationReceiptStatus($query, $search);
         } elseif ($type === 'payment') {
             $query->where(function (Builder $states) use ($search): void {
                 foreach ([true, false] as $paid) {
@@ -267,6 +327,89 @@ final class WorkflowStatusSearch
                 });
             });
         }
+    }
+
+    /** Only the custom checkpoint immediately after ID generation inherits its status. */
+    private static function generationReceiptStatus(Builder $query, string $search): void
+    {
+        $pairs = [];
+        foreach (self::$reviewStageSets ?? [] as $items) {
+            $stages = array_values(array_map(fn (mixed $item): array => is_array($item) ? ($item['data'] ?? $item) : [], $items));
+            foreach ($stages as $index => $stage) {
+                if ($index < 1 || ($stage['stage_type'] ?? null) !== 'custom'
+                    || ($stages[$index - 1]['stage_type'] ?? null) !== 'candidate_id_generation') {
+                    continue;
+                }
+                $pairs[$index] ??= [];
+                foreach ($stage['buttons'] ?? [] as $position => $button) {
+                    if (is_array($button) && array_key_exists('action_key', $button) && $button['action_key'] === null
+                        && is_numeric($button['id'] ?? null) && (int) $button['id'] > 0) {
+                        $pairs[$index][$position][(int) $button['id']] = (int) $button['id'];
+                    }
+                }
+            }
+        }
+
+        $query->where(function (Builder $matching) use ($pairs, $search): void {
+            $matching->whereRaw('1 = 0');
+            foreach ($pairs as $index => $buttons) {
+                $matching->orWhere(function (Builder $pair) use ($index, $buttons, $search): void {
+                    self::stageTypeAt($pair, $index - 1, 'candidate_id_generation');
+                    self::stageTypeAt($pair, $index, 'custom');
+                    $pair->where(fn (Builder $time): Builder => $time
+                        ->whereNotNull('data->workflow_progress->completed_at['.($index - 1).']')
+                        ->orWhereNotNull('data->workflow_progress->completed_at->'.($index - 1)));
+                    $validReceipt = $pair->getModel()->newQueryWithoutScopes();
+                    self::recordedGenerationReceipt($validReceipt, $index, $buttons);
+                    $key = $pair->getModel()->getQualifiedKeyName();
+                    $pair->where(function (Builder $labels) use ($validReceipt, $key, $search): void {
+                        $labels->where(function (Builder $receipt) use ($validReceipt, $key, $search): void {
+                            $receipt->whereIn($key, (clone $validReceipt)->select($key));
+                            CaseInsensitiveSearch::applyCast($receipt, 'data->workflow_custom_status->text', $search);
+                        })->orWhere(function (Builder $generation) use ($validReceipt, $key, $search): void {
+                            self::notTrue($generation, 'data->workflow_progress->finished');
+                            $generation->whereNotIn($key, (clone $validReceipt)->select($key));
+                            self::firstText($generation, $search, [['candidate_id_generation', 'status_message']], __('workflow_notifications.status_defaults.candidate_id_generated'));
+                        });
+                    });
+                });
+            }
+        });
+    }
+
+    /** Match the same frozen button, configured text, and indexed click event used by the formatter. */
+    private static function recordedGenerationReceipt(Builder $query, int $index, array $buttons): void
+    {
+        $query->where('data->workflow_custom_status->stage_index', $index)
+            ->whereNotNull('data->workflow_custom_status->at')->where('data->workflow_custom_status->at', '!=', '')
+            ->whereNotNull('data->workflow_custom_status->text')->where('data->workflow_custom_status->text', '!=', '');
+        $query->where(function (Builder $matching) use ($index, $buttons): void {
+            $matching->whereRaw('1 = 0');
+            foreach ($buttons as $position => $ids) {
+                foreach ($ids as $id) {
+                    $matching->orWhere(function (Builder $button) use ($index, $position, $id): void {
+                        $event = 'data->workflow_custom_button_events->'.$index.':'.$id;
+                        $button->where('data->workflow_custom_status->button_id', $id)
+                            ->whereColumn('data->workflow_custom_status->at', $event.'->at')
+                            ->whereColumn('data->workflow_custom_status->text', $event.'->status');
+                        $button->where(function (Builder $shapes) use ($index, $position, $id): void {
+                            foreach (['->data', ''] as $shape) {
+                                $shapes->orWhere(function (Builder $frozen) use ($index, $position, $id, $shape): void {
+                                    $stage = 'workflow_snapshot->stages['.$index.']'.$shape;
+                                    $definition = $stage.'->buttons['.$position.']';
+                                    $frozen->where($definition.'->id', $id)
+                                        ->whereJsonContainsKey($definition.'->action_key')->whereNull($definition.'->action_key');
+                                    $grammar = $frozen->getQuery()->getGrammar();
+                                    $marker = $grammar->wrap($frozen->getModel()->qualifyColumn('data->workflow_custom_status->text'));
+                                    $configured = $grammar->wrap($frozen->getModel()->qualifyColumn($stage.'->submission_messages->candidate_status_message'));
+                                    $frozen->whereRaw($marker.' = TRIM('.$configured.')');
+                                });
+                            }
+                        });
+                    });
+                }
+            }
+        });
     }
 
     /** Keep the receipt label when receipt is the later completed action. */

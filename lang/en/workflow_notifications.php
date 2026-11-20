@@ -8,8 +8,8 @@ return [
     'custom_form_column' => 'Workflow Notification',
     'custom_form_helper' => 'Optional. The workflow this form follows.',
     'candidate_notification_title' => ':stage',
-    'candidate_action_notification_title' => ':form: :action',
-    'staff_notification_title' => ':form: :stage',
+    'candidate_action_notification_title' => ':action',
+    'staff_notification_title' => ':stage',
     'staff_notification_body' => ':student has reached the :stage stage for :form.',
     'not_assigned' => 'Not assigned',
 
@@ -90,9 +90,14 @@ return [
         'unpaid_status_message' => 'Unpaid',
         'waiting_result_status_message' => 'Pending',
         'stage_audiences' => [
+            'candidate_id_generation' => [
+                'status_message' => 'Candidate ID generated',
+                'notification_message' => 'Your candidate ID has been generated.',
+                'staff_notification_message' => 'The candidate ID for :candidate in :form has been generated.',
+            ],
             'verification' => [
                 'status_message' => 'Application Received',
-                'notification_message' => 'Your application has been received and your candidate ID is ready.',
+                'notification_message' => 'Your application has been received.',
                 'staff_notification_message' => 'The :form application from :candidate has been received.',
             ],
             'payment' => [
@@ -152,7 +157,8 @@ return [
         'ams_alert' => 'Shown in AMS after payment succeeds. Leave blank for no alert.',
         'ams_roles' => 'Roles from the AMS Roles menu. Applies to this AMS payment stage.',
         'ams_roles_unavailable' => 'AMS roles could not be loaded. Check the AMS API connection and refresh this page.',
-        'staff_message_placeholders' => ':candidate = candidate name; :form = application form name. Example:',
+        'message_placeholders' => ':candidate = candidate name; :candidate_id (or :id) = candidate ID; :form = application form name.',
+        'staff_message_placeholders' => ':candidate = candidate name; :candidate_id (or :id) = candidate ID; :form = application form name. Example:',
         'assigned_forms' => 'Forms that follow this workflow. A form can belong to only one template.',
         'statistics_menu' => 'Select Entrance or Exit Statistics for applications reaching this stage.',
         'passed_result_menu' => 'Select the Entrance or Exit Passed Candidates menu for passed applications reaching this stage.',
@@ -168,6 +174,8 @@ return [
     ],
 
     'stage_types' => [
+        'candidate_id_generation' => 'Generate Candidate ID',
+        'custom' => 'Custom Stage',
         'form_submission' => 'Form Submission',
         'review' => 'Review',
         'verification' => 'Application Received',
@@ -179,6 +187,7 @@ return [
     ],
 
     'actions' => [
+        'generate_candidate_id' => 'Generate Candidate ID',
         'add_stage' => 'Add Stage',
         'view' => 'View',
         'duplicate' => 'Duplicate Template',
@@ -191,20 +200,24 @@ return [
     ],
 
     'confirmations' => [
+        'generate_candidate_id_title' => 'Generate candidate ID?',
+        'generate_candidate_id_body' => 'Generate the candidate ID for this application, send this stage’s configured notifications, and continue to the next workflow stage.',
         'verify_title' => 'Confirm application receipt?',
-        'verify_body' => 'Acknowledge receipt of this application, generate its candidate ID, and continue to the next workflow stage.',
-        'static_receipt_body' => 'Confirm receipt of this application. The existing candidate ID will be kept, or a new ID will be generated if none exists.',
+        'verify_body' => 'Confirm receipt of this application, update its status, send this stage’s configured notifications, and continue to the next workflow stage.',
+        'static_receipt_body' => 'Confirm that this application has been received.',
     ],
 
     'notifications' => [
+        'candidate_id_generated' => 'Candidate ID generated',
+        'candidate_id_generation_missing_major_title' => 'Could not generate candidate ID',
+        'candidate_id_generation_missing_major_body' => 'Select a valid major with an abbreviation before generating the candidate ID.',
         'duplicated' => 'Workflow template duplicated',
         'verification_success' => 'Application Received',
         'verification_candidate_id' => 'Candidate ID: :id',
-        'verification_missing_major_title' => 'Could not confirm application receipt',
-        'verification_missing_major_body' => 'A valid major with an abbreviation is required to generate the candidate ID.',
     ],
 
     'validation' => [
+        'delete_protected' => 'This workflow is assigned to a form and cannot be deleted. Remove its form assignments before deleting it.',
         'ams_payment_only' => 'This application must be paid in AMS.',
         'stages_required' => 'Add at least one stage.',
         'duplicate_stage_type' => 'Each stage type can be added only once. The ":stage" stage is duplicated.',
@@ -214,6 +227,8 @@ return [
     ],
 
     'status_defaults' => [
+        'candidate_id_generation' => 'Awaiting candidate ID generation',
+        'candidate_id_generated' => 'Candidate ID generated',
         'verified' => 'Application Received',
         'review' => 'Under review',
         'verification' => 'Awaiting application receipt',

@@ -15,6 +15,7 @@ use App\Models\Major;
 use App\Models\Role;
 use App\Models\SmsTemplate;
 use App\Models\User;
+use App\Models\WorkflowButton;
 use App\Models\WorkflowNotification;
 use App\Models\WorkflowStageType as StageTypeCatalog;
 use App\Services\CandidatePaymentRecorder;
@@ -30,6 +31,7 @@ use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Pages\Li
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate;
+use Database\Seeders\WorkflowButtonSeeder;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Mail\MailManager;
@@ -47,7 +49,7 @@ class WorkflowActionEmailTemplateTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const ACTIONS = ['form_submission', 'accept', 'send_back', 'reject', 'verification', 'payment', 'awaiting_results', 'completed'];
+    private const ACTIONS = ['form_submission', 'accept', 'send_back', 'reject', 'payment', 'verification', 'awaiting_results', 'completed'];
 
     private const STAGE_NAMES = ['form_submission' => 'Submit checkpoint', 'review' => 'Review checkpoint', 'verification' => 'Receipt checkpoint', 'payment' => 'Payment checkpoint', 'awaiting_results' => 'Results checkpoint', 'completed' => 'Final checkpoint'];
 
@@ -96,7 +98,7 @@ class WorkflowActionEmailTemplateTest extends TestCase
         $this->assertNull($entry->candidate_id);
         Livewire::test(ListCustomFormEntries::class)->callTableAction('verify', $entry)->assertHasNoTableActionErrors();
         $this->assertLastEmail('verification', $explicit, 3);
-        $this->assertSame('BNM-0001', $entry->fresh()->candidate_id);
+        $this->assertNull($entry->fresh()->candidate_id);
 
         app(CandidatePaymentRecorder::class)->record(['custom_form_entry_id' => $entry->id, 'receipt_number' => 'EMAIL-'.$entry->id, 'amount_usd' => 10, 'datetime_pay' => now()]);
         $this->assertLastEmail('payment', $explicit, 4);
@@ -111,7 +113,7 @@ class WorkflowActionEmailTemplateTest extends TestCase
 
         $this->assertSame(0, WorkflowSubmissionMessages::notify($entry));
         $this->assertFalse(WorkflowStageMessages::notifyReviewAction($entry, 'accept'));
-        $this->assertSame('BNM-0001', app(WorkflowCandidateVerifier::class)->verify($entry));
+        $this->assertTrue(app(WorkflowCandidateVerifier::class)->verify($entry));
         $this->assertFalse(WorkflowStageMessages::notifyResultStage($entry));
         $this->assertCount(6, $this->sentEmails());
         $this->assertDatabaseCount('notifications', 0);
@@ -163,7 +165,7 @@ class WorkflowActionEmailTemplateTest extends TestCase
         $this->assertLastEmail('completed', false, 6);
         $entry->refresh();
         $this->assertTrue(WorkflowStageProgression::finished($entry));
-        $this->assertSame('BNM-0001', $entry->candidate_id);
+        $this->assertNull($entry->candidate_id);
         $this->assertSame($snapshot, $entry->getRawOriginal('workflow_snapshot'));
         $this->assertFalse(FilamentActionPermissions::canForResource(
             CustomFormEntryResource::class,
@@ -232,12 +234,16 @@ class WorkflowActionEmailTemplateTest extends TestCase
     public function test_email_and_sms_selectors_show_eight_plain_actions_under_six_localized_stage_headers(string $locale): void
     {
         app()->setLocale($locale);
+        $supportedStages = array_filter(WorkflowStageType::options(),
+            fn (string $type): bool => $type === WorkflowStageType::Review->value || in_array($type, self::ACTIONS, true),
+            ARRAY_FILTER_USE_KEY);
         foreach ([EmailTemplate::class => CreateEmailTemplate::class, SmsTemplate::class => CreateSmsTemplate::class] as $model => $page) {
             $component = Livewire::test($page);
             $field = $component->instance()->form->getFlatFields()['action'];
             $options = $field->getOptions();
             $this->assertCount(6, $options);
-            $this->assertSame(array_values(WorkflowStageType::options()), array_keys($options));
+            $this->assertSame(array_values($supportedStages), array_keys($options));
+            $this->assertArrayNotHasKey(WorkflowStageType::CandidateIdGeneration->label(), $options);
             $this->assertSame(self::ACTIONS, collect($options)->collapse()->keys()->all());
             $this->assertEqualsCanonicalizing($model::actionOptions(), collect($options)->collapse()->all());
             $this->assertSame($model::actionPickerOptions(), $options);
@@ -296,7 +302,12 @@ class WorkflowActionEmailTemplateTest extends TestCase
 
     public function test_native_catalog_renames_refresh_all_email_and_sms_annotations_without_changing_saved_templates_or_workflows(): void
     {
+        (new WorkflowButtonSeeder)->run();
         $catalog = StageTypeCatalog::query()->where('is_system', true)->get()->keyBy('behavior');
+        $buttons = WorkflowButton::query()->get();
+        foreach ($catalog as $behavior => $type) {
+            $type->update(['workflow_button_ids' => $buttons->filter(fn (WorkflowButton $button): bool => $button->behavior() === $behavior)->modelKeys()]);
+        }
         [$form, $workflow] = $this->workflow();
         $stages = $workflow->stages;
         foreach ($stages as &$stage) {

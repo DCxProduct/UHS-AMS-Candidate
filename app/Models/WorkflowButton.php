@@ -6,14 +6,17 @@ use App\Support\WorkflowButtonColors;
 use App\Support\WorkflowStageTypeSettings;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
-/** A reusable button presentation backed by an existing workflow action. */
+/** A reusable button presentation with an optional existing workflow action. */
 class WorkflowButton extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = ['label_en', 'label_km', 'action_key', 'icon', 'color', 'is_active', 'sort_order'];
 
     protected $attributes = [
@@ -29,15 +32,22 @@ class WorkflowButton extends Model
 
     protected static function booted(): void
     {
+        static::saved(fn (): mixed => WorkflowButtonColors::clearCachedColors());
+        static::deleted(fn (): mixed => WorkflowButtonColors::clearCachedColors());
+        static::restored(fn (): mixed => WorkflowButtonColors::clearCachedColors());
+
         static::creating(function (self $button): void {
             if ($button->sort_order === null && Schema::hasColumn($button->getTable(), 'sort_order')) {
-                $button->sort_order = ((int) static::query()->max('sort_order')) + 1;
+                $button->sort_order = ((int) static::withTrashed()->max('sort_order')) + 1;
             }
         });
 
         static::saving(function (self $button): void {
             $button->label_en = trim((string) $button->label_en);
             $button->label_km = filled($button->label_km) ? trim((string) $button->label_km) : null;
+            if ($button->action_key === '') {
+                $button->action_key = null;
+            }
 
             if ($button->exists && $button->isDirty('action_key') && $button->inUse()) {
                 throw ValidationException::withMessages([
@@ -48,7 +58,7 @@ class WorkflowButton extends Model
             Validator::make($button->getAttributes(), [
                 'label_en' => ['required', 'string', 'max:255'],
                 'label_km' => ['nullable', 'string', 'max:255'],
-                'action_key' => ['required', 'string', Rule::in(array_keys(self::actionOptions()))],
+                'action_key' => ['nullable', 'string', Rule::in(array_keys(self::actionOptions()))],
                 'icon' => ['required', 'string', Rule::in(array_keys(self::iconOptions()))],
                 'color' => ['required', 'string', Rule::in(array_keys(self::colorOptions()))],
                 'is_active' => ['required', 'boolean'],
@@ -56,9 +66,11 @@ class WorkflowButton extends Model
         });
 
         static::deleting(function (self $button): void {
-            if (! $button->canDelete()) {
+            if ($button->isForceDeleting() ? $button->inUse() : $button->usedByWorkflowTemplate()) {
                 throw ValidationException::withMessages([
-                    'workflow_button' => __('workflow_buttons.validation.delete_protected'),
+                    'workflow_button' => __($button->isForceDeleting()
+                        ? 'workflow_buttons.validation.force_delete_protected'
+                        : 'workflow_buttons.validation.delete_protected'),
                 ]);
             }
         });
@@ -78,32 +90,82 @@ class WorkflowButton extends Model
 
     public function inUse(): bool
     {
-        if (! $this->exists || ! Schema::hasTable('workflow_stage_types')
-            || ! Schema::hasColumn('workflow_stage_types', 'workflow_button_ids')) {
+        if (! $this->exists) {
             return false;
         }
 
-        return WorkflowStageType::query()->get(['workflow_button_ids'])->contains(function (WorkflowStageType $type): bool {
-            $ids = $type->getRawOriginal('workflow_button_ids');
-            $ids = is_string($ids) ? json_decode($ids, true) : $ids;
+        if (Schema::hasTable('workflow_stage_types') && Schema::hasColumn('workflow_stage_types', 'workflow_button_ids')
+            && WorkflowStageType::query()->get(['workflow_button_ids'])->contains(function (WorkflowStageType $type): bool {
+                $ids = $type->workflow_button_ids;
 
-            return is_array($ids) && in_array((string) $this->getKey(), array_map('strval', $ids), true);
+                return is_array($ids) && in_array((string) $this->getKey(), array_map('strval', $ids), true);
+            })) {
+            return true;
+        }
+
+        return $this->usedByWorkflowTemplate();
+    }
+
+    /** Only current template stages block catalog deletion; standalone stage types retain archived buttons. */
+    public function usedByWorkflowTemplate(): bool
+    {
+        if (! $this->exists || ! Schema::hasTable('workflow_notifications')) {
+            return false;
+        }
+
+        $types = Schema::hasTable('workflow_stage_types') && Schema::hasColumn('workflow_stage_types', 'workflow_button_ids')
+            ? WorkflowStageType::query()->get(['id', 'is_system', 'behavior', 'workflow_button_ids'])->keyBy('id')
+            : collect();
+
+        return WorkflowNotification::query()->get(['stages'])->contains(function (WorkflowNotification $workflow) use ($types): bool {
+            foreach ($workflow->stages ?? [] as $item) {
+                if (! is_array($item)) {
+                    continue;
+                }
+                $stage = is_array($item['data'] ?? null) ? $item['data'] : $item;
+
+                // Saved button selections are authoritative, including an intentionally empty list.
+                if (is_array($stage['buttons'] ?? null)) {
+                    foreach ($stage['buttons'] as $button) {
+                        if (is_array($button) && (string) ($button['id'] ?? '') === (string) $this->getKey()) {
+                            return true;
+                        }
+                    }
+
+                    continue;
+                }
+
+                $selection = $stage['stage_type_id'] ?? null;
+                $behavior = ($stage['stage_type'] ?? null) === 'approval' ? 'review' : ($stage['stage_type'] ?? null);
+                $validSelection = (is_int($selection) || is_string($selection))
+                    && ctype_digit((string) $selection) && (int) $selection > 0;
+                $selectedTypes = filled($selection)
+                    ? $types->only($validSelection ? [(int) $selection] : [])
+                    : $types->filter(fn (WorkflowStageType $type): bool => $type->is_system && $type->behavior === $behavior);
+                foreach ($selectedTypes as $type) {
+                    if (in_array((string) $this->getKey(), array_map('strval', (array) $type->workflow_button_ids), true)) {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         });
     }
 
     public function canDelete(): bool
     {
-        return ! $this->inUse();
+        return $this->exists && ! $this->trashed() && ! $this->usedByWorkflowTemplate();
     }
 
-    /** Copy these values into a stage so later button edits cannot change an application. */
+    /** Freeze stage settings; custom colors may use the latest catalog color when rendered. */
     public function toDefinition(): array
     {
         return [
             'id' => (int) $this->getKey(),
             'label_en' => (string) $this->label_en,
             'label_km' => $this->label_km,
-            'action_key' => (string) $this->action_key,
+            'action_key' => $this->action_key,
             'icon' => (string) $this->icon,
             'color' => (string) $this->color,
         ];
@@ -111,7 +173,16 @@ class WorkflowButton extends Model
 
     public static function actionOptions(): array
     {
-        return array_map(fn (array $action): string => $action['label'], WorkflowStageTypeSettings::buttonActions());
+        $options = array_map(fn (array $action): string => $action['label'], WorkflowStageTypeSettings::buttonActions());
+        $options['verify'] = __('workflow_buttons.states.receipt_only');
+
+        return $options;
+    }
+
+    /** Display-only buttons never contribute an executable action. */
+    public static function actionKeys(array $definitions): array
+    {
+        return array_values(array_filter(array_column($definitions, 'action_key'), fn ($key): bool => $key !== null));
     }
 
     public static function iconOptions(): array
@@ -232,7 +303,7 @@ class WorkflowButton extends Model
         return array_combine($colors, array_map(fn (string $color): string => __('workflow_buttons.colors.'.$color), $colors));
     }
 
-    /** Keep inactive selections visible when reopening an existing stage. */
+    /** New selections use active catalog rows; existing selections retain archived definitions. */
     public static function selectOptions(mixed $selected = []): array
     {
         if (! Schema::hasTable('workflow_buttons')) {
@@ -242,12 +313,17 @@ class WorkflowButton extends Model
         $selected = is_array($selected) ? $selected : [$selected];
         $ids = array_values(array_filter($selected, fn (mixed $id): bool => (is_int($id) || is_string($id)) && ctype_digit((string) $id) && (int) $id > 0));
 
-        return static::query()
-            ->where(fn (Builder $query): Builder => $query->where('is_active', true)->orWhereIn('id', $ids))
-            ->orderBy('label_en')
+        return static::withTrashed()
+            ->where(fn (Builder $query): Builder => $query
+                ->where(fn (Builder $visible): Builder => $visible->whereNull('deleted_at')->where('is_active', true))
+                ->orWhereIn('id', $ids))
+            ->orderBy('sort_order')
+            ->orderBy('id')
             ->get()
             ->mapWithKeys(fn (self $button): array => [
-                $button->getKey() => $button->label().($button->is_active ? '' : ' ('.__('workflow_buttons.states.inactive').')'),
+                $button->getKey() => $button->label().($button->trashed()
+                    ? ' ('.__('workflow_buttons.states.deleted').')'
+                    : ($button->is_active ? '' : ' ('.__('workflow_buttons.states.inactive').')')),
             ])
             ->all();
     }

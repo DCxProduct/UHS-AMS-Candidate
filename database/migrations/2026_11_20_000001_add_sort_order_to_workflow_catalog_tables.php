@@ -14,7 +14,7 @@ return new class extends Migration
                 $table->unsignedInteger('sort_order')->nullable()->index();
             });
 
-            // Keep each list in its current display order until an administrator moves it.
+            // Start catalogs in their default order; administrators can save a different order later.
             $query = DB::table($tableName);
 
             if ($tableName === 'workflow_notifications') {
@@ -23,14 +23,14 @@ return new class extends Migration
                 $query->orderByRaw(
                     'CASE WHEN is_system THEN CASE behavior'
                         .' WHEN ? THEN 0 WHEN ? THEN 1 WHEN ? THEN 2 WHEN ? THEN 3'
-                        .' WHEN ? THEN 4 WHEN ? THEN 5 ELSE 6 END ELSE 6 END',
-                    ['form_submission', 'review', 'verification', 'payment', 'awaiting_results', 'completed'],
+                        .' WHEN ? THEN 4 WHEN ? THEN 5 WHEN ? THEN 6 ELSE 7 END ELSE 7 END',
+                    ['form_submission', 'review', 'payment', 'candidate_id_generation', 'verification', 'awaiting_results', 'completed'],
                 );
             } else {
                 $query->orderByRaw(
                     'CASE action_key WHEN ? THEN 0 WHEN ? THEN 1 WHEN ? THEN 2 WHEN ? THEN 3'
-                        .' WHEN ? THEN 4 WHEN ? THEN 5 WHEN ? THEN 6 WHEN ? THEN 7 ELSE 8 END',
-                    ['submitted', 'accept', 'send_back', 'reject', 'verify', 'paid', 'passed', 'notify'],
+                        .' WHEN ? THEN 4 WHEN ? THEN 5 WHEN ? THEN 6 WHEN ? THEN 7 WHEN ? THEN 8 ELSE 9 END',
+                    ['submitted', 'accept', 'send_back', 'reject', 'paid', 'generate_candidate_id', 'verify', 'passed', 'notify'],
                 );
             }
 

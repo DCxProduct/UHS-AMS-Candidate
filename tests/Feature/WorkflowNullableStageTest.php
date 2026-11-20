@@ -130,7 +130,9 @@ class WorkflowNullableStageTest extends TestCase
         $this->assertNull($entry->candidate_id);
         $this->assertSame(WorkflowStageType::Verification, WorkflowStageProgression::currentType($entry));
         $this->assertSame([0], array_keys(data_get($entry->data, 'workflow_progress.completed_at')));
-        $this->assertSame('BNM-0001', app(WorkflowCandidateVerifier::class)->verify($entry));
+        $this->assertTrue(app(WorkflowCandidateVerifier::class)->verify($entry));
+        $this->assertNull($entry->candidate_id);
+        $this->assertDatabaseCount('candidate_id_sequences', 0);
         $this->assertSame(WorkflowStageType::Payment, WorkflowStageProgression::currentType($entry));
         $this->assertSame(2, data_get($entry->data, 'workflow_progress.current_index'));
         $this->assertSame([0, 1], array_keys(data_get($entry->data, 'workflow_progress.completed_at')));

@@ -55,6 +55,7 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->scoped(WorkflowButtonColors::class);
         $this->app->scoped(WorkflowConfigurationUsage::class);
     }
 

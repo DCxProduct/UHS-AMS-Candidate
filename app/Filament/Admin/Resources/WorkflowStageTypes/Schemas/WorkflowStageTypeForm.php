@@ -50,7 +50,7 @@ class WorkflowStageTypeForm
             Select::make('workflow_button_ids')
                 ->label(__('workflow_stage_types.fields.workflow_buttons'))
                 ->helperText(__('workflow_stage_types.form.workflow_buttons_help'))
-                ->required(fn (?Model $record): bool => ! $record?->exists || $record->workflow_button_ids !== null)
+                ->required()
                 ->validationMessages(['required' => __('workflow_stage_types.validation.workflow_buttons_required')])
                 ->multiple()
                 ->searchable()
@@ -60,16 +60,16 @@ class WorkflowStageTypeForm
                 ->dehydrateStateUsing(fn (mixed $state): ?array => filled($state) ? array_values($state) : null)
                 ->live()
                 ->afterStateUpdated(function (mixed $state, Set $set, string $operation, ?Model $record): void {
-                    $buttons = WorkflowButton::query()->whereKey(is_array($state) ? $state : [])->get();
-                    $actions = $buttons->pluck('action_key')->all();
+                    $buttons = WorkflowButton::withTrashed()->whereKey(is_array($state) ? $state : [])->get();
+                    $actions = $buttons->pluck('action_key')->filter(fn ($key): bool => $key !== null)->values()->all();
                     if ($actions === [] && $record?->exists && $record->workflow_button_ids === null) {
                         $set('enabled_actions', $record->enabled_actions);
 
                         return;
                     }
                     $set('enabled_actions', $actions);
-                    if ($operation !== 'edit' && ($behavior = WorkflowStageTypeSettings::behaviorForSelection($actions)) !== null) {
-                        $set('behavior', $behavior);
+                    if ($operation !== 'edit') {
+                        $set('behavior', WorkflowStageTypeSettings::behaviorForSelection($actions));
                     }
                 })
                 ->rules([
@@ -79,8 +79,8 @@ class WorkflowStageTypeForm
                         }
                         try {
                             $definitions = (new WorkflowStageType(['workflow_button_ids' => $value]))->buttonDefinitions();
-                            $behavior = WorkflowStageTypeSettings::behaviorForSelection(array_column($definitions, 'action_key'));
-                            if ($record?->exists && $behavior !== $record->behavior) {
+                            $behavior = WorkflowStageTypeSettings::behaviorForSelection(WorkflowButton::actionKeys($definitions));
+                            if ($record?->exists && ! $record->canChangeBehaviorTo($behavior)) {
                                 $fail(__('workflow_stage_types.validation.enabled_actions_group_immutable'));
                             }
                         } catch (ValidationException $exception) {
