@@ -13,6 +13,7 @@ use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -27,17 +28,25 @@ class WorkflowNotification extends Model
     protected $fillable = [
         'name',
         'stages',
+        'sort_order',
     ];
 
     protected function casts(): array
     {
         return [
             'stages' => 'array',
+            'sort_order' => 'integer',
         ];
     }
 
     protected static function booted(): void
     {
+        static::creating(function (self $workflow): void {
+            if ($workflow->sort_order === null && Schema::hasColumn($workflow->getTable(), 'sort_order')) {
+                $workflow->sort_order = ((int) static::query()->max('sort_order')) + 1;
+            }
+        });
+
         static::saving(function (self $workflow): void {
             $originalStages = $workflow->stages;
             $stages = self::normalizeStages(

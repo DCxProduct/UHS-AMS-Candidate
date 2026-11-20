@@ -15,6 +15,7 @@ use App\Support\StatisticsMenuOptions;
 use App\Support\TableFilterOptions;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
+use Chanthoeun\FilamentCustomForms\Models\CustomFormField;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
 use Filament\Tables\Filters\Filter;
@@ -165,6 +166,112 @@ class TableFilterOptionsTest extends TestCase
         $this->assertSameKeys([$medicine->id, $nursing->id], $this->filterOptions($component, $menu, 'major'));
     }
 
+    #[DataProvider('menus')]
+    public function test_academic_year_options_match_visible_table_rows_across_pages_in_both_languages(string $menu): void
+    {
+        $form = $this->form($menu, 'Academic year application');
+        $major = $this->major('Medicine');
+        $this->academicEntry($form, $major, '2025-2026');
+        for ($index = 0; $index < 10; $index++) {
+            $this->academicEntry($form, $major, '2026-2027');
+        }
+        $hidden = $this->academicEntry($form, $major, '2030-2031');
+        if ($menu === 'exit') {
+            CandidateExitStatistic::query()->where('custom_form_entry_id', $hidden->id)->update(['hidden_from_statistics' => true]);
+        } else {
+            $hidden->forceFill(['data' => [...$hidden->data, 'hidden_from_review_applications' => true]])->saveQuietly();
+        }
+        $this->academicEntry($this->form($menu === 'exit' ? 'entrance' : 'exit', 'Other statistics menu'), $major, '2031-2032');
+        $this->academicEntry($form, $major, null);
+
+        foreach (['en' => 'Academic Year', 'km' => 'ឆ្នាំសិក្សា'] as $locale => $label) {
+            app()->setLocale($locale);
+            $component = Livewire::test($this->page($menu))->set('tableRecordsPerPage', 10);
+            $select = $component->instance()->getTableFiltersForm()->getComponentByStatePath($this->filter($menu).'.academic_year');
+            $this->assertInstanceOf(Select::class, $select);
+            $this->assertSame($label, $select->getLabel());
+            $this->assertSame(['2026-2027' => '2026-2027', '2025-2026' => '2025-2026'], $select->getOptions());
+        }
+    }
+
+    #[DataProvider('menus')]
+    public function test_academic_year_selection_and_other_filters_follow_the_matching_table_rows(string $menu): void
+    {
+        $form = $this->form($menu, 'Academic year facets');
+        $medicine = $this->major('Medicine');
+        $nursing = $this->major('Nursing');
+        $first = $this->academicEntry($form, $medicine, '2025-2026', 'Needle Person');
+        $second = $this->academicEntry($form, $nursing, '2026-2027', 'Other Person');
+        $component = Livewire::test($this->page($menu))
+            ->set($this->statePath($menu, 'academic_year'), '2025-2026')
+            ->assertCanSeeTableRecords([$this->statisticsRecord($menu, $first)])
+            ->assertCanNotSeeTableRecords([$this->statisticsRecord($menu, $second)])
+            ->assertCountTableRecords(1);
+        $this->assertSameKeys(['2025-2026', '2026-2027'], $this->filterOptions($component, $menu, 'academic_year'));
+        $this->assertSameKeys([$medicine->id], $this->filterOptions($component, $menu, 'major'));
+
+        $component->set($this->statePath($menu, 'major'), (string) $nursing->id)->assertCountTableRecords(0);
+        $this->assertSameKeys(['2026-2027'], $this->filterOptions($component, $menu, 'academic_year'));
+        $component->set($this->statePath($menu, 'major'), null)
+            ->set($this->statePath($menu, 'academic_year'), null)->searchTable('Needle');
+        $this->assertSameKeys(['2025-2026'], $this->filterOptions($component, $menu, 'academic_year'));
+        $component->searchTable('No matching academic year candidate');
+        $this->assertSame([], $this->filterOptions($component, $menu, 'academic_year'));
+        $component->searchTable('');
+        $this->assertSameKeys(['2025-2026', '2026-2027'], $this->filterOptions($component, $menu, 'academic_year'));
+    }
+
+    public function test_entrance_academic_year_filter_matches_displayed_aliases_entry_precedence_and_creator_fallback(): void
+    {
+        $form = $this->form('entrance', 'Academic year labels');
+        $major = $this->major('Medicine');
+        auth()->user()->forceFill(['academic_year' => '2024_2025'])->save();
+        CustomFormField::query()->create([
+            'custom_form_id' => $form->id, 'name' => 'academic_year', 'label' => 'Academic Year', 'type' => 'select',
+            'options' => ['choices' => [['value' => 'year_2026', 'label' => ['en' => '2026-2027', 'km' => '2026-2027']]]],
+        ]);
+        $underscore = $this->academicEntry($form, $major, '2026_2027');
+        $hyphen = $this->academicEntry($form, $major, '2026-2027');
+        $identifier = $this->academicEntry($form, $major, 'year_2026');
+        $fallback = $this->academicEntry($form, $major, null);
+        $selectedOnly = $this->academicEntry($form, $major, '');
+        $selectedOnly->forceFill(['data' => [...$selectedOnly->data, 'selected_academic_year' => '2031_2032']])->saveQuietly();
+        $entryYear = $this->academicEntry($form, $major, '2023_2024');
+        $component = Livewire::test(ListCandidateEntranceStatistics::class);
+        $this->assertSameKeys(['2026-2027', '2024-2025', '2023-2024'], $this->filterOptions($component, 'entrance', 'academic_year'));
+        foreach ([[$underscore, '2026-2027'], [$identifier, '2026-2027'], [$fallback, '2024-2025'], [$selectedOnly, '2024-2025'], [$entryYear, '2023-2024']] as [$entry, $year]) {
+            $column = clone $component->instance()->getTable()->getColumn('academic_year');
+            $column->record($entry->fresh());
+            $column->clearCachedState();
+            $this->assertSame($year, $column->getState());
+        }
+        $component->set($this->statePath('entrance', 'academic_year'), '2026-2027')
+            ->assertCanSeeTableRecords([$underscore, $hyphen, $identifier])->assertCountTableRecords(3);
+        $component->set($this->statePath('entrance', 'academic_year'), '2024-2025')
+            ->assertCanSeeTableRecords([$fallback, $selectedOnly])->assertCountTableRecords(2);
+        $component->set($this->statePath('entrance', 'academic_year'), '2023-2024')
+            ->assertCanSeeTableRecords([$entryYear])->assertCountTableRecords(1);
+    }
+
+    public function test_exit_academic_year_filter_uses_the_projection_year_displayed_in_the_table(): void
+    {
+        $form = $this->form('exit', 'Projection academic year');
+        $major = $this->major('Medicine');
+        auth()->user()->forceFill(['academic_year' => '2030_2031'])->save();
+        $first = $this->academicEntry($form, $major, '2025-2026');
+        $second = $this->academicEntry($form, $major, '2025-2026');
+        $projection = $this->statisticsRecord('exit', $first);
+        $projection->forceFill(['academic_year' => '2028-2029'])->saveQuietly();
+        $before = $projection->fresh()->getRawOriginal();
+        $component = Livewire::test(ListCandidateExitStatistics::class);
+        $this->assertSameKeys(['2028-2029', '2025-2026'], $this->filterOptions($component, 'exit', 'academic_year'));
+        $component->set($this->statePath('exit', 'academic_year'), '2028-2029')
+            ->assertCanSeeTableRecords([$projection])->assertCanNotSeeTableRecords([$this->statisticsRecord('exit', $second)])
+            ->assertCountTableRecords(1);
+        $this->assertSame('2025-2026', $first->fresh()->data['academic_year']);
+        $this->assertSame($before, $projection->fresh()->getRawOriginal());
+    }
+
     public function test_each_major_in_an_array_is_a_selectable_option_for_the_matching_application(): void
     {
         $form = $this->form('entrance', 'Multiple major application');
@@ -271,6 +378,24 @@ class TableFilterOptionsTest extends TestCase
         CandidateStatisticsSynchronizer::syncEntry($entry);
 
         return $entry;
+    }
+
+    private function academicEntry(CustomForm $form, Major $major, ?string $year, string $name = 'Candidate Person'): CustomFormEntry
+    {
+        $entry = $this->entry($form, $major, name: $name);
+        $entry->forceFill([
+            'created_at' => '2026-11-19 10:00:00', 'reviewed_at' => '2026-11-19 10:00:00',
+            'data' => [...$entry->data, 'academic_year' => $year, 'candidate_reviewed_at' => '2026-11-19 10:00:00'],
+        ])->saveQuietly();
+        CandidateStatisticsSynchronizer::syncEntry($entry);
+        CandidateExitStatistic::query()->where('custom_form_entry_id', $entry->id)->update(['candidate_reviewed_at' => '2026-11-19 10:00:00']);
+
+        return $entry->fresh();
+    }
+
+    private function statisticsRecord(string $menu, CustomFormEntry $entry): CustomFormEntry|CandidateExitStatistic
+    {
+        return $menu === 'exit' ? CandidateExitStatistic::query()->where('custom_form_entry_id', $entry->id)->sole() : $entry;
     }
 
     private function page(string $menu): string

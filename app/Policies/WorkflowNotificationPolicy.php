@@ -50,4 +50,9 @@ class WorkflowNotificationPolicy
     {
         return $authUser->can('Delete:WorkflowNotification');
     }
+
+    public function reorder(AuthUser $authUser): bool
+    {
+        return $authUser->can('Update:WorkflowNotification');
+    }
 }

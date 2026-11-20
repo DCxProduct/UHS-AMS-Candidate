@@ -41,4 +41,9 @@ class WorkflowButtonPolicy
     {
         return false;
     }
+
+    public function reorder(AuthUser $authUser): bool
+    {
+        return $authUser->can('Update:WorkflowButton');
+    }
 }

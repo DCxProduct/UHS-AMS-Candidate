@@ -26,7 +26,8 @@ class WorkflowNotificationsTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->defaultSort('updated_at', 'desc')
+            ->defaultSort('sort_order')
+            ->reorderable('sort_order')
             ->recordUrl(fn (WorkflowNotification $record): string => WorkflowNotificationResource::getUrl('edit', ['record' => $record]))
             ->columns([
                 TextColumn::make('name')

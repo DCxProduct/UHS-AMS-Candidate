@@ -14,7 +14,7 @@ use Illuminate\Validation\ValidationException;
 /** A reusable button presentation backed by an existing workflow action. */
 class WorkflowButton extends Model
 {
-    protected $fillable = ['label_en', 'label_km', 'action_key', 'icon', 'color', 'is_active'];
+    protected $fillable = ['label_en', 'label_km', 'action_key', 'icon', 'color', 'is_active', 'sort_order'];
 
     protected $attributes = [
         'icon' => 'heroicon-o-cursor-arrow-rays',
@@ -24,11 +24,17 @@ class WorkflowButton extends Model
 
     protected function casts(): array
     {
-        return ['is_active' => 'boolean'];
+        return ['is_active' => 'boolean', 'sort_order' => 'integer'];
     }
 
     protected static function booted(): void
     {
+        static::creating(function (self $button): void {
+            if ($button->sort_order === null && Schema::hasColumn($button->getTable(), 'sort_order')) {
+                $button->sort_order = ((int) static::query()->max('sort_order')) + 1;
+            }
+        });
+
         static::saving(function (self $button): void {
             $button->label_en = trim((string) $button->label_en);
             $button->label_km = filled($button->label_km) ? trim((string) $button->label_km) : null;

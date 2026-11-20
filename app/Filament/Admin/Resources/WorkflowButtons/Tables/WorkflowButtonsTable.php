@@ -20,12 +20,8 @@ class WorkflowButtonsTable
     {
         return $table
             ->searchPlaceholder(__('workflow_buttons.search'))
-            ->defaultSort(fn (Builder $query): Builder => $query->orderByRaw(
-                'CASE '.$query->qualifyColumn('action_key')
-                    .' WHEN ? THEN 0 WHEN ? THEN 1 WHEN ? THEN 2 WHEN ? THEN 3'
-                    .' WHEN ? THEN 4 WHEN ? THEN 5 WHEN ? THEN 6 WHEN ? THEN 7 ELSE 8 END',
-                ['submitted', 'accept', 'send_back', 'reject', 'verify', 'paid', 'passed', 'notify'],
-            )->orderBy($query->qualifyColumn('id')))
+            ->defaultSort('sort_order')
+            ->reorderable('sort_order')
             ->columns([
                 TextColumn::make('row_number')
                     ->label(__('workflow_buttons.table.no'))
