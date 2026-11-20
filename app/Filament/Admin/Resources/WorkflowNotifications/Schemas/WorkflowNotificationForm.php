@@ -30,7 +30,6 @@ use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
-use Filament\Schemas\Components\Text;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Components\View;
@@ -262,6 +261,7 @@ class WorkflowNotificationForm
         $usesSubmissionMessageLayout = fn (Get $get): bool => $isSubmissionStage($get) || $isUntypedStage($get) || $isCustomStage($get);
         $usesStageAudienceLayout = fn (Get $get): bool => in_array(WorkflowStageType::tryFrom((string) $get('stage_type')), [
             WorkflowStageType::Verification,
+            WorkflowStageType::CandidateIdGeneration,
             WorkflowStageType::Payment,
             WorkflowStageType::AwaitingResults,
             WorkflowStageType::Completed,
@@ -377,11 +377,6 @@ class WorkflowNotificationForm
 
                 Hidden::make('buttons')
                     ->dehydrated(fn (mixed $state): bool => $state !== null),
-
-                View::make('components.workflow-button-preview')
-                    ->viewData(fn (Get $get): array => ['buttons' => (array) $get('buttons')])
-                    ->visible(fn (Get $get): bool => filled($get('buttons')))
-                    ->columnSpanFull(),
 
                 Select::make('stage_type')
                     ->label(__('workflow_notifications.fields.stage_type'))
@@ -500,6 +495,7 @@ class WorkflowNotificationForm
                             Textarea::make('submission_messages.candidate_notification_message')
                                 ->label(__('workflow_notifications.fields.notification_message'))
                                 ->placeholder(__('workflow_notifications.placeholders.submission_candidate_notification'))
+                                ->helperText(__('workflow_notifications.helpers.message_placeholders'))
                                 ->rows(1)
                                 ->autosize()
                                 ->maxLength(1000),
@@ -581,6 +577,7 @@ class WorkflowNotificationForm
                                 ->placeholder(fn (Get $get): string => $usesStageAudienceLayout($get)
                                     ? __('workflow_notifications.placeholders.stage_audiences.'.$get('stage_type').'.notification_message')
                                     : __('workflow_notifications.placeholders.notification_message'))
+                                ->helperText(__('workflow_notifications.helpers.message_placeholders'))
                                 ->rows(2)
                                 ->autosize()
                                 ->maxLength(1000),
@@ -735,6 +732,7 @@ class WorkflowNotificationForm
                             Textarea::make('review_actions.'.$action.'.notification_message')
                                 ->label(__('workflow_notifications.review_actions.'.$action.'.notification_message'))
                                 ->placeholder(__('workflow_notifications.placeholders.review_actions.'.$action.'.notification_message'))
+                                ->helperText(__('workflow_notifications.helpers.message_placeholders'))
                                 ->rows(2)
                                 ->autosize()
                                 ->maxLength(1000),

@@ -21,7 +21,7 @@ return [
     'placeholders' => [
         'label_en' => 'e.g. Edit application',
         'label_km' => 'e.g. កែសម្រួលពាក្យស្នើសុំ',
-        'action_key' => 'Choose an action',
+        'action_key' => 'No action',
         'icon' => 'Choose an icon',
         'color' => 'Choose a color',
     ],
@@ -29,16 +29,20 @@ return [
         'color' => 'Choose a color for this button.',
         'icon' => 'Search and choose an icon for this button.',
         'label_km' => 'Uses the English label when left blank.',
-        'action_key' => 'Optional. Without a built-in action, the button uses its workflow stage’s status and notification settings.',
+        'action_key' => 'Optional. Leave Action empty for a custom status and notification button. Receipt confirmation updates its stage without generating an ID.',
+        'candidate_id_generation' => 'Issues the candidate ID when this stage is reached. Application Received is a separate receipt step with its own status, alert, and notification settings.',
         'action_locked' => 'The action is locked because a stage type uses this button. Create a new button to use a different action.',
     ],
     'states' => [
         'inactive' => 'Inactive',
+        'deleted' => 'Deleted',
         'no_action' => 'No action',
+        'receipt_only' => 'No action (confirm receipt)',
     ],
     'validation' => [
         'action_in_use' => 'This button is used by a stage type. Create a new button to use a different action.',
-        'delete_protected' => 'Buttons used by stage types cannot be deleted. You can deactivate them instead.',
+        'delete_protected' => 'This button is used by a stage in a Workflow Notification template. Remove that template reference before deleting it.',
+        'force_delete_protected' => 'This button is still referenced by a stage type or workflow template and cannot be permanently deleted.',
     ],
     'icons' => [
         'action' => 'Action',

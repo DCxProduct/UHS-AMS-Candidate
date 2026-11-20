@@ -28,11 +28,12 @@ class WorkflowButtonSeederTest extends TestCase
 
     private const DEFAULTS = [
         'submitted' => ['heroicon-o-paper-airplane', 'info'],
-        'verify' => ['heroicon-o-shield-check', 'info'],
         'accept' => ['heroicon-o-check-circle', 'success'],
         'send_back' => ['heroicon-o-arrow-uturn-left', 'warning'],
         'reject' => ['heroicon-o-x-circle', 'danger'],
         'paid' => ['heroicon-o-banknotes', 'success'],
+        'generate_candidate_id' => ['heroicon-o-identification', 'info'],
+        'verify' => ['heroicon-o-shield-check', 'info'],
         'passed' => ['heroicon-o-check-circle', 'success'],
         'notify' => ['heroicon-o-bell-alert', 'info'],
     ];
@@ -63,17 +64,18 @@ class WorkflowButtonSeederTest extends TestCase
     }
 
     #[DataProvider('locales')]
-    public function test_empty_catalog_receives_eight_real_localized_defaults_independently_of_current_locale(string $locale): void
+    public function test_empty_catalog_receives_nine_real_localized_defaults_independently_of_current_locale(string $locale): void
     {
-        $this->assertDatabaseCount('workflow_buttons', 8);
-        WorkflowButton::query()->delete();
+        $this->assertDatabaseCount('workflow_buttons', 9);
+        $this->assertSame(array_keys(self::DEFAULTS), WorkflowButton::query()->orderBy('sort_order')->orderBy('id')->pluck('action_key')->all());
+        WorkflowButton::query()->forceDelete();
         app()->setLocale($locale);
 
         (new WorkflowButtonSeeder)->run();
         (new WorkflowButtonSeeder)->run();
 
         $buttons = WorkflowButton::query()->orderBy('id')->get();
-        $this->assertCount(8, $buttons);
+        $this->assertCount(9, $buttons);
         $this->assertSame(array_keys(self::DEFAULTS), $buttons->pluck('action_key')->all());
         $component = Livewire::test(ListWorkflowButtons::class)->assertSuccessful()->assertCanSeeTableRecords($buttons);
         foreach ($buttons as $button) {
@@ -95,7 +97,7 @@ class WorkflowButtonSeederTest extends TestCase
 
     public function test_seeding_is_additive_preserves_custom_inactive_buttons_and_does_not_rewrite_legacy_configuration_or_snapshots(): void
     {
-        WorkflowButton::query()->delete();
+        WorkflowButton::query()->forceDelete();
         $inactive = WorkflowButton::query()->create(['label_en' => 'Keep inactive accept', 'label_km' => null, 'action_key' => 'accept', 'icon' => 'heroicon-o-pencil-square', 'color' => 'warning', 'is_active' => false]);
         WorkflowButton::query()->create(['label_en' => 'Keep alternate accept', 'label_km' => 'ទទួលពាក្យផ្ទាល់ខ្លួន', 'action_key' => 'accept', 'color' => 'danger', 'is_active' => true]);
         WorkflowButton::query()->create(['label_en' => 'Keep inactive notification', 'action_key' => 'notify', 'color' => 'gray', 'is_active' => false]);
@@ -117,7 +119,7 @@ class WorkflowButtonSeederTest extends TestCase
 
         $this->assertSame($afterFirst, $this->rows('workflow_buttons'));
         $this->assertSame($customBefore, array_slice($afterFirst, 0, count($customBefore)));
-        $this->assertDatabaseCount('workflow_buttons', 9);
+        $this->assertDatabaseCount('workflow_buttons', 10);
         $this->assertSame(2, WorkflowButton::query()->where('action_key', 'accept')->count());
         $this->assertSame(1, WorkflowButton::query()->where('action_key', 'notify')->count());
         $this->assertFalse($inactive->fresh()->is_active);
@@ -133,11 +135,11 @@ class WorkflowButtonSeederTest extends TestCase
     {
         $custom = WorkflowButton::query()->create(['label_en' => 'Live custom accept', 'action_key' => 'accept', 'is_active' => false, 'color' => 'warning']);
         $before = $custom->fresh()->getRawOriginal();
-        WorkflowButton::query()->where('action_key', 'verify')->delete();
+        WorkflowButton::query()->where('action_key', 'verify')->forceDelete();
         $migration = require database_path('migrations/2026_11_19_000001_seed_default_workflow_buttons.php');
 
         $migration->up();
-        $this->assertDatabaseCount('workflow_buttons', 9);
+        $this->assertDatabaseCount('workflow_buttons', 10);
         $this->assertDatabaseHas('workflow_buttons', ['action_key' => 'verify']);
         $this->assertSame($before, $custom->fresh()->getRawOriginal());
         $afterUp = $this->rows('workflow_buttons');

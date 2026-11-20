@@ -47,6 +47,14 @@ class WorkflowNotification extends Model
             }
         });
 
+        static::deleting(function (self $workflow): void {
+            if (! $workflow->canDelete()) {
+                throw ValidationException::withMessages([
+                    'workflow_notification' => __('workflow_notifications.validation.delete_protected'),
+                ]);
+            }
+        });
+
         static::saving(function (self $workflow): void {
             $originalStages = $workflow->stages;
             $stages = self::normalizeStages(
@@ -56,7 +64,7 @@ class WorkflowNotification extends Model
             );
             $types = self::stageTypes($stages);
 
-            if (in_array(WorkflowStageType::Verification->value, $types, true)) {
+            if (array_intersect([WorkflowStageType::Verification->value, WorkflowStageType::CandidateIdGeneration->value], $types) !== []) {
                 $canonical = array_map(fn (string $type): string => $type === WorkflowStageType::Approval->value ? WorkflowStageType::Review->value : $type, $types);
                 $seen = [];
                 foreach ($canonical as $type) {
@@ -310,6 +318,18 @@ class WorkflowNotification extends Model
             ->unique()
             ->values()
             ->all();
+    }
+
+    /** Every saved assignment counts, including inactive and soft-deleted forms. */
+    public function inUse(): bool
+    {
+        return $this->exists && Schema::hasTable('workflow_notification_forms')
+            && DB::table('workflow_notification_forms')->where('workflow_notification_id', $this->getKey())->exists();
+    }
+
+    public function canDelete(): bool
+    {
+        return $this->exists && ! $this->inUse();
     }
 
     public function forms(): BelongsToMany

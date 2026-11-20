@@ -3,6 +3,7 @@
 namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Tables;
 
 use App\Filament\Actions\WorkflowCustomStageActions;
+use App\Filament\Actions\WorkflowCandidateIdActions;
 use App\Support\WorkflowStageMessages;
 use App\Support\WorkflowStatusSearch;
 use App\Support\WorkflowActionFeedback;
@@ -14,7 +15,6 @@ use App\Enums\WorkflowStageType;
 use App\Models\Major;
 use App\Models\Payment;
 use App\Models\WorkflowNotification;
-use App\Services\CandidateIdGenerator;
 use App\Services\WorkflowCandidateVerifier;
 use App\Support\AuditLogger;
 use App\Support\CandidateNumber;
@@ -1354,11 +1354,6 @@ class CustomFormEntriesTable
                         }
                         $data['registration_status'] = 'approved';
 
-                        $workflow = WorkflowNotification::forEntry($record);
-                        if ($workflow !== null && ! $workflow->hasStageType(WorkflowStageType::Verification)) {
-                            app(CandidateIdGenerator::class)->assignToEntry($record);
-                        }
-
                         DB::table('custom_form_entries')
                             ->where('id', $record->id)
                             ->update([
@@ -1570,26 +1565,18 @@ class CustomFormEntriesTable
                         : FilamentActionPermissions::canForResource(CustomFormEntryResource::class, 'verify'))
                     && app(WorkflowCandidateVerifier::class)->canVerify($record))
                 ->action(function ($record): void {
-                    $candidateId = app(WorkflowCandidateVerifier::class)->verify($record);
-
-                    if ($candidateId === null) {
-                        Notification::make()
-                            ->title(__('workflow_notifications.notifications.verification_missing_major_title'))
-                            ->body(__('workflow_notifications.notifications.verification_missing_major_body'))
-                            ->warning()
-                            ->send();
-
+                    if (! app(WorkflowCandidateVerifier::class)->verify($record)) {
                         return;
                     }
 
                     WorkflowActionFeedback::send(
-                        Notification::make()->success()
-                            ->body(__('workflow_notifications.notifications.verification_candidate_id', ['id' => $candidateId])),
+                        Notification::make()->success(),
                         WorkflowActionFeedback::title($record, 'verify', __('workflow_notifications.notifications.verification_success')),
                     );
                 });
         }
 
+        $actions[] = WorkflowCandidateIdActions::make(CustomFormEntryResource::class);
         $actions[] = WorkflowCustomStageActions::make(CustomFormEntryResource::class);
 
         if (class_exists(\Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate::class)) {
@@ -1724,11 +1711,6 @@ class CustomFormEntriesTable
                                 $data['candidate_status'] = 'pending';
                             }
                             $data['registration_status'] = 'approved';
-
-                            $workflow = WorkflowNotification::forEntry($record);
-                            if ($workflow !== null && ! $workflow->hasStageType(WorkflowStageType::Verification)) {
-                                app(CandidateIdGenerator::class)->assignToEntry($record);
-                            }
 
                             DB::table('custom_form_entries')
                                 ->where('id', $record->id)

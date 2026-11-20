@@ -123,6 +123,12 @@ final class WorkflowStageMessages
     public static function statusText(CustomFormEntry $entry): ?string
     {
         try {
+            if (WorkflowStageProgression::enabled($entry)
+                && WorkflowStageProgression::currentType($entry) !== null
+                && filled($generatedStatus = self::precedingCandidateIdGenerationStatus($entry, WorkflowStageProgression::currentStage($entry) ?? []))) {
+                return $generatedStatus;
+            }
+
             $customStatus = app(WorkflowCustomButtonService::class)->statusText($entry);
             if (filled($customStatus) && is_scalar($customStatus)
                 && ! in_array(strtolower((string) $entry->review_status), ['draft', 'rejected', 'failed'], true)
@@ -249,6 +255,13 @@ final class WorkflowStageMessages
                     ? self::paymentStatusLabel($entry, 'paid')
                     : null)
                     ?? __('workflow_notifications.status_defaults.verification')),
+            WorkflowStageType::CandidateIdGeneration => WorkflowStageProgression::finished($entry)
+                ? (filled($stage['status_message'] ?? null) ? $stage['status_message'] : __('workflow_notifications.status_defaults.candidate_id_generated'))
+                : ((self::orderedStageCompleted($entry, WorkflowStageType::Payment) && self::hasPaid($entry)
+                    ? self::paymentStatusLabel($entry, 'paid')
+                    : null)
+                    ?? __('workflow_notifications.status_defaults.candidate_id_generation')),
+            WorkflowStageType::Custom => self::precedingCandidateIdGenerationStatus($entry, $stage),
             WorkflowStageType::Payment => self::paymentStatusLabel($entry, $paymentStatus = self::orderedStageCompleted($entry, $type) ? 'paid' : 'unpaid')
                 ?? __('payments.options.status_payt.'.$paymentStatus),
             WorkflowStageType::AwaitingResults => data_get($entry->data, 'workflow_progress.result_passed', false)
@@ -263,6 +276,32 @@ final class WorkflowStageMessages
         };
 
         return filled($text) ? (string) $text : null;
+    }
+
+    /** Keep the issued-ID status visible until the next action, preserving result-release labels. */
+    private static function precedingCandidateIdGenerationStatus(CustomFormEntry $entry, array $stage): ?string
+    {
+        $index = $stage['_index'] ?? null;
+        if (is_string($index) && ctype_digit($index)) {
+            $index = (int) $index;
+        }
+        if (! is_int($index) || $index < 1 || WorkflowStageProgression::finished($entry)
+            || ($stage['stage_type'] ?? null) === WorkflowStageType::Completed->value) {
+            return null;
+        }
+
+        $previous = collect(WorkflowNotification::forEntry($entry)?->stages ?? [])
+            ->map(fn (mixed $item): array => is_array($item) ? ($item['data'] ?? $item) : [])
+            ->filter(fn (array $item): bool => WorkflowStageType::tryFrom((string) ($item['stage_type'] ?? '')) !== null)
+            ->values()->get($index - 1);
+        if (($previous['stage_type'] ?? null) !== WorkflowStageType::CandidateIdGeneration->value
+            || WorkflowStageProgression::completedAt($entry, $index - 1) === null) {
+            return null;
+        }
+
+        return filled($previous['status_message'] ?? null)
+            ? (string) $previous['status_message']
+            : __('workflow_notifications.status_defaults.candidate_id_generated');
     }
 
     /** Keep the later completed receipt or payment visible until a result is recorded. */
@@ -658,7 +697,7 @@ final class WorkflowStageMessages
                 if ($type === WorkflowStageType::Custom) {
                     $candidateStage['status_message'] = $messages['candidate_status_message'] ?? null;
                 }
-                self::sendStageNotification($entry, $candidateStage, $type, $student, $event.':candidate', null, false, $viewData, WorkflowMessagePlaceholders::render($body, $entry), WorkflowStageType::Custom);
+                self::sendStageNotification($entry, $candidateStage, $type, $student, $event.':candidate', null, false, $viewData, $body, WorkflowStageType::Custom);
             }
 
             $staffBody = is_scalar($messages['staff_notification_message'] ?? null)
@@ -840,7 +879,7 @@ final class WorkflowStageMessages
                 $viewData['workflow_event'] = $workflowEvent;
             }
 
-            $body = trim((string) ($notificationBody ?? self::notificationMessage($stage)));
+            $body = WorkflowMessagePlaceholders::render(trim((string) ($notificationBody ?? self::notificationMessage($stage))), $entry);
             $reviewNote = trim((string) $reviewNote);
 
             if ($reviewNote !== '') {

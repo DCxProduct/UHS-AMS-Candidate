@@ -62,7 +62,7 @@ class WorkflowTableReorderingTest extends TestCase
         $reordered = $records->reverse()->values();
         $order = $reordered->modelKeys();
 
-        $list = Livewire::test($page);
+        $list = Livewire::test($page)->set('tableRecordsPerPage', 25);
         $this->assertTrue($list->instance()->getTable()->isReorderable());
         $list->call('toggleTableReordering')
             ->assertSet('isTableReordering', true)
@@ -73,7 +73,10 @@ class WorkflowTableReorderingTest extends TestCase
             ->assertCanSeeTableRecords($reordered, inOrder: true);
 
         $this->assertSame($order, $model::query()->orderBy('sort_order')->pluck('id')->all());
-        Livewire::test($page)->assertCanSeeTableRecords($reordered, inOrder: true);
+        Livewire::test($page)->set('tableRecordsPerPage', 25)->assertCanSeeTableRecords($reordered, inOrder: true);
+        if ($model === WorkflowButton::class) {
+            $this->assertSame($order, array_keys(WorkflowButton::selectOptions()));
+        }
         foreach ($reordered as $index => $record) {
             $fresh = $record->fresh();
             $this->assertSame($index + 1, $fresh->sort_order);

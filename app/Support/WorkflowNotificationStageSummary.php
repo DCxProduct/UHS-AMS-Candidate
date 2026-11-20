@@ -102,6 +102,7 @@ final class WorkflowNotificationStageSummary
             WorkflowStageType::FormSubmission => ['form', 'form submission', 'submission', 'student', 'candidate'],
             WorkflowStageType::Review => ['review', 'application review', 'registrar review', 'ការពិនិត្យ'],
             WorkflowStageType::Verification => ['verification', 'verify', 'registrar verification', 'ការផ្ទៀងផ្ទាត់ដោយការិយាល័យចុះឈ្មោះ', 'ផ្ទៀងផ្ទាត់'],
+            WorkflowStageType::CandidateIdGeneration => ['candidate id generation', 'generate candidate id'],
             WorkflowStageType::Approval => ['approval', 'approve', 'registrar approval'],
             WorkflowStageType::Custom => [],
             WorkflowStageType::Payment => ['payment'],

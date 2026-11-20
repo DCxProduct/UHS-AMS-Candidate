@@ -14,6 +14,7 @@ use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Livewire\Livewire;
@@ -24,9 +25,9 @@ class WorkflowStaffMessagePlaceholdersTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const BODY = ':candidate | :canddiate | :form | :candidate_id | :form_id';
+    private const BODY = ':candidate | :canddiate | :form | :candidate_id | :id | :form_id';
 
-    private const CANDIDATE_BODY = 'Candidate body keeps :candidate and :form unchanged.';
+    private const CANDIDATE_BODY = 'Candidate message: :candidate | :form | :candidate_id | :id.';
 
     private User $candidate;
 
@@ -63,7 +64,7 @@ class WorkflowStaffMessagePlaceholdersTest extends TestCase
     }
 
     #[DataProvider('staffEvents')]
-    public function test_every_staff_path_renders_frozen_message_placeholders_in_each_recipients_language_without_changing_candidate_messages(string $type, ?string $action): void
+    public function test_frozen_staff_and_candidate_messages_render_placeholders_in_the_recipients_language(string $type, ?string $action): void
     {
         $unselected = $this->user('admin', 'en');
         $inactive = $this->user('admin', 'km');
@@ -87,14 +88,14 @@ class WorkflowStaffMessagePlaceholdersTest extends TestCase
         $english = $this->englishStaff->notifications()->where('data->viewData->workflow_event', $event)->sole();
         $khmer = $this->khmerStaff->notifications()->where('data->viewData->workflow_event', $event)->sole();
 
-        $this->assertSame('SOK DARA | SOK DARA | Entrance application | :candidate_id | :form_id', $english->data['body']);
-        $this->assertSame('សុខ ដារ៉ា | សុខ ដារ៉ា | ពាក្យស្នើសុំប្រឡងចូល | :candidate_id | :form_id', $khmer->data['body']);
+        $this->assertSame('SOK DARA | SOK DARA | Entrance application |  |  | :form_id', $english->data['body']);
+        $this->assertSame('សុខ ដារ៉ា | សុខ ដារ៉ា | ពាក្យស្នើសុំប្រឡងចូល |  |  | :form_id', $khmer->data['body']);
         $this->assertSame((string) $entry->id, data_get($english->data, 'viewData.workflow_entry_id'));
         $this->assertSame((string) $entry->id, data_get($khmer->data, 'viewData.workflow_entry_id'));
         $this->assertSame($frozen, $entry->fresh()->workflow_snapshot);
         $this->assertSame(0, $unselected->notifications()->count());
         $this->assertSame(0, $inactive->notifications()->count());
-        $this->assertSame(self::CANDIDATE_BODY, $this->candidate->notifications()->sole()->data['body']);
+        $this->assertSame('Candidate message: SOK DARA | Entrance application |  | .', $this->candidate->notifications()->sole()->data['body']);
         $this->assertSame('en', app()->getLocale());
 
         $this->deliver($entry, $type, $action);
@@ -122,7 +123,70 @@ class WorkflowStaffMessagePlaceholdersTest extends TestCase
         $this->assertSame('ម្ចាស់ គណនី', WorkflowMessagePlaceholders::render(':candidate', $ownerOnly));
         app()->setLocale('en');
         $this->assertSame('OWNER FALLBACK NAME', WorkflowMessagePlaceholders::render(':candidate', $ownerOnly));
-        $this->assertSame('Keep :candidate_id :form_id :unknown unchanged', WorkflowMessagePlaceholders::render('Keep :candidate_id :form_id :unknown unchanged', $entry));
+        $this->assertSame('Keep  :form_id :unknown unchanged', WorkflowMessagePlaceholders::render('Keep :candidate_id :form_id :unknown unchanged', $entry));
+    }
+
+    public function test_candidate_id_tokens_use_only_the_issued_entry_id_and_respect_token_boundaries(): void
+    {
+        [$form] = $this->workflow('review');
+        $entry = $this->entry($form);
+        $entry->forceFill(['candidate_id' => 'BNM-0042', 'candidate_id_year' => 2026])->saveQuietly();
+        $entry->refresh();
+        $before = $entry->getRawOriginal();
+        $message = 'ID(:candidate_id), alias[:id]. Keep :candidate_id_year :identity :id_suffix :id2 :candidate_id_extra :form_id.';
+
+        $this->assertSame('ID(BNM-0042), alias[BNM-0042]. Keep :candidate_id_year :identity :id_suffix :id2 :candidate_id_extra :form_id.', WorkflowMessagePlaceholders::render($message, $entry));
+
+        $this->assertSame($before, $entry->fresh()->getRawOriginal());
+        $this->assertDatabaseCount('candidate_id_sequences', 0);
+        $this->assertDatabaseCount('candidate_account_ids', 0);
+    }
+
+    public function test_missing_id_tokens_do_not_use_the_entry_key_payload_account_mapping_or_sibling_id(): void
+    {
+        [$form] = $this->workflow('review');
+        $entry = $this->entry($form);
+        $entry->forceFill(['data' => [...$entry->data, 'candidate_id' => 'PAYLOAD-ID-MUST-NOT-BE-USED']])->saveQuietly();
+        $sibling = $this->entry($form);
+        $sibling->forceFill(['candidate_id' => 'SIBLING-ID-MUST-NOT-BE-USED'])->saveQuietly();
+        DB::table('candidate_account_ids')->insert([
+            'custom_form_id' => $form->id, 'user_id' => $this->candidate->id, 'major_abbreviation' => 'BNM',
+            'year_suffix' => (int) now()->format('y'), 'candidate_id' => 'ACCOUNT-ID-MUST-NOT-BE-USED',
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $entry->refresh();
+        $before = $entry->getRawOriginal();
+        $siblingBefore = $sibling->fresh()->getRawOriginal();
+        $mappingBefore = (array) DB::table('candidate_account_ids')->sole();
+
+        $this->assertSame('Canonical[] Alias[]', WorkflowMessagePlaceholders::render('Canonical[:candidate_id] Alias[:id]', $entry));
+
+        $this->assertGreaterThan(0, $entry->id);
+        $this->assertNull($entry->candidate_id);
+        $this->assertSame($before, $entry->fresh()->getRawOriginal());
+        $this->assertSame($siblingBefore, $sibling->fresh()->getRawOriginal());
+        $this->assertSame($mappingBefore, (array) DB::table('candidate_account_ids')->sole());
+        $this->assertDatabaseCount('candidate_id_sequences', 0);
+    }
+
+    public function test_generation_candidate_notification_parses_replacement_values_only_once(): void
+    {
+        [$form] = $this->workflow('candidate_id_generation');
+        $form->forceFill(['name' => json_encode(['en' => ':candidate_id', 'km' => ':candidate_id'])])->saveQuietly();
+        $entry = $this->entry($form);
+        $entry->forceFill(['candidate_id' => 'ID-:form', 'data' => [...$entry->data, 'first_name_en' => ':id', 'last_name_en' => '']])->saveQuietly();
+        $entry->refresh();
+        $before = $entry->getRawOriginal();
+        $this->assertSame('Name=:id; Form=:candidate_id; ID=ID-:form / ID-:form', WorkflowMessagePlaceholders::render('Name=:candidate; Form=:form; ID=:id / :candidate_id', $entry));
+
+        $this->assertTrue(WorkflowStageMessages::notifyConfiguredStage($entry, WorkflowStageType::CandidateIdGeneration));
+
+        $this->assertSame('Candidate message: :id | :candidate_id | ID-:form | ID-:form.', $this->candidate->notifications()->sole()->data['body']);
+        $this->assertSame($before, $entry->fresh()->getRawOriginal());
+        $this->assertDatabaseCount('candidate_id_sequences', 0);
+        $this->assertDatabaseCount('candidate_account_ids', 0);
+        Http::assertNothingSent();
+        Mail::assertNothingSent();
     }
 
     public static function locales(): array

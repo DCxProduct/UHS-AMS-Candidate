@@ -8,8 +8,8 @@ return [
     'custom_form_column' => 'លំហូរការជូនដំណឹង',
     'custom_form_helper' => 'ស្រេចចិត្ត។ ដំណើរការដែលទម្រង់បែបបទនេះអនុវត្តតាម។',
     'candidate_notification_title' => ':stage',
-    'candidate_action_notification_title' => ':form៖ :action',
-    'staff_notification_title' => ':form៖ :stage',
+    'candidate_action_notification_title' => ':action',
+    'staff_notification_title' => ':stage',
     'staff_notification_body' => ':student បានមកដល់ដំណាក់កាល :stage នៃ :form។',
     'not_assigned' => 'មិនទាន់កំណត់',
 
@@ -90,9 +90,14 @@ return [
         'unpaid_status_message' => 'មិនទាន់បង់ប្រាក់',
         'waiting_result_status_message' => 'កំពុងរង់ចាំ',
         'stage_audiences' => [
+            'candidate_id_generation' => [
+                'status_message' => 'បានបង្កើតលេខបេក្ខជន',
+                'notification_message' => 'លេខបេក្ខជនរបស់អ្នកត្រូវបានបង្កើតរួចរាល់។',
+                'staff_notification_message' => 'បានបង្កើតលេខបេក្ខជនសម្រាប់ :candidate ក្នុង :form។',
+            ],
             'verification' => [
                 'status_message' => 'បានទទួលពាក្យស្នើសុំ',
-                'notification_message' => 'ពាក្យស្នើសុំរបស់អ្នកត្រូវបានទទួល ហើយលេខបេក្ខជនរបស់អ្នកបានរៀបចំរួចរាល់។',
+                'notification_message' => 'ពាក្យស្នើសុំរបស់អ្នកត្រូវបានទទួលរួចរាល់។',
                 'staff_notification_message' => 'បានទទួលពាក្យ :form របស់ :candidate។',
             ],
             'payment' => [
@@ -152,7 +157,8 @@ return [
         'ams_alert' => 'បង្ហាញនៅ AMS ក្រោយបង់ប្រាក់ជោគជ័យ។ ទុកទទេដើម្បីមិនបង្ហាញ Alert។',
         'ams_roles' => 'តួនាទីពីម៉ឺនុយតួនាទីនៅ AMS សម្រាប់ដំណាក់កាលបង់ប្រាក់តាម AMS នេះ។',
         'ams_roles_unavailable' => 'មិនអាចទាញយកតួនាទី AMS បានទេ។ សូមពិនិត្យការភ្ជាប់ API របស់ AMS ហើយផ្ទុកទំព័រឡើងវិញ។',
-        'staff_message_placeholders' => ':candidate = ឈ្មោះបេក្ខជន; :form = ឈ្មោះទម្រង់ពាក្យស្នើសុំ។ ឧទាហរណ៍៖',
+        'message_placeholders' => ':candidate = ឈ្មោះបេក្ខជន; :candidate_id (ឬ :id) = លេខបេក្ខជន; :form = ឈ្មោះទម្រង់ពាក្យស្នើសុំ។',
+        'staff_message_placeholders' => ':candidate = ឈ្មោះបេក្ខជន; :candidate_id (ឬ :id) = លេខបេក្ខជន; :form = ឈ្មោះទម្រង់ពាក្យស្នើសុំ។ ឧទាហរណ៍៖',
         'assigned_forms' => 'ទម្រង់ដែលប្រើដំណើរការនេះ។ ទម្រង់មួយអាចភ្ជាប់ជាមួយគំរូតែមួយប៉ុណ្ណោះ។',
         'statistics_menu' => 'ជ្រើសរើសម៉ឺនុយស្ថិតិប្រឡងចូល ឬប្រឡងចេញ សម្រាប់ពាក្យស្នើសុំដែលមកដល់ដំណាក់កាលនេះ។',
         'passed_result_menu' => 'ជ្រើសរើសម៉ឺនុយបេក្ខជនប្រឡងចូលជាប់ ឬប្រឡងចេញជាប់ សម្រាប់បេក្ខជនដែលបានជាប់ និងមកដល់ដំណាក់កាលនេះ។',
@@ -168,6 +174,7 @@ return [
     ],
 
     'stage_types' => [
+        'candidate_id_generation' => 'បង្កើតលេខបេក្ខជន',
         'custom' => 'ដំណាក់កាលផ្ទាល់ខ្លួន',
         'form_submission' => 'ការដាក់ស្នើទម្រង់',
         'review' => 'ការពិនិត្យពាក្យស្នើសុំ',
@@ -180,6 +187,7 @@ return [
     ],
 
     'actions' => [
+        'generate_candidate_id' => 'បង្កើតលេខបេក្ខជន',
         'add_stage' => 'បន្ថែមដំណាក់កាល',
         'view' => 'មើល',
         'duplicate' => 'ចម្លងគំរូ',
@@ -192,20 +200,24 @@ return [
     ],
 
     'confirmations' => [
+        'generate_candidate_id_title' => 'បង្កើតលេខបេក្ខជន?',
+        'generate_candidate_id_body' => 'បង្កើតលេខបេក្ខជនសម្រាប់ពាក្យស្នើសុំនេះ ផ្ញើការជូនដំណឹងតាមការកំណត់របស់ដំណាក់កាល ហើយបន្តទៅដំណាក់កាលបន្ទាប់។',
         'verify_title' => 'បញ្ជាក់ការទទួលពាក្យស្នើសុំ?',
-        'verify_body' => 'បញ្ជាក់ថាបានទទួលពាក្យស្នើសុំនេះ បង្កើតលេខបេក្ខជន ហើយបន្តទៅដំណាក់កាលបន្ទាប់នៃលំហូរការងារ។',
-        'static_receipt_body' => 'បញ្ជាក់ថាបានទទួលពាក្យស្នើសុំនេះ។ ប្រព័ន្ធនឹងរក្សាលេខបេក្ខជនដែលមានស្រាប់ ឬបង្កើតលេខប្រសិនបើមិនទាន់មាន។',
+        'verify_body' => 'បញ្ជាក់ថាបានទទួលពាក្យស្នើសុំនេះ ប្ដូរស្ថានភាព ផ្ញើការជូនដំណឹងតាមការកំណត់របស់ដំណាក់កាល ហើយបន្តទៅដំណាក់កាលបន្ទាប់នៃលំហូរការងារ។',
+        'static_receipt_body' => 'បញ្ជាក់ថាពាក្យស្នើសុំនេះត្រូវបានទទួលរួចរាល់។',
     ],
 
     'notifications' => [
+        'candidate_id_generated' => 'បានបង្កើតលេខបេក្ខជន',
+        'candidate_id_generation_missing_major_title' => 'មិនអាចបង្កើតលេខបេក្ខជនបានទេ',
+        'candidate_id_generation_missing_major_body' => 'សូមជ្រើសរើសជំនាញត្រឹមត្រូវដែលមានឈ្មោះកាត់ មុនពេលបង្កើតលេខបេក្ខជន។',
         'duplicated' => 'បានចម្លងគំរូលំហូរការងាររួចរាល់',
         'verification_success' => 'បានទទួលពាក្យស្នើសុំ',
         'verification_candidate_id' => 'លេខបេក្ខជន៖ :id',
-        'verification_missing_major_title' => 'មិនអាចបញ្ជាក់ការទទួលពាក្យស្នើសុំបានទេ',
-        'verification_missing_major_body' => 'ត្រូវមានជំនាញត្រឹមត្រូវដែលមានឈ្មោះកាត់ ដើម្បីបង្កើតលេខបេក្ខជន។',
     ],
 
     'validation' => [
+        'delete_protected' => 'លំហូរការងារនេះត្រូវបានភ្ជាប់ទៅទម្រង់ ហើយមិនអាចលុបបានទេ។ សូមដកការភ្ជាប់ទម្រង់ចេញសិន មុនពេលលុប។',
         'ams_payment_only' => 'ពាក្យស្នើសុំនេះត្រូវបង់ប្រាក់ក្នុងប្រព័ន្ធ AMS។',
         'stages_required' => 'សូមបន្ថែមដំណាក់កាលយ៉ាងហោចណាស់មួយ។',
         'duplicate_stage_type' => 'ប្រភេទដំណាក់កាលនីមួយៗអាចបន្ថែមបានតែម្តងប៉ុណ្ណោះ។ ដំណាក់កាល «:stage» មានស្ទួន។',
@@ -215,6 +227,8 @@ return [
     ],
 
     'status_defaults' => [
+        'candidate_id_generation' => 'រង់ចាំការបង្កើតលេខបេក្ខជន',
+        'candidate_id_generated' => 'បានបង្កើតលេខបេក្ខជន',
         'verified' => 'បានទទួលពាក្យស្នើសុំ',
         'review' => 'កំពុងពិនិត្យ',
         'verification' => 'រង់ចាំទទួលពាក្យស្នើសុំ',

@@ -89,7 +89,9 @@ class WorkflowNotificationsTable
                 ]),
             ])
             ->toolbarActions([
-                DeleteBulkAction::make()->button(),
+                DeleteBulkAction::make()
+                    ->authorizeIndividualRecords(fn (WorkflowNotification $record) => WorkflowNotificationResource::getDeleteAuthorizationResponse($record))
+                    ->button(),
             ]);
     }
 

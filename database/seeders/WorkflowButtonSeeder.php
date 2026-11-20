@@ -14,7 +14,7 @@ class WorkflowButtonSeeder extends Seeder
     {
         DB::transaction(function (): void {
             foreach (WorkflowStageTypeSettings::buttonActions() as $key => $action) {
-                WorkflowButton::query()->firstOrCreate(
+                WorkflowButton::withTrashed()->firstOrCreate(
                     ['action_key' => $key],
                     [
                         'label_en' => Lang::get('workflow_stage_types.button_actions.'.$key, [], 'en'),

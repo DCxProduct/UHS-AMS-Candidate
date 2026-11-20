@@ -14,7 +14,7 @@ final class WorkflowStageTypeSettings
     {
         $actions = self::allActions();
         unset($actions['unpaid'], $actions['pending']);
-        $actions = array_replace(array_flip(['submitted', 'verify', 'accept', 'send_back', 'reject', 'paid', 'passed', 'notify']), $actions);
+        $actions = array_replace(array_flip(['submitted', 'accept', 'send_back', 'reject', 'paid', 'generate_candidate_id', 'verify', 'passed', 'notify']), $actions);
 
         foreach (array_keys($actions) as $key) {
             $actions[$key]['label'] = __('workflow_stage_types.button_actions.'.$key);
@@ -77,6 +77,7 @@ final class WorkflowStageTypeSettings
             'form_submission' => ['submitted'],
             'review' => ['accept', 'send_back', 'reject'],
             'verification' => ['verify'],
+            'candidate_id_generation' => ['generate_candidate_id'],
             'payment' => ['unpaid', 'paid'],
             'awaiting_results' => ['pending', 'passed'],
             'completed' => ['notify'],
@@ -88,6 +89,7 @@ final class WorkflowStageTypeSettings
             'send_back' => 'heroicon-o-arrow-uturn-left',
             'reject' => 'heroicon-o-x-circle',
             'verify' => 'heroicon-o-shield-check',
+            'generate_candidate_id' => 'heroicon-o-identification',
             'unpaid' => 'heroicon-o-clock',
             'paid' => 'heroicon-o-banknotes',
             'pending' => 'heroicon-o-clock',

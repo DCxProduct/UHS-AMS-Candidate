@@ -194,9 +194,20 @@ class MenuClearDataWorkflowIsolationTest extends TestCase
     {
         [$form, $entry, $payment] = $this->fixture('applications', 'NUMBERED');
         $major = Major::query()->create(['key' => 'clear_id', 'abbreviation' => 'BNM', 'name_en' => 'Nursing', 'is_active' => true]);
-        $entry->update(['data' => [...$entry->data, 'major' => $major->id]]);
+        // Preserve a historical assignment; clearing a menu must never allocate or reset an ID.
+        $entry->forceFill([
+            'data' => [...$entry->data, 'major' => $major->id],
+            'candidate_id' => 'BNM-0001', 'candidate_id_year' => now()->year,
+        ])->save();
+        DB::table('candidate_id_sequences')->insert([
+            'custom_form_id' => $form->id, 'major_abbreviation' => 'BNM', 'submission_year' => now()->year % 100,
+            'last_sequence' => 1, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        DB::table('candidate_account_ids')->insert([
+            'custom_form_id' => $form->id, 'user_id' => $this->candidate->id, 'major_abbreviation' => 'BNM',
+            'year_suffix' => now()->year % 100, 'candidate_id' => 'BNM-0001', 'created_at' => now(), 'updated_at' => now(),
+        ]);
         $generator = app(CandidateIdGenerator::class);
-        $this->assertSame('BNM-0001', $generator->assignToEntry($entry));
         $sequenceBefore = DB::table('candidate_id_sequences')->where('custom_form_id', $form->id)->get()->map(fn (object $row): array => (array) $row)->all();
         $accountIdsBefore = DB::table('candidate_account_ids')->where('custom_form_id', $form->id)->get()->map(fn (object $row): array => (array) $row)->all();
         $this->list('applications', $form)->call('clearDataFromTableSelection', [$entry->id]);

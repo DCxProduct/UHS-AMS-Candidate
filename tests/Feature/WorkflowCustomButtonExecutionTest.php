@@ -242,7 +242,7 @@ class WorkflowCustomButtonExecutionTest extends TestCase
         $this->assertMessages('Table candidate', 'Table staff', 0, $second->id);
     }
 
-    public function test_custom_color_falls_back_to_snapshot_when_catalog_button_is_removed(): void
+    public function test_archived_custom_color_is_retained_and_permanent_removal_falls_back_to_snapshot(): void
     {
         $button = $this->button('Archived custom button');
         $button->update(['color' => 'zinc']);
@@ -255,6 +255,12 @@ class WorkflowCustomButtonExecutionTest extends TestCase
         $definition['action_key'] = null;
 
         $button->delete();
+
+        $this->assertSame('info', WorkflowButtonColors::forDefinition($definition));
+        $this->view('components.workflow-button-preview', ['buttons' => [$definition]])
+            ->assertSee('fi-color-info', false);
+
+        $button->forceDelete();
 
         $this->assertSame('zinc', WorkflowButtonColors::forDefinition($definition));
         $this->view('components.workflow-button-preview', ['buttons' => [$definition]])

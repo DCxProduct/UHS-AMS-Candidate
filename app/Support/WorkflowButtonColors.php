@@ -25,7 +25,7 @@ final class WorkflowButtonColors
         }
 
         $resolver = app(self::class);
-        $resolver->catalogColors ??= WorkflowButton::query()->pluck('color', 'id')->all();
+        $resolver->catalogColors ??= WorkflowButton::withTrashed()->pluck('color', 'id')->all();
 
         return $resolver->catalogColors[(int) $id] ?? $savedColor;
     }

@@ -39,6 +39,7 @@ return [
         'system' => 'System user actions',
     ],
     'groups' => [
+        'candidate_id_generation' => 'Candidate ID',
         'form_submission' => 'Submission',
         'review' => 'Review',
         'verification' => 'Application Received',
@@ -50,6 +51,7 @@ return [
         'apply_review_settings' => 'Copies this type’s review settings into this workflow. Save the workflow to keep them.',
     ],
     'config_actions' => [
+        'generate_candidate_id' => 'Generate Candidate ID',
         'submitted' => 'Submitted',
         'verify' => 'Application Received',
         'unpaid' => 'Unpaid',
@@ -59,6 +61,7 @@ return [
         'notify' => 'Notify',
     ],
     'button_actions' => [
+        'generate_candidate_id' => 'Generate Candidate ID',
         'submitted' => 'Submit form',
         'accept' => 'Check application',
         'verify' => 'Application Received',

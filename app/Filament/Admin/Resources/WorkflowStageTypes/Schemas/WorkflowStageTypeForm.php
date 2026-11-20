@@ -60,7 +60,7 @@ class WorkflowStageTypeForm
                 ->dehydrateStateUsing(fn (mixed $state): ?array => filled($state) ? array_values($state) : null)
                 ->live()
                 ->afterStateUpdated(function (mixed $state, Set $set, string $operation, ?Model $record): void {
-                    $buttons = WorkflowButton::query()->whereKey(is_array($state) ? $state : [])->get();
+                    $buttons = WorkflowButton::withTrashed()->whereKey(is_array($state) ? $state : [])->get();
                     $actions = $buttons->pluck('action_key')->filter(fn ($key): bool => $key !== null)->values()->all();
                     if ($actions === [] && $record?->exists && $record->workflow_button_ids === null) {
                         $set('enabled_actions', $record->enabled_actions);

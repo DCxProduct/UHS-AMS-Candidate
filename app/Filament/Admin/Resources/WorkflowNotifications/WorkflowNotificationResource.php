@@ -14,6 +14,8 @@ use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+use Illuminate\Auth\Access\Response;
+use Illuminate\Database\Eloquent\Model;
 use UnitEnum;
 
 class WorkflowNotificationResource extends Resource
@@ -56,6 +58,15 @@ class WorkflowNotificationResource extends Resource
     public static function table(Table $table): Table
     {
         return WorkflowNotificationsTable::configure($table);
+    }
+
+    public static function getDeleteAuthorizationResponse(Model $record): Response
+    {
+        if (! $record instanceof WorkflowNotification || ! $record->canDelete()) {
+            return Response::deny(__('workflow_notifications.validation.delete_protected'));
+        }
+
+        return parent::getDeleteAuthorizationResponse($record);
     }
 
     public static function getPages(): array

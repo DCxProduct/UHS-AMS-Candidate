@@ -27,10 +27,6 @@
                             </span>
                         </div>
 
-                        @if (filled($stage['buttons'] ?? null))
-                            <x-workflow-button-preview :buttons="$stage['buttons']" />
-                        @endif
-
                         @if (filled($stage['payment_source_label'] ?? null))
                             <p class="uhs-workflow-stage-card__message">
                                 <span class="uhs-workflow-stage-card__message-label">{{ __('workflow_notifications.fields.payment_source') }}:</span>
