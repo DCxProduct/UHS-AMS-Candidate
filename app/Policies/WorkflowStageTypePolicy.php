@@ -36,4 +36,9 @@ class WorkflowStageTypePolicy
     {
         return $authUser->can('Delete:WorkflowStageType') && $workflowStageType->canDelete();
     }
+
+    public function reorder(AuthUser $authUser): bool
+    {
+        return $authUser->can('Update:WorkflowStageType');
+    }
 }

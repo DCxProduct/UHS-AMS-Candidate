@@ -23,6 +23,7 @@ class WorkflowStageTypesTable
         return $table
             ->searchPlaceholder(__('workflow_stage_types.search'))
             ->defaultSort(fn (Builder $query): Builder => $query->orderForDisplay())
+            ->reorderable('sort_order')
             ->columnManager(false)
             ->columns([
                 TextColumn::make('row_number')

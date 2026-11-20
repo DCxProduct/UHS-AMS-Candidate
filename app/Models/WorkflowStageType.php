@@ -17,17 +17,23 @@ use Illuminate\Validation\ValidationException;
 
 class WorkflowStageType extends Model
 {
-    protected $fillable = ['label_en', 'label_km', 'behavior', 'is_active', 'review_actions', 'stage_settings', 'enabled_actions', 'workflow_button_ids'];
+    protected $fillable = ['label_en', 'label_km', 'behavior', 'is_active', 'review_actions', 'stage_settings', 'enabled_actions', 'workflow_button_ids', 'sort_order'];
 
     protected $attributes = ['is_active' => true, 'is_system' => false];
 
     protected function casts(): array
     {
-        return ['is_active' => 'boolean', 'is_system' => 'boolean', 'review_actions' => 'array', 'stage_settings' => 'array', 'enabled_actions' => 'array', 'workflow_button_ids' => 'array'];
+        return ['is_active' => 'boolean', 'is_system' => 'boolean', 'review_actions' => 'array', 'stage_settings' => 'array', 'enabled_actions' => 'array', 'workflow_button_ids' => 'array', 'sort_order' => 'integer'];
     }
 
     protected static function booted(): void
     {
+        static::creating(function (self $type): void {
+            if ($type->sort_order === null && Schema::hasColumn($type->getTable(), 'sort_order')) {
+                $type->sort_order = ((int) static::query()->max('sort_order')) + 1;
+            }
+        });
+
         static::saving(function (self $type): void {
             $type->label_en = trim((string) $type->label_en);
             $type->label_km = trim((string) $type->label_km);
@@ -295,7 +301,7 @@ class WorkflowStageType extends Model
         return $options;
     }
 
-    /** Present the built-in stages in order, followed by custom stages in creation order. */
+    /** Use the saved catalog order, with the original stage order as a fallback. */
     public function scopeOrderForDisplay(Builder $query): Builder
     {
         $behaviors = array_keys(StageBehavior::options());
@@ -308,7 +314,7 @@ class WorkflowStageType extends Model
         }
         $fallback = count($behaviors);
 
-        return $query->orderByRaw(
+        return $query->orderBy($query->qualifyColumn('sort_order'))->orderByRaw(
             'CASE WHEN '.$systemColumn.' THEN CASE '.$behaviorColumn.' '.implode(' ', $cases).' ELSE '.$fallback.' END ELSE '.$fallback.' END',
             $behaviors,
         )->orderBy($query->qualifyColumn('id'));
@@ -362,6 +368,7 @@ class WorkflowStageType extends Model
 
             DB::table('workflow_stage_types')->insertOrIgnore([
                 ...$values,
+                'sort_order' => ((int) static::query()->max('sort_order')) + 1,
                 'behavior' => 'verification',
                 'is_system' => true,
                 'is_active' => true,
