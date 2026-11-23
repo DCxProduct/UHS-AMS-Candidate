@@ -2,32 +2,36 @@
 
 namespace App\Filament\Admin\Resources\ExamResults\Tables;
 
-use App\Filament\Actions\WorkflowCustomStageActions;
-use App\Filament\Actions\WorkflowCandidateIdActions;
 use App\Enums\WorkflowStageType;
+use App\Filament\Actions\WorkflowCandidateIdActions;
+use App\Filament\Actions\WorkflowCustomStageActions;
 use App\Filament\Admin\Resources\CandidateEntranceStatistics\Tables\CandidateEntranceStatisticsTable;
 use App\Filament\Admin\Resources\ExamResults\ExamResultResource;
+use App\Filament\Admin\Resources\ExamResults\Pages\ListExamResults;
 use App\Filament\Admin\Resources\ExitExamResults\ExitExamResultResource;
 use App\Models\Major;
+use App\Services\AmsSelectionResultSync;
 use App\Support\CandidateNumber;
 use App\Support\CandidateTypeResolver;
+use App\Support\CaseInsensitiveSearch;
+use App\Support\CustomFormRoleAccess;
 use App\Support\FilamentActionPermissions;
 use App\Support\FormEntryData;
-use App\Support\CaseInsensitiveSearch;
-use App\Support\PassedResultMenuOptions;
-use App\Support\LocalizedNumber;
 use App\Support\LocalizedDate;
+use App\Support\LocalizedNumber;
 use App\Support\MenuRecordVisibility;
+use App\Support\PassedResultMenuOptions;
 use App\Support\TableFilterOptions;
 use App\Support\UserTypeOptions;
-use App\Support\WorkflowStageMessages;
-use App\Support\WorkflowButtons;
-use App\Support\WorkflowStageProgression;
-use App\Support\WorkflowProgressQuery;
-use App\Support\WorkflowPassedResultRouting;
 use App\Support\WorkflowActionFeedback;
+use App\Support\WorkflowButtons;
+use App\Support\WorkflowPassedResultRouting;
+use App\Support\WorkflowProgressQuery;
+use App\Support\WorkflowStageMessages;
+use App\Support\WorkflowStageProgression;
 use Carbon\Carbon;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
+use Chanthoeun\FilamentCustomForms\Models\CustomFormAuthorization;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
@@ -37,9 +41,14 @@ use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\HtmlString;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+use Throwable;
 
 class ExamResultsTable
 {
@@ -188,29 +197,44 @@ class ExamResultsTable
             ->filtersFormColumns(4)
             ->recordActions([
                 Action::make('notify_student')
-                    ->label(fn ($record): string => WorkflowButtons::label($record, 'notify', __('exam_results.notify_student')))
+                    ->label(fn ($record): string => $resultMenu === PassedResultMenuOptions::EXAM_RESULTS
+                        ? __('exam_results.confirm_passed_and_notify')
+                        : WorkflowButtons::label($record, 'notify', __('exam_results.notify_student')))
                     ->icon(fn ($record): ?string => WorkflowButtons::icon($record, 'notify', 'heroicon-o-bell-alert'))
                     ->color(fn ($record): string => WorkflowButtons::color($record, 'notify', 'danger'))
                     ->requiresConfirmation()
-                    ->modalHeading(__('exam_results.notify_student_confirm_title'))
-                    ->modalDescription(__('exam_results.notify_student_confirm_description'))
-                    ->modalSubmitActionLabel(__('exam_results.send_notification'))
+                    ->modalHeading(__($resultMenu === PassedResultMenuOptions::EXAM_RESULTS ? 'exam_results.confirm_passed_and_notify' : 'exam_results.notify_student_confirm_title'))
+                    ->modalDescription(__($resultMenu === PassedResultMenuOptions::EXAM_RESULTS ? 'exam_results.confirm_passed_and_notify_record_description' : 'exam_results.notify_student_confirm_description'))
+                    ->modalSubmitActionLabel(__($resultMenu === PassedResultMenuOptions::EXAM_RESULTS ? 'filament-actions::modal.actions.confirm.label' : 'exam_results.send_notification'))
                     ->modalCancelActionLabel(__('app.cancel'))
                     ->visible(fn (CustomFormEntry $record): bool => self::canNotifyRecord($record, $resultMenu)
-                        && ! CandidateEntranceStatisticsTable::hasStudentReviewResultNotification(
-                        $record,
-                        'passed',
-                        self::notificationStageForRecord($record, $resultMenu),
-                    ))
+                        && self::needsConfirmationOrNotification($record, $resultMenu))
                     ->action(function (CustomFormEntry $record, $livewire) use ($resultMenu): void {
                         $notificationStage = self::notificationStageForRecord($record, $resultMenu);
-                        $sent = self::sendPassedNotification($record, $resultMenu);
+                        try {
+                            $sent = self::confirmAndNotify($record, $resultMenu);
+                        } catch (Throwable $exception) {
+                            if ($resultMenu !== PassedResultMenuOptions::EXAM_RESULTS || $exception instanceof HttpExceptionInterface) {
+                                throw $exception;
+                            }
+                            report($exception);
+                            Notification::make()->title(__('exam_results.ams_sync_failed', ['references' => $record->candidate_id ?: $record->getKey()]))
+                                ->body(self::confirmationFailureMessage($exception))->danger()->persistent()
+                                ->actions([self::amsSyncRetryAction([$record->getKey()], true, 'notify_student')])
+                                ->send();
+
+                            return;
+                        }
 
                         if ($sent) {
                             WorkflowActionFeedback::send(
                                 Notification::make()->success(),
                                 WorkflowActionFeedback::title($record->fresh(), 'completed', __('exam_results.notification_sent'), notificationStage: $notificationStage),
                             );
+                        } elseif ($resultMenu === PassedResultMenuOptions::EXAM_RESULTS && ! self::hasStudentPassedNotification($record, $resultMenu)) {
+                            Notification::make()->title(__('exam_results.confirmed_notification_pending'))->warning()->persistent()
+                                ->actions([self::amsSyncRetryAction([$record->getKey()], true, 'notify_student')])
+                                ->send();
                         } else {
                             Notification::make()
                                 ->title(__('exam_results.notification_already_sent'))
@@ -233,6 +257,20 @@ class ExamResultsTable
             ->defaultSort('id', 'desc');
     }
 
+    public static function amsSyncRetryAction(array $recordKeys, bool $notify, string $action): Action
+    {
+        return Action::make('resend')
+            ->label(__('exam_results.resend'))
+            ->icon('heroicon-o-arrow-path')
+            ->button()
+            ->dispatchTo(app('livewire.factory')->resolveComponentName(ListExamResults::class), 'resend-ams-selection-results', [
+                'recordKeys' => array_values($recordKeys),
+                'notify' => $notify,
+                'action' => $action,
+            ])
+            ->close();
+    }
+
     protected static function notificationResourceForResultMenu(string $resultMenu): string
     {
         return $resultMenu === PassedResultMenuOptions::EXIT_EXAM_RESULTS
@@ -245,6 +283,15 @@ class ExamResultsTable
         string $resultMenu = PassedResultMenuOptions::EXAM_RESULTS,
         string $action = 'notify_student',
     ): bool {
+        if ($resultMenu === PassedResultMenuOptions::EXAM_RESULTS) {
+            $user = auth()->user();
+            if ($user === null || ! $user->is_active || $user->registration_type === 'student'
+                || CustomFormRoleAccess::canAccessForm($user, $record->custom_form_id) === false
+                || CustomFormAuthorization::checkPermission($user, 'view', (int) $record->custom_form_id, $record) === false) {
+                return false;
+            }
+        }
+
         return FilamentActionPermissions::canForWorkflowStage(
             self::notificationResourceForResultMenu($resultMenu),
             $action,
@@ -262,20 +309,96 @@ class ExamResultsTable
         if (! FilamentActionPermissions::canAccessWorkflowActions($resource)) {
             return false;
         }
-        if (FilamentActionPermissions::canForResource($resource, $action)) {
+        if ($resultMenu !== PassedResultMenuOptions::EXAM_RESULTS && FilamentActionPermissions::canForResource($resource, $action)) {
             return true;
         }
 
         $query = $resource::getEloquentQuery()->reorder()->with('customForm');
-        if (Schema::hasColumn('custom_form_entries', 'workflow_snapshot')) {
+        if ($resultMenu !== PassedResultMenuOptions::EXAM_RESULTS && Schema::hasColumn('custom_form_entries', 'workflow_snapshot')) {
             $query->where(fn (Builder $query): Builder => $query
                 ->where('workflow_snapshot->has_workflow', true)
                 ->orWhereNull('workflow_snapshot'));
         }
 
-        return $query->lazyById(200)->contains(fn (CustomFormEntry $record): bool => WorkflowStageMessages::hasConfiguredWorkflow($record)
+        return $query->lazyById(200)->contains(fn (CustomFormEntry $record): bool => ($resultMenu === PassedResultMenuOptions::EXAM_RESULTS || WorkflowStageMessages::hasConfiguredWorkflow($record))
             && self::canNotifyRecord($record, $resultMenu, $action)
             && ! self::hasStudentPassedNotification($record, $resultMenu));
+    }
+
+    public static function needsConfirmationOrNotification(
+        CustomFormEntry $record,
+        string $resultMenu = PassedResultMenuOptions::EXAM_RESULTS,
+    ): bool {
+        return ! self::hasStudentPassedNotification($record, $resultMenu)
+            || ($resultMenu === PassedResultMenuOptions::EXAM_RESULTS
+                && ! app(AmsSelectionResultSync::class)->hasAcknowledgement($record));
+    }
+
+    public static function canConfirmPassedRecords(bool $notify = false): bool
+    {
+        if (! FilamentActionPermissions::canAccessWorkflowActions(ExamResultResource::class)) {
+            return false;
+        }
+
+        return ExamResultResource::getEloquentQuery()->reorder()->with('customForm')->lazyById(200)
+            ->contains(fn (CustomFormEntry $record): bool => self::canNotifyRecord($record, action: 'notify_all_students')
+                && ($notify
+                    ? self::needsConfirmationOrNotification($record)
+                    : ! app(AmsSelectionResultSync::class)->hasAcknowledgement($record)));
+    }
+
+    public static function confirmAndNotify(
+        CustomFormEntry $record,
+        string $resultMenu = PassedResultMenuOptions::EXAM_RESULTS,
+        string $action = 'notify_student',
+        bool $skipUnauthorized = false,
+    ): bool {
+        if ($resultMenu !== PassedResultMenuOptions::EXAM_RESULTS) {
+            return self::sendPassedNotification($record, $resultMenu, $action, $skipUnauthorized);
+        }
+
+        $record->refresh();
+        if (! self::canNotifyRecord($record, $resultMenu, $action)) {
+            abort_unless($skipUnauthorized, 403);
+
+            return false;
+        }
+        if ($skipUnauthorized && ! ExamResultResource::getEloquentQuery()->whereKey($record->getKey())->exists()) {
+            return false;
+        }
+
+        return app(AmsSelectionResultSync::class)->sync($record, true, $action);
+    }
+
+    public static function confirmationFailureMessage(Throwable $exception): string
+    {
+        return match (true) {
+            $exception instanceof ValidationException => implode(' ', $exception->validator->errors()->all()),
+            $exception instanceof ConnectionException => __('exam_results.ams_sync_connection_failed'),
+            $exception instanceof RequestException && $exception->response->status() === 409 => self::accountConflictMessage($exception),
+            $exception instanceof RequestException && $exception->response->status() === 422 => __('exam_results.ams_sync_validation_failed', [
+                'fields' => implode(', ', array_slice(array_keys($exception->response->json('errors') ?? []), 0, 8)),
+            ]),
+            $exception instanceof RequestException => __('exam_results.ams_sync_request_failed', ['status' => $exception->response->status()]),
+            default => __('exam_results.ams_sync_unknown_error'),
+        };
+    }
+
+    protected static function accountConflictMessage(RequestException $exception): string
+    {
+        $errors = $exception->response->json('errors');
+        $fields = [];
+        if (is_array($errors)) {
+            foreach (['username' => 'username', 'email' => 'email_address', 'phone' => 'phone_number'] as $field => $label) {
+                if (isset($errors[$field])) {
+                    $fields[] = __('app.'.$label);
+                }
+            }
+        }
+
+        return $fields !== []
+            ? __('exam_results.ams_sync_identifier_conflict', ['fields' => implode(', ', $fields)])
+            : __('exam_results.ams_sync_account_conflict');
     }
 
     public static function sendPassedNotification(
@@ -315,8 +438,7 @@ class ExamResultsTable
     public static function notificationStageForRecord(
         CustomFormEntry $record,
         string $resultMenu,
-    ): WorkflowStageType
-    {
+    ): WorkflowStageType {
         if (WorkflowStageProgression::isCurrent($record, WorkflowStageType::Completed)) {
             return WorkflowStageType::Completed;
         }
@@ -329,8 +451,8 @@ class ExamResultsTable
     public static function downloadExcel(iterable $records, ?array $columnKeys = null, ?string $filenameLabel = null)
     {
         $filenameLabel = trim((string) ($filenameLabel ?: 'Exam Results'));
-        $filename = $filenameLabel . ' ' . now()->format('d-m-Y') . '.xlsx';
-        $path = storage_path('app/' . uniqid('exam-results-', true) . '.xlsx');
+        $filename = $filenameLabel.' '.now()->format('d-m-Y').'.xlsx';
+        $path = storage_path('app/'.uniqid('exam-results-', true).'.xlsx');
 
         $columnKeys ??= array_keys(self::exportColumnDefinitions());
 
@@ -385,21 +507,21 @@ class ExamResultsTable
 
     protected static function writeXlsx(string $path, array $sheets): void
     {
-        $zip = new \ZipArchive();
+        $zip = new \ZipArchive;
         $zip->open($path, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
 
         $zip->addFromString('[Content_Types].xml', self::contentTypesXml($sheets));
         $zip->addFromString('_rels/.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-            . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
-            . '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
-            . '</Relationships>');
+            .'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            .'<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
+            .'</Relationships>');
         $zip->addFromString('xl/workbook.xml', self::workbookXml($sheets));
         $zip->addFromString('xl/_rels/workbook.xml.rels', self::workbookRelsXml($sheets));
         $zip->addFromString('xl/styles.xml', self::stylesXml());
 
         foreach (array_values($sheets) as $index => $sheet) {
             $zip->addFromString(
-                'xl/worksheets/sheet' . ($index + 1) . '.xml',
+                'xl/worksheets/sheet'.($index + 1).'.xml',
                 self::worksheetXml($sheet['rows'])
             );
         }
@@ -410,22 +532,22 @@ class ExamResultsTable
     protected static function worksheetXml(array $rows): string
     {
         $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-            . '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
-            . '<sheetData>';
+            .'<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+            .'<sheetData>';
 
         foreach ($rows as $rowIndex => $row) {
             $excelRow = $rowIndex + 1;
-            $xml .= '<row r="' . $excelRow . '">';
+            $xml .= '<row r="'.$excelRow.'">';
 
             foreach (array_values($row) as $columnIndex => $value) {
-                $cell = self::columnName($columnIndex + 1) . $excelRow;
-                $xml .= '<c r="' . $cell . '" s="1" t="inlineStr"><is><t>' . self::xmlValue($value) . '</t></is></c>';
+                $cell = self::columnName($columnIndex + 1).$excelRow;
+                $xml .= '<c r="'.$cell.'" s="1" t="inlineStr"><is><t>'.self::xmlValue($value).'</t></is></c>';
             }
 
             $xml .= '</row>';
         }
 
-        return $xml . '</sheetData></worksheet>';
+        return $xml.'</sheetData></worksheet>';
     }
 
     protected static function columnName(int $index): string
@@ -434,7 +556,7 @@ class ExamResultsTable
 
         while ($index > 0) {
             $index--;
-            $name = chr(65 + ($index % 26)) . $name;
+            $name = chr(65 + ($index % 26)).$name;
             $index = intdiv($index, 26);
         }
 
@@ -613,72 +735,72 @@ class ExamResultsTable
     protected static function contentTypesXml(array $sheets): string
     {
         $overrides = collect(array_keys($sheets))
-            ->map(fn (int $index): string => '<Override PartName="/xl/worksheets/sheet' . ($index + 1) . '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>')
+            ->map(fn (int $index): string => '<Override PartName="/xl/worksheets/sheet'.($index + 1).'.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>')
             ->implode('');
 
         return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-            . '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
-            . '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
-            . '<Default Extension="xml" ContentType="application/xml"/>'
-            . '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
-            . '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
-            . $overrides
-            . '</Types>';
+            .'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+            .'<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+            .'<Default Extension="xml" ContentType="application/xml"/>'
+            .'<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+            .'<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
+            .$overrides
+            .'</Types>';
     }
 
     protected static function workbookXml(array $sheets): string
     {
         $sheetXml = collect(array_values($sheets))
-            ->map(fn (array $sheet, int $index): string => '<sheet name="' . self::xmlValue(self::sheetName($sheet['name'])) . '" sheetId="' . ($index + 1) . '" r:id="rId' . ($index + 1) . '"/>')
+            ->map(fn (array $sheet, int $index): string => '<sheet name="'.self::xmlValue(self::sheetName($sheet['name'])).'" sheetId="'.($index + 1).'" r:id="rId'.($index + 1).'"/>')
             ->implode('');
 
         return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-            . '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
-            . '<sheets>' . $sheetXml . '</sheets>'
-            . '</workbook>';
+            .'<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+            .'<sheets>'.$sheetXml.'</sheets>'
+            .'</workbook>';
     }
 
     protected static function workbookRelsXml(array $sheets): string
     {
         $relationships = collect(array_keys($sheets))
-            ->map(fn (int $index): string => '<Relationship Id="rId' . ($index + 1) . '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' . ($index + 1) . '.xml"/>')
+            ->map(fn (int $index): string => '<Relationship Id="rId'.($index + 1).'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet'.($index + 1).'.xml"/>')
             ->implode('');
 
         $styleRelationId = count($sheets) + 1;
 
         return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-            . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
-            . $relationships
-            . '<Relationship Id="rId' . $styleRelationId . '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'
-            . '</Relationships>';
+            .'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            .$relationships
+            .'<Relationship Id="rId'.$styleRelationId.'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'
+            .'</Relationships>';
     }
 
     protected static function stylesXml(): string
     {
         return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-            . '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
-            . '<fonts count="2">'
-            . '<font><sz val="11"/><name val="Calibri"/><family val="2"/></font>'
-            . '<font><sz val="11"/><name val="Battambang"/><family val="2"/></font>'
-            . '</fonts>'
-            . '<fills count="2">'
-            . '<fill><patternFill patternType="none"/></fill>'
-            . '<fill><patternFill patternType="gray125"/></fill>'
-            . '</fills>'
-            . '<borders count="1">'
-            . '<border><left/><right/><top/><bottom/><diagonal/></border>'
-            . '</borders>'
-            . '<cellStyleXfs count="1">'
-            . '<xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>'
-            . '</cellStyleXfs>'
-            . '<cellXfs count="2">'
-            . '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
-            . '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>'
-            . '</cellXfs>'
-            . '<cellStyles count="1">'
-            . '<cellStyle name="Normal" xfId="0" builtinId="0"/>'
-            . '</cellStyles>'
-            . '</styleSheet>';
+            .'<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+            .'<fonts count="2">'
+            .'<font><sz val="11"/><name val="Calibri"/><family val="2"/></font>'
+            .'<font><sz val="11"/><name val="Battambang"/><family val="2"/></font>'
+            .'</fonts>'
+            .'<fills count="2">'
+            .'<fill><patternFill patternType="none"/></fill>'
+            .'<fill><patternFill patternType="gray125"/></fill>'
+            .'</fills>'
+            .'<borders count="1">'
+            .'<border><left/><right/><top/><bottom/><diagonal/></border>'
+            .'</borders>'
+            .'<cellStyleXfs count="1">'
+            .'<xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>'
+            .'</cellStyleXfs>'
+            .'<cellXfs count="2">'
+            .'<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
+            .'<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>'
+            .'</cellXfs>'
+            .'<cellStyles count="1">'
+            .'<cellStyle name="Normal" xfId="0" builtinId="0"/>'
+            .'</cellStyles>'
+            .'</styleSheet>';
     }
 
     protected static function sheetName(string $name): string
@@ -707,8 +829,7 @@ class ExamResultsTable
         iterable $records,
         string $resultMenu = PassedResultMenuOptions::EXAM_RESULTS,
         string $action = 'notify_all_students',
-    ): int
-    {
+    ): int {
         $sentCount = 0;
 
         foreach ($records as $record) {
@@ -740,8 +861,7 @@ class ExamResultsTable
     public static function hasStudentPassedNotification(
         CustomFormEntry $record,
         string $resultMenu = PassedResultMenuOptions::EXAM_RESULTS,
-    ): bool
-    {
+    ): bool {
         return CandidateEntranceStatisticsTable::hasStudentReviewResultNotification(
             $record,
             'passed',
@@ -844,7 +964,7 @@ class ExamResultsTable
 
     protected static function formFilterValue(int $formId): string
     {
-        return 'form:' . $formId;
+        return 'form:'.$formId;
     }
 
     protected static function formIdFromFilterValue(string $value): ?int
@@ -1047,7 +1167,7 @@ class ExamResultsTable
 
         try {
             return Carbon::parse($state)->format('d-m-Y');
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return (string) $state;
         }
     }
