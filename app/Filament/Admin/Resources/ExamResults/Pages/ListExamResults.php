@@ -15,9 +15,7 @@ use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Contracts\Support\Htmlable;
-use Illuminate\Http\Client\ConnectionException;
-use Illuminate\Http\Client\RequestException;
-use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Collection;
 use Throwable;
 
 class ListExamResults extends ListRecords
@@ -116,7 +114,7 @@ class ListExamResults extends ListRecords
             ->icon($notify ? 'heroicon-o-check-badge' : 'heroicon-o-check-circle')
             ->color($notify ? 'primary' : 'success')
             ->visible(fn (): bool => static::getResource() === ExamResultResource::class
-                && ExamResultsTable::canSendPassedNotifications())
+                && ExamResultsTable::canConfirmPassedRecords($notify))
             ->requiresConfirmation()
             ->modalHeading(__('exam_results.'.$name))
             ->modalDescription(__('exam_results.'.$name.'_confirm_description'))
@@ -166,15 +164,7 @@ class ListExamResults extends ListRecords
         $records = $this->selectedOrFilteredQuery($selectedRecordKeys, $isTrackingDeselectedRecords, $deselectedRecordKeys)
             ->with(['creator', 'customForm'])->get();
         foreach ($records as $record) {
-            if (! ExamResultsTable::canNotifyRecord($record, action: 'notify_all_students')) {
-                Notification::make()
-                    ->title(__('exam_results.ams_sync_workflow_blocked'))
-                    ->body(__('exam_results.ams_sync_workflow_blocked_details', [
-                        'reference' => $record->candidate_id ?: (string) $record->getKey(),
-                    ]))
-                    ->danger()->persistent()->send();
-                return;
-            }
+            abort_unless(ExamResultsTable::canNotifyRecord($record, action: 'notify_all_students'), 403);
         }
         if ($records->isEmpty()) {
             Notification::make()->title(__('exam_results.no_selected_students'))->warning()->send();
@@ -182,6 +172,11 @@ class ListExamResults extends ListRecords
             return;
         }
 
+        $this->confirmSelectedRecords($records, $notify);
+    }
+
+    protected function confirmSelectedRecords(Collection $records, bool $notify): void
+    {
         $synced = 0;
         $notified = 0;
         $failed = [];
@@ -193,16 +188,7 @@ class ListExamResults extends ListRecords
             } catch (Throwable $exception) {
                 report($exception);
                 $reference = $record->candidate_id ?: (string) $record->getKey();
-                $reason = match (true) {
-                    $exception instanceof ValidationException => implode(' ', $exception->validator->errors()->all()),
-                    $exception instanceof ConnectionException => __('exam_results.ams_sync_connection_failed'),
-                    $exception instanceof RequestException && $exception->response->status() === 409 => __('exam_results.ams_sync_account_conflict'),
-                    $exception instanceof RequestException && $exception->response->status() === 422 => __('exam_results.ams_sync_validation_failed', [
-                        'fields' => implode(', ', array_slice(array_keys($exception->response->json('errors') ?? []), 0, 8)),
-                    ]),
-                    $exception instanceof RequestException => __('exam_results.ams_sync_request_failed', ['status' => $exception->response->status()]),
-                    default => __('exam_results.ams_sync_unknown_error'),
-                };
+                $reason = ExamResultsTable::confirmationFailureMessage($exception);
                 $failed[] = $reference.': '.$reason;
             }
         }

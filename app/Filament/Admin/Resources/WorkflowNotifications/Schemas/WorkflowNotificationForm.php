@@ -89,7 +89,11 @@ class WorkflowNotificationForm
                             ->label(__('workflow_notifications.actions.add_stage'))
                             ->icon('heroicon-m-plus')
                             ->color('gray')
-                            ->action(fn (Get $get, Set $set) => self::append($get, $set, 'stage', self::emptyStage())),
+                            ->action(fn (Section $component) => self::append(
+                                $component->getChildSchema()->getComponentByStatePath('stages'),
+                                'stage',
+                                self::emptyStage(),
+                            )),
 
                     ])
                     ->footerActionsAlignment(Alignment::Center)
@@ -434,6 +438,8 @@ class WorkflowNotificationForm
                     ->options(fn (): array => PassedResultMenuOptions::options())
                     ->required($isCompletedStage)
                     ->in(fn (): array => array_keys(PassedResultMenuOptions::options()))
+                    ->live()
+                    ->afterStateUpdated(fn (Select $component) => $component->getLivewire()->validateOnly($component->getStatePath()))
                     ->visible($isCompletedStage)
                     ->native(false)
                     ->columnSpanFull(),
@@ -832,11 +838,15 @@ class WorkflowNotificationForm
         ];
     }
 
-    private static function append(Get $get, Set $set, string $type, array $data): void
+    private static function append(Builder $builder, string $type, array $data): void
     {
-        $items = $get('stages') ?? [];
-        $items[(string) Str::uuid()] = ['type' => $type, 'data' => $data];
+        $items = $builder->getRawState() ?? [];
+        $key = (string) Str::uuid();
+        $items[$key] = ['type' => $type, 'data' => $data];
 
-        $set('stages', $items);
+        $builder->rawState($items);
+        // Initialize every field before the browser binds the new stage's inputs.
+        $builder->getChildSchema($key)->fill($data);
+        $builder->callAfterStateUpdated();
     }
 }

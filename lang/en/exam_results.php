@@ -10,6 +10,8 @@ return [
     'download_excel' => 'Download Excel',
     'confirm_passed' => 'Confirm Passed',
     'confirm_passed_and_notify' => 'Confirm Passed & Notify Candidate',
+    'confirm_passed_and_notify_record_description' => 'Confirm this passed result with AMS, then send the candidate notification configured for this workflow stage?',
+    'confirmed_notification_pending' => 'Passed result confirmed. Check the workflow notification message and channels, then retry sending.',
     'confirm_passed_confirm_description' => 'Confirm the passed exam results for the selected candidates?',
     'confirm_passed_and_notify_confirm_description' => 'Confirm the passed exam results and send notifications to the selected candidates?',
     'ams_sync_summary' => ':count candidate results sent to AMS.',

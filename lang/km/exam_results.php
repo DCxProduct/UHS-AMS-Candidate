@@ -10,6 +10,8 @@ return [
     'download_excel' => 'ទាញយក Excel',
     'confirm_passed' => 'បញ្ជាក់ជាប់',
     'confirm_passed_and_notify' => 'បញ្ជាក់ជាប់ & ជូនដំណឹងទៅបេក្ខជន',
+    'confirm_passed_and_notify_record_description' => 'តើអ្នកចង់បញ្ជាក់លទ្ធផលជាប់នេះទៅ AMS រួចផ្ញើការជូនដំណឹងតាមការកំណត់ក្នុងដំណាក់កាលនេះមែនទេ?',
+    'confirmed_notification_pending' => 'បានបញ្ជាក់លទ្ធផលជាប់រួចហើយ។ សូមពិនិត្យសារ និង Channel ក្នុង Workflow រួចសាកល្បងផ្ញើការជូនដំណឹងម្ដងទៀត។',
     'confirm_passed_confirm_description' => 'តើអ្នកចង់បញ្ជាក់លទ្ធផលជាប់ប្រឡងរបស់បេក្ខជនដែលបានជ្រើសរើសមែនទេ?',
     'confirm_passed_and_notify_confirm_description' => 'តើអ្នកចង់បញ្ជាក់លទ្ធផលជាប់ប្រឡង និងផ្ញើការជូនដំណឹងទៅបេក្ខជនដែលបានជ្រើសរើសមែនទេ?',
     'ams_sync_summary' => 'បានផ្ញើលទ្ធផលបេក្ខជន :count នាក់ទៅ AMS។',

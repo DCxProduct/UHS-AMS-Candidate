@@ -19,6 +19,8 @@ use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Filament\Facades\Filament;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Factory as HttpFactory;
+use Illuminate\Http\Client\Request as HttpRequest;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
@@ -60,6 +62,7 @@ class WorkflowNotificationActionPermissionTest extends TestCase
     #[DataProvider('resultMenus')]
     public function test_frozen_final_role_authorizes_row_header_and_server_without_notification_grants(string $menu): void
     {
+        $this->fakeEntranceConfirmation($menu);
         [$row, $workflow] = $this->application($menu);
         $bulk = $this->sameApplication($row);
         $direct = $this->sameApplication($row);
@@ -88,13 +91,14 @@ class WorkflowNotificationActionPermissionTest extends TestCase
             $this->assertSame('Original answer', $entry->data['answer']);
             $this->assertSame('OLD-42', $entry->candidate_id);
         }
-        Http::assertNothingSent();
+        $this->assertConfirmationRequests($menu, [$row->id]);
         Mail::assertNothingSent();
     }
 
     #[DataProvider('resultMenus')]
     public function test_static_row_and_bulk_permissions_remain_distinct(string $menu): void
     {
+        $this->fakeEntranceConfirmation($menu);
         [$row] = $this->application($menu, type: null);
         $bulk = $this->sameApplication($row);
         $subject = $this->subject($menu);
@@ -110,11 +114,13 @@ class WorkflowNotificationActionPermissionTest extends TestCase
             ->callAction('notify_all_students', arguments: ['selectedRecordKeys' => [$bulk->id], 'selectedRecordsCount' => 1])->assertHasNoActionErrors();
         $this->assertDenied(fn () => ExamResultsTable::sendPassedNotification($bulk, $menu));
         $this->assertEqualsCanonicalizing([$row->id, $bulk->id], $this->notifiedEntryIds());
+        $this->assertConfirmationRequests($menu, [$row->id]);
     }
 
     #[DataProvider('resultMenus')]
     public function test_mixed_bulk_checks_each_workflow_role_static_grant_and_result_query_scope(string $menu): void
     {
+        $this->fakeEntranceConfirmation($menu);
         [$allowed] = $this->application($menu);
         [$wrong] = $this->application($menu, roles: ['cashier_officer']);
         [$empty] = $this->application($menu, roles: null);
@@ -138,11 +144,13 @@ class WorkflowNotificationActionPermissionTest extends TestCase
         foreach ([$wrong, $empty, $hidden, $otherMenu] as $entry) {
             $this->assertSame($rejected[$entry->id], $this->row($entry));
         }
+        $this->assertConfirmationRequests($menu, []);
     }
 
     #[DataProvider('resultMenus')]
     public function test_wrong_or_empty_roles_candidates_and_missing_menu_access_cannot_notify(string $menu): void
     {
+        $this->fakeEntranceConfirmation($menu);
         [$entry] = $this->application($menu);
         [$empty] = $this->application($menu, roles: null);
         $before = [$this->row($entry), $this->row($empty)];
@@ -164,6 +172,7 @@ class WorkflowNotificationActionPermissionTest extends TestCase
         $this->assertDenied(fn () => ExamResultsTable::sendPassedNotification($entry, $menu));
         $this->assertSame($before, [$this->row($entry), $this->row($empty)]);
         $this->assertDatabaseCount('notifications', 0);
+        Http::assertNothingSent();
     }
 
     public static function changedAfterMount(): array
@@ -174,12 +183,13 @@ class WorkflowNotificationActionPermissionTest extends TestCase
     #[DataProvider('changedAfterMount')]
     public function test_notification_rechecks_role_and_result_eligibility_after_confirmation_mount(string $menu, string $change): void
     {
+        $this->fakeEntranceConfirmation($menu);
         [$entry] = $this->application($menu);
         $component = Livewire::test($this->page($menu))->mountTableAction('notify_student', $entry);
         if ($change === 'role') {
             $this->operator->removeRole('result_operator')->unsetRelation('roles');
         } else {
-            DB::table('custom_form_entries')->where('id', $entry->id)->update(['data' => json_encode(array_replace($entry->data, ['candidate_status' => 'pending']))]);
+            DB::table('custom_form_entries')->where('id', $entry->id)->update(['data' => json_encode(array_replace($entry->data, ['candidate_status' => 'failed']))]);
         }
         $before = $this->row($entry);
         $component->callMountedTableAction();
@@ -187,6 +197,7 @@ class WorkflowNotificationActionPermissionTest extends TestCase
         $this->assertSame(0, ExamResultsTable::sendPassedNotifications([$entry], $menu));
         $this->assertSame($before, $this->row($entry));
         $this->assertDatabaseCount('notifications', 0);
+        Http::assertNothingSent();
     }
 
     public static function optionalFinalStages(): array
@@ -197,6 +208,7 @@ class WorkflowNotificationActionPermissionTest extends TestCase
     #[DataProvider('optionalFinalStages')]
     public function test_finished_results_or_payment_workflow_uses_its_final_role_without_completed_stage(string $menu, string $type): void
     {
+        $this->fakeEntranceConfirmation($menu);
         [$entry] = $this->application($menu, type: $type);
         if ($type === 'payment') {
             Payment::query()->create(['custom_form_entry_id' => $entry->id, 'users_id' => $entry->created_by, 'form_id' => $entry->custom_form_id, 'receipt_number' => 'FINAL-'.$entry->id, 'status_payt' => 'paid', 'amount_usd' => 5, 'datetime_pay' => now()]);
@@ -208,18 +220,63 @@ class WorkflowNotificationActionPermissionTest extends TestCase
         Livewire::test($this->page($menu))->assertCanSeeTableRecords([$entry])->assertTableActionVisible('notify_student', $entry)
             ->callTableAction('notify_student', $entry)->assertHasNoTableActionErrors();
         $this->assertSame([$entry->id], $this->notifiedEntryIds());
-        $this->assertFalse(ExamResultsTable::sendPassedNotification($entry, $menu));
+        if ($menu === PassedResultMenuOptions::EXAM_RESULTS) {
+            $this->assertDenied(fn () => ExamResultsTable::sendPassedNotification($entry, $menu), 409);
+        } else {
+            $this->assertFalse(ExamResultsTable::sendPassedNotification($entry, $menu));
+        }
+        $this->assertConfirmationRequests($menu, [$entry->id]);
     }
 
     #[DataProvider('resultMenus')]
     public function test_legacy_snapshot_with_completed_role_can_still_send_without_action_grants(string $menu): void
     {
+        $this->fakeEntranceConfirmation($menu);
         [$entry] = $this->application($menu, version: 1);
         $snapshot = $entry->getRawOriginal('workflow_snapshot');
         $this->assertFalse(WorkflowStageProgression::enabled($entry));
         Livewire::test($this->page($menu))->assertTableActionVisible('notify_student', $entry)->callTableAction('notify_student', $entry)->assertHasNoTableActionErrors();
         $this->assertSame([$entry->id], $this->notifiedEntryIds());
         $this->assertSame($snapshot, $entry->fresh()->getRawOriginal('workflow_snapshot'));
+        $this->assertConfirmationRequests($menu, [$entry->id]);
+    }
+
+    private function fakeEntranceConfirmation(string $menu): void
+    {
+        if ($menu !== PassedResultMenuOptions::EXAM_RESULTS) {
+            return;
+        }
+
+        config()->set('services.ams', ['enabled' => true, 'base_url' => 'https://ams.example.test',
+            'token' => 'selection-permission-test', 'account_key' => 'selection-account-permission-test', 'timeout' => 5]);
+        Http::swap(new HttpFactory);
+        Http::preventStrayRequests();
+        Http::fake(['https://ams.example.test/api/external/candidate/selection-results' => function (HttpRequest $request) {
+            // The result and account must be acknowledged before this entry's candidate bell is released.
+            $this->assertFalse($this->candidate->notifications()
+                ->where('data->viewData->workflow_entry_id', (string) $request['application_id'])->exists());
+
+            return Http::response([
+                'application_id' => (string) $request['application_id'], 'status' => 'synced',
+                'selection_result_id' => 'selection-'.$request['application_id'],
+                'source_account_id' => (string) $this->candidate->id, 'account_id' => 'confirmed-account',
+                'account_status' => 'enrolled', 'profile_synced' => true, 'profile_entry_id' => 'confirmed-profile',
+            ]);
+        }]);
+    }
+
+    private function assertConfirmationRequests(string $menu, array $entryIds): void
+    {
+        if ($menu !== PassedResultMenuOptions::EXAM_RESULTS || $entryIds === []) {
+            Http::assertNothingSent();
+
+            return;
+        }
+
+        Http::assertSentCount(count($entryIds));
+        $this->assertEqualsCanonicalizing(array_map('strval', $entryIds), Http::recorded()
+            ->map(fn (array $record): string => (string) $record[0]['application_id'])->all());
+        Http::assertSent(fn (HttpRequest $request): bool => $request->hasHeader('Authorization', 'Bearer selection-permission-test'));
     }
 
     private function application(string $menu, ?array $roles = ['result_operator'], ?string $type = 'completed', int $version = 2): array
