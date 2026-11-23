@@ -15,7 +15,9 @@ use App\Support\PassedResultMenuOptions;
 use App\Support\WorkflowStageProgression;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
+use Filament\Actions\Action;
 use Filament\Facades\Filament;
+use Filament\Notifications\Notification as FilamentNotification;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
@@ -40,6 +42,10 @@ class EntranceResultConfirmationWorkflowTest extends TestCase
 
     private array $acknowledgementOverrides = [];
 
+    private array $amsFailApplicationIds = [];
+
+    private array $amsConflictFields = [];
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -50,13 +56,22 @@ class EntranceResultConfirmationWorkflowTest extends TestCase
             'token' => 'entrance-results-test', 'account_key' => 'test-account-encryption', 'timeout' => 5,
         ]);
         Http::preventStrayRequests();
-        Http::fake(fn (Request $request) => Http::response(array_replace([
-            'application_id' => $request['application_id'], 'status' => 'synced',
-            'selection_result_id' => 'result-'.$request['application_id'],
-            'source_account_id' => (string) $this->candidate->id,
-            'account_id' => 'account-'.$this->candidate->id, 'account_status' => 'enrolled',
-            'profile_synced' => true, 'profile_entry_id' => 'profile-'.$this->candidate->id,
-        ], $this->acknowledgementOverrides)));
+        Http::fake(function (Request $request) {
+            if (in_array((string) $request['application_id'], $this->amsFailApplicationIds, true)) {
+                return Http::response(['message' => 'AMS is temporarily unavailable.'], 503);
+            }
+            if ($this->amsConflictFields !== []) {
+                return Http::response(['message' => 'Remote account conflict details.', 'errors' => $this->amsConflictFields], 409);
+            }
+
+            return Http::response(array_replace([
+                'application_id' => $request['application_id'], 'status' => 'synced',
+                'selection_result_id' => 'result-'.$request['application_id'],
+                'source_account_id' => (string) $this->candidate->id,
+                'account_id' => 'account-'.$this->candidate->id, 'account_status' => 'enrolled',
+                'profile_synced' => true, 'profile_entry_id' => 'profile-'.$this->candidate->id,
+            ], $this->acknowledgementOverrides));
+        });
         Mail::fake();
         $this->operator = $this->user('entrance-result-operator', 'admin', 'result_operator');
         $this->candidate = $this->user('entrance-result-candidate', 'student');
@@ -196,17 +211,156 @@ class EntranceResultConfirmationWorkflowTest extends TestCase
                 throw new \RuntimeException('Simulated local notification failure after AMS acknowledgement.');
             }
         });
-        Livewire::test(ListExamResults::class)->callTableAction('notify_student', $entry);
+        $component = Livewire::test(ListExamResults::class)->callTableAction('notify_student', $entry);
         Http::assertSentCount(1);
         $this->assertDatabaseCount('notifications', 0);
         $this->assertDatabaseCount('ams_selection_result_syncs', 1);
         $this->assertTrue(ExamResultResource::getEloquentQuery()->whereKey($entry->id)->exists());
 
-        Livewire::test(ListExamResults::class)->callTableAction('notify_student', $entry)->assertHasNoTableActionErrors();
+        $retry = $this->resendAlertAction([$entry->id], true, 'notify_student', 'warning');
+        $component->dispatch($retry['event'], ...$retry['eventData'])->assertSuccessful();
 
         Http::assertSentCount(1);
         $this->assertNotified([$entry]);
         $this->assertFalse(ExamResultResource::getEloquentQuery()->whereKey($entry->id)->exists());
+    }
+
+    public function test_failed_row_alert_resends_the_original_combined_operation_once(): void
+    {
+        [$entry] = $this->application();
+        $before = $this->businessState($entry);
+        $this->amsFailApplicationIds = [(string) $entry->id];
+        $component = Livewire::test(ListExamResults::class)->callTableAction('notify_student', $entry);
+        $retry = $this->resendAlertAction([$entry->id], true, 'notify_student');
+        $this->assertSame($component->instance()->getName(), $retry['dispatchToComponent']);
+        Http::assertSentCount(1);
+        $this->assertDatabaseCount('notifications', 0);
+        $this->assertDatabaseCount('ams_selection_result_syncs', 0);
+
+        $this->amsFailApplicationIds = [];
+        $component->dispatch($retry['event'], ...$retry['eventData'])->assertSuccessful();
+
+        Http::assertSentCount(2);
+        $this->assertNotified([$entry]);
+        $this->assertDatabaseCount('ams_selection_result_syncs', 1);
+        $this->assertSame($before, $this->businessState($entry->fresh()));
+        $component->dispatch($retry['event'], ...$retry['eventData'])->assertSuccessful();
+        Http::assertSentCount(2);
+        $this->assertNotified([$entry]);
+    }
+
+    public static function conflictMessageLocales(): array
+    {
+        return [['en'], ['km']];
+    }
+
+    #[DataProvider('conflictMessageLocales')]
+    public function test_phone_conflict_alert_identifies_the_field_and_resends_after_correction(string $locale): void
+    {
+        app()->setLocale($locale);
+        [$entry] = $this->application();
+        $this->amsConflictFields = ['phone' => ['This phone is already in use.']];
+        $component = Livewire::test(ListExamResults::class)->callTableAction('notify_student', $entry);
+        $alert = collect(session()->get('filament.notifications', []))
+            ->merge(session()->get('filament.claimed_notifications', []))->last();
+        $this->assertSame(__('exam_results.ams_sync_identifier_conflict', ['fields' => __('app.phone_number')]), $alert['body']);
+        $retry = $this->resendAlertAction([$entry->id], true, 'notify_student');
+        $this->assertDatabaseCount('ams_selection_result_syncs', 0);
+        $this->assertDatabaseCount('notifications', 0);
+
+        $this->amsConflictFields = [];
+        $component->dispatch($retry['event'], ...$retry['eventData'])->assertSuccessful();
+
+        Http::assertSentCount(2);
+        $this->assertDatabaseCount('ams_selection_result_syncs', 1);
+        $this->assertNotified([$entry]);
+    }
+
+    public function test_partial_bulk_failure_alert_resends_only_failed_records_without_adding_notifications(): void
+    {
+        [$first] = $this->application();
+        $second = $this->sameApplication($first);
+        $third = $this->sameApplication($first);
+        $unselected = $this->sameApplication($first);
+        $this->amsFailApplicationIds = [(string) $second->id];
+        $component = Livewire::test(ListExamResults::class)->callAction('confirm_passed', arguments: [
+            'selectedRecordKeys' => [$first->id, $second->id, $third->id], 'selectedRecordsCount' => 3,
+        ])->assertHasNoActionErrors();
+        $retry = $this->resendAlertAction([$second->id], false, 'notify_all_students');
+        Http::assertSentCount(3);
+        $this->assertDatabaseCount('ams_selection_result_syncs', 2);
+
+        $this->amsFailApplicationIds = [];
+        $component->dispatch($retry['event'], ...$retry['eventData'])->assertSuccessful();
+
+        Http::assertSentCount(4);
+        $this->assertDatabaseCount('ams_selection_result_syncs', 3);
+        $this->assertDatabaseCount('notifications', 0);
+        $requests = Http::recorded()->map(fn (array $pair): int => (int) $pair[0]['application_id'])->all();
+        $this->assertEqualsCanonicalizing([$first->id, $second->id, $third->id], array_slice($requests, 0, 3));
+        $this->assertSame($second->id, $requests[3]);
+        $this->assertDatabaseMissing('ams_selection_result_syncs', ['custom_form_entry_id' => $unselected->id]);
+        $component->assertCanSeeTableRecords([$first, $second, $third, $unselected]);
+    }
+
+    public function test_resend_alert_rechecks_the_current_actor_role_before_any_remote_request(): void
+    {
+        [$entry] = $this->application();
+        $this->amsFailApplicationIds = [(string) $entry->id];
+        $component = Livewire::test(ListExamResults::class)->callTableAction('notify_student', $entry);
+        $retry = $this->resendAlertAction([$entry->id], true, 'notify_student');
+        $this->amsFailApplicationIds = [];
+        $this->operator->syncRoles([Role::findOrCreate('other_result_operator', 'web')]);
+        $this->grant($this->operator, ['NotifyStudent', 'NotifyAllStudents']);
+
+        $component->dispatch($retry['event'], ...$retry['eventData'])->assertForbidden();
+
+        Http::assertSentCount(1);
+        $this->assertDatabaseCount('notifications', 0);
+        $this->assertDatabaseCount('ams_selection_result_syncs', 0);
+    }
+
+    public function test_bulk_pending_notification_alert_retries_only_the_undelivered_message_without_reposting(): void
+    {
+        [$first] = $this->application();
+        $second = $this->sameApplication($first);
+        $failOnce = true;
+        Event::listen(NotificationSending::class, function (NotificationSending $event) use (&$failOnce): void {
+            if ($failOnce && $event->notifiable instanceof User && $event->notifiable->is($this->candidate)) {
+                $failOnce = false;
+                throw new \RuntimeException('Simulated first candidate notification delivery failure.');
+            }
+        });
+        $component = Livewire::test(ListExamResults::class)->callAction('confirm_passed_and_notify', arguments: [
+            'selectedRecordKeys' => [$first->id, $second->id], 'selectedRecordsCount' => 2,
+        ])->assertHasNoActionErrors();
+        $pending = collect([$first, $second])->filter(fn ($entry): bool => ! ExamResultsTable::hasStudentPassedNotification($entry->fresh()))->values();
+        $this->assertCount(1, $pending);
+        $retry = $this->resendAlertAction([$pending->first()->id], true, 'notify_all_students', 'warning');
+        Http::assertSentCount(2);
+        $this->assertDatabaseCount('ams_selection_result_syncs', 2);
+        $this->assertDatabaseCount('notifications', 1);
+
+        $component->dispatch($retry['event'], ...$retry['eventData'])->assertSuccessful();
+
+        Http::assertSentCount(2);
+        $this->assertNotified([$first, $second]);
+    }
+
+    public function test_resend_rejects_wrong_menu_and_unsupported_action_contexts(): void
+    {
+        [$entry] = $this->application();
+        [$exit] = $this->application(PassedResultMenuOptions::EXIT_EXAM_RESULTS);
+        $component = Livewire::test(ListExamResults::class)->instance();
+        $this->assertDenied(fn () => $component->resendAmsSelectionResults([$entry->id], true, 'clear_data'));
+        $component->resendAmsSelectionResults([$exit->id], true, 'notify_student');
+        $component->resendAmsSelectionResults(['invalid', -1, null, [], true], true, 'notify_student');
+        $component->resendAmsSelectionResults([], true, 'notify_student');
+        $exitComponent = Livewire::test(ListExitExamResults::class)->instance();
+        $this->assertDenied(fn () => $exitComponent->resendAmsSelectionResults([$exit->id], true, 'notify_student'));
+        Http::assertNothingSent();
+        $this->assertDatabaseCount('notifications', 0);
+        $this->assertDatabaseCount('ams_selection_result_syncs', 0);
     }
 
     public function test_forged_entry_acknowledgement_cannot_skip_ams_and_stale_form_saves_cannot_erase_real_acknowledgement(): void
@@ -237,6 +391,54 @@ class EntranceResultConfirmationWorkflowTest extends TestCase
         $this->assertSame($snapshot, $entry->getRawOriginal('workflow_snapshot'));
     }
 
+    public static function acknowledgementStorageLocations(): array
+    {
+        return [
+            'provisional profile and main selection result' => ['provisional', 'main'],
+            'legacy provisional records' => ['provisional', 'provisional'],
+            'promoted main records' => ['main', 'main'],
+            'completed result receipt after Student ID cleanup' => ['main', 'main', true],
+            'legacy acknowledgement without storage metadata' => [null, null],
+        ];
+    }
+
+    #[DataProvider('acknowledgementStorageLocations')]
+    public function test_storage_acknowledgements_support_staged_and_main_records_without_changing_notification_retry_behavior(?string $profileStorage, ?string $resultStorage, bool $selectionResultCompleted = false): void
+    {
+        [$entry] = $this->application();
+        if ($profileStorage !== null) {
+            $this->acknowledgementOverrides = [
+                'profile_storage' => $profileStorage,
+                'selection_result_storage' => $resultStorage,
+                'account_status' => $profileStorage === 'provisional' ? 'provisional' : 'enrolled',
+                'account_id' => $profileStorage === 'provisional' ? 'provisional:7' : 'account-'.$this->candidate->id,
+                'provisional_account_id' => $profileStorage === 'provisional' ? '7' : null,
+            ];
+        }
+        if ($selectionResultCompleted) {
+            $this->acknowledgementOverrides['selection_result_id'] = 424242;
+            $this->acknowledgementOverrides['selection_result_completed'] = true;
+        }
+
+        $this->header('confirm_passed', [$entry]);
+        $acknowledgement = json_decode(DB::table('ams_selection_result_syncs')->where('custom_form_entry_id', $entry->id)->value('acknowledgement'), true);
+        $this->assertSame($profileStorage ?? 'main', $acknowledgement['profile_storage']);
+        $this->assertSame($resultStorage ?? 'main', $acknowledgement['selection_result_storage']);
+        $this->assertSame($profileStorage === 'provisional' ? 'provisional:7' : 'account-'.$this->candidate->id, $acknowledgement['account_id']);
+        $this->assertSame($selectionResultCompleted ? '424242' : 'result-'.$entry->id, $acknowledgement['selection_result_id']);
+        Http::assertSentCount(1);
+        $this->assertDatabaseCount('notifications', 0);
+
+        Livewire::test(ListExamResults::class)->dispatch('resend-ams-selection-results', recordKeys: [$entry->id], notify: false, action: 'notify_all_students')
+            ->assertSuccessful();
+        Http::assertSentCount(1);
+        $this->assertDatabaseCount('notifications', 0);
+
+        Livewire::test(ListExamResults::class)->callTableAction('notify_student', $entry)->assertHasNoTableActionErrors();
+        Http::assertSentCount(1);
+        $this->assertNotified([$entry]);
+    }
+
     public static function invalidAcknowledgements(): array
     {
         return [
@@ -245,6 +447,9 @@ class EntranceResultConfirmationWorkflowTest extends TestCase
             'floating account ID' => [['account_id' => 1.5]],
             'boolean profile ID' => [['profile_entry_id' => true]],
             'floating profile ID' => [['profile_entry_id' => 1.5]],
+            'unknown profile storage' => [['profile_storage' => 'unknown']],
+            'null profile storage' => [['profile_storage' => null]],
+            'non-scalar result storage' => [['selection_result_storage' => ['provisional']]],
         ];
     }
 
@@ -361,6 +566,27 @@ class EntranceResultConfirmationWorkflowTest extends TestCase
             'selectedRecordKeys' => array_map(fn (CustomFormEntry $entry): int => $entry->id, $entries),
             'selectedRecordsCount' => count($entries),
         ])->assertHasNoActionErrors();
+    }
+
+    private function resendAlertAction(array $recordKeys, bool $notify, string $action, string $status = 'danger'): array
+    {
+        $alert = collect(session()->get('filament.notifications', []))
+            ->merge(session()->get('filament.claimed_notifications', []))
+            ->last(fn (array $notification): bool => collect($notification['actions'] ?? [])->contains('name', 'resend'));
+        $this->assertNotNull($alert, 'The sync failure alert must contain a Resend button.');
+        $this->assertSame($status, $alert['status']);
+        $this->assertSame('persistent', $alert['duration']);
+        $rehydrated = FilamentNotification::fromArray($alert);
+        $retry = collect($rehydrated->getActions())->first(fn ($action): bool => $action->getName() === 'resend')->toArray();
+        $this->assertSame(__('exam_results.resend'), $retry['label']);
+        $this->assertSame(Action::BUTTON_VIEW, $retry['view']);
+        $this->assertSame('to', $retry['dispatchDirection']);
+        $this->assertSame(app('livewire.factory')->resolveComponentName(ListExamResults::class), $retry['dispatchToComponent']);
+        $this->assertSame('resend-ams-selection-results', $retry['event']);
+        $this->assertSame(['recordKeys' => $recordKeys, 'notify' => $notify, 'action' => $action], $retry['eventData']);
+        $this->assertTrue($retry['shouldClose']);
+
+        return $retry;
     }
 
     private function application(string $menu = PassedResultMenuOptions::EXAM_RESULTS, array $roles = ['result_operator'], bool $unready = false): array

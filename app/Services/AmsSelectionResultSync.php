@@ -54,11 +54,13 @@ class AmsSelectionResultSync
                 'application_id' => (string) $current->getKey(),
                 'source_account_id' => (string) $current->created_by,
                 'selection_result_id' => (string) $response['selection_result_id'],
+                'selection_result_storage' => $response['selection_result_storage'] ?? 'main',
                 'account_id' => (string) $response['account_id'],
                 'account_status' => $response['account_status'],
                 'provisional_account_id' => isset($response['provisional_account_id']) ? (string) $response['provisional_account_id'] : null,
                 'profile_synced' => true,
                 'profile_entry_id' => (string) $response['profile_entry_id'],
+                'profile_storage' => $response['profile_storage'] ?? 'main',
                 'status' => 'synced',
                 'synced_at' => now()->toIso8601String(),
             ];
@@ -180,6 +182,8 @@ class AmsSelectionResultSync
             && (! isset($response['provisional_account_id']) || self::validRemoteId($response['provisional_account_id']))
             && (($response['account_status'] ?? null) !== 'provisional' || self::validRemoteId($response['provisional_account_id'] ?? null))
             && ($response['profile_synced'] ?? false) === true
+            && (! array_key_exists('profile_storage', $response) || in_array($response['profile_storage'], ['provisional', 'main'], true))
+            && (! array_key_exists('selection_result_storage', $response) || in_array($response['selection_result_storage'], ['provisional', 'main'], true))
             && self::validRemoteId($response['profile_entry_id'] ?? null);
     }
 

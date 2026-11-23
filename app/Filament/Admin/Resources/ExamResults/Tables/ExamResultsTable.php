@@ -7,6 +7,7 @@ use App\Filament\Actions\WorkflowCandidateIdActions;
 use App\Filament\Actions\WorkflowCustomStageActions;
 use App\Filament\Admin\Resources\CandidateEntranceStatistics\Tables\CandidateEntranceStatisticsTable;
 use App\Filament\Admin\Resources\ExamResults\ExamResultResource;
+use App\Filament\Admin\Resources\ExamResults\Pages\ListExamResults;
 use App\Filament\Admin\Resources\ExitExamResults\ExitExamResultResource;
 use App\Models\Major;
 use App\Services\AmsSelectionResultSync;
@@ -204,7 +205,7 @@ class ExamResultsTable
                     ->requiresConfirmation()
                     ->modalHeading(__($resultMenu === PassedResultMenuOptions::EXAM_RESULTS ? 'exam_results.confirm_passed_and_notify' : 'exam_results.notify_student_confirm_title'))
                     ->modalDescription(__($resultMenu === PassedResultMenuOptions::EXAM_RESULTS ? 'exam_results.confirm_passed_and_notify_record_description' : 'exam_results.notify_student_confirm_description'))
-                    ->modalSubmitActionLabel(__($resultMenu === PassedResultMenuOptions::EXAM_RESULTS ? 'exam_results.confirm_passed_and_notify' : 'exam_results.send_notification'))
+                    ->modalSubmitActionLabel(__($resultMenu === PassedResultMenuOptions::EXAM_RESULTS ? 'filament-actions::modal.actions.confirm.label' : 'exam_results.send_notification'))
                     ->modalCancelActionLabel(__('app.cancel'))
                     ->visible(fn (CustomFormEntry $record): bool => self::canNotifyRecord($record, $resultMenu)
                         && self::needsConfirmationOrNotification($record, $resultMenu))
@@ -218,7 +219,9 @@ class ExamResultsTable
                             }
                             report($exception);
                             Notification::make()->title(__('exam_results.ams_sync_failed', ['references' => $record->candidate_id ?: $record->getKey()]))
-                                ->body(self::confirmationFailureMessage($exception))->danger()->persistent()->send();
+                                ->body(self::confirmationFailureMessage($exception))->danger()->persistent()
+                                ->actions([self::amsSyncRetryAction([$record->getKey()], true, 'notify_student')])
+                                ->send();
 
                             return;
                         }
@@ -229,7 +232,9 @@ class ExamResultsTable
                                 WorkflowActionFeedback::title($record->fresh(), 'completed', __('exam_results.notification_sent'), notificationStage: $notificationStage),
                             );
                         } elseif ($resultMenu === PassedResultMenuOptions::EXAM_RESULTS && ! self::hasStudentPassedNotification($record, $resultMenu)) {
-                            Notification::make()->title(__('exam_results.confirmed_notification_pending'))->warning()->send();
+                            Notification::make()->title(__('exam_results.confirmed_notification_pending'))->warning()->persistent()
+                                ->actions([self::amsSyncRetryAction([$record->getKey()], true, 'notify_student')])
+                                ->send();
                         } else {
                             Notification::make()
                                 ->title(__('exam_results.notification_already_sent'))
@@ -250,6 +255,20 @@ class ExamResultsTable
                 WorkflowCustomStageActions::make(self::notificationResourceForResultMenu($resultMenu)),
             ])
             ->defaultSort('id', 'desc');
+    }
+
+    public static function amsSyncRetryAction(array $recordKeys, bool $notify, string $action): Action
+    {
+        return Action::make('resend')
+            ->label(__('exam_results.resend'))
+            ->icon('heroicon-o-arrow-path')
+            ->button()
+            ->dispatchTo(app('livewire.factory')->resolveComponentName(ListExamResults::class), 'resend-ams-selection-results', [
+                'recordKeys' => array_values($recordKeys),
+                'notify' => $notify,
+                'action' => $action,
+            ])
+            ->close();
     }
 
     protected static function notificationResourceForResultMenu(string $resultMenu): string
@@ -356,13 +375,30 @@ class ExamResultsTable
         return match (true) {
             $exception instanceof ValidationException => implode(' ', $exception->validator->errors()->all()),
             $exception instanceof ConnectionException => __('exam_results.ams_sync_connection_failed'),
-            $exception instanceof RequestException && $exception->response->status() === 409 => __('exam_results.ams_sync_account_conflict'),
+            $exception instanceof RequestException && $exception->response->status() === 409 => self::accountConflictMessage($exception),
             $exception instanceof RequestException && $exception->response->status() === 422 => __('exam_results.ams_sync_validation_failed', [
                 'fields' => implode(', ', array_slice(array_keys($exception->response->json('errors') ?? []), 0, 8)),
             ]),
             $exception instanceof RequestException => __('exam_results.ams_sync_request_failed', ['status' => $exception->response->status()]),
             default => __('exam_results.ams_sync_unknown_error'),
         };
+    }
+
+    protected static function accountConflictMessage(RequestException $exception): string
+    {
+        $errors = $exception->response->json('errors');
+        $fields = [];
+        if (is_array($errors)) {
+            foreach (['username' => 'username', 'email' => 'email_address', 'phone' => 'phone_number'] as $field => $label) {
+                if (isset($errors[$field])) {
+                    $fields[] = __('app.'.$label);
+                }
+            }
+        }
+
+        return $fields !== []
+            ? __('exam_results.ams_sync_identifier_conflict', ['fields' => implode(', ', $fields)])
+            : __('exam_results.ams_sync_account_conflict');
     }
 
     public static function sendPassedNotification(
