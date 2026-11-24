@@ -879,6 +879,12 @@ final class WorkflowStageMessages
                 $viewData['workflow_event'] = $workflowEvent;
             }
 
+            if ($action === 'send_back'
+                || ($action === null && $stageType === WorkflowStageType::Rejected && $entry->review_status === 'rejected')) {
+                $reviewNote ??= $entry->review_note;
+                $viewData['candidate_correction_entry_id'] = (string) $entry->getKey();
+            }
+
             $body = WorkflowMessagePlaceholders::render(trim((string) ($notificationBody ?? self::notificationMessage($stage))), $entry);
             $reviewNote = trim((string) $reviewNote);
 
