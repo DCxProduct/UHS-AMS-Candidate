@@ -6,6 +6,7 @@ use App\Enums\WorkflowStageType;
 use App\Models\Major;
 use App\Models\WorkflowNotification;
 use App\Support\FormEntryData;
+use App\Support\WorkflowStageProgression;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Illuminate\Support\Facades\DB;
 
@@ -53,7 +54,7 @@ class CandidateIdGenerator
         return sprintf('%s-%04d', $abbreviation, $next);
     }
 
-    /** Assign an ID at the authorized workflow or static receipt checkpoint. */
+    /** Assign an ID only at an application's configured generation checkpoint. */
     public function assignToEntry(CustomFormEntry $entry): ?string
     {
         return DB::transaction(function () use ($entry): ?string {
@@ -63,6 +64,13 @@ class CandidateIdGenerator
                 ->first();
 
             if (! $current) {
+                return null;
+            }
+
+            $application = (new CustomFormEntry)->newFromBuilder((array) $current);
+            if (! WorkflowNotification::forEntry($application)?->hasStageType(WorkflowStageType::CandidateIdGeneration)
+                || ! WorkflowStageProgression::enabled($application)
+                || ! WorkflowStageProgression::isCurrent($application, WorkflowStageType::CandidateIdGeneration)) {
                 return null;
             }
 
@@ -166,12 +174,13 @@ class CandidateIdGenerator
                         continue;
                     }
 
-                    // Each sibling's receipt must be confirmed independently before assigning its ID.
+                    // Only applications that completed their own generation checkpoint
+                    // can receive the account's shared ID.
                     $sibling = (new CustomFormEntry)->newFromBuilder((array) $entry);
                     $workflow = WorkflowNotification::forEntry($sibling);
-                    if (($workflow === null && blank(data_get($sibling->data, 'application_received_at')))
-                        || ($workflow?->hasStageType(WorkflowStageType::Verification)
-                            && data_get($sibling->data, 'workflow_progress.verification_completed') !== true)) {
+                    if (! $workflow?->hasStageType(WorkflowStageType::CandidateIdGeneration)
+                        || ! WorkflowStageProgression::enabled($sibling)
+                        || data_get($sibling->data, 'workflow_progress.candidate_id_generated') !== true) {
                         continue;
                     }
 

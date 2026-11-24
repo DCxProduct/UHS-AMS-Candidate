@@ -28,9 +28,10 @@ final class WorkflowEntrySnapshot
         $types = collect($stages)
             ->map(fn (mixed $stage): mixed => is_array($stage) ? ($stage['data']['stage_type'] ?? $stage['stage_type'] ?? null) : null)
             ->map(fn (mixed $type): mixed => $type === WorkflowStageType::Approval->value ? WorkflowStageType::Review->value : $type);
+        $builtInTypes = $types->reject(fn ($type): bool => $type === WorkflowStageType::Custom->value);
         $ordered = $workflow !== null && ($types->isEmpty()
             || ($types->every(fn (mixed $type): bool => is_string($type) && WorkflowStageType::tryFrom($type) !== null && $type !== WorkflowStageType::Rejected->value)
-                && $types->unique()->count() === $types->count()));
+                && $builtInTypes->unique()->count() === $builtInTypes->count()));
         $stages = array_map(function (mixed $stage): mixed {
             if (! is_array($stage)) {
                 return $stage;

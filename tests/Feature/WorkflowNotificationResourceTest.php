@@ -333,8 +333,8 @@ class WorkflowNotificationResourceTest extends TestCase
         $this->assertSame('សារស្ថានភាពសម្រាប់បេក្ខជន (ជាជម្រើស)', __('workflow_notifications.fields.status_message', [], 'km'));
         $this->assertSame('Candidate Notification Message (Optional)', __('workflow_notifications.fields.notification_message', [], 'en'));
         $this->assertSame('សារជូនដំណឹងសម្រាប់បេក្ខជន (ជាជម្រើស)', __('workflow_notifications.fields.notification_message', [], 'km'));
-        $this->assertSame('Example: Candidate Admission', __('workflow_notifications.placeholders.name', [], 'en'));
-        $this->assertSame('ឧទាហរណ៍៖ ការចុះឈ្មោះបេក្ខជន', __('workflow_notifications.placeholders.name', [], 'km'));
+        $this->assertSame('Candidate Admission', __('workflow_notifications.placeholders.name', [], 'en'));
+        $this->assertSame('ការចុះឈ្មោះបេក្ខជន', __('workflow_notifications.placeholders.name', [], 'km'));
     }
 
     public function test_access_follows_role_permissions(): void
@@ -408,8 +408,9 @@ class WorkflowNotificationResourceTest extends TestCase
             $this->assertSame([
                 'form_submission',
                 'review',
-                'verification',
                 'payment',
+                'candidate_id_generation',
+                'verification',
                 'awaiting_results',
                 'completed',
             ], array_keys(WorkflowStageType::options()));
@@ -827,7 +828,7 @@ class WorkflowNotificationResourceTest extends TestCase
         $this->template('Second')->forms()->attach($form);
     }
 
-    public function test_deleting_a_template_releases_its_forms(): void
+    public function test_an_assigned_template_cannot_be_deleted_and_preserves_its_forms(): void
     {
         $form = $this->customForm();
         $template = $this->template();
@@ -835,10 +836,10 @@ class WorkflowNotificationResourceTest extends TestCase
         $this->actingAs($this->admin);
 
         Livewire::test(EditWorkflowNotification::class, ['record' => $template->getRouteKey()])
-            ->callAction('delete');
+            ->assertActionHidden('delete')->call('mountAction', 'delete')->call('callMountedAction');
 
-        $this->assertModelMissing($template);
-        $this->assertDatabaseMissing('workflow_notification_forms', ['custom_form_id' => $form->id]);
+        $this->assertModelExists($template);
+        $this->assertDatabaseHas('workflow_notification_forms', ['workflow_notification_id' => $template->id, 'custom_form_id' => $form->id]);
         $this->assertModelExists($form);
     }
 

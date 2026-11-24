@@ -2,6 +2,8 @@
 
 namespace App\Filament\Admin\Resources\PaymentStatusLists\Tables;
 
+use App\Filament\Actions\WorkflowCustomStageActions;
+use App\Filament\Actions\WorkflowCandidateIdActions;
 use App\Enums\WorkflowStageType;
 use App\Filament\Admin\Resources\PaymentStatusLists\PaymentStatusListResource;
 use App\Filament\Admin\Resources\Payments\Tables\PaymentsTable;
@@ -585,6 +587,10 @@ class PaymentStatusListsTable
                     )
                         && ! \App\Services\AmsPaymentSync::usesAms($record)
                         && self::latestPaymentRecord($record) === null),
+            ])
+            ->pushRecordActions([
+                WorkflowCandidateIdActions::make(PaymentStatusListResource::class),
+                WorkflowCustomStageActions::make(PaymentStatusListResource::class),
             ]);
     }
 

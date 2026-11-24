@@ -33,9 +33,13 @@ class AmsPaymentSyncTest extends TestCase
     use RefreshDatabase;
 
     private User $candidate;
+
     private User $staff;
+
     private CustomForm $form;
+
     private WorkflowNotification $workflow;
+
     private bool $remoteFails = false;
 
     protected function setUp(): void
@@ -133,24 +137,23 @@ class AmsPaymentSyncTest extends TestCase
         return [['approved'], ['accepted']];
     }
 
-    public function test_a_newly_generated_candidate_number_is_stored_and_sent_to_ams(): void
+    public function test_an_existing_candidate_number_is_sent_to_ams_without_allocating_another_id(): void
     {
-        $major = \App\Models\Major::query()->create([
-            'key' => 'bnm', 'abbreviation' => 'BNM', 'name_en' => 'Nurse Midwifery', 'is_active' => true,
-        ]);
-        $entry = $this->entry('approved', ['major' => (string) $major->getKey()]);
+        $entry = $this->entry('approved');
+        // This legacy payment fixture already received its ID before the current workflow rules.
+        $entry->forceFill(['candidate_id' => 'BNM-0001', 'candidate_id_year' => now()->year])->save();
 
-        app(\App\Services\CandidateIdGenerator::class)->assignToEntry($entry);
         app(AmsPaymentSync::class)->sync($entry->fresh());
 
         $this->assertDatabaseHas('custom_form_entries', [
             'id' => $entry->getKey(), 'candidate_id' => 'BNM-0001', 'candidate_id_year' => now()->year,
         ]);
-        Http::assertSent(fn (Request $request): bool =>
-            $request['candidate_identifier'] === 'BNM-0001'
+        Http::assertSent(fn (Request $request): bool => $request['candidate_identifier'] === 'BNM-0001'
             && (string) $request['application_id'] === (string) $entry->getKey());
         Http::assertSentCount(1);
         $this->assertDatabaseCount('payments', 0);
+        $this->assertDatabaseCount('candidate_id_sequences', 0);
+        $this->assertDatabaseCount('candidate_account_ids', 0);
     }
 
     #[DataProvider('checkedAliases')]
@@ -160,8 +163,7 @@ class AmsPaymentSyncTest extends TestCase
         $entry->forceFill(['candidate_id' => 'BNM260001'])->save();
         app(AmsPaymentSync::class)->sync($entry);
 
-        Http::assertSent(fn (Request $request): bool =>
-            $request['candidate_identifier'] === 'BNM260001'
+        Http::assertSent(fn (Request $request): bool => $request['candidate_identifier'] === 'BNM260001'
             && (string) $request['application_id'] === (string) $entry->getKey());
         Http::assertSentCount(1);
         $this->assertDatabaseCount('payments', 0);
@@ -283,7 +285,7 @@ class AmsPaymentSyncTest extends TestCase
     public function test_retrying_an_already_collected_local_application_does_not_create_a_second_collection_request(): void
     {
         $entry = $this->entry('approved');
-        \App\Models\Payment::query()->create([
+        Payment::query()->create([
             'users_id' => $this->candidate->getKey(), 'form_id' => $this->form->getKey(),
             'custom_form_entry_id' => $entry->getKey(), 'receipt_number' => 'ALREADY-COLLECTED',
             'status_payt' => 'paid', 'amount_usd' => 30, 'datetime_pay' => now(),

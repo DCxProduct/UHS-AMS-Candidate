@@ -8,6 +8,7 @@ use App\Support\LocalizedDate;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Chanthoeun\FilamentDocumentBuilder\Models\DocumentTemplate;
+use Chanthoeun\FilamentDocumentBuilder\Support\PdfTableLayout;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -1092,6 +1093,7 @@ class DocumentRenderer
         $htmlContent = $this->replacePageBreaks($htmlContent);
         $htmlContent = $this->localizeFallbackChoiceWords($htmlContent);
         $htmlContent .= $this->attachmentImagesHtml($recordData);
+        $htmlContent = PdfTableLayout::preserveCellHeights($htmlContent);
 
         // mPDF compatibility fixes
         $htmlContent = preg_replace('/display:\s*inline-flex;?/', 'display: inline-block;', $htmlContent);

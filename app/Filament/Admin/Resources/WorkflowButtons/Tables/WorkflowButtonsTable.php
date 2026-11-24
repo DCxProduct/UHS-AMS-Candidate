@@ -20,12 +20,8 @@ class WorkflowButtonsTable
     {
         return $table
             ->searchPlaceholder(__('workflow_buttons.search'))
-            ->defaultSort(fn (Builder $query): Builder => $query->orderByRaw(
-                'CASE '.$query->qualifyColumn('action_key')
-                    .' WHEN ? THEN 0 WHEN ? THEN 1 WHEN ? THEN 2 WHEN ? THEN 3'
-                    .' WHEN ? THEN 4 WHEN ? THEN 5 WHEN ? THEN 6 WHEN ? THEN 7 ELSE 8 END',
-                ['submitted', 'accept', 'send_back', 'reject', 'verify', 'paid', 'passed', 'notify'],
-            )->orderBy($query->qualifyColumn('id')))
+            ->defaultSort('sort_order')
+            ->reorderable('sort_order')
             ->columns([
                 TextColumn::make('row_number')
                     ->label(__('workflow_buttons.table.no'))
@@ -45,6 +41,8 @@ class WorkflowButtonsTable
 
                 TextColumn::make('action_key')
                     ->label(__('workflow_buttons.fields.action_key'))
+                    ->getStateUsing(fn (WorkflowButton $record): ?string => $record->action_key === 'verify' ? null : $record->action_key)
+                    ->placeholder(__('workflow_buttons.states.no_action'))
                     ->formatStateUsing(fn (string $state): string => WorkflowButton::actionOptions()[$state] ?? $state)
                     ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyMapped($query, 'action_key', $search, WorkflowButton::actionOptions()))
                     ->wrap(),

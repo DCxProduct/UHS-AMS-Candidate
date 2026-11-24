@@ -21,7 +21,8 @@ class MefInvoiceCodesTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->selectable(fn (): bool => FilamentActionPermissions::canForResource(MefInvoiceCodeResource::class, 'clear_data'))
+            ->selectable(fn (): bool => FilamentActionPermissions::canForResource(MefInvoiceCodeResource::class, 'clear_data')
+                || FilamentActionPermissions::canForResource(MefInvoiceCodeResource::class, 'import_excel'))
             ->searchPlaceholder(__('mef_invoice_codes.search'))
             ->defaultSort('id', 'desc')
             ->columns([

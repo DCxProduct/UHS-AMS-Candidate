@@ -10,7 +10,6 @@ use App\Support\LocalizedDate;
 use App\Support\WorkflowNotificationStageSummary;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
-use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -27,7 +26,8 @@ class WorkflowNotificationsTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->defaultSort('updated_at', 'desc')
+            ->defaultSort('sort_order')
+            ->reorderable('sort_order')
             ->recordUrl(fn (WorkflowNotification $record): string => WorkflowNotificationResource::getUrl('edit', ['record' => $record]))
             ->columns([
                 TextColumn::make('name')
@@ -89,9 +89,9 @@ class WorkflowNotificationsTable
                 ]),
             ])
             ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
+                DeleteBulkAction::make()
+                    ->authorizeIndividualRecords(fn (WorkflowNotification $record) => WorkflowNotificationResource::getDeleteAuthorizationResponse($record))
+                    ->button(),
             ]);
     }
 

@@ -225,17 +225,32 @@ If your Laravel service is not named `app`, replace `app` in these commands with
 The two confirm-passed buttons send only selected applications to AMS at
 `POST /api/external/candidate/selection-results`. Both buttons transfer the result
 and the candidate's login account. The combined button releases the configured
-Candidate notification after AMS acknowledges both records. Successfully transferred
-results leave the Candidate entrance-results list; the underlying applications remain.
+Candidate notification after AMS acknowledges both records. Confirm-only results
+remain visible until the Candidate notification is delivered; the underlying
+applications remain.
 
 Set `AMS_ACCOUNT_ENCRYPTION_KEY` to the same independently generated secret as AMS
 `CANDIDATE_ACCOUNT_ENCRYPTION_KEY`. This secret must differ from the shared API token.
 Credentials contain the existing password hash inside authenticated encryption;
 plaintext passwords are neither available nor transferred. AMS reuses an existing
-student account when the source account is already linked or the email, phone, or
-username uniquely identifies it. Student data and status remain intact. Conflicting
-identifiers or an unavailable account cause HTTP 409 and keep the application
-available for retry without creating a duplicate account.
+student account only through its stored Candidate source account link. When a new
+account's phone is already reserved by another AMS login, AMS leaves that account's
+login phone empty and continues using the unique username/email. The Profile's
+contact phone remains in the staged Profile payload. Existing AMS accounts are
+never linked or modified based on matching phone numbers. Conflicting usernames
+or emails, an unavailable linked account, or a result owned by another account
+cause HTTP 409 and keep the application available for retry.
+
+Before Student ID issuance, the Candidate identity and its username, email, phone,
+password hash and remember token live only in AMS `provisional_laureate_accounts`.
+Sync does not create a `users` row. The AMS and Student login providers authenticate
+this independent provisional account with a namespaced identity, so enrollment and
+password recovery remain available. Profile, entries, results and workflow history
+use an explicit provisional owner rather than a borrowed user ID. Staff Student ID
+completion creates the real user and transfers ownership and credentials in the
+same transaction, then removes the provisional account. A failed completion leaves
+the provisional login intact and commits no user. Normal Student registration
+continues using its existing `users` flow.
 
 ## Node.js on the Production Server
 
@@ -547,15 +562,76 @@ location codes. Deploy the AMS receiver before the Candidate sender. Candidate
 only hides a confirmed result after AMS acknowledges `profile_synced` and a
 `profile_entry_id`, as well as the existing result/account acknowledgement.
 
-AMS stores the profile in `custom_form_entries` under the linked AMS user's ID and
-the form with slug `profile`. The Student portal must read the same database as
-AMS, as in the current local setup. Separate Student databases require another
-integration and are not automatically synchronized by this change.
+Before a real Student ID is issued, AMS stores the profile in
+`provisional_candidate_profiles`. Selection results are saved immediately in
+`upload_excel_candidates`, including results for provisional accounts. Actual login
+credentials and identity remain in `provisional_laureate_accounts` until Student ID
+completion; there is no corresponding `users` row before that completion.
+
+For the current Candidate payload, AMS saves the login account, provisional
+listing, Profile and selection result in one database transaction. A write failure
+rolls back that sync, including a newly created login account. Candidate accepts
+success only after AMS acknowledges the account, result and Profile together;
+failed requests remain available for Resend.
+
+The existing staff-controlled Student ID issuance transaction imports the staged
+profile into `custom_form_entries` (form slug `profile`). After verifying the final
+profile and real Student ID, it deletes the temporary profile and that user's
+Candidate selection-result rows from `upload_excel_candidates`. A failure rolls
+back the profile transfer, result cleanup and account promotion. The final profile
+stays in `custom_form_entries`; credentials and the Student ID remain on the same
+account. Accounts already promoted to students sync their profiles directly to the
+main table. A new application for an enrolled user still creates a pending selection
+result until that application's Student ID completion step runs.
+
+AMS retains `candidate_selection_result_receipts` containing only application/user
+references, the original result ID and completion metadata. It does not retain the
+selection-result body there. Completed application retries return the historical
+`selection_result_id` with `selection_result_completed: true` and do not recreate
+the deleted `upload_excel_candidates` row. Candidate accepts this receipt and reuses
+its acknowledgement, so Resend does not duplicate the result or notification.
+
+API responses retain the existing acknowledgement keys and add `profile_storage`
+(`provisional` or `main`) and `selection_result_storage` (`main`). The returned record
+IDs identify the indicated storage; a completed result ID is a historical receipt
+reference rather than an existing row. Candidate preserves these independent annotations,
+continues accepting legacy provisional-result acknowledgements, and treats older
+acknowledgements without storage metadata as main storage.
+`profile_synced: true` confirms durable receipt even while the profile is waiting
+for a Student ID.
+
+The Student portal must read the same database as AMS, as in the current local
+setup. Separate Student databases require another integration. Existing profiles
+already in the main table are not automatically relocated by these migrations.
 
 Ensure the `profile` form, `custom_form_fields`, and `custom_form_entries` exist
-before enabling the sender. No new token or migration is required for this profile
-extension: use the existing selection-results API token and independent account
-encryption key. The AMS-to-Candidate new-student-account token is a different flow.
+before enabling the sender. Apply
+`2026_11_23_000001_create_provisional_candidate_sync_tables` followed by
+`2026_11_23_000002_move_provisional_candidate_selection_results_to_main` and
+`2026_11_23_000003_create_candidate_selection_result_receipts_table` and
+`2026_11_23_000004_stage_candidate_credentials_in_provisional_accounts` and
+`2026_11_23_000005_use_independent_provisional_candidate_identities` on AMS.
+Deploy the staged-credential authentication code to both AMS and the shared-database
+Student app before these migrations. Refresh cached authentication config in both
+apps when deploying it. Migration 000005 moves existing pending identity data and
+all supported ownership references into provisional storage before removing their
+old user rows. It aborts on unknown references rather than allowing cascaded data
+loss. Issued students and manual accounts keep their existing storage. Already
+issued application acknowledgements remain historical receipts; new provisional
+`account_id` values use `provisional:<id>`. The legacy user ID and namespaced session
+alias resolve to the final user after successful Student ID issuance.
+The forward migration transfers any existing staged results to
+`upload_excel_candidates` before removing the obsolete results staging table. Existing
+Candidate acknowledgement receipts remain valid for retry deduplication, including
+historical provisional-result references. Use the existing selection-results API
+token and independent account encryption key. The AMS-to-Candidate
+new-student-account token is a different flow.
+
+For previously promoted Candidate accounts, preview eligible result cleanup with
+`php artisan candidate:cleanup-promoted-results --user=USER_ID`, replacing `USER_ID`
+with the AMS user ID. Review the preview, then add `--apply` to perform the cleanup.
+Only Candidate-linked rows with verified Student ID completion and a final profile
+are eligible; unrelated/manual selection results are preserved.
 
 Repeated requests reuse the user's latest profile, fill missing fields and preserve
 existing student edits, completed/approved status, IDs, passwords and academic data.

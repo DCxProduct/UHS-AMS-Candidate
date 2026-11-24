@@ -95,7 +95,8 @@ class WorkflowFlexibleStageOrderTest extends TestCase
             $this->assertSame(WorkflowStageType::from($type), WorkflowStageProgression::currentType($entry), 'The next action must follow the configured order.');
             $this->assertFalse(WorkflowStageProgression::finished($entry));
             $this->assertSame($passed, data_get($entry->data, 'workflow_progress.result_passed'));
-            $this->assertSame($received ? 'FLEX-0001' : null, $entry->candidate_id);
+            $this->assertNull($entry->candidate_id);
+            $this->assertSame($received, data_get($entry->data, 'workflow_progress.verification_completed'));
             if (! $passed) {
                 $this->assertNotSame('passed', data_get($entry->data, 'candidate_status'));
             }
@@ -124,7 +125,8 @@ class WorkflowFlexibleStageOrderTest extends TestCase
             $passed = $passed || $type === 'awaiting_results';
             $notified = $notified || $type === 'completed';
             $entry->refresh();
-            $this->assertSame($received ? 'FLEX-0001' : null, $entry->candidate_id);
+            $this->assertNull($entry->candidate_id);
+            $this->assertSame($received, data_get($entry->data, 'workflow_progress.verification_completed'));
             $this->assertSame($passed, data_get($entry->data, 'workflow_progress.result_passed'));
             $this->assertSame($snapshot, $entry->getRawOriginal('workflow_snapshot'));
             $this->assertSame('Original answer', $entry->data['answer']);
@@ -137,15 +139,14 @@ class WorkflowFlexibleStageOrderTest extends TestCase
         }
 
         $this->assertTrue(WorkflowStageProgression::finished($entry));
-        $this->assertSame('FLEX-0001', $entry->candidate_id);
-        $this->assertDatabaseCount('candidate_account_ids', 1);
-        $this->assertDatabaseCount('candidate_id_sequences', 1);
-        $this->assertDatabaseHas('candidate_id_sequences', ['custom_form_id' => $form->id, 'last_sequence' => 1]);
+        $this->assertNull($entry->candidate_id);
+        $this->assertDatabaseCount('candidate_account_ids', 0);
+        $this->assertDatabaseCount('candidate_id_sequences', 0);
         $this->assertDatabaseCount('payments', 1);
         $this->assertSame(1, $this->candidate->notifications()->get()->filter(fn ($notification): bool => data_get($notification->data, 'body') === 'notice:completed')->count());
         $this->actingAs($this->operators['verification']);
         $before = $this->row($entry);
-        $this->assertSame('FLEX-0001', app(WorkflowCandidateVerifier::class)->verify($entry));
+        $this->assertTrue(app(WorkflowCandidateVerifier::class)->verify($entry));
         $this->assertSame($before, $this->row($entry));
         Http::assertNothingSent();
         Mail::assertNothingSent();
@@ -177,13 +178,13 @@ class WorkflowFlexibleStageOrderTest extends TestCase
         $lateReceiptOfficer = $this->operator('later_receipt_officer');
         $this->actingAs($lateReceiptOfficer);
         Livewire::test(ListCustomFormEntries::class)->assertTableActionVisible('verify', $new)->callTableAction('verify', $new)->assertHasNoTableActionErrors();
-        $this->assertSame('FLEX-0001', $new->refresh()->candidate_id);
+        $this->assertNull($new->refresh()->candidate_id);
         $this->assertTrue(WorkflowStageProgression::finished($new));
         $this->assertSame($oldSnapshot, $old->fresh()->getRawOriginal('workflow_snapshot'));
         $this->assertSame($newSnapshot, $new->getRawOriginal('workflow_snapshot'));
         $this->assertSame(WorkflowStageType::Review, WorkflowStageProgression::currentType($old->refresh()));
-        $this->assertDatabaseCount('candidate_account_ids', 1);
-        $this->assertDatabaseHas('candidate_id_sequences', ['custom_form_id' => $form->id, 'last_sequence' => 1]);
+        $this->assertDatabaseCount('candidate_account_ids', 0);
+        $this->assertDatabaseCount('candidate_id_sequences', 0);
     }
 
     public function test_notify_feedback_keeps_the_clicked_stage_when_a_later_submission_checkpoint_runs(): void

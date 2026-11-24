@@ -16,6 +16,7 @@ use App\Support\UserTypeOptions;
 use Carbon\Carbon;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Illuminate\Encryption\Encrypter;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
@@ -25,13 +26,120 @@ use Throwable;
 
 class AmsSelectionResultSync
 {
-    public function sync(CustomFormEntry $entry, bool $notify = false): bool
-    {
-        $entry->refresh();
-        abort_unless(ExamResultResource::getEloquentQuery()->whereKey($entry->getKey())->exists(), 409);
-        // Use the existing results-release authorization, including frozen workflow roles.
-        abort_unless(ExamResultsTable::canNotifyRecord($entry, action: 'notify_all_students'), 403);
+    private const ACKNOWLEDGEMENT_TABLE = 'ams_selection_result_syncs';
 
+    public function hasAcknowledgement(CustomFormEntry $entry): bool
+    {
+        return $this->acknowledgement($entry) !== null;
+    }
+
+    public function sync(CustomFormEntry $entry, bool $notify = false, string $action = 'notify_all_students'): bool
+    {
+        abort_unless(in_array($action, ['notify_student', 'notify_all_students'], true), 403);
+
+        // Commit the remote acknowledgement independently of local notification delivery.
+        // A failed delivery can then retry without transferring the account/result again.
+        DB::transaction(function () use ($entry, $action): void {
+            $current = $entry->newQuery()->lockForUpdate()->findOrFail($entry->getKey());
+            $acknowledgement = $this->acknowledgement($current);
+            $this->authorize($current, $action, $acknowledgement);
+
+            if ($acknowledgement !== null) {
+                return;
+            }
+
+            $response = $this->sendToAms($current);
+            $acknowledgement = [
+                'version' => 1,
+                'application_id' => (string) $current->getKey(),
+                'source_account_id' => (string) $current->created_by,
+                'selection_result_id' => (string) $response['selection_result_id'],
+                'selection_result_storage' => $response['selection_result_storage'] ?? 'main',
+                'account_id' => (string) $response['account_id'],
+                'account_status' => $response['account_status'],
+                'provisional_account_id' => isset($response['provisional_account_id']) ? (string) $response['provisional_account_id'] : null,
+                'profile_synced' => true,
+                'profile_entry_id' => (string) $response['profile_entry_id'],
+                'profile_storage' => $response['profile_storage'] ?? 'main',
+                'status' => 'synced',
+                'synced_at' => now()->toIso8601String(),
+            ];
+            DB::table(self::ACKNOWLEDGEMENT_TABLE)->updateOrInsert([
+                'custom_form_entry_id' => $current->getKey(),
+            ], [
+                'acknowledgement' => json_encode($acknowledgement, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        });
+
+        $entry->refresh();
+        if (! $notify) {
+            return false;
+        }
+
+        $notified = DB::transaction(function () use ($entry, $action): bool {
+            $current = $entry->newQuery()->lockForUpdate()->findOrFail($entry->getKey());
+            $acknowledgement = $this->acknowledgement($current);
+            abort_unless($acknowledgement !== null, 409);
+            $this->authorize($current, $action, $acknowledgement);
+
+            $notified = ! ExamResultsTable::hasStudentPassedNotification($current)
+                && ExamResultsTable::sendPassedNotification(
+                    $current,
+                    PassedResultMenuOptions::EXAM_RESULTS,
+                    action: $action,
+                );
+
+            // A confirm-only operation and an unsuccessful notification remain retryable.
+            if ($notified || ExamResultsTable::hasStudentPassedNotification($current)) {
+                MenuRecordVisibility::clearRecords(
+                    $current->newQuery()->whereKey($current->getKey()),
+                    ExamResultResource::HIDDEN_FLAG,
+                );
+            }
+
+            return $notified;
+        });
+        $entry->refresh();
+
+        return $notified;
+    }
+
+    private function authorize(CustomFormEntry $entry, string $action, ?array $acknowledgement): void
+    {
+        // Keep row and bulk permissions distinct, including the frozen workflow role.
+        abort_unless(ExamResultsTable::canNotifyRecord($entry, action: $action), 403);
+        if (ExamResultResource::getEloquentQuery()->whereKey($entry->getKey())->exists()) {
+            return;
+        }
+
+        // Only this service's acknowledged, delivered result can retry after being hidden.
+        abort_unless($acknowledgement !== null
+            && ExamResultsTable::hasStudentPassedNotification($entry)
+            && MenuRecordVisibility::includingCleared(fn (): bool => ExamResultResource::getEloquentQuery()->whereKey($entry->getKey())->exists()), 409);
+    }
+
+    private function acknowledgement(CustomFormEntry $entry): ?array
+    {
+        $acknowledgement = DB::table(self::ACKNOWLEDGEMENT_TABLE)
+            ->where('custom_form_entry_id', $entry->getKey())
+            ->value('acknowledgement');
+        if (is_string($acknowledgement)) {
+            $acknowledgement = json_decode($acknowledgement, true);
+        }
+
+        return is_array($acknowledgement)
+            && ($acknowledgement['version'] ?? null) === 1
+            && is_string($acknowledgement['synced_at'] ?? null)
+            && filled($acknowledgement['synced_at'])
+            && $this->validAcknowledgement($entry, $acknowledgement)
+                ? $acknowledgement
+                : null;
+    }
+
+    private function sendToAms(CustomFormEntry $entry): array
+    {
         $baseUrl = rtrim((string) config('services.ams.base_url'), '/');
         $token = (string) config('services.ams.token');
         if (! config('services.ams.enabled') || $baseUrl === '' || $token === '') {
@@ -56,36 +164,32 @@ class AmsSelectionResultSync
             ->post($baseUrl.'/api/external/candidate/selection-results', $payload)
             ->throw()->json();
 
-        if (! is_array($response)
-            || ($response['application_id'] ?? null) !== (string) $entry->getKey()
-            || ($response['status'] ?? null) !== 'synced'
-            || ! is_scalar($response['selection_result_id'] ?? null)
-            || blank($response['selection_result_id'])
-            || ($response['source_account_id'] ?? null) !== (string) $entry->created_by
-            || ! is_scalar($response['account_id'] ?? null)
-            || blank($response['account_id'])
-            || ! in_array($response['account_status'] ?? null, ['provisional', 'enrolled'], true)
-            || (($response['account_status'] ?? null) === 'provisional' && blank($response['provisional_account_id'] ?? null))) {
+        if (! is_array($response) || ! $this->validAcknowledgement($entry, $response)) {
             throw new RuntimeException('AMS did not acknowledge both the selection result and candidate account.');
         }
 
-        if (($response['profile_synced'] ?? false) !== true || blank($response['profile_entry_id'] ?? null)) {
-            throw new RuntimeException('AMS did not acknowledge the candidate profile.');
-        }
+        return $response;
+    }
 
-        // Candidate notifications stay in Candidate and are released only after AMS acknowledges.
-        $notified = $notify && ExamResultsTable::sendPassedNotification(
-            $entry,
-            PassedResultMenuOptions::EXAM_RESULTS,
-            action: 'notify_all_students',
-        );
+    private function validAcknowledgement(CustomFormEntry $entry, array $response): bool
+    {
+        return ($response['application_id'] ?? null) === (string) $entry->getKey()
+            && ($response['source_account_id'] ?? null) === (string) $entry->created_by
+            && ($response['status'] ?? null) === 'synced'
+            && self::validRemoteId($response['selection_result_id'] ?? null)
+            && self::validRemoteId($response['account_id'] ?? null)
+            && in_array($response['account_status'] ?? null, ['provisional', 'enrolled'], true)
+            && (! isset($response['provisional_account_id']) || self::validRemoteId($response['provisional_account_id']))
+            && (($response['account_status'] ?? null) !== 'provisional' || self::validRemoteId($response['provisional_account_id'] ?? null))
+            && ($response['profile_synced'] ?? false) === true
+            && (! array_key_exists('profile_storage', $response) || in_array($response['profile_storage'], ['provisional', 'main'], true))
+            && (! array_key_exists('selection_result_storage', $response) || in_array($response['selection_result_storage'], ['provisional', 'main'], true))
+            && self::validRemoteId($response['profile_entry_id'] ?? null);
+    }
 
-        MenuRecordVisibility::clearRecords(
-            $entry->newQuery()->whereKey($entry->getKey()),
-            ExamResultResource::HIDDEN_FLAG,
-        );
-
-        return $notified;
+    private static function validRemoteId(mixed $value): bool
+    {
+        return (is_string($value) && trim($value) !== '') || (is_int($value) && $value > 0);
     }
 
     private function payload(CustomFormEntry $entry): array

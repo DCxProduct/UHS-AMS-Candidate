@@ -9,6 +9,7 @@ use App\Filament\Admin\Resources\WorkflowButtons\WorkflowButtonResource;
 use App\Models\Role;
 use App\Models\User;
 use App\Models\WorkflowButton;
+use App\Models\WorkflowNotification;
 use App\Models\WorkflowStageType;
 use App\Support\FilamentActionPermissions;
 use BezhanSalleh\FilamentShield\Resources\Roles\Pages\EditRole;
@@ -85,6 +86,7 @@ class WorkflowButtonCrudPermissionsTest extends TestCase
             ->mountTableAction('delete', $button)->callMountedTableAction();
         $this->assertNull($list->instance()->getTable()->getRecordUrl($button));
         $this->assertModelExists($button);
+        $this->assertNotSoftDeleted($button);
         $this->get(WorkflowButtonResource::getUrl('create'))->assertForbidden();
         $this->get(WorkflowButtonResource::getUrl('edit', ['record' => $button]))->assertForbidden();
     }
@@ -104,6 +106,7 @@ class WorkflowButtonCrudPermissionsTest extends TestCase
             ->assertTableActionHidden('delete', $button)
             ->mountTableAction('delete', $button)->callMountedTableAction();
         $this->assertModelExists($button);
+        $this->assertNotSoftDeleted($button);
         $this->get(WorkflowButtonResource::getUrl('edit', ['record' => $button]))->assertForbidden();
     }
 
@@ -125,10 +128,11 @@ class WorkflowButtonCrudPermissionsTest extends TestCase
             ->call('save')->assertHasNoFormErrors()
             ->assertActionHidden('delete')->call('mountAction', 'delete')->call('callMountedAction');
         $this->assertModelExists($button);
+        $this->assertNotSoftDeleted($button);
         $this->assertSame('Updated by button updater', $button->fresh()->label_en);
     }
 
-    public function test_delete_permission_is_independent_of_update_and_still_protects_referenced_buttons(): void
+    public function test_delete_permission_allows_stage_only_buttons_but_protects_template_buttons(): void
     {
         $user = $this->actorWithPermissions('button-delete-only', ['ViewAny', 'Delete']);
         $unused = $this->button('Unused removable button');
@@ -141,18 +145,27 @@ class WorkflowButtonCrudPermissionsTest extends TestCase
             ->assertTableActionVisible('delete', $unused)
             ->assertTableActionEnabled('delete', $unused)
             ->callTableAction('delete', $unused);
-        $this->assertModelMissing($unused);
+        $this->assertSoftDeleted($unused);
 
         $used = $this->button('Referenced protected button');
         WorkflowStageType::query()->create([
             'label_en' => 'Referenced protected stage', 'label_km' => 'ដំណាក់កាលការពារ',
             'behavior' => 'review', 'workflow_button_ids' => [$used->getKey()],
         ]);
-        $this->assertFalse(WorkflowButtonResource::canDelete($used));
+        $this->assertTrue(WorkflowButtonResource::canDelete($used));
         Livewire::test(ListWorkflowButtons::class)
-            ->assertTableActionHidden('delete', $used)
-            ->mountTableAction('delete', $used)->callMountedTableAction();
-        $this->assertModelExists($used);
+            ->assertTableActionVisible('delete', $used)
+            ->callTableAction('delete', $used);
+        $this->assertSoftDeleted($used);
+
+        $templateButton = $this->button('Template protected button');
+        WorkflowNotification::query()->create(['name' => 'Template deletion permission guard', 'stages' => [['type' => 'stage', 'data' => [
+            'stage_type' => 'review', 'stage_name' => 'Template check', 'buttons' => [$templateButton->toDefinition()],
+        ]]]]);
+        $this->assertFalse(WorkflowButtonResource::canDelete($templateButton));
+        Livewire::test(ListWorkflowButtons::class)->assertTableActionHidden('delete', $templateButton)
+            ->mountTableAction('delete', $templateButton)->callMountedTableAction();
+        $this->assertNotSoftDeleted($templateButton);
     }
 
     public function test_role_form_exposes_only_four_button_permissions_and_saves_only_the_selected_grants(): void

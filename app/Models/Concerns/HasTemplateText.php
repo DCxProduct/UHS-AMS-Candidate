@@ -49,9 +49,13 @@ trait HasTemplateText
             $keys = $type === WorkflowStageType::Review->value
                 ? ['accept', 'send_back', 'reject']
                 : [$type];
+            $groupActions = array_intersect_key($actions, array_fill_keys($keys, true));
+            if ($groupActions === []) {
+                continue;
+            }
             $groups[$label] = array_merge(
                 $groups[$label] ?? [],
-                array_intersect_key($actions, array_fill_keys($keys, true)),
+                $groupActions,
             );
         }
 

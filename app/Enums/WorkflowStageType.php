@@ -10,6 +10,8 @@ enum WorkflowStageType: string
     case Payment = 'payment';
     case AwaitingResults = 'awaiting_results';
     case Completed = 'completed';
+    case CandidateIdGeneration = 'candidate_id_generation';
+    case Custom = 'custom';
     case Rejected = 'rejected';
 
     /**
@@ -36,8 +38,9 @@ enum WorkflowStageType: string
         return collect([
             self::FormSubmission,
             self::Review,
-            self::Verification,
             self::Payment,
+            self::CandidateIdGeneration,
+            self::Verification,
             self::AwaitingResults,
             self::Completed,
         ])

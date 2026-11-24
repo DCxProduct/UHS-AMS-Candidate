@@ -22,7 +22,7 @@ return [
     ],
     'form' => [
         'section_title' => 'Stage Type Details',
-        'workflow_buttons_help' => 'Select buttons created in Workflow Buttons, using the same action group. Existing stages keep their saved actions until you select workflow buttons.',
+        'workflow_buttons_help' => 'Select at least one workflow button. Built-in actions must belong to the same group. Buttons without a built-in action use the workflow stage’s own status and notification settings.',
         'enabled_actions_create_help' => 'Select related buttons for this stage.',
         'enabled_actions_edit_help' => 'Stage group: :group.',
     ],
@@ -39,6 +39,7 @@ return [
         'system' => 'System user actions',
     ],
     'groups' => [
+        'candidate_id_generation' => 'Candidate ID',
         'form_submission' => 'Submission',
         'review' => 'Review',
         'verification' => 'Application Received',
@@ -50,6 +51,7 @@ return [
         'apply_review_settings' => 'Copies this type’s review settings into this workflow. Save the workflow to keep them.',
     ],
     'config_actions' => [
+        'generate_candidate_id' => 'Generate Candidate ID',
         'submitted' => 'Submitted',
         'verify' => 'Application Received',
         'unpaid' => 'Unpaid',
@@ -59,6 +61,7 @@ return [
         'notify' => 'Notify',
     ],
     'button_actions' => [
+        'generate_candidate_id' => 'Generate Candidate ID',
         'submitted' => 'Submit form',
         'accept' => 'Check application',
         'verify' => 'Application Received',

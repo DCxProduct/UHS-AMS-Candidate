@@ -30,10 +30,10 @@ final class WorkflowCandidateVerifier
                 : ($this->isChecked($entry) && blank(data_get($entry->data, 'application_received_at'))));
     }
 
-    /** Registrar receipt confirmation and ID issuance share one application lock and transaction. */
-    public function verify(CustomFormEntry $entry): ?string
+    /** Confirm receipt without issuing or changing a candidate ID. */
+    public function verify(CustomFormEntry $entry): bool
     {
-        return DB::transaction(function () use ($entry): ?string {
+        return DB::transaction(function () use ($entry): bool {
             $current = CustomFormEntry::query()->lockForUpdate()->findOrFail($entry->getKey());
             abort_unless(CustomFormEntryResource::currentUserCanManageForms(), 403);
             Gate::authorize('view', $current);
@@ -54,54 +54,41 @@ final class WorkflowCandidateVerifier
                 && ! $this->hasBlockedStatus($current), 409);
             abort_unless($this->hasResponsibleRole($current), 403);
 
-            if (data_get($current->data, 'workflow_progress.verification_completed') === true
-                && filled($current->candidate_id)) {
+            if (data_get($current->data, 'workflow_progress.verification_completed') === true) {
                 $entry->refresh();
 
-                return (string) $current->candidate_id;
+                return true;
             }
 
             abort_unless($this->canVerify($current), 409);
-            $oldId = $current->candidate_id;
-            $candidateId = filled($oldId) ? (string) $oldId : app(CandidateIdGenerator::class)->assignToEntry($current);
-            if ($candidateId === null) {
-                return null;
-            }
-
             abort_unless(WorkflowStageProgression::verified($current), 409);
             $entry->refresh();
 
             AuditLogger::log(
                 action: 'verified',
                 auditable: $entry,
-                oldValues: ['candidate_id' => $oldId, 'verification_completed' => false],
-                newValues: ['candidate_id' => $candidateId, 'verification_completed' => true],
-                description: 'Application receipt confirmed by registrar and candidate ID assigned',
+                oldValues: ['verification_completed' => false],
+                newValues: ['verification_completed' => true],
+                description: 'Application receipt confirmed by registrar',
                 metadata: ['module' => 'Custom Form Entries', 'workflow_stage' => WorkflowStageType::Verification->value],
             );
 
             DB::afterCommit(fn () => WorkflowStageMessages::notifyConfiguredStage($entry, WorkflowStageType::Verification));
 
-            return $candidateId;
+            return true;
         });
     }
 
-    private function receiveStaticApplication(CustomFormEntry $entry, CustomFormEntry $current): ?string
+    private function receiveStaticApplication(CustomFormEntry $entry, CustomFormEntry $current): bool
     {
         $current->loadMissing('customForm');
         abort_unless($current->customForm?->is_active
             && ! $current->customForm->isProfileForm() && $this->isChecked($current), 409);
 
-        if (filled(data_get($current->data, 'application_received_at')) && filled($current->candidate_id)) {
+        if (filled(data_get($current->data, 'application_received_at'))) {
             $entry->refresh();
 
-            return (string) $current->candidate_id;
-        }
-
-        $oldId = $current->candidate_id;
-        $candidateId = filled($oldId) ? (string) $oldId : app(CandidateIdGenerator::class)->assignToEntry($current);
-        if ($candidateId === null) {
-            return null;
+            return true;
         }
 
         $data = is_array($current->data) ? $current->data : [];
@@ -114,17 +101,16 @@ final class WorkflowCandidateVerifier
         AuditLogger::log(
             action: 'verified',
             auditable: $entry,
-            oldValues: ['candidate_id' => $oldId, 'application_received_at' => null],
+            oldValues: ['application_received_at' => null],
             newValues: [
-                'candidate_id' => $candidateId,
                 'application_received_at' => $data['application_received_at'],
                 'application_received_by' => $data['application_received_by'],
             ],
-            description: 'Static application receipt confirmed and candidate ID assigned',
+            description: 'Static application receipt confirmed',
             metadata: ['module' => 'Custom Form Entries'],
         );
 
-        return $candidateId;
+        return true;
     }
 
     private function isChecked(CustomFormEntry $entry): bool

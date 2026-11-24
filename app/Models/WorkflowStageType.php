@@ -17,17 +17,23 @@ use Illuminate\Validation\ValidationException;
 
 class WorkflowStageType extends Model
 {
-    protected $fillable = ['label_en', 'label_km', 'behavior', 'is_active', 'review_actions', 'stage_settings', 'enabled_actions', 'workflow_button_ids'];
+    protected $fillable = ['label_en', 'label_km', 'behavior', 'is_active', 'review_actions', 'stage_settings', 'enabled_actions', 'workflow_button_ids', 'sort_order'];
 
     protected $attributes = ['is_active' => true, 'is_system' => false];
 
     protected function casts(): array
     {
-        return ['is_active' => 'boolean', 'is_system' => 'boolean', 'review_actions' => 'array', 'stage_settings' => 'array', 'enabled_actions' => 'array', 'workflow_button_ids' => 'array'];
+        return ['is_active' => 'boolean', 'is_system' => 'boolean', 'review_actions' => 'array', 'stage_settings' => 'array', 'enabled_actions' => 'array', 'workflow_button_ids' => 'array', 'sort_order' => 'integer'];
     }
 
     protected static function booted(): void
     {
+        static::creating(function (self $type): void {
+            if ($type->sort_order === null && Schema::hasColumn($type->getTable(), 'sort_order')) {
+                $type->sort_order = ((int) static::query()->max('sort_order')) + 1;
+            }
+        });
+
         static::saving(function (self $type): void {
             $type->label_en = trim((string) $type->label_en);
             $type->label_km = trim((string) $type->label_km);
@@ -35,11 +41,11 @@ class WorkflowStageType extends Model
             if ($type->workflow_button_ids !== null) {
                 $definitions = $type->buttonDefinitions(validate: true);
                 $type->workflow_button_ids = array_column($definitions, 'id');
-                $type->enabled_actions = array_column($definitions, 'action_key');
+                $type->enabled_actions = WorkflowButton::actionKeys($definitions);
                 $type->behavior = WorkflowStageTypeSettings::behaviorForSelection($type->enabled_actions);
             }
 
-            if ($type->exists && $type->isDirty('behavior')) {
+            if ($type->exists && $type->isDirty('behavior') && ! $type->canChangeBehaviorTo($type->behavior)) {
                 throw ValidationException::withMessages(['behavior' => __('workflow_stage_types.validation.behavior_immutable')]);
             }
 
@@ -48,12 +54,15 @@ class WorkflowStageType extends Model
             } else {
                 $type->stage_settings = null;
             }
+            if ($type->behavior === null) {
+                $type->stage_settings = null;
+            }
 
             $rules = [
                 'label_en' => ['required', 'string', 'max:255', Rule::unique('workflow_stage_types', 'label_en')->ignore($type->getKey())],
                 'label_km' => ['required', 'string', 'max:255', Rule::unique('workflow_stage_types', 'label_km')->ignore($type->getKey())],
-                'behavior' => ['required', Rule::in(array_keys(StageBehavior::options()))],
-                'enabled_actions' => ['nullable', 'array', 'min:1'],
+                'behavior' => [$type->workflow_button_ids !== null && $type->enabled_actions === [] ? 'nullable' : 'required', Rule::in(array_keys(StageBehavior::options()))],
+                'enabled_actions' => ['nullable', 'array', ...($type->behavior === null ? [] : ['min:1'])],
                 'enabled_actions.*' => ['required', 'string', 'distinct:strict', Rule::in(array_keys(WorkflowStageTypeSettings::actions((string) $type->behavior)))],
             ];
 
@@ -110,6 +119,14 @@ class WorkflowStageType extends Model
         return ['en' => (string) $this->label_en, 'km' => (string) $this->label_km];
     }
 
+    /** Buttons without built-in actions use their stage's own status and messages. */
+    public function workflowType(): ?StageBehavior
+    {
+        return $this->behavior === null && filled($this->workflow_button_ids)
+            ? StageBehavior::Custom
+            : StageBehavior::tryFrom((string) $this->behavior);
+    }
+
     public function actionDefaults(): array
     {
         $actions = $this->behavior === StageBehavior::Review->value && is_array($this->review_actions)
@@ -129,6 +146,15 @@ class WorkflowStageType extends Model
         return array_values(array_intersect($this->enabledActionKeys(), array_keys(WorkflowStageTypeSettings::buttonActions())));
     }
 
+    /** Unused custom definitions may switch between display-only and actionable. */
+    public function canChangeBehaviorTo(?string $behavior): bool
+    {
+        $original = $this->getOriginal('behavior');
+
+        return ! $this->exists || $behavior === $original
+            || (! $this->is_system && ($behavior === null || $original === null) && ! $this->inUse());
+    }
+
     /** Resolve catalog buttons only while configuring a template, never for an application's runtime. */
     public function buttonDefinitions(bool $validate = false): array
     {
@@ -141,21 +167,22 @@ class WorkflowStageType extends Model
             'workflow_button_ids' => ['required', 'array', 'min:1'],
             'workflow_button_ids.*' => ['required', 'integer', 'min:1', 'distinct'],
         ])->validate();
-        $buttons = WorkflowButton::query()->whereKey($ids)->get()->keyBy('id');
+        $buttons = WorkflowButton::withTrashed()->whereKey($ids)->get()->keyBy('id');
         $definitions = [];
         $originalIds = (array) $this->getOriginal('workflow_button_ids');
         foreach ($ids as $id) {
             $button = $buttons->get($id);
-            if ($button === null || ($validate && ! $button->is_active && ! in_array((int) $id, array_map('intval', $originalIds), true))) {
+            if ($button === null || ($validate && (! $button->is_active || $button->trashed())
+                && ! in_array((int) $id, array_map('intval', $originalIds), true))) {
                 throw ValidationException::withMessages(['workflow_button_ids' => __('workflow_stage_types.validation.invalid_button')]);
             }
             $definitions[] = $button->toDefinition();
         }
-        $actions = array_column($definitions, 'action_key');
+        $actions = WorkflowButton::actionKeys($definitions);
         if (count(array_unique($actions)) !== count($actions)) {
             throw ValidationException::withMessages(['workflow_button_ids' => __('workflow_stage_types.validation.duplicate_button_action')]);
         }
-        if (WorkflowStageTypeSettings::behaviorForSelection($actions) === null) {
+        if ($actions !== [] && WorkflowStageTypeSettings::behaviorForSelection($actions) === null) {
             throw ValidationException::withMessages(['workflow_button_ids' => __('workflow_stage_types.validation.enabled_actions_same_group')]);
         }
 
@@ -226,6 +253,13 @@ class WorkflowStageType extends Model
                 if (is_array($data) && (string) ($data['stage_type_id'] ?? '') === (string) $this->getKey()) {
                     return true;
                 }
+                if ($this->is_system && is_array($data) && blank($data['stage_type_id'] ?? null)) {
+                    $behavior = $data['stage_type'] ?? null;
+                    $behavior = $behavior === StageBehavior::Approval->value ? StageBehavior::Review->value : $behavior;
+                    if ($behavior === $this->behavior) {
+                        return true;
+                    }
+                }
             }
 
             return false;
@@ -257,6 +291,9 @@ class WorkflowStageType extends Model
         if ($behavior === 'verification') {
             self::ensureVerificationAvailable();
         }
+        if ($behavior === StageBehavior::CandidateIdGeneration->value) {
+            self::ensureCandidateIdGenerationAvailable();
+        }
 
         if (Schema::hasTable('workflow_stage_types')) {
             $type = static::query()->where('behavior', $behavior)->where('is_system', true)->first();
@@ -272,6 +309,7 @@ class WorkflowStageType extends Model
     {
         $options = [];
         self::ensureVerificationAvailable();
+        self::ensureCandidateIdGenerationAvailable();
 
         if (Schema::hasTable('workflow_stage_types')) {
             $types = static::query()->where('is_active', true)->orderForDisplay()->get();
@@ -295,7 +333,7 @@ class WorkflowStageType extends Model
         return $options;
     }
 
-    /** Present the built-in stages in order, followed by custom stages in creation order. */
+    /** Use the saved catalog order, with the original stage order as a fallback. */
     public function scopeOrderForDisplay(Builder $query): Builder
     {
         $behaviors = array_keys(StageBehavior::options());
@@ -308,7 +346,7 @@ class WorkflowStageType extends Model
         }
         $fallback = count($behaviors);
 
-        return $query->orderByRaw(
+        return $query->orderBy($query->qualifyColumn('sort_order'))->orderByRaw(
             'CASE WHEN '.$systemColumn.' THEN CASE '.$behaviorColumn.' '.implode(' ', $cases).' ELSE '.$fallback.' END ELSE '.$fallback.' END',
             $behaviors,
         )->orderBy($query->qualifyColumn('id'));
@@ -362,9 +400,68 @@ class WorkflowStageType extends Model
 
             DB::table('workflow_stage_types')->insertOrIgnore([
                 ...$values,
+                'sort_order' => ((int) static::query()->max('sort_order')) + 1,
                 'behavior' => 'verification',
                 'is_system' => true,
                 'is_active' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        });
+    }
+
+    /** Add the separate ID checkpoint without changing any existing catalog definition. */
+    public static function ensureCandidateIdGenerationAvailable(): void
+    {
+        if (! Schema::hasTable('workflow_stage_types') || ! Schema::hasTable('workflow_buttons')) {
+            return;
+        }
+        if (DB::table('workflow_stage_types')->where('behavior', StageBehavior::CandidateIdGeneration->value)->where('is_system', true)->exists()
+            && DB::table('workflow_buttons')->where('action_key', 'generate_candidate_id')->exists()) {
+            return;
+        }
+
+        DB::transaction(static function (): void {
+            // Serialize concurrent picker requests using the already seeded catalog.
+            DB::table('workflow_stage_types')->orderBy('id')->lockForUpdate()->first();
+            $button = DB::table('workflow_buttons')->where('action_key', 'generate_candidate_id')->orderBy('id')->first();
+            if ($button === null) {
+                $buttonId = DB::table('workflow_buttons')->insertGetId([
+                    'label_en' => Lang::get('workflow_stage_types.button_actions.generate_candidate_id', [], 'en'),
+                    'label_km' => Lang::get('workflow_stage_types.button_actions.generate_candidate_id', [], 'km'),
+                    'action_key' => 'generate_candidate_id',
+                    'icon' => 'heroicon-o-identification',
+                    'color' => 'info',
+                    'is_active' => true,
+                    'sort_order' => ((int) DB::table('workflow_buttons')->max('sort_order')) + 1,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            } else {
+                $buttonId = (int) $button->id;
+            }
+
+            if (DB::table('workflow_stage_types')->where('behavior', StageBehavior::CandidateIdGeneration->value)->where('is_system', true)->exists()) {
+                return;
+            }
+
+            $labels = self::defaultLabels(StageBehavior::CandidateIdGeneration->value);
+            foreach (['label_en' => 'en', 'label_km' => 'km'] as $column => $locale) {
+                $base = $labels[$locale];
+                $suffix = 2;
+                while (DB::table('workflow_stage_types')->where($column, $labels[$locale])->exists()) {
+                    $labels[$locale] = $base.' ('.$suffix++.')';
+                }
+            }
+            DB::table('workflow_stage_types')->insert([
+                'label_en' => $labels['en'],
+                'label_km' => $labels['km'],
+                'behavior' => StageBehavior::CandidateIdGeneration->value,
+                'workflow_button_ids' => json_encode([$buttonId]),
+                'enabled_actions' => json_encode(['generate_candidate_id']),
+                'is_system' => true,
+                'is_active' => true,
+                'sort_order' => ((int) DB::table('workflow_stage_types')->max('sort_order')) + 1,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -381,12 +478,12 @@ class WorkflowStageType extends Model
         }
 
         $type = static::selected($stage['stage_type_id']);
-        if (! $type || ! in_array($type->behavior, array_keys(StageBehavior::options()), true)) {
+        if (! $type || ($type->behavior !== null && ! in_array($type->behavior, array_keys(StageBehavior::options()), true))) {
             throw ValidationException::withMessages(['stages' => __('workflow_stage_types.validation.invalid_selection')]);
         }
 
         $stage['stage_type_id'] = (int) $type->getKey();
-        $stage['stage_type'] = $type->behavior;
+        $stage['stage_type'] = $type->workflowType()?->value;
         $stage['stage_type_labels'] = $type->labels();
 
         // An explicit workflow configuration, including an empty one, remains authoritative.

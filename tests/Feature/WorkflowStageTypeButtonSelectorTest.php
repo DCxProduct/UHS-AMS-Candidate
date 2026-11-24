@@ -57,6 +57,7 @@ class WorkflowStageTypeButtonSelectorTest extends TestCase
             $this->assertInstanceOf(Hidden::class, $fields['behavior']);
             $this->assertInstanceOf(Select::class, $fields['workflow_button_ids']);
             $this->assertTrue($fields['workflow_button_ids']->isMultiple());
+            $this->assertTrue($fields['workflow_button_ids']->isRequired());
             $this->assertArrayHasKey($button->getKey(), $fields['workflow_button_ids']->getOptions());
             $document = new DOMDocument;
             $this->assertTrue($document->loadHTML('<meta charset="UTF-8">'.$component->html(), LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING));
@@ -64,17 +65,41 @@ class WorkflowStageTypeButtonSelectorTest extends TestCase
         }
     }
 
-    public function test_new_stage_requires_custom_buttons_even_if_legacy_hidden_values_are_posted(): void
+    public function test_new_stage_requires_custom_buttons_even_if_hidden_values_are_posted_in_both_locales(): void
     {
-        foreach ([[], null] as $index => $selection) {
-            Livewire::test(CreateWorkflowStageType::class)
-                ->fillForm(['label_en' => 'Missing selected buttons '.$index, 'label_km' => 'ខ្វះប៊ូតុង '.$index, 'is_active' => true])
-                ->set('data.workflow_button_ids', $selection)
-                ->set('data.enabled_actions', ['accept'])
-                ->set('data.behavior', 'review')
-                ->call('create')->assertHasFormErrors(['workflow_button_ids']);
-            $this->assertDatabaseMissing('workflow_stage_types', ['label_en' => 'Missing selected buttons '.$index]);
+        foreach (['en', 'km'] as $locale) {
+            app()->setLocale($locale);
+            foreach ([[], null] as $index => $selection) {
+                $label = 'Missing selected buttons '.$locale.' '.$index;
+                Livewire::test(CreateWorkflowStageType::class)
+                    ->fillForm(['label_en' => $label, 'label_km' => 'ខ្វះប៊ូតុង '.$locale.' '.$index, 'is_active' => true])
+                    ->set('data.workflow_button_ids', $selection)
+                    ->set('data.enabled_actions', ['paid'])
+                    ->set('data.behavior', 'payment')
+                    ->call('create')->assertHasFormErrors(['workflow_button_ids']);
+
+                $this->assertDatabaseMissing('workflow_stage_types', ['label_en' => $label]);
+            }
         }
+        Notification::assertNothingSent();
+        Mail::assertNothingSent();
+        Http::assertNothingSent();
+    }
+
+    public function test_new_stage_cannot_select_then_clear_custom_buttons_before_saving(): void
+    {
+        $button = $this->button('Temporary payment selection', 'paid');
+        Livewire::test(CreateWorkflowStageType::class)
+            ->fillForm(['label_en' => 'Cleared new selection', 'label_km' => 'ជម្រើសថ្មីបានដកចេញ', 'is_active' => true])
+            ->set('data.workflow_button_ids', [$button->getKey()])
+            ->assertSet('data.behavior', 'payment')
+            ->set('data.workflow_button_ids', [])
+            ->call('create')->assertHasFormErrors(['workflow_button_ids']);
+
+        $this->assertDatabaseMissing('workflow_stage_types', ['label_en' => 'Cleared new selection']);
+        Notification::assertNothingSent();
+        Mail::assertNothingSent();
+        Http::assertNothingSent();
     }
 
     public function test_selected_custom_buttons_control_the_saved_stage_instead_of_hidden_values(): void
@@ -97,7 +122,7 @@ class WorkflowStageTypeButtonSelectorTest extends TestCase
         Http::assertNothingSent();
     }
 
-    public function test_renaming_legacy_types_preserves_null_status_selections_and_all_saved_metadata(): void
+    public function test_existing_types_without_custom_buttons_require_selection_before_saving_in_both_locales(): void
     {
         $cases = [
             ['review', null, ['review_actions' => ['accept' => ['status_message' => 'Original checked status']]]],
@@ -107,19 +132,29 @@ class WorkflowStageTypeButtonSelectorTest extends TestCase
             ['awaiting_results', ['pending'], ['stage_settings' => ['result_statuses' => ['pending_status_message' => 'Original pending result status']]]],
         ];
 
-        foreach ($cases as $index => [$behavior, $selection, $settings]) {
-            $type = WorkflowStageType::query()->create([
-                'label_en' => 'Legacy selector stage '.$index, 'label_km' => 'ដំណាក់កាលចាស់ '.$index,
-                'behavior' => $behavior, 'enabled_actions' => $selection, ...$settings,
-            ]);
-            $before = $this->metadata($type->fresh());
-            $component = Livewire::test(EditWorkflowStageType::class, ['record' => $type->getRouteKey()])
-                ->set('data.label_en', 'Renamed legacy selector stage '.$index)
-                ->call('save')->assertHasNoFormErrors();
+        foreach (['en', 'km'] as $locale) {
+            app()->setLocale($locale);
+            foreach ($cases as $index => [$behavior, $selection, $settings]) {
+                $type = WorkflowStageType::query()->create([
+                    'label_en' => 'Legacy selector stage '.$locale.' '.$index, 'label_km' => 'ដំណាក់កាលចាស់ '.$locale.' '.$index,
+                    'behavior' => $behavior, 'enabled_actions' => $selection, ...$settings,
+                ]);
+                $before = $type->fresh()->getRawOriginal();
+                $component = Livewire::test(EditWorkflowStageType::class, ['record' => $type->getRouteKey()]);
+                $fields = $component->instance()->form->getFlatFields(withHidden: true);
+                $this->assertInstanceOf(Hidden::class, $fields['enabled_actions']);
+                $this->assertTrue($fields['workflow_button_ids']->isRequired());
+                $component->set('data.label_en', 'Renamed legacy selector stage '.$locale.' '.$index)
+                    ->call('save')->assertHasFormErrors(['workflow_button_ids']);
+                $this->assertSame($before, $type->fresh()->getRawOriginal());
 
-            $this->assertInstanceOf(Hidden::class, $component->instance()->form->getFlatFields(withHidden: true)['enabled_actions']);
-            $this->assertSame('Renamed legacy selector stage '.$index, $type->fresh()->label_en);
-            $this->assertSame($before, $this->metadata($type->fresh()));
+                foreach ([[], null] as $emptySelection) {
+                    Livewire::test(EditWorkflowStageType::class, ['record' => $type->getRouteKey()])
+                        ->set('data.workflow_button_ids', $emptySelection)
+                        ->call('save')->assertHasFormErrors(['workflow_button_ids']);
+                    $this->assertSame($before, $type->fresh()->getRawOriginal());
+                }
+            }
         }
     }
 
@@ -157,29 +192,37 @@ class WorkflowStageTypeButtonSelectorTest extends TestCase
         $this->assertSame($before, $type->fresh()->getRawOriginal());
     }
 
-    public function test_custom_button_selection_cannot_be_cleared_when_editing_a_custom_type(): void
+    public function test_custom_button_selection_cannot_be_cleared_when_editing_in_both_locales(): void
     {
         $button = $this->button('Required custom button');
-        $type = WorkflowStageType::query()->create([
-            'label_en' => 'Existing custom selection', 'label_km' => 'ជម្រើសប៊ូតុងមានស្រាប់',
-            'behavior' => 'review', 'workflow_button_ids' => [$button->getKey()],
-        ]);
-        $before = $type->fresh()->getRawOriginal();
-        foreach ([[], null] as $selection) {
-            Livewire::test(EditWorkflowStageType::class, ['record' => $type->getRouteKey()])
-                ->set('data.workflow_button_ids', $selection)
-                ->call('save')->assertHasFormErrors(['workflow_button_ids']);
-            $this->assertSame($before, $type->fresh()->getRawOriginal());
+        foreach (['en', 'km'] as $locale) {
+            app()->setLocale($locale);
+            foreach ([[], null] as $index => $selection) {
+                $type = WorkflowStageType::query()->create([
+                    'label_en' => 'Existing custom selection '.$locale.' '.$index,
+                    'label_km' => 'ជម្រើសប៊ូតុងមានស្រាប់ '.$locale.' '.$index,
+                    'behavior' => 'review', 'workflow_button_ids' => [$button->getKey()],
+                    'review_actions' => ['accept' => ['status_message' => 'Keep this configured status']],
+                ]);
+                $before = $type->fresh()->getRawOriginal();
+                $component = Livewire::test(EditWorkflowStageType::class, ['record' => $type->getRouteKey()]);
+                $this->assertTrue($component->instance()->form->getFlatFields(withHidden: true)['workflow_button_ids']->isRequired());
+                $component->set('data.workflow_button_ids', $selection)
+                    ->set('data.enabled_actions', ['paid'])
+                    ->set('data.behavior', 'payment')
+                    ->call('save')->assertHasFormErrors(['workflow_button_ids']);
+
+                $this->assertSame($before, $type->fresh()->getRawOriginal());
+                $this->assertSame(['accept'], $type->fresh()->enabled_actions);
+            }
         }
+        Notification::assertNothingSent();
+        Mail::assertNothingSent();
+        Http::assertNothingSent();
     }
 
     private function button(string $label, string $action = 'accept'): WorkflowButton
     {
         return WorkflowButton::query()->create(['label_en' => $label, 'action_key' => $action]);
-    }
-
-    private function metadata(WorkflowStageType $type): array
-    {
-        return array_intersect_key($type->getRawOriginal(), array_flip(['behavior', 'enabled_actions', 'review_actions', 'stage_settings', 'workflow_button_ids']));
     }
 }

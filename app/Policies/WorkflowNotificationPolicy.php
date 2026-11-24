@@ -43,11 +43,16 @@ class WorkflowNotificationPolicy
 
     public function delete(AuthUser $authUser, WorkflowNotification $workflowNotification): bool
     {
-        return $authUser->can('Delete:WorkflowNotification');
+        return $authUser->can('Delete:WorkflowNotification') && $workflowNotification->canDelete();
     }
 
     public function deleteAny(AuthUser $authUser): bool
     {
         return $authUser->can('Delete:WorkflowNotification');
+    }
+
+    public function reorder(AuthUser $authUser): bool
+    {
+        return $authUser->can('Update:WorkflowNotification');
     }
 }

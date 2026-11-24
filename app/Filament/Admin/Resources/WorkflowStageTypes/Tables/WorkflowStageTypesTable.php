@@ -23,6 +23,7 @@ class WorkflowStageTypesTable
         return $table
             ->searchPlaceholder(__('workflow_stage_types.search'))
             ->defaultSort(fn (Builder $query): Builder => $query->orderForDisplay())
+            ->reorderable('sort_order')
             ->columnManager(false)
             ->columns([
                 TextColumn::make('row_number')
@@ -43,12 +44,19 @@ class WorkflowStageTypesTable
                     ->label(__('workflow_stage_types.table.selected_buttons'))
                     ->searchable(query: fn (Builder $query, string $search): Builder => self::searchButtonLabels($query, $search))
                     ->getStateUsing(fn (WorkflowStageType $record): array => $record->workflow_button_ids !== null
-                        ? array_map(fn (array $button): string => in_array(app()->getLocale(), ['km', 'kh'], true) ? ($button['label_km'] ?: $button['label_en']) : $button['label_en'], $record->buttonDefinitions())
-                        : $record->enabledButtonKeys())
-                    ->formatStateUsing(fn (string $state, WorkflowStageType $record): string => $record->workflow_button_ids !== null
-                        ? $state : (WorkflowStageTypeSettings::buttonActions()[$state]['label'] ?? $state))
-                    ->icon(fn (string $state): ?string => WorkflowStageTypeSettings::buttonActions()[$state]['icon'] ?? null)
-                    ->color(fn (string $state): string => match ($state) {
+                        ? $record->buttonDefinitions() : $record->enabledButtonKeys())
+                    ->formatStateUsing(function (array|string $state): string {
+                        if (is_array($state)) {
+                            return in_array(app()->getLocale(), ['km', 'kh'], true)
+                                ? ($state['label_km'] ?: $state['label_en'])
+                                : $state['label_en'];
+                        }
+
+                        return WorkflowStageTypeSettings::buttonActions()[$state]['label'] ?? (string) $state;
+                    })
+                    ->icon(fn (array|string $state): ?string => is_array($state)
+                        ? ($state['icon'] ?? null) : (WorkflowStageTypeSettings::buttonActions()[$state]['icon'] ?? null))
+                    ->color(fn (array|string $state): string => is_array($state) ? ($state['color'] ?? 'info') : match ($state) {
                         'accept', 'paid', 'passed' => 'success',
                         'send_back' => 'warning',
                         'reject' => 'danger',
@@ -85,7 +93,7 @@ class WorkflowStageTypesTable
 
     private static function searchButtonLabels(Builder $query, string $search): Builder
     {
-        $buttons = WorkflowButton::query()->get(['id', 'label_en', 'label_km'])->keyBy('id');
+        $buttons = WorkflowButton::withTrashed()->get(['id', 'label_en', 'label_km'])->keyBy('id');
         $actions = WorkflowStageTypeSettings::buttonActions();
         $term = CaseInsensitiveSearch::normalize($search);
         $ids = WorkflowStageType::query()->get(['id', 'behavior', 'enabled_actions', 'workflow_button_ids'])

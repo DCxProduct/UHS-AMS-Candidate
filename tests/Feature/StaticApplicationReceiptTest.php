@@ -85,7 +85,9 @@ class StaticApplicationReceiptTest extends TestCase
 
         $this->post(route('admin.custom-form-entries.approve', $entry))->assertRedirect();
         $confirmed = CustomFormEntry::query()->findOrFail($entry->id);
-        $this->assertSame('BNM-0001', app(WorkflowCandidateVerifier::class)->verify($confirmed));
+        $this->assertTrue(app(WorkflowCandidateVerifier::class)->verify($confirmed));
+        $this->assertNull($confirmed->candidate_id);
+        $this->assertNull($confirmed->candidate_id_year);
         $this->assertSame('pending', $staleRecord->review_status);
         $before = $this->row($confirmed);
         $audit = $this->rows('audit_logs');
@@ -99,7 +101,8 @@ class StaticApplicationReceiptTest extends TestCase
         $this->assertSame($before, $this->row($confirmed));
         $this->assertSame($audit, $this->rows('audit_logs'));
         $this->assertSame($notifications, $this->rows('notifications'));
-        $this->assertDatabaseHas('candidate_id_sequences', ['custom_form_id' => $entry->custom_form_id, 'last_sequence' => 1]);
+        $this->assertDatabaseCount('candidate_id_sequences', 0);
+        $this->assertDatabaseCount('candidate_account_ids', 0);
     }
 
     #[DataProvider('reviewPaths')]
@@ -130,15 +133,15 @@ class StaticApplicationReceiptTest extends TestCase
 
         $component->mountTableAction('verify', $entry)->callMountedTableAction()->assertHasNoTableActionErrors();
         $entry->refresh();
-        $this->assertSame('BNM-0001', $entry->candidate_id);
-        $this->assertSame(now()->year, $entry->candidate_id_year);
+        $this->assertNull($entry->candidate_id);
+        $this->assertNull($entry->candidate_id_year);
         $this->assertNotEmpty($entry->data['application_received_at']);
         $this->assertSame($this->staff->id, $entry->data['application_received_by']);
         $data = $entry->data;
         unset($data['application_received_at'], $data['application_received_by']);
         $this->assertSame(json_decode($before['data'], true), $data);
         $after = $this->row($entry);
-        foreach (['candidate_id', 'candidate_id_year', 'updated_at', 'data'] as $column) {
+        foreach (['updated_at', 'data'] as $column) {
             unset($before[$column], $after[$column]);
         }
         $this->assertSame($before, $after);
@@ -146,6 +149,8 @@ class StaticApplicationReceiptTest extends TestCase
         $this->assertFalse($entry->workflow_snapshot['has_workflow']);
         $this->assertSame($payments, $this->rows('payments'));
         $this->assertSame($notifications, $this->rows('notifications'));
+        $this->assertDatabaseCount('candidate_id_sequences', 0);
+        $this->assertDatabaseCount('candidate_account_ids', 0);
         $component->call('$refresh')->assertTableActionHidden('verify', $entry);
         Http::assertNothingSent();
         Mail::assertNothingSent();
@@ -170,7 +175,9 @@ class StaticApplicationReceiptTest extends TestCase
         $received = $this->row($entry);
         $audit = $this->rows('audit_logs');
         $this->travel(1)->minutes();
-        $this->assertSame('OLD-4242', app(WorkflowCandidateVerifier::class)->verify($entry));
+        $this->assertTrue(app(WorkflowCandidateVerifier::class)->verify($entry));
+        $this->assertSame('OLD-4242', $entry->candidate_id);
+        $this->assertSame(2023, $entry->candidate_id_year);
         $this->assertSame($received, $this->row($entry));
         $this->assertSame($audit, $this->rows('audit_logs'));
         $this->assertSame($notifications, $this->rows('notifications'));
@@ -198,24 +205,30 @@ class StaticApplicationReceiptTest extends TestCase
         $this->assertSame('Updated answer', $entry->fresh()->data['answer']);
     }
 
-    public function test_each_checked_static_sibling_requires_its_own_receipt_but_reuses_the_account_candidate_id(): void
+    public function test_each_checked_static_sibling_requires_its_own_receipt_without_allocating_or_sharing_an_id(): void
     {
         $form = $this->form();
         $first = $this->entry($form, 'approved');
         $second = $this->entry($form, 'approved');
         $secondBefore = $this->row($second);
-        $this->assertSame('BNM-0001', app(WorkflowCandidateVerifier::class)->verify($first));
+        $this->assertTrue(app(WorkflowCandidateVerifier::class)->verify($first));
+        $this->assertNotEmpty($first->data['application_received_at']);
+        $this->assertNull($first->candidate_id);
+        $this->assertNull($first->candidate_id_year);
+        $firstReceived = $this->row($first);
         $this->assertSame($secondBefore, $this->row($second));
         $this->assertNull($second->fresh()->candidate_id);
         $this->assertArrayNotHasKey('application_received_at', $second->data);
-        $this->assertSame('BNM-0001', app(WorkflowCandidateVerifier::class)->verify($second));
+        $this->assertTrue(app(WorkflowCandidateVerifier::class)->verify($second));
         $this->assertNotEmpty($second->refresh()->data['application_received_at']);
-        $this->assertDatabaseCount('candidate_account_ids', 1);
-        $this->assertDatabaseCount('candidate_id_sequences', 1);
-        $this->assertDatabaseHas('candidate_id_sequences', ['custom_form_id' => $form->id, 'last_sequence' => 1]);
+        $this->assertNull($second->candidate_id);
+        $this->assertNull($second->candidate_id_year);
+        $this->assertSame($firstReceived, $this->row($first));
+        $this->assertDatabaseCount('candidate_account_ids', 0);
+        $this->assertDatabaseCount('candidate_id_sequences', 0);
     }
 
-    public function test_pending_returned_draft_inactive_profile_and_missing_major_cannot_be_received(): void
+    public function test_pending_returned_draft_inactive_and_profile_applications_cannot_be_received(): void
     {
         $service = app(WorkflowCandidateVerifier::class);
         $form = $this->form();
@@ -236,12 +249,33 @@ class StaticApplicationReceiptTest extends TestCase
             $this->assertBlocked(fn () => $service->verify($entry));
             $this->assertSame($before, $this->row($entry));
         }
-        $missingMajor = $this->entry($form, 'approved', ['major' => 'unknown']);
-        $before = $this->row($missingMajor);
-        $this->assertNull($service->verify($missingMajor));
-        $this->assertSame($before, $this->row($missingMajor));
         $this->assertDatabaseCount('candidate_id_sequences', 0);
         $this->assertDatabaseCount('candidate_account_ids', 0);
+    }
+
+    public function test_checked_static_receipt_does_not_require_a_major_or_issue_an_id(): void
+    {
+        $service = app(WorkflowCandidateVerifier::class);
+        $form = $this->form();
+        foreach ([null, '', 'unknown'] as $major) {
+            $entry = $this->entry($form, 'approved', ['major' => $major]);
+            $before = $this->row($entry);
+            $this->assertTrue($service->canVerify($entry));
+            $this->assertTrue($service->verify($entry));
+            $this->assertNull($entry->candidate_id);
+            $this->assertNull($entry->candidate_id_year);
+            $this->assertNotEmpty($entry->data['application_received_at']);
+            $this->assertSame($this->staff->id, $entry->data['application_received_by']);
+            $this->assertSame('approved', $entry->review_status);
+            $this->assertSame($before['workflow_snapshot'], $entry->getRawOriginal('workflow_snapshot'));
+            $data = $entry->data;
+            unset($data['application_received_at'], $data['application_received_by']);
+            $this->assertSame(json_decode($before['data'], true), $data);
+        }
+        $this->assertDatabaseCount('candidate_id_sequences', 0);
+        $this->assertDatabaseCount('candidate_account_ids', 0);
+        Http::assertNothingSent();
+        Mail::assertNothingSent();
     }
 
     public function test_receipt_rechecks_permissions_and_fresh_status_and_blocks_candidate_forgery(): void

@@ -17,6 +17,7 @@ return new class extends Migration
             $table->string('color')->default('primary');
             $table->boolean('is_active')->default(true)->index();
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

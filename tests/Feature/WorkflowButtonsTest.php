@@ -30,6 +30,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Tests\TestCase;
 
@@ -83,6 +84,101 @@ class WorkflowButtonsTest extends TestCase
         Notification::assertNothingSent();
         Mail::assertNothingSent();
         Http::assertNothingSent();
+    }
+
+    public static function persistedReceiptBindings(): array
+    {
+        return ['unused receipt button' => [false], 'receipt button linked to a frozen workflow' => [true]];
+    }
+
+    #[DataProvider('persistedReceiptBindings')]
+    public function test_persisted_receipt_label_edits_preserve_the_action_and_only_lock_linked_buttons(bool $linked): void
+    {
+        $button = $this->button('Existing receipt button', 'verify', ['icon' => 'heroicon-o-shield-check', 'color' => 'warning']);
+        if ($linked) {
+            $type = $this->type('Existing receipt stage', [$button->id]);
+            $workflow = $this->workflow('Existing receipt workflow', $type);
+            $entry = $this->entry($workflow, 'receipt-edit-compatibility');
+            $typeBefore = $type->fresh()->getRawOriginal();
+            $stagesBefore = $workflow->fresh()->getRawOriginal('stages');
+            $entryBefore = $entry->fresh()->getRawOriginal();
+        }
+        $this->assertSame($linked, $button->inUse());
+        $component = Livewire::test(EditWorkflowButton::class, ['record' => $button->getRouteKey()])
+            ->assertSet('data.action_key', null);
+        $linked ? $component->assertFormFieldDisabled('action_key') : $component->assertFormFieldEnabled('action_key');
+        $field = $component->instance()->form->getFlatFields()['action_key'];
+        $this->assertSame(__('workflow_buttons.placeholders.action_key'), $field->getPlaceholder());
+        $this->assertArrayNotHasKey('verify', $field->getOptions());
+        $this->assertNotContains(__('workflow_buttons.states.receipt_only'), array_values($field->getOptions()));
+        $this->assertArrayHasKey('verify', WorkflowButton::actionOptions());
+
+        $component->fillForm(['label_en' => 'Updated receipt button', 'icon' => 'heroicon-o-document', 'color' => 'info'])
+            ->call('save')->assertHasNoFormErrors();
+
+        $button->refresh();
+        $this->assertSame('Updated receipt button', $button->label_en);
+        $this->assertSame('heroicon-o-document', $button->icon);
+        $this->assertSame('info', $button->color);
+        $this->assertSame('verify', $button->action_key);
+        $this->assertSame('verification', $button->behavior());
+        $this->assertArrayNotHasKey('action_key_changed', $button->getAttributes());
+        if ($linked) {
+            $this->assertSame($typeBefore, $type->fresh()->getRawOriginal());
+            $this->assertSame($stagesBefore, $workflow->fresh()->getRawOriginal('stages'));
+            $this->assertSame($entryBefore, $entry->fresh()->getRawOriginal());
+            $this->assertSame(StageBehavior::Verification, WorkflowStageProgression::currentType($entry->fresh()));
+        }
+        Notification::assertNothingSent();
+        Mail::assertNothingSent();
+        Http::assertNothingSent();
+    }
+
+    public static function unusedReceiptActionEdits(): array
+    {
+        return ['select a business action' => [false], 'select then explicitly clear the action' => [true]];
+    }
+
+    #[DataProvider('unusedReceiptActionEdits')]
+    public function test_unused_receipt_actions_can_be_changed_or_explicitly_cleared_without_persisting_form_flags(bool $clear): void
+    {
+        $button = $this->button('Editable unused receipt', 'verify');
+        $component = Livewire::test(EditWorkflowButton::class, ['record' => $button->getRouteKey()])
+            ->assertSet('data.action_key', null)->assertFormFieldEnabled('action_key')
+            ->assertSet('data.action_key_changed', false)
+            ->set('data.action_key', 'paid')->assertSet('data.action_key_changed', true);
+        if ($clear) {
+            $component->set('data.action_key', null)->assertSet('data.action_key_changed', true);
+        }
+
+        $component->call('save')->assertHasNoFormErrors();
+
+        $button->refresh();
+        $this->assertSame($clear ? null : 'paid', $button->action_key);
+        $this->assertSame($clear ? null : 'payment', $button->behavior());
+        $this->assertArrayNotHasKey('action_key_changed', $component->instance()->form->getState());
+        $this->assertArrayNotHasKey('action_key_changed', $component->instance()->getRecord()->getAttributes());
+        $this->assertArrayNotHasKey('action_key_changed', $button->getAttributes());
+    }
+
+    public function test_new_null_action_buttons_remain_editable_without_a_receipt_option(): void
+    {
+        $create = Livewire::test(CreateWorkflowButton::class)->assertSet('data.action_key', null)->assertFormFieldEnabled('action_key');
+        $field = $create->instance()->form->getFlatFields()['action_key'];
+        $this->assertSame(__('workflow_buttons.placeholders.action_key'), $field->getPlaceholder());
+        $this->assertArrayNotHasKey('verify', $field->getOptions());
+        $this->assertNotContains(__('workflow_buttons.states.receipt_only'), array_values($field->getOptions()));
+        $create->fillForm(['label_en' => 'New display button'])->call('create')->assertHasNoFormErrors();
+        $button = WorkflowButton::query()->where('label_en', 'New display button')->sole();
+        $this->assertNull($button->action_key);
+        $this->assertArrayNotHasKey('action_key_changed', $button->getAttributes());
+        Livewire::test(EditWorkflowButton::class, ['record' => $button->getRouteKey()])
+            ->assertSet('data.action_key', null)->assertFormFieldEnabled('action_key')
+            ->fillForm(['label_en' => 'Updated display button', 'color' => 'success'])->call('save')->assertHasNoFormErrors();
+        $this->assertNull($button->fresh()->action_key);
+        Livewire::test(CreateWorkflowButton::class)->fillForm(['label_en' => 'Forbidden receipt selection'])
+            ->set('data.action_key', 'verify')->call('create')->assertHasFormErrors(['action_key']);
+        $this->assertDatabaseMissing('workflow_buttons', ['label_en' => 'Forbidden receipt selection']);
     }
 
     public function test_khmer_label_is_optional_and_english_is_used_as_its_fallback(): void
@@ -267,15 +363,15 @@ class WorkflowButtonsTest extends TestCase
         }
     }
 
-    public function test_a_referenced_button_cannot_be_deleted_or_change_its_execution_behavior(): void
+    public function test_a_referenced_button_cannot_be_deleted_or_change_its_execution_behavior_or_frozen_workflow(): void
     {
         $button = $this->button('Referenced check');
         $type = $this->type('Referenced check stage', [$button->getKey()]);
-
-        Livewire::test(ListWorkflowButtons::class)
-            ->assertTableActionHidden('delete', $button)
-            ->mountTableAction('delete', $button)->callMountedTableAction();
-        $this->assertModelExists($button);
+        $workflow = $this->workflow('Referenced deletion workflow', $type);
+        $entry = $this->entry($workflow, 'archived-reference');
+        $definitions = $type->buttonDefinitions();
+        $stages = $workflow->getRawOriginal('stages');
+        $snapshot = $entry->getRawOriginal('workflow_snapshot');
         Livewire::test(EditWorkflowButton::class, ['record' => $button->getRouteKey()])
             ->assertFormFieldDisabled('action_key');
 
@@ -287,7 +383,14 @@ class WorkflowButtonsTest extends TestCase
         }
 
         $this->assertSame('accept', $button->fresh()->action_key);
+        Livewire::test(ListWorkflowButtons::class)
+            ->assertTableActionHidden('delete', $button)
+            ->mountTableAction('delete', $button)->callMountedTableAction();
+        $this->assertNotSoftDeleted($button);
+        $this->assertSame($definitions, $type->fresh()->buttonDefinitions());
         $this->assertSame('review', $type->fresh()->behavior);
+        $this->assertSame($stages, $workflow->fresh()->getRawOriginal('stages'));
+        $this->assertSame($snapshot, $entry->fresh()->getRawOriginal('workflow_snapshot'));
     }
 
     public function test_an_inactive_button_cannot_be_added_to_a_new_stage_but_existing_stage_can_be_reopened(): void

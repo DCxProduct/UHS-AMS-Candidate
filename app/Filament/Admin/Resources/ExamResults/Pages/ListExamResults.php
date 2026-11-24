@@ -15,9 +15,8 @@ use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Contracts\Support\Htmlable;
-use Illuminate\Http\Client\ConnectionException;
-use Illuminate\Http\Client\RequestException;
-use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Collection;
+use Livewire\Attributes\On;
 use Throwable;
 
 class ListExamResults extends ListRecords
@@ -116,7 +115,7 @@ class ListExamResults extends ListRecords
             ->icon($notify ? 'heroicon-o-check-badge' : 'heroicon-o-check-circle')
             ->color($notify ? 'primary' : 'success')
             ->visible(fn (): bool => static::getResource() === ExamResultResource::class
-                && ExamResultsTable::canSendPassedNotifications())
+                && ExamResultsTable::canConfirmPassedRecords($notify))
             ->requiresConfirmation()
             ->modalHeading(__('exam_results.'.$name))
             ->modalDescription(__('exam_results.'.$name.'_confirm_description'))
@@ -166,15 +165,7 @@ class ListExamResults extends ListRecords
         $records = $this->selectedOrFilteredQuery($selectedRecordKeys, $isTrackingDeselectedRecords, $deselectedRecordKeys)
             ->with(['creator', 'customForm'])->get();
         foreach ($records as $record) {
-            if (! ExamResultsTable::canNotifyRecord($record, action: 'notify_all_students')) {
-                Notification::make()
-                    ->title(__('exam_results.ams_sync_workflow_blocked'))
-                    ->body(__('exam_results.ams_sync_workflow_blocked_details', [
-                        'reference' => $record->candidate_id ?: (string) $record->getKey(),
-                    ]))
-                    ->danger()->persistent()->send();
-                return;
-            }
+            abort_unless(ExamResultsTable::canNotifyRecord($record, action: 'notify_all_students'), 403);
         }
         if ($records->isEmpty()) {
             Notification::make()->title(__('exam_results.no_selected_students'))->warning()->send();
@@ -182,28 +173,58 @@ class ListExamResults extends ListRecords
             return;
         }
 
+        $this->confirmSelectedRecords($records, $notify);
+    }
+
+    #[On('resend-ams-selection-results')]
+    public function resendAmsSelectionResults(
+        array $recordKeys = [],
+        bool $notify = false,
+        string $action = 'notify_all_students',
+    ): void {
+        abort_unless(static::getResource() === ExamResultResource::class
+            && FilamentActionPermissions::canAccessWorkflowActions(static::getResource())
+            && in_array($action, ['notify_student', 'notify_all_students'], true), 403);
+
+        $recordKeys = array_values(array_unique(array_filter($recordKeys, fn ($key): bool => (is_int($key) || is_string($key))
+            && ctype_digit((string) $key) && (int) $key > 0)));
+
+        // Retry the failed records, independently of the current table selection or filters.
+        $records = ExamResultResource::getEloquentQuery()->whereKey($recordKeys)
+            ->with(['creator', 'customForm'])->get();
+        foreach ($records as $record) {
+            abort_unless(ExamResultsTable::canNotifyRecord($record, action: $action), 403);
+        }
+        if ($records->isEmpty()) {
+            Notification::make()->title(__('exam_results.no_selected_students'))->warning()->send();
+
+            return;
+        }
+
+        $this->confirmSelectedRecords($records, $notify, $action);
+    }
+
+    protected function confirmSelectedRecords(Collection $records, bool $notify, string $action = 'notify_all_students'): void
+    {
         $synced = 0;
         $notified = 0;
         $failed = [];
+        $failedRecordKeys = [];
+        $pendingNotificationRecordKeys = [];
         foreach ($records as $record) {
             try {
-                $sent = app(AmsSelectionResultSync::class)->sync($record, $notify);
+                $sent = app(AmsSelectionResultSync::class)->sync($record, $notify, $action);
                 $synced++;
                 $notified += (int) $sent;
+                if ($notify && ! ExamResultsTable::hasStudentPassedNotification($record)) {
+                    $pendingNotificationRecordKeys[] = $record->getKey();
+                }
             } catch (Throwable $exception) {
                 report($exception);
                 $reference = $record->candidate_id ?: (string) $record->getKey();
-                $reason = match (true) {
-                    $exception instanceof ValidationException => implode(' ', $exception->validator->errors()->all()),
-                    $exception instanceof ConnectionException => __('exam_results.ams_sync_connection_failed'),
-                    $exception instanceof RequestException && $exception->response->status() === 409 => __('exam_results.ams_sync_account_conflict'),
-                    $exception instanceof RequestException && $exception->response->status() === 422 => __('exam_results.ams_sync_validation_failed', [
-                        'fields' => implode(', ', array_slice(array_keys($exception->response->json('errors') ?? []), 0, 8)),
-                    ]),
-                    $exception instanceof RequestException => __('exam_results.ams_sync_request_failed', ['status' => $exception->response->status()]),
-                    default => __('exam_results.ams_sync_unknown_error'),
-                };
+                $reason = ExamResultsTable::confirmationFailureMessage($exception);
                 $failed[] = $reference.': '.$reason;
+                $failedRecordKeys[] = $record->getKey();
             }
         }
 
@@ -228,8 +249,14 @@ class ListExamResults extends ListRecords
         if ($failed !== []) {
             $notification->body(__('exam_results.ams_sync_failed', ['references' => implode(', ', array_slice($failed, 0, 10))]))
                 ->danger()->persistent();
+        } elseif ($pendingNotificationRecordKeys !== []) {
+            $notification->body(__('exam_results.confirmed_notification_pending'))->warning()->persistent();
         } else {
             $notification->success();
+        }
+        $retryRecordKeys = [...$failedRecordKeys, ...$pendingNotificationRecordKeys];
+        if ($retryRecordKeys !== []) {
+            $notification->actions([ExamResultsTable::amsSyncRetryAction($retryRecordKeys, $notify, $action)]);
         }
         $notification->send();
     }

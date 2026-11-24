@@ -6,12 +6,12 @@ use App\Models\User;
 use Chanthoeun\FilamentCustomForms\Models\CustomFormEntry;
 use Illuminate\Support\Str;
 
-/** Resolve staff message names at delivery time without changing the saved template. */
+/** Resolve workflow message values at delivery time without changing the saved template. */
 final class WorkflowMessagePlaceholders
 {
     public static function render(string $message, CustomFormEntry $entry): string
     {
-        $pattern = '/:(candidate|canddiate|form)(?![A-Za-z0-9_])/';
+        $pattern = '/:(candidate_id|candidate|canddiate|form|id)(?![A-Za-z0-9_])/';
         if (! preg_match($pattern, $message)) {
             return $message;
         }
@@ -19,8 +19,13 @@ final class WorkflowMessagePlaceholders
         $entry->loadMissing(['customForm', 'creator']);
         $candidate = self::candidateName($entry);
         $form = (string) ($entry->customForm?->display_name ?? '');
+        $candidateId = (string) ($entry->candidate_id ?? '');
 
-        return preg_replace_callback($pattern, static fn (array $match): string => $match[1] === 'form' ? $form : $candidate, $message);
+        return preg_replace_callback($pattern, static fn (array $match): string => match ($match[1]) {
+            'form' => $form,
+            'candidate_id', 'id' => $candidateId,
+            default => $candidate,
+        }, $message);
     }
 
     private static function candidateName(CustomFormEntry $entry): string
