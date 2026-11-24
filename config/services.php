@@ -49,6 +49,10 @@ return [
     | come from one API key pair; the sender ID must be approved by PlasGate.
     | When test_phone is set, every SMS goes to it instead (ignored in production).
     */
+    'messaging' => [
+        'encryption_key' => env('MESSAGING_ENCRYPTION_KEY', env('APP_KEY')),
+        'previous_keys' => array_values(array_filter(explode(',', (string) env('MESSAGING_PREVIOUS_KEYS', '')))),
+    ],
     'plasgate' => [
         'base_url' => env('PLASGATE_BASE_URL', 'https://cloudapi.plasgate.com/rest'),
         'private_key' => env('PLASGATE_PRIVATE_KEY'),

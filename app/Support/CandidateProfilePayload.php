@@ -26,7 +26,6 @@ final class CandidateProfilePayload
             }
         }
         $fields = DynamicProfileSchema::fields();
-        $data = self::normalizeChoices($data, $fields);
         $values = DynamicProfileSchema::filter($data, $fields);
         $locations = [];
         foreach ($fields as $field => $configuration) {
@@ -48,57 +47,5 @@ final class CandidateProfilePayload
             }
         }
         return ['version' => 1, 'data' => $values, 'locations' => $locations];
-    }
-
-    /** Convert legacy display labels using profile choices, without changing stored answers. */
-    public static function normalizeChoices(array $data, array $fields): array
-    {
-        foreach ($fields as $name => $field) {
-            if (! array_key_exists($name, $data)) {
-                continue;
-            }
-            if ($field['type'] === 'repeater' && is_array($data[$name])) {
-                $data[$name] = array_map(fn ($row) => is_array($row)
-                    ? self::normalizeChoices($row, $field['children'] ?? []) : $row, $data[$name]);
-                continue;
-            }
-            $choices = $field['options']['choices'] ?? null;
-            if (! is_array($choices) || $choices === [] || array_is_list($choices)
-                || ! empty($field['options']['geo_location_type'])) {
-                continue;
-            }
-            $multiple = in_array($field['type'], ['checkbox_list', 'multi_select', 'tags_input'], true)
-                || ! empty($field['options']['multiple']);
-            $data[$name] = $multiple && is_array($data[$name])
-                ? array_map(fn ($value) => self::choiceKey($value, $choices), $data[$name])
-                : self::choiceKey($data[$name], $choices);
-        }
-
-        return $data;
-    }
-
-    private static function choiceKey(mixed $value, array $choices): mixed
-    {
-        if (! is_string($value) && ! is_int($value)) {
-            return $value;
-        }
-        if (array_key_exists($value, $choices)) {
-            return $value;
-        }
-        $normalized = mb_strtolower(trim((string) $value));
-        if ($normalized === '') {
-            return $value;
-        }
-        $matches = [];
-        foreach ($choices as $key => $labels) {
-            foreach ([(string) $key, ...(is_array($labels) ? array_values($labels) : [$labels])] as $label) {
-                if (is_scalar($label) && mb_strtolower(trim((string) $label)) === $normalized) {
-                    $matches[(string) $key] = (string) $key;
-                }
-            }
-        }
-
-        // Unknown or ambiguous answers remain subject to AMS validation.
-        return count($matches) === 1 ? reset($matches) : $value;
     }
 }
