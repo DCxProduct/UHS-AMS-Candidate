@@ -54,9 +54,9 @@ class MessagingSetting extends Model
             'mail_port' => 'integer',
             'forgot_password_email' => 'boolean',
             'forgot_password_sms' => 'boolean',
-            'mail_password' => 'encrypted',
-            'plasgate_private_key' => 'encrypted',
-            'plasgate_secret' => 'encrypted',
+            'mail_password' => \App\Casts\MessagingSecret::class,
+            'plasgate_private_key' => \App\Casts\MessagingSecret::class,
+            'plasgate_secret' => \App\Casts\MessagingSecret::class,
         ];
     }
 
