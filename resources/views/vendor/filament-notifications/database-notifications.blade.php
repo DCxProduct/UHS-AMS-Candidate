@@ -75,6 +75,7 @@
                     @php
                         $resubmissionEntryId = data_get($notification->data, 'viewData.resubmission_entry_id');
                         $isResubmission = filled($resubmissionEntryId);
+                        $isCandidateCorrection = ! $isResubmission && $this->candidateCorrectionEntryId($notification->data) !== null;
                     @endphp
                     <div
                         role="listitem"
@@ -82,13 +83,18 @@
                         @class([
                             'fi-no-notification-read-ctn' => ! $notification->unread(),
                             'fi-no-notification-unread-ctn' => $notification->unread(),
-                            'cursor-pointer' => $isResubmission,
+                            'cursor-pointer' => $isResubmission || $isCandidateCorrection,
                         ])
                         @if ($isResubmission)
                             tabindex="0"
                             x-on:click="if (! $event.target.closest('.fi-no-notification-close-btn')) $wire.openResubmissionReview(@js((string) $notification->getKey()))"
                             x-on:keydown.enter.prevent="$wire.openResubmissionReview(@js((string) $notification->getKey()))"
                             x-on:keydown.space.prevent="$wire.openResubmissionReview(@js((string) $notification->getKey()))"
+                        @elseif ($isCandidateCorrection)
+                            tabindex="0"
+                            x-on:click="if (! $event.target.closest('a, button, .fi-no-notification-close-btn')) $wire.openCandidateCorrection(@js((string) $notification->getKey()))"
+                            x-on:keydown.enter.prevent="if ($event.target === $el) $wire.openCandidateCorrection(@js((string) $notification->getKey()))"
+                            x-on:keydown.space.prevent="if ($event.target === $el) $wire.openCandidateCorrection(@js((string) $notification->getKey()))"
                         @endif
                     >
                         @if ($notification->unread())
@@ -157,6 +163,22 @@
         <x-slot name="footer">
             <x-filament::button wire:click="confirmResubmissionReview">
                 {{ __('candidate_entrance_statistics.actions.ok') }}
+            </x-filament::button>
+        </x-slot>
+    </x-filament::modal>
+
+    <x-filament::modal
+        id="candidate-correction-note-modal"
+        :heading="__('candidate_entrance_statistics.review_note')"
+        width="2xl"
+    >
+        @include('filament.notifications.resubmission-review-note', [
+            'reviewNote' => $this->candidateCorrectionMessage,
+        ])
+
+        <x-slot name="footer">
+            <x-filament::button wire:click="confirmCandidateCorrection">
+                {{ __('app.custom_form_entry_ui.actions.edit_form') }}
             </x-filament::button>
         </x-slot>
     </x-filament::modal>
