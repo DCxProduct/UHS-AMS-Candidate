@@ -5,6 +5,7 @@ namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\Pa
 use App\Models\CandidateSubmitPopupSetting;
 use App\Support\ClosingDateWorkflow;
 use App\Support\ProfileFormData;
+use App\Support\SubmissionNextSteps;
 use App\Support\WorkflowActionFeedback;
 use App\Support\WorkflowButtons;
 use App\Support\WorkflowSubmissionMessages;
@@ -269,6 +270,10 @@ class CreateCustomFormEntry extends CreateRecord
 
     protected function getRedirectUrl(): string
     {
+        if (! $this->isSavingDraft && ($nextStepsUrl = SubmissionNextSteps::redirectUrl($this->record))) {
+            return $nextStepsUrl;
+        }
+
         $customForm = $this->form_id ? CustomForm::find($this->form_id) : null;
         if ($customForm && (string) $customForm->slug === 'profile') {
             return CustomFormEntryResource::getUrl('edit', [

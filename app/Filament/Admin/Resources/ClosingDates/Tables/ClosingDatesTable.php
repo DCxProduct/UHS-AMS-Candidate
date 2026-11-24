@@ -8,6 +8,7 @@ use App\Models\DegreeLevel;
 use App\Support\CaseInsensitiveSearch;
 use App\Support\FilamentActionPermissions;
 use App\Support\LocalizedDate;
+use App\Support\SubmissionNextSteps;
 use App\Support\TableFilterOptions;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Filament\Actions\ActionGroup;
@@ -25,6 +26,7 @@ class ClosingDatesTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with('customForm'))
             ->selectable(fn (): bool => FilamentActionPermissions::canForResource(ClosingDateResource::class, 'clear_data'))
             ->columns([
                 TextColumn::make('localized_name')
@@ -33,9 +35,8 @@ class ClosingDatesTable
 
                 TextColumn::make('type')
                     ->label(__('closing_dates.student_application'))
-                    ->badge()
                     ->formatStateUsing(fn (?string $state): string => self::localeText(ClosingDate::typeOptions()[$state] ?? '-'))
-                    ->color('warning')
+                    ->color('primary')
                     ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyMapped($query, 'type', $search, ClosingDate::typeOptions())),
 
                 TextColumn::make('majors_count')
@@ -43,7 +44,8 @@ class ClosingDatesTable
                     ->counts('majors')
                     ->searchable(query: fn (Builder $query, string $search): Builder => self::searchMajorCount($query, $search))
                     ->numeric()
-                    ->alignCenter(),
+                    ->alignCenter()
+                    ->hidden(),
 
                 TextColumn::make('degreeLevel.localized_label')
                     ->label(__('degree_levels.navigation_label'))
@@ -51,7 +53,8 @@ class ClosingDatesTable
                         $degrees->getModel()->qualifyColumn('label_en'),
                         $degrees->getModel()->qualifyColumn('label_kh'),
                     ], $search)))
-                    ->placeholder('-'),
+                    ->placeholder('-')
+                    ->hidden(),
 
                 TextColumn::make('status')
                     ->label(__('closing_dates.status'))
@@ -64,6 +67,13 @@ class ClosingDatesTable
                         default => 'gray',
                     })
                     ->searchable(query: fn (Builder $query, string $search): Builder => CaseInsensitiveSearch::applyMapped($query, 'status', $search, __('closing_dates.statuses'))),
+
+                TextColumn::make('submission_next_steps_status')
+                    ->label(__('submission_next_steps.column'))
+                    ->state(fn (ClosingDate $record): string => self::nextStepsStatus($record->customForm))
+                    ->formatStateUsing(fn (string $state): string => __('submission_next_steps.states.'.$state))
+                    ->badge()
+                    ->color(fn (string $state): string => $state === 'enabled' ? 'success' : 'gray'),
 
                 TextColumn::make('start_date')
                     ->label(__('closing_dates.start_date'))
@@ -128,6 +138,11 @@ class ClosingDatesTable
                     ->tooltip(__('closing_dates.actions')),
             ])
             ->defaultSort('created_at', 'desc');
+    }
+
+    private static function nextStepsStatus(?CustomForm $form): string
+    {
+        return $form?->is_active && SubmissionNextSteps::content($form) ? 'enabled' : 'not_open';
     }
 
     private static function searchMajorCount(Builder $query, string $search): Builder

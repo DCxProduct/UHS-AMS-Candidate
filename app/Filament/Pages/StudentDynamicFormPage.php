@@ -10,6 +10,7 @@ use App\Support\ClosingDateWorkflow;
 use App\Support\NotificationLanguage;
 use App\Support\ProfileFormData;
 use App\Support\StudentDynamicFormSchema;
+use App\Support\SubmissionNextSteps;
 use App\Support\WorkflowActionFeedback;
 use App\Support\WorkflowButtons;
 use App\Support\WorkflowEntrySnapshot;
@@ -201,7 +202,7 @@ class StudentDynamicFormPage extends Page implements HasForms
             $this->submissionFeedbackTitle(),
         );
 
-        $this->redirect($this->listUrl(), navigate: true);
+        $this->redirect(SubmissionNextSteps::redirectUrl($this->submittedEntry) ?? $this->listUrl(), navigate: true);
     }
 
     public function saveAndCreateAnother(): void
@@ -244,6 +245,10 @@ class StudentDynamicFormPage extends Page implements HasForms
             Notification::make()->success(),
             $this->submissionFeedbackTitle(),
         );
+
+        if ($nextStepsUrl = SubmissionNextSteps::redirectUrl($this->submittedEntry)) {
+            $this->redirect($nextStepsUrl, navigate: true);
+        }
     }
 
     protected function getCleanState(): array
@@ -304,6 +309,13 @@ class StudentDynamicFormPage extends Page implements HasForms
         if (in_array('workflow_snapshot', $columns, true)) {
             $payload['workflow_snapshot'] = json_encode(
                 $snapshot,
+                JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR,
+            );
+        }
+
+        if (in_array('submission_next_steps_snapshot', $columns, true)) {
+            $payload['submission_next_steps_snapshot'] = json_encode(
+                SubmissionNextSteps::snapshotForForm($this->customForm),
                 JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR,
             );
         }

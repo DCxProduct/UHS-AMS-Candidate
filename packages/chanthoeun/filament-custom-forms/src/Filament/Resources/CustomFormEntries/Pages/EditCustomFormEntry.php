@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Support\DashboardUserAccess;
 use App\Support\NotificationLanguage;
 use App\Support\ProfileFormData;
+use App\Support\SubmissionNextSteps;
 use App\Support\WorkflowActionFeedback;
 use App\Support\WorkflowButtons;
 use App\Support\WorkflowResubmissionStaffMessages;
@@ -42,6 +43,9 @@ class EditCustomFormEntry extends EditRecord
 
     #[Url(as: 'profile_edit', except: false)]
     public bool $isEditingProfile = false;
+
+    #[Url(as: 'view_submitted', except: false)]
+    public bool $viewSubmitted = false;
 
     public ?string $wizard_step = null;
 
@@ -418,6 +422,10 @@ class EditCustomFormEntry extends EditRecord
 
     protected function getRedirectUrl(): string
     {
+        if (! $this->isSavingDraft && ($nextStepsUrl = SubmissionNextSteps::redirectUrl($this->record))) {
+            return $nextStepsUrl;
+        }
+
         $slug = $this->record->customForm?->slug;
         if ($slug === 'profile') {
             return CustomFormEntryResource::getUrl('edit', [
@@ -577,6 +585,13 @@ class EditCustomFormEntry extends EditRecord
         }
 
         if ($slug === 'profile' && $this->isLockedForEditing()) {
+            if (! $this->viewSubmitted && ! $this->isEditingProfile
+                && ($nextStepsUrl = SubmissionNextSteps::redirectUrl($this->record))) {
+                $this->redirect($nextStepsUrl);
+
+                return;
+            }
+
             $this->form->disabled();
 
             return;

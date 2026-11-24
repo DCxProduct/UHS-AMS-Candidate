@@ -89,6 +89,27 @@ class ClosingDateScheduleTest extends TestCase
         $this->assertSame(2, ClosingDate::query()->where('type', $type)->count());
     }
 
+    public function test_existing_profile_and_inactive_form_selections_show_localized_names_when_editing(): void
+    {
+        $profile = $this->form('Profile', 'profile');
+        $profile->update(['name' => json_encode(['en' => 'Profile', 'km' => 'ប្រវត្តិរូប'], JSON_UNESCAPED_UNICODE)]);
+        $inactive = $this->form('Archived application');
+        $inactive->update(['is_active' => false]);
+        $profileSchedule = $this->schedule($profile, '2026-11-01', '2026-11-10');
+        $inactiveSchedule = $this->schedule($inactive, '2026-11-01', '2026-11-10');
+        $inactiveSchedule->update(['type' => 'custom_form_'.$inactive->id]);
+        app()->setLocale('km');
+
+        foreach ([[$profileSchedule, 'ប្រវត្តិរូប'], [$inactiveSchedule, 'Archived application']] as [$schedule, $expectedLabel]) {
+            $this->assertArrayNotHasKey($schedule->type, ClosingDate::selectableTypeOptions());
+            $component = Livewire::test(EditClosingDate::class, ['record' => $schedule->id])->assertSuccessful();
+            $field = $component->instance()->form->getFlatFields(withHidden: true)['type'];
+            $this->assertSame($expectedLabel, $field->getOptionLabel());
+            $this->assertSame($schedule->type, $component->get('data.type'));
+        }
+        $this->assertTrue(ClosingDateWorkflow::checkByCustomFormId($profile->id)['can_submit']);
+    }
+
     public static function dateRangeEditingOrders(): array
     {
         return [
