@@ -14,24 +14,6 @@ use Illuminate\Validation\ValidationException;
 
 final class StudentAccountArchive
 {
-    public static function archive(NewStudentAccount $account): void
-    {
-        self::change($account, 'archiveAccount', static function (NewStudentAccount $locked): array {
-            if ($locked->archived_at !== null) {
-                return $locked->is_active ? ['is_active' => false] : [];
-            }
-
-            return ['archived_at' => now(), 'is_active' => false];
-        });
-    }
-
-    public static function restore(NewStudentAccount $account): void
-    {
-        self::change($account, 'restoreAccount', static fn (NewStudentAccount $locked): array => $locked->archived_at === null
-            ? []
-            : ['archived_at' => null, 'is_active' => true]);
-    }
-
     public static function setActive(NewStudentAccount $account, bool $active): void
     {
         self::change($account, $active ? 'activateAccount' : 'deactivateAccount', static function (NewStudentAccount $locked) use ($active): array {

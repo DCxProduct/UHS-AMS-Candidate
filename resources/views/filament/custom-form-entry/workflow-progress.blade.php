@@ -69,10 +69,10 @@
                 </div>
             @endforeach
         </div>
-        @if (in_array($progress['status'], ['draft', 'rejected', 'failed'], true))
+        @if (in_array($progress['status'], ['draft', 'failed'], true))
             <p @class([
                 'mt-2 text-xs',
-                'text-danger-600 dark:text-danger-400' => in_array($progress['status'], ['rejected', 'failed'], true),
+                'text-danger-600 dark:text-danger-400' => $progress['status'] === 'failed',
                 'text-gray-500 dark:text-gray-400' => $progress['status'] === 'draft',
             ])>{{ $progress['label'] }}</p>
         @endif

@@ -38,19 +38,14 @@ class NewStudentAccountResource extends Resource
 
     public static function getAuthorizationResponse(string|UnitEnum $action, ?Model $record = null): Response
     {
-        if (in_array($action, ['delete', 'deleteAny', 'forceDelete', 'forceDeleteAny'], true)
+        if (in_array($action, ['delete', 'deleteAny', 'forceDelete', 'forceDeleteAny', 'archiveAccount', 'restoreAccount'], true)
             || auth()->user()?->registration_type !== 'admin') {
             return Response::deny();
         }
 
-        if ($record instanceof NewStudentAccount) {
-            if ($record->archived_at !== null && in_array($action, ['activateAccount', 'deactivateAccount', 'archiveAccount'], true)) {
-                return Response::deny();
-            }
-
-            if ($record->archived_at === null && $action === 'restoreAccount') {
-                return Response::deny();
-            }
+        if ($record instanceof NewStudentAccount && $record->archived_at !== null
+            && in_array($action, ['activateAccount', 'deactivateAccount'], true)) {
+            return Response::deny();
         }
 
         return parent::getAuthorizationResponse($action, $record);

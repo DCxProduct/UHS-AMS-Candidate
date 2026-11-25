@@ -64,52 +64,41 @@ class StudentAccountArchiveTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_archive_and_restore_have_separate_tabs_and_rights_and_preserve_the_original_identity_and_history(): void
-    {
-        $this->grant('ViewAny', 'ArchiveAccount');
-        [$account, $student, $entry, $payment] = $this->studentAccount();
-        $profile = $account->getRawOriginal();
-        $history = [$entry->getRawOriginal(), $payment->getRawOriginal(), $this->authorizationState($student)];
-        $this->assertNotSame($account->id, $student->getKey());
-        $this->assertFalse(NewStudentAccountResource::canEdit($account));
-
-        Livewire::test(ListNewStudentAccounts::class)
-            ->assertCanSeeTableRecords([$account])
-            ->assertTableActionVisible('archive_account', $account)
-            ->callTableAction('archive_account', $account)->assertHasNoTableActionErrors()
-            ->assertCanNotSeeTableRecords([$account]);
-
-        $account->refresh();
-        $this->assertNotNull($account->archived_at);
-        $this->assertFalse($account->is_active);
-        $archived = Livewire::test(ListNewStudentAccounts::class)
-            ->set('activeTab', 'archived')->assertCanSeeTableRecords([$account])
-            ->assertTableActionHidden('restore_account', $account);
-        $this->assertNull($archived->instance()->getTable()->getRecordUrl($account));
-        $this->assertSame(Arr::except($profile, ['archived_at', 'is_active', 'updated_at']), Arr::except($account->getRawOriginal(), ['archived_at', 'is_active', 'updated_at']));
-
-        $this->grant('RestoreAccount');
-        $this->assertFalse($this->operator->can('Update:NewStudentAccount'));
-        $this->assertFalse($this->operator->can('ActivateAccount:NewStudentAccount'));
-        Livewire::test(ListNewStudentAccounts::class)
-            ->set('activeTab', 'archived')->assertTableActionVisible('restore_account', $account)
-            ->callTableAction('restore_account', $account)->assertHasNoTableActionErrors()
-            ->assertCanNotSeeTableRecords([$account]);
-
-        $account->refresh();
-        $this->assertNull($account->archived_at);
-        $this->assertTrue($account->is_active);
-        Livewire::test(ListNewStudentAccounts::class)->assertCanSeeTableRecords([$account]);
-        $this->assertSame(Arr::except($profile, ['updated_at']), Arr::except($account->getRawOriginal(), ['updated_at']));
-        $this->assertSame($history, [$entry->fresh()->getRawOriginal(), $payment->fresh()->getRawOriginal(), $this->authorizationState($student)]);
-        $this->assertDatabaseMissing('users', ['id' => $student->getKey()]);
-        $this->assertDatabaseCount('new_student_accounts', 1);
-        $this->assertDatabaseCount('system_users', 0);
-    }
-
-    public function test_archive_ends_existing_sessions_and_blocks_every_login_identifier_until_an_authorized_restore(): void
+    public function test_archive_tabs_and_actions_are_removed_even_with_stale_role_and_direct_grants(): void
     {
         $this->grant('ViewAny', 'ArchiveAccount', 'RestoreAccount');
+        $role = Role::findOrCreate('legacy-archive-operator', 'web');
+        $role->givePermissionTo(['ArchiveAccount:NewStudentAccount', 'RestoreAccount:NewStudentAccount']);
+        $this->operator->assignRole($role);
+        [$account, $student, $entry, $payment] = $this->studentAccount();
+        $archived = NewStudentAccount::query()->create([
+            'student_id' => 'LEGACY-ARCHIVED', 'first_name_latin' => 'LEGACY', 'last_name_latin' => 'STUDENT', 'is_active' => false,
+        ]);
+        $this->setLegacyArchiveState($archived, true);
+        $before = $this->storedState();
+        $history = [$entry->getRawOriginal(), $payment->getRawOriginal(), $this->authorizationState($student)];
+
+        $list = Livewire::test(ListNewStudentAccounts::class)
+            ->assertCanSeeTableRecords([$account])->assertCanNotSeeTableRecords([$archived])
+            ->assertTableActionDoesNotExist('archive_account', record: $account)
+            ->assertTableActionDoesNotExist('restore_account', record: $account);
+        $this->assertSame([], $list->instance()->getTabs());
+        foreach (['current', 'archived'] as $oldTab) {
+            $list->set('activeTab', $oldTab)->assertCanSeeTableRecords([$account])->assertCanNotSeeTableRecords([$archived]);
+        }
+        foreach ([$account, $archived] as $record) {
+            $this->assertFalse(NewStudentAccountResource::can('archiveAccount', $record));
+            $this->assertFalse(NewStudentAccountResource::can('restoreAccount', $record));
+        }
+        $list->mountTableAction('archive_account', $account)->callMountedTableAction();
+        $list->mountTableAction('restore_account', $archived)->callMountedTableAction();
+        $this->assertSame($before, $this->storedState());
+        $this->assertSame($history, [$entry->fresh()->getRawOriginal(), $payment->fresh()->getRawOriginal(), $this->authorizationState($student)]);
+    }
+
+    public function test_legacy_archive_ends_existing_sessions_and_blocks_every_login_identifier(): void
+    {
+        $this->grant('ViewAny');
         [$account, $student] = $this->studentAccount();
         Auth::logout();
         Auth::login($student);
@@ -120,7 +109,7 @@ class StudentAccountArchiveTest extends TestCase
         // Simulate another staff request while this session still holds its
         // authenticated student model from before the archive operation.
         Auth::setUser($this->operator);
-        StudentAccountArchive::archive($account);
+        $this->setLegacyArchiveState($account, true);
         Auth::setUser($student);
         $this->assertTrue($student->is_active);
         $this->get('/dashboard')->assertRedirect('/login')
@@ -133,36 +122,15 @@ class StudentAccountArchiveTest extends TestCase
             $this->assertGuest();
         }
 
-        $this->actingAs($this->operator);
-        StudentAccountArchive::restore($account->fresh());
-        Auth::logout();
-        Livewire::test(Login::class)->fillForm(['login' => $account->student_id, 'password' => 'StudentPassword1!'])
-            ->call('authenticate')->assertHasNoFormErrors()->assertRedirect('/dashboard');
-        $this->assertInstanceOf(StudentLogin::class, Auth::user());
-        $this->assertSame($student->getKey(), Auth::id());
-        $this->assertTrue(Auth::user()->hasRole('candidate'));
     }
 
-    public function test_update_and_activation_permissions_do_not_authorize_archive_or_restore_even_when_callbacks_are_called_directly(): void
+    public function test_update_and_activation_permissions_do_not_authorize_removed_archive_actions(): void
     {
         $this->grant('ViewAny', 'Update', 'ActivateAccount', 'DeactivateAccount');
         [$account] = $this->studentAccount();
         $before = $this->storedState();
-        $list = Livewire::test(ListNewStudentAccounts::class)
-            ->assertTableActionHidden('archive_account', $account)
-            ->mountTableAction('archive_account', $account)->callMountedTableAction();
-        $this->assertForbidden(fn () => StudentAccountArchive::archive($account));
-        $this->assertForbidden(fn () => ($list->instance()->getTable()->getAction('archive_account')->getActionFunction())($account));
-        $this->assertSame($before, $this->storedState());
-
-        $this->grant('ArchiveAccount');
-        StudentAccountArchive::archive($account);
-        $before = $this->storedState();
-        $list = Livewire::test(ListNewStudentAccounts::class)->set('activeTab', 'archived')
-            ->assertTableActionHidden('restore_account', $account->fresh())
-            ->mountTableAction('restore_account', $account->fresh())->callMountedTableAction();
-        $this->assertForbidden(fn () => StudentAccountArchive::restore($account));
-        $this->assertForbidden(fn () => ($list->instance()->getTable()->getAction('restore_account')->getActionFunction())($account));
+        $this->assertFalse(NewStudentAccountResource::can('archiveAccount', $account));
+        $this->assertFalse(NewStudentAccountResource::can('restoreAccount', $account));
         $this->assertSame($before, $this->storedState());
     }
 
@@ -172,7 +140,7 @@ class StudentAccountArchiveTest extends TestCase
         [$account, $student] = $this->studentAccount();
         $staleManagement = $account->fresh();
         $staleLogin = $student->fresh();
-        StudentAccountArchive::archive($account);
+        $this->setLegacyArchiveState($account, true);
         $archivedAt = $account->fresh()->getRawOriginal('archived_at');
 
         foreach (['save', 'saveQuietly'] as $save) {
@@ -187,7 +155,7 @@ class StudentAccountArchiveTest extends TestCase
         }
 
         $staleArchived = $account->fresh();
-        StudentAccountArchive::restore($account->fresh());
+        $this->setLegacyArchiveState($account->fresh(), false);
         $staleArchived->forceFill(['last_name_latin' => 'RESTORED'])->saveQuietly();
         $current = $account->fresh();
         $this->assertNull($current->archived_at);
@@ -197,41 +165,26 @@ class StudentAccountArchiveTest extends TestCase
         $this->assertTrue(Hash::check('StudentPassword1!', $account->fresh()->password));
     }
 
-    public function test_archive_cannot_be_bypassed_by_activation_or_edit_and_restore_does_not_enable_an_ordinary_inactive_account(): void
+    public function test_legacy_archive_cannot_be_bypassed_by_activation_or_edit(): void
     {
         $this->grant('ViewAny', 'Update', 'ArchiveAccount', 'RestoreAccount', 'ActivateAccount', 'DeactivateAccount');
         [$account] = $this->studentAccount();
-        StudentAccountArchive::archive($account);
+        $this->setLegacyArchiveState($account, true);
         $before = $this->storedState();
         $this->assertRejected(fn () => StudentAccountArchive::setActive($account->fresh(), true));
-        $list = Livewire::test(ListNewStudentAccounts::class)->set('activeTab', 'archived')
-            ->assertTableActionHidden('activate_account', $account->fresh())
-            ->assertTableActionHidden('deactivate_account', $account->fresh());
-        $this->assertRejected(fn () => ($list->instance()->getTable()->getAction('activate_account')->getActionFunction())($account->fresh()));
         $editor = Livewire::test(EditNewStudentAccount::class, ['record' => $account->getRouteKey()])
             ->assertFormFieldIsDisabled('is_active');
         $writer = new ReflectionMethod(EditNewStudentAccount::class, 'handleRecordUpdate');
         $this->assertRejected(fn () => $writer->invoke($editor->instance(), $account->fresh(), ['is_active' => true]));
         $this->assertSame($before, $this->storedState());
 
-        $inactive = NewStudentAccount::query()->create([
-            'student_id' => 'ORDINARY-INACTIVE', 'first_name_latin' => 'OTHER', 'last_name_latin' => 'STUDENT', 'is_active' => false,
-        ])->fresh();
-        $before = $inactive->getRawOriginal();
-        try {
-            StudentAccountArchive::restore($inactive);
-        } catch (HttpExceptionInterface|ValidationException) {
-            // Restoring a current account may be denied or treated as a no-op.
-        }
-        $this->assertSame($before, $inactive->fresh()->getRawOriginal());
-        $this->assertFalse($inactive->fresh()->is_active);
     }
 
     public function test_archived_contacts_remain_reserved_and_ams_retries_never_restore_or_duplicate_the_account(): void
     {
         $this->grant('ArchiveAccount');
         [$account, $student] = $this->studentAccount();
-        StudentAccountArchive::archive($account);
+        $this->setLegacyArchiveState($account, true);
         $before = $this->storedState();
         Auth::logout();
         $registration = Livewire::test(Register::class);
@@ -258,24 +211,18 @@ class StudentAccountArchiveTest extends TestCase
         $this->assertDatabaseMissing('users', ['id' => $student->getKey()]);
     }
 
-    public function test_candidate_accounts_cannot_archive_or_restore_even_with_the_dedicated_permissions(): void
+    public function test_candidate_accounts_cannot_use_removed_archive_actions_even_with_stale_permissions(): void
     {
-        $this->grant('ArchiveAccount');
         [$account, $student] = $this->studentAccount();
         $student->givePermissionTo([
             Permission::findOrCreate('ArchiveAccount:NewStudentAccount', 'web'),
             Permission::findOrCreate('RestoreAccount:NewStudentAccount', 'web'),
         ]);
         $this->actingAs($student);
-        $before = $this->storedState();
-        $this->assertForbidden(fn () => StudentAccountArchive::archive($account));
-        $this->assertSame($before, $this->storedState());
-        $this->actingAs($this->operator);
-        StudentAccountArchive::archive($account);
-        $this->actingAs($student);
-        $before = $this->storedState();
-        $this->assertForbidden(fn () => StudentAccountArchive::restore($account));
-        $this->assertSame($before, $this->storedState());
+        $this->assertFalse(NewStudentAccountResource::can('archiveAccount', $account));
+        $this->assertFalse(NewStudentAccountResource::can('restoreAccount', $account));
+        $this->setLegacyArchiveState($account, true);
+        $this->assertFalse(NewStudentAccountResource::can('restoreAccount', $account));
     }
 
     public function test_archive_migration_preserves_existing_credentials_and_history_and_rollback_leaves_archived_accounts_disabled(): void
@@ -295,7 +242,7 @@ class StudentAccountArchiveTest extends TestCase
             $this->assertSame($before, Arr::except($account->fresh()->getRawOriginal(), ['archived_at']));
             $this->assertSame($candidateBefore, $this->operator->fresh()->getRawOriginal());
 
-            StudentAccountArchive::archive($account->fresh());
+            $this->setLegacyArchiveState($account->fresh(), true);
             $beforeRollback = Arr::except($account->fresh()->getRawOriginal(), ['archived_at']);
             $migration->down();
             $this->assertFalse(Schema::hasColumn('new_student_accounts', 'archived_at'));
@@ -349,14 +296,14 @@ class StudentAccountArchiveTest extends TestCase
         $this->operator->unsetRelation('roles')->unsetRelation('permissions');
     }
 
-    private function assertForbidden(callable $operation): void
+    /** Seed historical archive states without bringing back the removed actions. */
+    private function setLegacyArchiveState(NewStudentAccount $account, bool $archived): void
     {
-        try {
-            $operation();
-            $this->fail('This account operation must require its dedicated staff permission.');
-        } catch (HttpExceptionInterface $exception) {
-            $this->assertSame(403, $exception->getStatusCode());
-        }
+        DB::table('new_student_accounts')->where('id', $account->getKey())->update([
+            'archived_at' => $archived ? now() : null,
+            'is_active' => ! $archived,
+        ]);
+        $account->refresh();
     }
 
     private function assertRejected(callable $operation): void
