@@ -82,6 +82,11 @@ class Dashboard extends BaseDashboard
         return __('navigation.dashboard');
     }
 
+    public static function getNavigationGroup(): ?string
+    {
+        return __('navigation.groups.dashboard');
+    }
+
     public function getTitle(): string|Htmlable
     {
         return __('dashboard.title');

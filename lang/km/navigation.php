@@ -4,6 +4,7 @@ return [
     'dashboard' => 'ផ្ទាំងព័ត៌មាន',
 
     'groups' => [
+        'dashboard' => 'ផ្ទាំងព័ត៌មាន',
         'form_entry' => 'ពាក្យស្នើសុំបេក្ខជន',
         'candidates' => 'បេក្ខជន',
         'cashier' => 'បេឡា',

@@ -185,6 +185,9 @@ class AppPanelProvider extends PanelProvider
     protected function navigationGroups(): array
     {
         $groups = [
+            'dashboard' => NavigationGroup::make()
+                ->label(fn (): string => __('navigation.groups.dashboard'))
+                ->collapsible(),
             'form_entry' => NavigationGroup::make()
                 ->label(fn (): string => __('navigation.groups.form_entry'))
                 ->collapsible(),
@@ -206,8 +209,8 @@ class AppPanelProvider extends PanelProvider
         ];
 
         $order = DashboardUserAccess::isCashier(auth()->user())
-            ? ['cashier', 'form_entry', 'settings', 'candidates', 'form_builder', 'activity']
-            : ['form_entry', 'cashier', 'candidates', 'form_builder', 'settings', 'activity'];
+            ? ['dashboard', 'cashier', 'form_entry', 'settings', 'candidates', 'form_builder', 'activity']
+            : ['dashboard', 'form_entry', 'cashier', 'candidates', 'form_builder', 'settings', 'activity'];
 
         return array_map(fn (string $key): NavigationGroup => $groups[$key], $order);
     }

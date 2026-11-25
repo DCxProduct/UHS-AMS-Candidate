@@ -258,7 +258,7 @@ class CustomFormEntryResource extends Resource
         };
     }
 
-    protected static function getNavigationTitle(CustomForm $form): string
+    public static function getNavigationTitle(CustomForm $form): string
     {
         $slug = strtolower(trim((string) ($form->slug ?? '')));
 
@@ -319,6 +319,7 @@ class CustomFormEntryResource extends Resource
                     ]);
 
                 $items[] = NavigationItem::make('custom-form-entry-' . $formId)
+                    ->key('custom-form-entry-' . $formId)
                     ->label(static::getNavigationTitle($form))
                     ->badge(fn (): ?string => static::pendingApplicationCount($formId))
                     ->group(__('navigation.groups.form_entry'))
@@ -778,7 +779,7 @@ class CustomFormEntryResource extends Resource
         };
     }
 
-    protected static function getFormSortNumber(CustomForm $form): int
+    public static function getFormSortNumber(CustomForm $form): int
     {
         $slug = strtolower(trim((string) ($form->slug ?? '')));
 

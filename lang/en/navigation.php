@@ -4,6 +4,7 @@ return [
     'dashboard' => 'Dashboard',
 
     'groups' => [
+        'dashboard' => 'Dashboard',
         'form_entry' => 'Candidate Applications',
         'candidates' => 'Candidates',
         'cashier' => 'Cashier',

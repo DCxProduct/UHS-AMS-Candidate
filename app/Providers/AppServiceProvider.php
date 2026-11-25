@@ -57,6 +57,8 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->scoped(WorkflowButtonColors::class);
         $this->app->scoped(WorkflowConfigurationUsage::class);
+        $this->app->scoped(\App\Support\SidebarNavigation::class);
+        $this->app->scoped(\Filament\Navigation\NavigationManager::class, \App\Support\SidebarNavigationManager::class);
     }
 
     public function boot(): void
@@ -232,6 +234,8 @@ class AppServiceProvider extends ServiceProvider
             DegreeLevel::class,
             ExchangeRate::class,
             RoleType::class,
+            \App\Models\SidebarMenu::class,
+            \App\Models\SidebarMenuName::class,
             CandidateSubmitPopupSetting::class,
             CustomForm::class,
             CustomFormEntry::class,
