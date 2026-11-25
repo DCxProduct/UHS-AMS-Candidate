@@ -17,6 +17,7 @@ use App\Filament\Admin\Resources\MessagingSettings\MessagingSettingResource;
 use App\Filament\Admin\Resources\NewStudentAccounts\NewStudentAccountResource;
 use App\Filament\Admin\Resources\Payments\PaymentResource;
 use App\Filament\Admin\Resources\PaymentStatusLists\PaymentStatusListResource;
+use App\Filament\Admin\Resources\SidebarMenus\SidebarMenuResource;
 use App\Filament\Admin\Resources\SystemUsers\SystemUserResource;
 use App\Filament\Admin\Resources\WorkflowButtons\WorkflowButtonResource;
 use App\Filament\Admin\Resources\WorkflowNotifications\WorkflowNotificationResource;
@@ -36,6 +37,9 @@ class FilamentActionPermissions
     public static function resourceActions(): array
     {
         return [
+            SidebarMenuResource::class => [
+                'view_any', 'create', 'update', 'delete', 'reorder',
+            ],
             NewStudentAccountResource::class => [
                 'view_any',
                 'create',
@@ -279,7 +283,7 @@ class FilamentActionPermissions
                 $permission->delete();
             }
             foreach (Permission::query()->where('guard_name', $guardName)
-                ->whereIn('name', ['View:NewStudentAccount', 'Delete:NewStudentAccount', 'DeleteAny:NewStudentAccount', 'RestoreDeletedAccount:NewStudentAccount'])->get() as $permission) {
+                ->whereIn('name', ['View:NewStudentAccount', 'Delete:NewStudentAccount', 'DeleteAny:NewStudentAccount', 'RestoreDeletedAccount:NewStudentAccount', 'View:SidebarMenu', 'DeleteAny:SidebarMenu'])->get() as $permission) {
                 $permission->delete();
             }
 
@@ -304,6 +308,7 @@ class FilamentActionPermissions
     protected static function resourcePermissions(): array
     {
         return [
+            SidebarMenuResource::class => self::resourceActions()[SidebarMenuResource::class],
             NewStudentAccountResource::class => self::resourceActions()[NewStudentAccountResource::class],
             PaymentStatusListResource::class => [
                 'viewAny',
