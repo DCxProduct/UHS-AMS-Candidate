@@ -19,11 +19,6 @@ class CandidateSidebarFormsTable extends TableWidget
 
     protected ?string $pollingInterval = '60s';
 
-    protected function getTableHeading(): string
-    {
-        return __('dashboard.sidebar_menu_forms');
-    }
-
     public static function canView(): bool
     {
         return DashboardUserAccess::isCandidate(auth()->user());
@@ -39,6 +34,8 @@ class CandidateSidebarFormsTable extends TableWidget
             ->all();
 
         return $table
+            ->heading(null)
+            ->searchable(false)
             ->query(
                 CustomForm::query()
                     ->whereIn('id', $availableFormIds)

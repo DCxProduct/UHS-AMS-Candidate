@@ -20,11 +20,6 @@ class AdminSidebarFormsTable extends TableWidget
 
     protected ?string $pollingInterval = '60s';
 
-    protected function getTableHeading(): string
-    {
-        return __('dashboard.sidebar_menu_forms');
-    }
-
     public static function canView(): bool
     {
         return auth()->user()?->hasEffectiveRole(StaffRoles::AUDITED) ?? false;
@@ -35,6 +30,8 @@ class AdminSidebarFormsTable extends TableWidget
         $allowedFormIds = CustomFormRoleAccess::allowedFormIds(auth()->user());
 
         return $table
+            ->heading(null)
+            ->searchable(false)
             ->query(
                 CustomForm::query()
                     ->withCount('entries')
