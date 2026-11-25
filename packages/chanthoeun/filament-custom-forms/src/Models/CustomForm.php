@@ -38,6 +38,7 @@ class CustomForm extends Model
         'passed_result_menu',
         'statistics_menu',
         'display_order',
+        'submission_next_steps',
     ];
 
     protected $casts = [
@@ -46,6 +47,7 @@ class CustomForm extends Model
         'allowed_roles' => 'array',
         'requires_payment' => 'boolean',
         'display_order' => 'integer',
+        'submission_next_steps' => 'array',
     ];
 
     protected static function booted(): void

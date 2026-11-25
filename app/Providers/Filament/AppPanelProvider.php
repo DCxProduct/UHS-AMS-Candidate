@@ -9,6 +9,7 @@ use App\Filament\Pages\Dashboard as AppDashboard;
 use App\Filament\Pages\Sync as SyncPage;
 use App\Filament\Student\Pages\ContactUs;
 use App\Filament\Student\Pages\MyProfile;
+use App\Filament\Student\Pages\SubmissionNextSteps;
 use App\Http\Middleware\CheckUserActive;
 use App\Http\Middleware\SecurityHeaders;
 use App\Models\ClosingDate;
@@ -120,6 +121,7 @@ class AppPanelProvider extends PanelProvider
                 AppDashboard::class,
                 ContactUs::class,
                 MyProfile::class,
+                SubmissionNextSteps::class,
                 SyncPage::class,
             ])
 

@@ -341,7 +341,7 @@ class CustomFormEntryResource extends Resource
                         }
 
                         return (
-                                request()->is('custom-form-entries*')
+                                (request()->is('custom-form-entries*') || request()->is('submission-next-steps/*'))
                                 && (string) $activeFormId === (string) $formId
                             ) || (
                                 request()->is('contact-us*')

@@ -20,6 +20,7 @@ class CustomFormEntry extends Model
     protected $casts = [
         'data' => 'array',
         'workflow_snapshot' => 'array',
+        'submission_next_steps_snapshot' => 'array',
         'form_entries_deleted_at' => 'datetime',
         'payment_status_lists_deleted_at' => 'datetime',
         'entrance_statistics_deleted_at' => 'datetime',
@@ -32,6 +33,7 @@ class CustomFormEntry extends Model
         static::saving(function (self $entry): void {
             \App\Support\CandidateApplicationContext::stamp($entry);
             \App\Support\WorkflowEntrySnapshot::capture($entry);
+            \App\Support\SubmissionNextSteps::prepareForSave($entry);
 
             if ($entry->isDirty('data')) {
                 $data = is_array($entry->data) ? $entry->data : [];

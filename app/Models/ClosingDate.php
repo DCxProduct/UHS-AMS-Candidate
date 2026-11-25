@@ -46,6 +46,18 @@ class ClosingDate extends Model
         return $this->belongsTo(DegreeLevel::class);
     }
 
+    public function getCustomFormIdAttribute(): ?int
+    {
+        return preg_match('/^custom_form[:_](\d+)$/', (string) $this->type, $matches) === 1
+            ? (int) $matches[1]
+            : null;
+    }
+
+    public function customForm(): BelongsTo
+    {
+        return $this->belongsTo(CustomForm::class, 'custom_form_id');
+    }
+
     public const TYPE_PREFIX_CUSTOM_FORM = 'custom_form:';
 
     public const STATUS_NOT_OPEN = 'not_open';
@@ -101,9 +113,22 @@ class ClosingDate extends Model
             ->map(fn ($id): string => self::customFormTypeKey($id))
             ->all();
 
-        return collect(self::typeOptions())
+        $options = collect(self::typeOptions())
             ->reject(fn ($label, string $typeKey): bool => in_array($typeKey, $profileTypeKeys, true))
             ->toArray();
+
+        // Existing schedules may reference Profile, an inactive form, or a legacy key.
+        // Keep their saved selection readable without offering them on new schedules.
+        if ($ignoreClosingDateId) {
+            $closingDate = self::query()->find($ignoreClosingDateId);
+            $formId = $closingDate?->custom_form_id;
+            $form = $formId ? CustomForm::withTrashed()->find($formId) : null;
+            if ($form) {
+                $options[$closingDate->type] = $form->display_name;
+            }
+        }
+
+        return $options;
     }
 
     public static function typeOptions(): array
