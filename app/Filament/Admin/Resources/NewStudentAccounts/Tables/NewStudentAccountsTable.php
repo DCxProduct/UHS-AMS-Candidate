@@ -23,6 +23,7 @@ class NewStudentAccountsTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->whereNull('new_student_accounts.archived_at'))
             ->searchPlaceholder(__('new_student_accounts.search'))
             ->defaultSort('id', 'desc')
             ->paginated([10, 25, 50, 100])
@@ -112,49 +113,11 @@ class NewStudentAccountsTable
                                 ->success()
                                 ->send();
                         }),
-                    Action::make('archive_account')
-                        ->label(__('new_student_accounts.actions.archive'))
-                        ->icon('heroicon-o-archive-box')
-                        ->color('warning')
-                        ->requiresConfirmation()
-                        ->modalHeading(__('new_student_accounts.confirmations.archive_heading'))
-                        ->modalDescription(__('new_student_accounts.confirmations.archive_description'))
-                        ->modalSubmitActionLabel(__('new_student_accounts.actions.archive'))
-                        ->authorize(fn (NewStudentAccount $record): bool => NewStudentAccountResource::can('archiveAccount', $record))
-                        ->visible(fn (NewStudentAccount $record): bool => $record->archived_at === null)
-                        ->action(function (NewStudentAccount $record): void {
-                            abort_unless(NewStudentAccountResource::can('archiveAccount', $record), 403);
-                            StudentAccountArchive::archive($record);
-
-                            Notification::make()
-                                ->title(NotificationLanguage::trans('new_student_accounts.notifications.archived'))
-                                ->success()
-                                ->send();
-                        }),
                 ])
                     ->label('')
                     ->icon('heroicon-m-ellipsis-vertical')
                     ->tooltip(__('new_student_accounts.actions.actions'))
                     ->visible(fn (NewStudentAccount $record): bool => $record->archived_at === null),
-                Action::make('restore_account')
-                    ->label(__('new_student_accounts.actions.restore'))
-                    ->icon('heroicon-o-arrow-uturn-left')
-                    ->color('success')
-                    ->requiresConfirmation()
-                    ->modalHeading(__('new_student_accounts.confirmations.restore_heading'))
-                    ->modalDescription(__('new_student_accounts.confirmations.restore_description'))
-                    ->modalSubmitActionLabel(__('new_student_accounts.actions.restore'))
-                    ->authorize(fn (NewStudentAccount $record): bool => NewStudentAccountResource::can('restoreAccount', $record))
-                    ->visible(fn (NewStudentAccount $record): bool => $record->archived_at !== null)
-                    ->action(function (NewStudentAccount $record): void {
-                        abort_unless(NewStudentAccountResource::can('restoreAccount', $record), 403);
-                        StudentAccountArchive::restore($record);
-
-                        Notification::make()
-                            ->title(NotificationLanguage::trans('new_student_accounts.notifications.restored'))
-                            ->success()
-                            ->send();
-                    }),
             ]);
     }
 }

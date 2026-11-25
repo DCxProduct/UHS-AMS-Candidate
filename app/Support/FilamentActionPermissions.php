@@ -46,8 +46,6 @@ class FilamentActionPermissions
                 'update',
                 'activate_account',
                 'deactivate_account',
-                'archive_account',
-                'restore_account',
             ],
             WorkflowButtonResource::class => [
                 'view_any',
@@ -283,7 +281,11 @@ class FilamentActionPermissions
                 $permission->delete();
             }
             foreach (Permission::query()->where('guard_name', $guardName)
-                ->whereIn('name', ['View:NewStudentAccount', 'Delete:NewStudentAccount', 'DeleteAny:NewStudentAccount', 'RestoreDeletedAccount:NewStudentAccount', 'View:SidebarMenu', 'DeleteAny:SidebarMenu'])->get() as $permission) {
+                ->whereIn('name', [
+                    'View:NewStudentAccount', 'Delete:NewStudentAccount', 'DeleteAny:NewStudentAccount',
+                    'RestoreDeletedAccount:NewStudentAccount', 'ArchiveAccount:NewStudentAccount', 'RestoreAccount:NewStudentAccount',
+                    'View:SidebarMenu', 'DeleteAny:SidebarMenu',
+                ])->get() as $permission) {
                 $permission->delete();
             }
 

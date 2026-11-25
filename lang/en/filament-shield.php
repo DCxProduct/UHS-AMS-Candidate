@@ -18,8 +18,6 @@ return [
         'pay' => 'Pay',
         'activate_account' => 'Activate Account',
         'deactivate_account' => 'Deactivate Account',
-        'archive_account' => 'Archive Account',
-        'restore_account' => 'Restore Account',
         'passed' => 'Passed',
         'edit_result' => 'Edit Result',
         'pending' => 'Pending',

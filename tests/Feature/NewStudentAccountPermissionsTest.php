@@ -23,7 +23,6 @@ class NewStudentAccountPermissionsTest extends TestCase
     private const PERMISSIONS = [
         'ViewAny:NewStudentAccount', 'Create:NewStudentAccount', 'Update:NewStudentAccount',
         'ActivateAccount:NewStudentAccount', 'DeactivateAccount:NewStudentAccount',
-        'ArchiveAccount:NewStudentAccount', 'RestoreAccount:NewStudentAccount',
     ];
 
     protected function setUp(): void
@@ -50,15 +49,17 @@ class NewStudentAccountPermissionsTest extends TestCase
             Permission::findOrCreate('Update:NewStudentAccount', 'web'),
             Permission::findOrCreate('Delete:NewStudentAccount', 'web'),
             Permission::findOrCreate('RestoreDeletedAccount:NewStudentAccount', 'web'),
+            Permission::findOrCreate('ArchiveAccount:NewStudentAccount', 'web'),
+            Permission::findOrCreate('RestoreAccount:NewStudentAccount', 'web'),
         ]);
-        foreach (['View:NewStudentAccount', 'Delete:NewStudentAccount', 'DeleteAny:NewStudentAccount', 'RestoreDeletedAccount:NewStudentAccount'] as $permission) {
+        foreach (['View:NewStudentAccount', 'Delete:NewStudentAccount', 'DeleteAny:NewStudentAccount', 'RestoreDeletedAccount:NewStudentAccount', 'ArchiveAccount:NewStudentAccount', 'RestoreAccount:NewStudentAccount'] as $permission) {
             Permission::findOrCreate($permission, 'api');
         }
 
         FilamentActionPermissions::sync();
         FilamentActionPermissions::sync();
 
-        foreach (['View:NewStudentAccount', 'Delete:NewStudentAccount', 'DeleteAny:NewStudentAccount', 'RestoreDeletedAccount:NewStudentAccount'] as $permission) {
+        foreach (['View:NewStudentAccount', 'Delete:NewStudentAccount', 'DeleteAny:NewStudentAccount', 'RestoreDeletedAccount:NewStudentAccount', 'ArchiveAccount:NewStudentAccount', 'RestoreAccount:NewStudentAccount'] as $permission) {
             $this->assertDatabaseMissing('permissions', ['name' => $permission, 'guard_name' => 'web']);
             $this->assertDatabaseHas('permissions', ['name' => $permission, 'guard_name' => 'api']);
         }

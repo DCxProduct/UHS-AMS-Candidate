@@ -35,16 +35,6 @@ class NewStudentAccountPolicy
         return $newStudentAccount->archived_at === null && $this->allows($authUser, 'DeactivateAccount:NewStudentAccount');
     }
 
-    public function archiveAccount(AuthUser $authUser, NewStudentAccount $newStudentAccount): bool
-    {
-        return $newStudentAccount->archived_at === null && $this->allows($authUser, 'ArchiveAccount:NewStudentAccount');
-    }
-
-    public function restoreAccount(AuthUser $authUser, NewStudentAccount $newStudentAccount): bool
-    {
-        return $newStudentAccount->archived_at !== null && $this->allows($authUser, 'RestoreAccount:NewStudentAccount');
-    }
-
     public function delete(AuthUser $authUser, NewStudentAccount $newStudentAccount): bool
     {
         return false;
