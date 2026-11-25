@@ -124,7 +124,7 @@ class SidebarNavigation
         }
         $this->addGroup($catalog, $group, $locale);
         $key = self::itemKey($item);
-        $catalog[$key] ??= ['kind' => 'item', 'group' => self::groupKey($group), 'sort_order' => $item->getSort()];
+        $catalog[$key] ??= ['kind' => 'item', 'group' => self::groupKey($group), 'sort_order' => $item->getSort(), 'url' => $item->getUrl()];
         $catalog[$key]['label_'.$locale] = $item->getLabel();
         $icon = $item->getIcon();
         $catalog[$key]['icon'] = $icon instanceof ScalableIcon ? $icon->getIconForSize(IconSize::Large)
@@ -230,6 +230,9 @@ class SidebarNavigation
                 }
                 if (isset($icons[$setting?->navigation_icon ?? ''])) {
                     $item->icon($setting->navigation_icon)->activeIcon($setting->navigation_icon);
+                }
+                if (filled($item->getUrl())) {
+                    $item->url(app(SidebarMenuUrls::class)->forUrl($item->getUrl()));
                 }
                 $item->childItems($decorateItems($item->getChildItems()));
                 $decorated[] = ['item' => $item, 'sort' => $setting?->sort_order ?? $item->getSort(), 'position' => $position];

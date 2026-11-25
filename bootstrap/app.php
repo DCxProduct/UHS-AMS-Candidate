@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\CheckUserActive;
 use App\Http\Middleware\PreventDynamicPageCaching;
+use App\Http\Middleware\ResolveSidebarMenuUrl;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SetLocale;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
@@ -25,6 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
             before: AuthenticatesRequests::class,
             prepend: CheckUserActive::class,
         );
+        $middleware->append(ResolveSidebarMenuUrl::class);
 
         $middleware->web(append: [
             SetLocale::class,

@@ -16,6 +16,7 @@ use App\Models\ClosingDate;
 use App\Models\SystemUser;
 use App\Support\ClosingDateWorkflow;
 use App\Support\DashboardUserAccess;
+use App\Support\SidebarMenuUrls;
 use App\Support\UserTypeOptions;
 use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use BezhanSalleh\LanguageSwitch\Http\Middleware\SwitchLanguageLocale;
@@ -57,7 +58,7 @@ class AppPanelProvider extends PanelProvider
             ->path('')
 
             ->defaultThemeMode(ThemeMode::Light)
-            ->homeUrl('/dashboard')
+            ->homeUrl(fn (): string => app(SidebarMenuUrls::class)->forUrl(AppDashboard::getUrl(panel: 'app')))
 
             ->login(Login::class)
             ->registration(Register::class)
