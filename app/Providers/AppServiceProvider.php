@@ -28,6 +28,7 @@ use App\Observers\CustomFormEntryStatisticsObserver;
 use App\Support\AdminRolePermissions;
 use App\Support\FilamentActionPermissions;
 use App\Support\NotificationLanguage;
+use App\Support\SidebarMenuUrls;
 use App\Support\WorkflowStageMessages;
 use App\Support\WorkflowButtonColors;
 use App\Support\WorkflowConfigurationUsage;
@@ -58,6 +59,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->scoped(WorkflowButtonColors::class);
         $this->app->scoped(WorkflowConfigurationUsage::class);
         $this->app->scoped(\App\Support\SidebarNavigation::class);
+        $this->app->scoped(SidebarMenuUrls::class);
         $this->app->scoped(\Filament\Navigation\NavigationManager::class, \App\Support\SidebarNavigationManager::class);
     }
 
