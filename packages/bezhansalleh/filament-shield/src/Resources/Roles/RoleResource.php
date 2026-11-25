@@ -10,6 +10,7 @@ use App\Models\UserType;
 use App\Support\CaseInsensitiveSearch;
 use App\Support\FilamentActionPermissions;
 use App\Support\LocalizedDate;
+use App\Support\SidebarNavigation;
 use App\Support\UserTypeOptions;
 use BezhanSalleh\FilamentShield\Facades\FilamentShield;
 use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
@@ -50,9 +51,48 @@ class RoleResource extends Resource
     use Essentials\HasGlobalSearch;
     use Essentials\HasLabels;
     use Essentials\HasNavigation;
-    use HasShieldFormComponents;
+    use HasShieldFormComponents {
+        getResourceEntitiesSchema as protected shieldResourceEntitiesSchema;
+        getPageOptions as protected shieldPageOptions;
+    }
 
     protected static ?string $recordTitleAttribute = 'localized_name';
+
+    public static function getResourceEntitiesSchema(): ?array
+    {
+        $sections = static::shieldResourceEntitiesSchema();
+        $names = static::sidebarPermissionNames();
+        foreach ($sections ?? [] as $resource => $section) {
+            if (isset($names['item:'.$resource])) {
+                $section->heading($names['item:'.$resource]);
+            }
+        }
+
+        return $sections;
+    }
+
+    public static function getPageOptions(): array
+    {
+        $options = static::shieldPageOptions();
+        $names = static::sidebarPermissionNames();
+        foreach (FilamentShield::getPages() ?? [] as $page => $entity) {
+            foreach (array_keys($entity['permissions']) as $key) {
+                if (array_key_exists($key, $options) && isset($names['item:'.$page])) {
+                    $options[$key] = $names['item:'.$page];
+                }
+            }
+        }
+
+        return $options;
+    }
+
+    protected static function sidebarPermissionNames(): array
+    {
+        $field = in_array(app()->getLocale(), ['km', 'kh'], true) ? 'label_km' : 'label_en';
+
+        return app(SidebarNavigation::class)->names()->pluck($field, 'target_key')
+            ->filter(fn (?string $label): bool => filled($label))->all();
+    }
 
     #[Override]
     public static function form(Schema $schema): Schema
