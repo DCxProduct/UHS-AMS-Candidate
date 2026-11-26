@@ -95,6 +95,11 @@ class AppPanelProvider extends PanelProvider
             )
 
             ->renderHook(
+                PanelsRenderHook::AUTH_LOGIN_FORM_AFTER,
+                fn (): View => view('guide-books.login-link'),
+            )
+
+            ->renderHook(
                 PanelsRenderHook::AUTH_REGISTER_FORM_AFTER,
                 fn (): View => view('auth.register-signin-link'),
             )

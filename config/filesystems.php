@@ -30,6 +30,13 @@ return [
 
     'disks' => [
 
+        'guide_books' => [
+            'driver' => 'local',
+            'root' => env('GUIDE_BOOKS_PATH', storage_path('app/private/guide-books')),
+            'visibility' => 'private',
+            'throw' => true,
+        ],
+
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
