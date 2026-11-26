@@ -48,7 +48,7 @@ final class AmsStudentAccountTransfer
                     }
                 }
                 if ($existing?->auth_id !== null) {
-                    $query->orWhereKey($existing->auth_id);
+                    $query->orWhere($query->getModel()->getQualifiedKeyName(), $existing->auth_id);
                 }
             })->get();
             $this->ensure($matches->count() <= 1);
