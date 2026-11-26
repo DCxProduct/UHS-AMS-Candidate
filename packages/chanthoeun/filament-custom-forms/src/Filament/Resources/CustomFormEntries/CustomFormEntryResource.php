@@ -758,7 +758,7 @@ class CustomFormEntryResource extends Resource
         return false;
     }
 
-    protected static function getDynamicFormIcon(CustomForm $form): string
+    public static function getDynamicFormIcon(CustomForm $form): string
     {
         $slug = (string) ($form->slug ?? '');
 

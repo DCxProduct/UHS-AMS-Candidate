@@ -4,8 +4,10 @@ namespace Chanthoeun\FilamentCustomForms\Filament\Resources\CustomForms\Schemas;
 
 use App\Models\WorkflowNotification;
 use App\Support\PassedResultMenuOptions;
+use App\Support\SidebarMenuIcons;
 use App\Support\StatisticsMenuOptions;
 use App\Support\UserTypeOptions;
+use Chanthoeun\FilamentCustomForms\Filament\Resources\CustomFormEntries\CustomFormEntryResource;
 use Chanthoeun\FilamentCustomForms\Models\CustomForm;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
@@ -14,6 +16,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms;
 use Filament\Forms\Components\Builder as FormBuilder;
+use Illuminate\Validation\Rule;
 
 class CustomFormForm
 {
@@ -70,6 +73,24 @@ class CustomFormForm
                             ->afterStateUpdated(fn ($set, $state) => self::syncProfileAllowedRoles($state, $set))
                             ->maxLength(255)
                             ->unique(ignoreRecord: true),
+
+                        Forms\Components\Select::make('navigation_icon')
+                            ->label(__('sidebar_menus.icon'))
+                            ->options(fn (Get $get): array => SidebarMenuIcons::htmlOptions($get('navigation_icon')))
+                            ->getOptionLabelUsing(fn (?string $value): ?string => SidebarMenuIcons::optionHtml($value))
+                            ->afterStateHydrated(function (Forms\Components\Select $component, ?CustomForm $record): void {
+                                if (blank($component->getState())) {
+                                    $component->state(CustomFormEntryResource::getDynamicFormIcon($record ?? new CustomForm));
+                                }
+                            })
+                            ->required()
+                            ->rules(fn (): array => [Rule::in(array_keys(SidebarMenuIcons::all()))])
+                            ->allowHtml()
+                            ->searchable()
+                            ->searchValues()
+                            ->native(false)
+                            ->live()
+                            ->optionsLimit(fn (): int => count(SidebarMenuIcons::options())),
 
                         Forms\Components\Select::make('statistics_menu')
                             ->label(__('filament-custom-forms::fcf.form.statistics_menu'))
