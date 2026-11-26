@@ -9,3 +9,6 @@ Route::post('/external/ams/new-student-accounts', AmsStudentAccountController::c
 
 Route::post('/external/ams/other-fee-payments', AmsOtherFeePaymentController::class)
     ->middleware('throttle:60,1')->name('external.ams.other-fee-payments');
+
+Route::post('/external/ams/excel-student-accounts', \App\Http\Controllers\Api\AmsExcelStudentAccountController::class)
+    ->middleware('throttle:60,1');
