@@ -135,3 +135,10 @@ Route::middleware('guest')
             ->name('password.phone.update')
             ->middleware('throttle:password-reset');
     });
+
+// Published system guides are available before signing in.
+Route::get('/guide-books', [\App\Http\Controllers\GuideBookController::class, 'index'])->name('guide-books.index');
+Route::get('/guide-books/open', [\App\Http\Controllers\GuideBookController::class, 'open'])->name('guide-books.open');
+Route::get('/guide-books/{guideBook}', [\App\Http\Controllers\GuideBookController::class, 'show'])->whereNumber('guideBook')->name('guide-books.show');
+Route::get('/guide-books/{guideBook}/file', [\App\Http\Controllers\GuideBookController::class, 'file'])->whereNumber('guideBook')->name('guide-books.file');
+Route::get('/guide-books-admin/{guideBook}/file', [\App\Http\Controllers\GuideBookController::class, 'preview'])->middleware('auth')->name('guide-books.preview');

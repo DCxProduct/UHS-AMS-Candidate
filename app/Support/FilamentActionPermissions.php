@@ -37,6 +37,7 @@ class FilamentActionPermissions
     public static function resourceActions(): array
     {
         return [
+            \App\Filament\Admin\Resources\GuideBooks\GuideBookResource::class => ['view_any', 'update', 'reset'],
             SidebarMenuResource::class => [
                 'view_any', 'create', 'update', 'delete', 'reorder',
             ],
@@ -310,6 +311,7 @@ class FilamentActionPermissions
     protected static function resourcePermissions(): array
     {
         return [
+            \App\Filament\Admin\Resources\GuideBooks\GuideBookResource::class => ['viewAny', 'update', 'reset'],
             SidebarMenuResource::class => self::resourceActions()[SidebarMenuResource::class],
             NewStudentAccountResource::class => self::resourceActions()[NewStudentAccountResource::class],
             PaymentStatusListResource::class => [

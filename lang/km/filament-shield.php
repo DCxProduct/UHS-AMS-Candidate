@@ -10,6 +10,7 @@ return [
         'create' => 'បង្កើត',
         'duplicate' => 'ចម្លង',
         'update' => 'កែប្រែ',
+        'reset' => 'កំណត់ឡើងវិញ',
         'delete' => 'លុប',
         'view_slip' => 'មើលបង្កាន់ដៃ',
         'download_excel' => 'ទាញយក Excel',

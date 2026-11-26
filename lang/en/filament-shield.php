@@ -10,6 +10,7 @@ return [
         'create' => 'Create',
         'duplicate' => 'Duplicate',
         'update' => 'Update',
+        'reset' => 'Reset',
         'delete' => 'Delete',
         'view_slip' => 'View Receipt',
         'download_excel' => 'Download Excel',
