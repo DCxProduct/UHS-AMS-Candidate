@@ -31,6 +31,7 @@ class CustomForm extends Model
     protected $fillable = [
         'name',
         'slug',
+        'navigation_icon',
         'schema',
         'is_active',
         'allowed_roles',
